@@ -1,43 +1,38 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-class AppBottomNavBar extends StatelessWidget {
+class OpsBottomNavBar extends StatelessWidget {
   final int currentIndex;
-  final bool showBudget;
 
-  const AppBottomNavBar({
+  const OpsBottomNavBar({
     super.key,
     required this.currentIndex,
-    this.showBudget = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final destinations = <NavigationDestination>[
-      const NavigationDestination(
+    const destinations = <NavigationDestination>[
+      NavigationDestination(
         icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
         label: "Dashboard",
       ),
-      const NavigationDestination(
+      NavigationDestination(
         icon: Icon(Icons.folder_outlined),
+        selectedIcon: Icon(Icons.folder),
         label: "Projects",
       ),
-      if (showBudget)
-        const NavigationDestination(
-          icon: Icon(Icons.account_balance_wallet_outlined),
-          label: "Budget",
-        ),
-      const NavigationDestination(
+      NavigationDestination(
         icon: Icon(Icons.inventory_2_outlined),
+        selectedIcon: Icon(Icons.inventory_2),
         label: "Inventory",
       ),
     ];
 
-    final routes = [
-      "/dashboard",       // 👈 was /ops-dashboard
-      "/projects",        // 👈 was /ops-projects
-      if (showBudget) "/budget",
-      showBudget ? "/inventory" : "/ops-inventory",
+    const routes = [
+      "/ops-dashboard",
+      "/ops-projects",
+      "/ops-inventory",
     ];
 
     return NavigationBar(

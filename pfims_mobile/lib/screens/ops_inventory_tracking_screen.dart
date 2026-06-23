@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pfims_mobile/screens/ops_dashboard_screen.dart' show OpsDashboardScreen;
-import 'package:pfims_mobile/screens/ops_project_tracking_screen.dart' show OpsProjectTrackingScreen;
 import '../theme/app_theme.dart';
-import '../widgets/app_bottom_nav_bar.dart';
+import '../widgets/ops_bottom_nav_bar.dart';
 import '../widgets/app_header.dart';
 
 const Color kDarkPill = Color(0xFF14161F);
@@ -274,10 +272,7 @@ class _OpsInventoryTrackingScreenState extends State<OpsInventoryTrackingScreen>
           ],
         ),
       ),
-      bottomNavigationBar: const AppBottomNavBar(
-        currentIndex: 3,
-        showBudget: false,
-      ),
+      bottomNavigationBar: const OpsBottomNavBar(currentIndex: 2),
     );
   }
 }
@@ -498,16 +493,4 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-void main() {
-  runApp(
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      initialRoute: '/ops-inventory',
-      routes: {
-        '/ops-dashboard': (_) => const OpsDashboardScreen(),
-        '/ops-projects': (_) => const OpsProjectTrackingScreen(),
-        '/ops-inventory': (_) => const OpsInventoryTrackingScreen(),
-      },
-    ),
-  );
-}
+

@@ -1,36 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:pfims_mobile/screens/notifications_screen.dart' show NotificationsScreen;
-import '../theme/app_theme.dart';
-import '../widgets/app_bottom_nav_bar.dart';
-import 'ops_project_tracking_screen.dart';
-import 'ops_inventory_tracking_screen.dart';
-// `notifications_screen.dart` re-exposes `kBrandOrange` from app_header.dart
-// (via `show`); hide it here since this file already declares its own copy.
-// import 'notifications_screen.dart' show kBrandOrange;
+import 'package:pfims_mobile/screens/notifications_screen.dart'
+    show NotificationsScreen;
+import '../widgets/ops_bottom_nav_bar.dart';
 
-// TODO: move these into theme/app_theme.dart so every screen shares them.
 const Color kBrandOrange = Color(0xFFF2811D);
 const Color kDarkNavy = Color(0xFF1A1F36);
 const Color kPositiveGreen = Color(0xFF27AE60);
 const Color kCardBg = Colors.white;
 const Color kPageBg = Color(0xFFF2F3F5);
 
-/// ---------------------------------------------------------------------
-/// SAMPLE DATA — everything below is hard-coded for the UI build-out.
-/// Swap these for real values once the backend / API is wired up.
-/// ---------------------------------------------------------------------
+// ---- Restricted stat cards (no Budget) ----
 class _StatCardData {
   final String label;
   final String value;
   final String subtitle;
-  final String? badge; // e.g. "12%"
-  const _StatCardData({
-    required this.label,
-    required this.value,
-    required this.subtitle,
-    this.badge,
-  });
+  final String? badge;
+  const _StatCardData(
+      {required this.label,
+      required this.value,
+      required this.subtitle,
+      this.badge});
 }
 
 const List<_StatCardData> _statCards = [
@@ -52,34 +42,15 @@ const List<double> _completionTrend = [2, 5, 4, 7, 6, 8];
 
 class _ActiveProjectData {
   final String name;
-  final String budget;
-  final double percent; // 0-1
-  const _ActiveProjectData({
-    required this.name,
-    required this.budget,
-    required this.percent,
-  });
+  final double percent;
+  const _ActiveProjectData({required this.name, required this.percent});
 }
 
 const List<_ActiveProjectData> _activeProjects = [
-  _ActiveProjectData(
-    name: "Riverside Commercial Complex",
-    budget: "\₱2.4M",
-    percent: 0.78,
-  ),
-  _ActiveProjectData(
-    name: "Downtown Office Tower",
-    budget: "\₱5.8M",
-    percent: 0.45,
-  ),
-  _ActiveProjectData(
-    name: "Suburban Housing Development",
-    budget: "\₱3.2M",
-    percent: 0.92,
-  ),
+  _ActiveProjectData(name: "Riverside Commercial Complex", percent: 0.78),
+  _ActiveProjectData(name: "Downtown Office Tower", percent: 0.45),
+  _ActiveProjectData(name: "Suburban Housing Development", percent: 0.92),
 ];
-
-/// ---------------------------------------------------------------------
 
 class OpsDashboardScreen extends StatefulWidget {
   const OpsDashboardScreen({super.key});
@@ -90,7 +61,7 @@ class OpsDashboardScreen extends StatefulWidget {
 
 class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
   final PageController _statsController =
-      PageController(viewportFraction: .42);
+      PageController(viewportFraction: .48);
 
   @override
   void dispose() {
@@ -113,11 +84,11 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPageBg,
-      appBar: _DashboardHeader(),
+      appBar: _OpsHeader(),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          // ---- Stat card carousel ----
+          // Stat card carousel (Active Projects + Equipment only)
           SizedBox(
             height: 104,
             child: PageView.builder(
@@ -131,7 +102,6 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          // ---- Scroll control bar ----
           Container(
             height: 32,
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -166,7 +136,7 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
           ),
           const SizedBox(height: 20),
 
-          // ---- Project completion trend (bar chart) ----
+          // Project Completion Trend
           _SectionCard(
             title: "PROJECT COMPLETION TREND",
             child: SizedBox(
@@ -179,17 +149,15 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
                     show: true,
                     drawVerticalLine: false,
                     horizontalInterval: 3,
-                    getDrawingHorizontalLine: (_) => FlLine(
-                      color: Colors.grey[200],
-                      strokeWidth: 1,
-                    ),
+                    getDrawingHorizontalLine: (_) =>
+                        FlLine(color: Colors.grey[200], strokeWidth: 1),
                   ),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
-                    topTitles:
-                        const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles:
-                        const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -197,8 +165,8 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
                         reservedSize: 26,
                         getTitlesWidget: (v, meta) => Text(
                           v.toInt().toString(),
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey[500]),
+                          style:
+                              TextStyle(fontSize: 11, color: Colors.grey[500]),
                         ),
                       ),
                     ),
@@ -210,8 +178,8 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
                             _months[v.toInt()],
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.grey[500]),
+                            style:
+                                TextStyle(fontSize: 11, color: Colors.grey[500]),
                           ),
                         ),
                       ),
@@ -237,7 +205,7 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
           ),
           const SizedBox(height: 20),
 
-          // ---- Active projects ----
+          // Active Projects list
           const Text(
             "ACTIVE PROJECTS",
             style: TextStyle(
@@ -256,17 +224,12 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNavBar(
-        currentIndex: 0,
-        showBudget: false,
-      ),
+      bottomNavigationBar: const OpsBottomNavBar(currentIndex: 0),
     );
   }
 }
 
-/// Custom top app bar: logo + company name + notification bell + profile avatar.
-class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
-  /// TODO: wire to real unread-notifications count once notifications data layer exists.
+class _OpsHeader extends StatelessWidget implements PreferredSizeWidget {
   static const int _unreadCount = 4;
 
   @override
@@ -276,47 +239,54 @@ class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+          BoxShadow(
+              color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
       child: SafeArea(
         bottom: false,
         child: Row(
           children: [
-            Image.asset(
-              "assets/images/logo.jpg",
-              width: 36,
-              height: 36,
-              fit: BoxFit.contain,
-            ),
+            Image.asset("assets/images/logo.jpg",
+                width: 36, height: 36, fit: BoxFit.contain),
             const SizedBox(width: 10),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    "E.V. CATAPANG",
-                    style: TextStyle(
-                      color: kBrandOrange,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      letterSpacing: .3,
-                    ),
-                  ),
-                  Text(
-                    "DESIGN-CONSTRUCTION & SUPPLY",
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: .2,
-                    ),
-                  ),
+                  Text("E.V. CATAPANG",
+                      style: TextStyle(
+                          color: kBrandOrange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          letterSpacing: .3)),
+                  Text("DESIGN-CONSTRUCTION & SUPPLY",
+                      style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: .2)),
                 ],
               ),
             ),
-            _DashboardNotificationBell(unreadCount: _unreadCount),
+            // OPS badge in header
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: kBrandOrange.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text("OPS",
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: kBrandOrange,
+                      letterSpacing: .4)),
+            ),
+            const SizedBox(width: 6),
+            _NotificationBell(unreadCount: _unreadCount),
             const SizedBox(width: 6),
             Material(
               color: Colors.transparent,
@@ -345,10 +315,9 @@ class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(64);
 }
 
-class _DashboardNotificationBell extends StatelessWidget {
+class _NotificationBell extends StatelessWidget {
   final int unreadCount;
-
-  const _DashboardNotificationBell({required this.unreadCount});
+  const _NotificationBell({required this.unreadCount});
 
   @override
   Widget build(BuildContext context) {
@@ -357,37 +326,33 @@ class _DashboardNotificationBell extends StatelessWidget {
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-          );
-        },
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationsScreen())),
         child: Padding(
           padding: const EdgeInsets.all(6),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              const Icon(Icons.notifications_none_rounded, color: kBrandOrange, size: 26),
+              const Icon(Icons.notifications_none_rounded,
+                  color: kBrandOrange, size: 26),
               if (unreadCount > 0)
                 Positioned(
                   top: -4,
                   right: -4,
                   child: Container(
                     padding: const EdgeInsets.all(3),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
                     decoration: const BoxDecoration(
-                      color: Color(0xFFE53935),
-                      shape: BoxShape.circle,
-                    ),
+                        color: Color(0xFFE53935), shape: BoxShape.circle),
                     child: Text(
                       unreadCount > 9 ? '9+' : '$unreadCount',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          height: 1),
                     ),
                   ),
                 ),
@@ -399,7 +364,6 @@ class _DashboardNotificationBell extends StatelessWidget {
   }
 }
 
-/// White rounded card wrapper used for chart sections.
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
@@ -415,24 +379,20 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+              color: Colors.black.withValues(alpha: .04),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              letterSpacing: .3,
-              color: Colors.black87,
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: .3,
+                  color: Colors.black87)),
           const SizedBox(height: 12),
           child,
         ],
@@ -454,10 +414,9 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+              color: Colors.black.withValues(alpha: .04),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
         ],
       ),
       child: Column(
@@ -467,12 +426,11 @@ class _StatCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  data.label,
-                  style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: Text(data.label,
+                    style:
+                        TextStyle(fontSize: 11.5, color: Colors.grey[600]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
               ),
               if (data.badge != null)
                 Container(
@@ -487,35 +445,27 @@ class _StatCard extends StatelessWidget {
                     children: [
                       const Icon(Icons.arrow_upward,
                           size: 9, color: kPositiveGreen),
-                      Text(
-                        data.badge!,
-                        style: const TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                          color: kPositiveGreen,
-                        ),
-                      ),
+                      Text(data.badge!,
+                          style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: kPositiveGreen)),
                     ],
                   ),
                 ),
             ],
           ),
           const Spacer(),
-          Text(
-            data.value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
+          Text(data.value,
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87)),
           const SizedBox(height: 2),
-          Text(
-            data.subtitle,
-            style: TextStyle(fontSize: 10.5, color: Colors.grey[500]),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(data.subtitle,
+              style: TextStyle(fontSize: 10.5, color: Colors.grey[500]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -536,46 +486,19 @@ class _ActiveProjectCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+              color: Colors.black.withValues(alpha: .04),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  data.name,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text("Budget",
-                      style: TextStyle(fontSize: 10.5, color: Colors.grey[500])),
-                  Text(
-                    data.budget,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: kBrandOrange,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+          Text(data.name,
+              style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -592,29 +515,12 @@ class _ActiveProjectCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                "₱{(data.percent * 100).round()}%",
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
+              Text("${(data.percent * 100).round()}%",
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
           ),
         ],
       ),
     );
   }
-}
-
-void main() {
-  runApp(
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      initialRoute: '/ops-dashboard',
-      routes: {
-        '/ops-dashboard': (_) => const OpsDashboardScreen(),
-        '/ops-projects': (_) => const OpsProjectTrackingScreen(),
-        '/ops-inventory': (_) => const OpsInventoryTrackingScreen(),
-      },
-    ),
-  );
 }

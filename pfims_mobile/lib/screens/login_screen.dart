@@ -11,16 +11,15 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  final _usernameController = TextEditingController();
 
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+@override
+void dispose() {
+  _usernameController.dispose();
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -186,11 +185,40 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     ),
                                   ),
+                                  // onPressed: () {
+                                  //   Navigator.pushReplacementNamed(
+                                  //     context,
+                                  //     "/dashboard",
+                                  //   );
+                                  // },
                                   onPressed: () {
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      "/dashboard",
-                                    );
+                                    final username =
+                                        _usernameController.text.trim().toLowerCase();
+
+                                    if (username == "admin") {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        "/dashboard",
+                                      );
+                                    } else if (username == "operations") {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        "/ops-dashboard",
+                                      );
+                                    } else if (username == "accounting") {
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        "/acct-dashboard",
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Invalid username or password",
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   },
                                   child: const Text(
                                     "Sign In",

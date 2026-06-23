@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'ops_dashboard_screen.dart';
-import 'ops_inventory_tracking_screen.dart';
-import '../widgets/app_bottom_nav_bar.dart';
+import '../widgets/ops_bottom_nav_bar.dart';
 import '../widgets/app_header.dart';
 
 const Color kDarkPill = Color(0xFF14161F);
@@ -258,27 +256,12 @@ class _OpsProjectTrackingScreenState extends State<OpsProjectTrackingScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNavBar(
-        currentIndex: 1,
-        showBudget: false,
-      ),
+     bottomNavigationBar: const OpsBottomNavBar(currentIndex: 1),
     );
   }
 }
 
-void main() {
-  runApp(
-    MaterialApp(
-      debugShowCheckedModeBanner: false,
-      initialRoute: '/ops-projects',
-      routes: {
-        '/ops-dashboard': (_) => const OpsDashboardScreen(),
-        '/ops-projects': (_) => const OpsProjectTrackingScreen(),
-        '/ops-inventory': (_) => const OpsInventoryTrackingScreen(),
-      },
-    ),
-  );
-}
+
 
 class _StatTile extends StatelessWidget {
   final String label;
