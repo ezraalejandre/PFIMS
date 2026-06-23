@@ -221,6 +221,61 @@ void dispose() {
                                       );
                                     }
                                   },
+//                                   onPressed: () async {
+
+//   final username =
+//       _usernameController.text.trim();
+
+
+//   try {
+
+//     final result =
+//         await ApiService.login(username);
+
+
+//     final role =
+//         result['user']['role'];
+
+
+//     if(role == "admin"){
+
+//       Navigator.pushReplacementNamed(
+//         context,
+//         "/dashboard",
+//       );
+
+//     }
+//     else if(role == "operations"){
+
+//       Navigator.pushReplacementNamed(
+//         context,
+//         "/ops-dashboard",
+//       );
+
+//     }
+//     else if(role == "accounting"){
+
+//       Navigator.pushReplacementNamed(
+//         context,
+//         "/acct-dashboard",
+//       );
+
+//     }
+
+
+//   } catch(e){
+
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(
+//         content: Text(
+//           "Invalid username or password"
+//         ),
+//       ),
+//     );
+
+//   }
+
+// },
                                   child: const Text(
                                     "Sign In",
                                     style: TextStyle(

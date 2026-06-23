@@ -12,3 +12,10 @@ Route::get('/test', function () {
         "message" => "Laravel API connected"
     ]);
 });
+
+use App\Http\Controllers\Api\AuthController;
+
+
+Route::post('/login',
+    [AuthController::class, 'login']
+);
