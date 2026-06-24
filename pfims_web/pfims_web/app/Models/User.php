@@ -14,18 +14,26 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'users';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
-protected $table = "user_tbl";
-
-
-protected $fillable = [
-    'username',
-    'password',
-    'role'
-];
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'role',
+        'phone',
+        'location',
+        'status',
+    ];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -48,5 +56,13 @@ protected $fillable = [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Check if user has a given role.
+     */
+    public function isRole(string $role): bool
+    {
+        return isset($this->role) && $this->role === $role;
     }
 }
