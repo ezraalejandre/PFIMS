@@ -8,67 +8,12 @@ use App\Models\User;
 class AuthController extends Controller
 {
 
-    public function login(Request $request)
-    {
-
-        $user = User::where('username', $request->username)
-            ->where('password', $request->password)
-            ->first();
-
-
-        if (!$user) {
-
-            return response()->json([
-                "success" => false,
-                "message" => "Invalid username or password"
-            ], 401);
-
-        }
-
-
-        return response()->json([
-            "success" => true,
-            "role" => $user->role,
-            "username" => $user->username
-        ]);
-
-    }
-
-
-
-public function profile(Request $request)
+public function login(Request $request)
 {
 
     $user = User::where(
-        'username',
-        $request->username
-    )->first();
-
-
-    if(!$user){
-
-        return response()->json([
-            "success"=>false
-        ],404);
-
-    }
-
-
-    return response()->json([
-        "success"=>true,
-        "user"=>$user
-    ]);
-
-}
-
-
-
-public function changePassword(Request $request)
-{
-
-    $user = User::where(
-        'username',
-        $request->username
+        'email',
+        $request->email
     )->first();
 
 
@@ -76,29 +21,152 @@ public function changePassword(Request $request)
 
         return response()->json([
             "success"=>false,
-            "message"=>"User not found"
-        ],404);
+            "message"=>"Invalid email or password"
+        ],401);
 
     }
 
 
+    if($request->password != $user->password){
 
-    $user->password =
-        $request->new_password;
+        return response()->json([
+            "success"=>false,
+            "message"=>"Invalid email or password"
+        ],401);
 
-
-    $user->save();
-
+    }
 
 
     return response()->json([
+
         "success"=>true,
-        "message"=>"Password updated",
-        "password"=>$user->password
+
+        "user"=>[
+            "id"=>$user->id,
+            "name"=>$user->name,
+            "email"=>$user->email
+        ]
+
     ]);
 
 }
 
+
+
+// public function profile(Request $request)
+// {
+
+//     $user = User::where(
+//         'username',
+//         $request->username
+//     )->first();
+
+
+//     if(!$user){
+
+//         return response()->json([
+//             "success"=>false
+//         ],404);
+
+//     }
+
+
+//     return response()->json([
+//         "success"=>true,
+//         "user"=>$user
+//     ]);
+
+// }
+
+
+public function profile(Request $request)
+{
+
+
+$user = User::where(
+'email',
+$request->email
+)->first();
+
+
+
+return response()->json([
+
+"user"=>$user
+
+]);
+
+
+}
+
+
+
+// public function changePassword(Request $request)
+// {
+
+//     $user = User::where(
+//         'username',
+//         $request->username
+//     )->first();
+
+
+//     if(!$user){
+
+//         return response()->json([
+//             "success"=>false,
+//             "message"=>"User not found"
+//         ],404);
+
+//     }
+
+
+
+//     $user->password =
+//         $request->new_password;
+
+
+//     $user->save();
+
+
+
+//     return response()->json([
+//         "success"=>true,
+//         "message"=>"Password updated",
+//         "password"=>$user->password
+//     ]);
+
+// }
+
+
+public function changePassword(Request $request)
+{
+
+
+$user = User::where(
+'email',
+$request->email
+)->first();
+
+
+
+$user->password =
+$request->new_password;
+
+
+$user->save();
+
+
+
+return response()->json([
+
+"success"=>true,
+
+"user"=>$user
+
+]);
+
+
+}
 }
 
 

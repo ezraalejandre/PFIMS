@@ -23,11 +23,24 @@ Route::post(
 
 
 
-Route::post('/profile',
-    [AuthController::class,'profile']
+// Route::post('/profile',
+//     [AuthController::class,'profile']
+// );
+
+
+// Route::post('/change-password',
+//     [AuthController::class,'changePassword']
+// );
+
+
+Route::post(
+'/profile',
+[AuthController::class,'profile']
 );
 
 
-Route::post('/change-password',
-    [AuthController::class,'changePassword']
+Route::post(
+'/change-password',
+[AuthController::class,'changePassword']
 );
+

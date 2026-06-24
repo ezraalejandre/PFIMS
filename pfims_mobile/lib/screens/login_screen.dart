@@ -14,11 +14,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  final _usernameController = TextEditingController();
+  // final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
 
 @override
 void dispose() {
-  _usernameController.dispose();
+  _emailController.dispose();
   super.dispose();
 }
 
@@ -140,11 +141,11 @@ void dispose() {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _FieldLabel("Username"),
+                              _FieldLabel("Email"),
                               const SizedBox(height: 8),
                               _LoginTextField(
-                                controller: _usernameController,
-                                hintText: "Enter Username",
+                                controller: _emailController,
+                                hintText: "Enter Email",
                               ),
                               const SizedBox(height: 18),
                               _FieldLabel("Password"),
@@ -221,64 +222,122 @@ void dispose() {
                                   //     );
                                   //   }
                                   // },
+// onPressed: () async {
+
+//   final username =
+//       _usernameController.text.trim();
+
+//   final password =
+//       _passwordController.text.trim();
+
+
+//   try {
+
+//     final result =
+//         await ApiService.login(
+//           username,
+//           password,
+//         );
+
+// print(result);
+//     final role =
+//         result['role'];
+
+
+//     if(role == "admin"){
+
+//       Navigator.pushReplacementNamed(
+//         context,
+//         "/dashboard",
+//       );
+
+//     }
+//     else if(role == "operations"){
+
+//       Navigator.pushReplacementNamed(
+//         context,
+//         "/ops-dashboard",
+//       );
+
+//     }
+//     else if(role == "accounting"){
+
+//       Navigator.pushReplacementNamed(
+//         context,
+//         "/acct-dashboard",
+//       );
+
+//     }
+
+
+//   } catch(e){
+
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(
+//         content:
+//           Text("Invalid username or password"),
+//       ),
+//     );
+
+//   }
+
+// },
+
 onPressed: () async {
 
-  final username =
-      _usernameController.text.trim();
 
-  final password =
-      _passwordController.text.trim();
+final email =
+_emailController.text.trim();
 
 
-  try {
+final password =
+_passwordController.text.trim();
 
-    final result =
-        await ApiService.login(
-          username,
-          password,
-        );
+
+
+try{
+
+
+final result =
+await ApiService.login(
+email,
+password
+);
+
+
 
 print(result);
-    final role =
-        result['role'];
 
 
-    if(role == "admin"){
 
-      Navigator.pushReplacementNamed(
-        context,
-        "/dashboard",
-      );
-
-    }
-    else if(role == "operations"){
-
-      Navigator.pushReplacementNamed(
-        context,
-        "/ops-dashboard",
-      );
-
-    }
-    else if(role == "accounting"){
-
-      Navigator.pushReplacementNamed(
-        context,
-        "/acct-dashboard",
-      );
-
-    }
+Navigator.pushReplacementNamed(
+context,
+"/dashboard"
+);
 
 
-  } catch(e){
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content:
-          Text("Invalid username or password"),
-      ),
-    );
+}
 
-  }
+catch(e){
+
+
+ScaffoldMessenger.of(context)
+.showSnackBar(
+
+const SnackBar(
+content:
+Text(
+"Invalid email or password"
+)
+
+)
+
+);
+
+
+}
+
 
 },
 //                                   onPressed: () async {
