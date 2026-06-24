@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -13,9 +14,20 @@ Route::get('/test', function () {
     ]);
 });
 
-use App\Http\Controllers\Api\AuthController;
 
 
-Route::post('/login',
-    [AuthController::class, 'login']
+Route::post(
+    '/login',
+    [AuthController::class,'login']
+);
+
+
+
+Route::post('/profile',
+    [AuthController::class,'profile']
+);
+
+
+Route::post('/change-password',
+    [AuthController::class,'changePassword']
 );

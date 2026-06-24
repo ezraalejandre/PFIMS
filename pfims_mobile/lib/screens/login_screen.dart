@@ -192,35 +192,95 @@ void dispose() {
                                   //     "/dashboard",
                                   //   );
                                   // },
-                                  onPressed: () {
-                                    final username =
-                                        _usernameController.text.trim().toLowerCase();
+                                  // onPressed: () {
+                                  //   final username =
+                                  //       _usernameController.text.trim().toLowerCase();
 
-                                    if (username == "admin") {
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        "/dashboard",
-                                      );
-                                    } else if (username == "operations") {
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        "/ops-dashboard",
-                                      );
-                                    } else if (username == "accounting") {
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        "/acct-dashboard",
-                                      );
-                                    } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Invalid username or password",
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
+                                  //   if (username == "admin") {
+                                  //     Navigator.pushReplacementNamed(
+                                  //       context,
+                                  //       "/dashboard",
+                                  //     );
+                                  //   } else if (username == "operations") {
+                                  //     Navigator.pushReplacementNamed(
+                                  //       context,
+                                  //       "/ops-dashboard",
+                                  //     );
+                                  //   } else if (username == "accounting") {
+                                  //     Navigator.pushReplacementNamed(
+                                  //       context,
+                                  //       "/acct-dashboard",
+                                  //     );
+                                  //   } else {
+                                  //     ScaffoldMessenger.of(context).showSnackBar(
+                                  //       const SnackBar(
+                                  //         content: Text(
+                                  //           "Invalid username or password",
+                                  //         ),
+                                  //       ),
+                                  //     );
+                                  //   }
+                                  // },
+onPressed: () async {
+
+  final username =
+      _usernameController.text.trim();
+
+  final password =
+      _passwordController.text.trim();
+
+
+  try {
+
+    final result =
+        await ApiService.login(
+          username,
+          password,
+        );
+
+print(result);
+    final role =
+        result['role'];
+
+
+    if(role == "admin"){
+
+      Navigator.pushReplacementNamed(
+        context,
+        "/dashboard",
+      );
+
+    }
+    else if(role == "operations"){
+
+      Navigator.pushReplacementNamed(
+        context,
+        "/ops-dashboard",
+      );
+
+    }
+    else if(role == "accounting"){
+
+      Navigator.pushReplacementNamed(
+        context,
+        "/acct-dashboard",
+      );
+
+    }
+
+
+  } catch(e){
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content:
+          Text("Invalid username or password"),
+      ),
+    );
+
+  }
+
+},
 //                                   onPressed: () async {
 
 //   final username =

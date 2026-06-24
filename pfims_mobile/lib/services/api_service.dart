@@ -1,71 +1,88 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-
 class ApiService {
 
-  static const String baseUrl =
-      "http://10.0.2.2:8000/api";
-
-
-  static Future login(String username) async {
+  static Future<Map<String,dynamic>> login(
+      String username,
+      String password
+  ) async {
 
 
     final response = await http.post(
-      Uri.parse("$baseUrl/login"),
+      Uri.parse(
+        "http://127.0.0.1:8000/api/login"
+      ),
       body: {
         "username": username,
+        "password": password
       },
     );
+
+
+    print(response.body);
 
 
     if(response.statusCode == 200){
 
       return jsonDecode(response.body);
 
-    } else {
+    }
+    else {
 
-      throw Exception("Invalid login");
+      throw Exception(
+        "Login failed ${response.body}"
+      );
 
     }
 
   }
+
+
+static Future<Map<String,dynamic>> getProfile(
+String username
+) async {
+
+
+final response =
+await http.post(
+ Uri.parse(
+  "http://127.0.0.1:8000/api/profile"
+ ),
+
+ body:{
+  "username":username
+ }
+);
+
+
+return jsonDecode(response.body);
+
 }
 
 
 
+static Future<Map<String,dynamic>> changePassword(
+String username,
+String newPassword
+) async {
 
 
+final response =
+await http.post(
+ Uri.parse(
+ "http://127.0.0.1:8000/api/change-password"
+ ),
 
-// import 'dart:convert';
-// import 'package:http/http.dart' as http;
-
-// class ApiService {
-
-//   static const String baseUrl =
-//       "http://127.0.0.1:8000/api";
-//       // android emulator: 10.0.2.2:8000
-//       // web: 127.0.0.1:8000
-//       // phone: PC IP:8000
-
-
-//   static Future<String> testConnection() async {
-
-//     final response = await http.get(
-//       Uri.parse("$baseUrl/test"),
-//     );
+ body:{
+  "username":username,
+  "new_password":newPassword
+ }
+);
 
 
-//     if(response.statusCode == 200){
+return jsonDecode(response.body);
 
-//       final data = jsonDecode(response.body);
+}
 
-//       return data['message'];
-
-//     }else{
-
-//       throw Exception("Failed to connect");
-
-//     }
-//   }
-// }
+}
