@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
@@ -54,7 +55,13 @@ Route::get('/profile', function () {
     ]);
 })->middleware('auth');
 
+// Route::patch('/profile', function (Request $request) {
+//     $user = Auth::user();
+
+//     $validated = $request->validate([
 Route::patch('/profile', function (Request $request) {
+
+    /** @var \App\Models\User $user */
     $user = Auth::user();
 
     $validated = $request->validate([
