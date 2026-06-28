@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Item Suppliers - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/suppliers.css') }}">
 </head>
@@ -41,97 +42,8 @@
                         <th style="width: 60px; text-align: center;">Action</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Holcim Philippines</strong></td>
-                        <td>Manila, Philippines</td>
-                        <td>+63 2 8888 1111</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>SteelAsia</strong></td>
-                        <td>Pasig City, Philippines</td>
-                        <td>+63 2 8888 2222</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Republic Cement</strong></td>
-                        <td>Makati City, Philippines</td>
-                        <td>+63 2 8888 3333</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Boysen</strong></td>
-                        <td>Mandaluyong, Philippines</td>
-                        <td>+63 2 8888 4444</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Marlwasa</strong></td>
-                        <td>Quezon City, Philippines</td>
-                        <td>+63 2 8888 5555</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Atlanta Industries</strong></td>
-                        <td>Muntinlupa, Philippines</td>
-                        <td>+63 2 8888 6666</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Yelps Dodge Philippines</strong></td>
-                        <td>Paranaque, Philippines</td>
-                        <td>+63 2 8888 7777</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Knauf</strong></td>
-                        <td>Taguig, Philippines</td>
-                        <td>+63 2 8888 8888</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>DN Steel</strong></td>
-                        <td>Valenzuela, Philippines</td>
-                        <td>+63 2 8888 9999</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal()">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
+                <tbody id="supplierTableBody">
+                    <!-- Suppliers will be loaded here dynamically -->
                 </tbody>
             </table>
         </div>
@@ -235,17 +147,63 @@
     </div>
 
     <script>
+        // Global state
+        let currentSupplierId = null;
+
+        // ─── LOAD SUPPLIERS ON PAGE LOAD ───
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSuppliers();
+        });
+
+        // ─── LOAD SUPPLIERS FROM API ───
+        function loadSuppliers() {
+            fetch('/api/suppliers')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderSuppliers(data.data);
+                    }
+                })
+                .catch(error => console.error('Error loading suppliers:', error));
+        }
+
+        // ─── RENDER SUPPLIERS IN TABLE ───
+        function renderSuppliers(suppliers) {
+            const tbody = document.getElementById('supplierTableBody');
+            tbody.innerHTML = '';
+
+            if (suppliers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No suppliers found.</td></tr>';
+                return;
+            }
+
+            suppliers.forEach(supplier => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${supplier.supplier_name}</strong></td>
+                    <td>${supplier.address}</td>
+                    <td>${supplier.contact_number}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-edit" onclick="openEditModal(${supplier.supplier_id})">
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.style.display = 'none';
             }
-            // The link will still navigate to /notifications.
         }
 
         // ─── ADD SUPPLIER MODAL ───
         function openAddModal() {
+            currentSupplierId = null;
             document.getElementById('addSupplierModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             document.getElementById('addSupplierName').value = '';
@@ -268,23 +226,61 @@
                 return;
             }
 
-            closeAddModal();
-            showSuccess('Supplier added successfully!');
-            console.log('Add Supplier:', { name, address, contact });
+            const payload = {
+                supplier_name: name,
+                address: address,
+                contact_number: contact
+            };
+
+            fetch('/api/suppliers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeAddModal();
+                    showSuccess(data.message);
+                    loadSuppliers();
+                } else {
+                    alert('Error saving supplier');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving supplier');
+            });
         }
 
         // ─── EDIT SUPPLIER MODAL ───
-        function openEditModal() {
+        function openEditModal(supplierId) {
+            currentSupplierId = supplierId;
+            
+            // Fetch supplier details
+            fetch(`/api/suppliers/${supplierId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const supplier = data.data;
+                        document.getElementById('editSupplierName').value = supplier.supplier_name;
+                        document.getElementById('editSupplierAddress').value = supplier.address;
+                        document.getElementById('editSupplierContact').value = supplier.contact_number;
+                    }
+                })
+                .catch(error => console.error('Error loading supplier:', error));
+
             document.getElementById('editSupplierModal').classList.add('active');
             document.body.style.overflow = 'hidden';
-            document.getElementById('editSupplierName').value = '';
-            document.getElementById('editSupplierAddress').value = '';
-            document.getElementById('editSupplierContact').value = '';
         }
 
         function closeEditModal() {
             document.getElementById('editSupplierModal').classList.remove('active');
             document.body.style.overflow = '';
+            currentSupplierId = null;
         }
 
         function updateSupplier() {
@@ -297,9 +293,39 @@
                 return;
             }
 
-            closeEditModal();
-            showSuccess('Supplier updated successfully!');
-            console.log('Update Supplier:', { name, address, contact });
+            if (!currentSupplierId) {
+                alert('Supplier ID not found.');
+                return;
+            }
+
+            const payload = {
+                supplier_name: name,
+                address: address,
+                contact_number: contact
+            };
+
+            fetch(`/api/suppliers/${currentSupplierId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeEditModal();
+                    showSuccess(data.message);
+                    loadSuppliers();
+                } else {
+                    alert('Error updating supplier');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating supplier');
+            });
         }
 
         // ─── SUCCESS NOTIFICATION ───
