@@ -4,6 +4,7 @@ import '../widgets/app_header.dart';
 // this file already gets the canonical one from app_header.dart.
 import 'login_screen.dart' hide kBrandOrange;
 import 'notifications_screen.dart';
+import 'security_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -281,7 +282,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   icon: Icons.shield_outlined,
                   title: 'Privacy & Security',
                   subtitle: 'Password, 2FA, sessions',
-                  onTap: () => _showPlaceholder('Privacy & Security'),
+onTap: () {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => const SecuritySettingsScreen(),
+    ),
+  );
+},
                 ),
                 _ActionRow(
                   icon: Icons.help_outline,
