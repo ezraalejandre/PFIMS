@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - PFIMS</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/settings.css') }}">
 </head>
 <body>
@@ -551,33 +552,15 @@
 
         // ─── CONFIGURATIONS (Dropdown Management) ───
         var configData = {
-            'units': [
-                { id: 1, name: 'bags' },
-                { id: 2, name: 'pcs' },
-                { id: 3, name: 'gallons' },
-                { id: 4, name: 'tons' },
-                { id: 5, name: 'rolls' },
-                { id: 6, name: 'boxes' },
-                { id: 7, name: 'm' },
-                { id: 8, name: 'kg' }
-            ],
-            'inv_categories': [
-                { id: 1, name: 'Cement' },
-                { id: 2, name: 'Steel' },
-                { id: 3, name: 'Paint' },
-                { id: 4, name: 'Aggregates' },
-                { id: 5, name: 'Masonry' },
-                { id: 6, name: 'Plumbing' },
-                { id: 7, name: 'Electrical' },
-                { id: 8, name: 'Finishing' }
-            ],
-            'exp_categories': [
-                { id: 1, name: 'Labor' },
-                { id: 2, name: 'Materials' },
-                { id: 3, name: 'Equipment' },
-                { id: 4, name: 'Subcontractor' },
-                { id: 5, name: 'Other' }
-            ]
+            'units': [],
+            'inv_categories': [],
+            'exp_categories': []
+        };
+
+        var configFieldMap = {
+            'units': { id: 'unit_id', name: 'unit_name' },
+            'inv_categories': { id: 'inventory_category_id', name: 'inventory_category_name' },
+            'exp_categories': { id: 'expense_category_id', name: 'category_name' }
         };
 
         var currentConfigType = 'units';
@@ -589,20 +572,51 @@
             });
             el.classList.add('active');
             currentConfigType = type;
-            renderConfigTable();
+            fetchConfigItems(type);
+        }
+
+        function fetchConfigItems(type) {
+            var tbody = document.getElementById('configTableBody');
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px;">Loading...</td></tr>';
+
+            fetch('/api/config/' + type, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    configData[type] = data.data || [];
+                    renderConfigTable();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px; color: red;">Failed to load data.</td></tr>';
+                }
+            })
+            .catch(function(err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px; color: red;">Failed to load data.</td></tr>';
+            });
         }
 
         function renderConfigTable() {
             var items = configData[currentConfigType] || [];
             var tbody = document.getElementById('configTableBody');
             tbody.innerHTML = '';
+
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px;">No items found.</td></tr>';
+                return;
+            }
+
+            var fields = configFieldMap[currentConfigType];
             items.forEach(function(item) {
                 var tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${item.id}</td>
-                    <td><strong>${item.name}</strong></td>
+                    <td>${item[fields.id]}</td>
+                    <td><strong>${item[fields.name]}</strong></td>
                     <td style="text-align: center;">
-                        <button class="btn-edit-user" onclick="openConfigEditModal(${item.id})">
+                        <button class="btn-edit-user" onclick="openConfigEditModal(${item[fields.id]})">
                             <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
                         </button>
                     </td>
@@ -622,10 +636,11 @@
 
         function openConfigEditModal(id) {
             var items = configData[currentConfigType] || [];
-            var item = items.find(function(i) { return i.id === id; });
+            var fields = configFieldMap[currentConfigType];
+            var item = items.find(function(i) { return i[fields.id] === id; });
             if (!item) return;
             document.getElementById('configItemId').value = id;
-            document.getElementById('configItemName').value = item.name;
+            document.getElementById('configItemName').value = item[fields.name];
             document.getElementById('configItemModalTitle').textContent = 'Edit Item';
             document.getElementById('deleteConfigBtn').style.display = 'inline-block';
             document.getElementById('configItemModal').style.display = 'flex';
@@ -644,20 +659,41 @@
                 alert('Please enter a name.');
                 return;
             }
-            var items = configData[currentConfigType] || [];
+
+            var fields = configFieldMap[currentConfigType];
+            var payload = {};
+            payload[fields.name] = name;
+
+            var url = '/api/config/' + currentConfigType;
+            var method = 'POST';
             if (id) {
-                var item = items.find(function(i) { return i.id == id; });
-                if (item) {
-                    item.name = name;
-                    showSuccess('Item updated successfully!');
-                }
-            } else {
-                var newId = items.length ? Math.max.apply(null, items.map(function(i) { return i.id; })) + 1 : 1;
-                items.push({ id: newId, name: name });
-                showSuccess('Item added successfully!');
+                url += '/' + id;
+                method = 'PATCH';
             }
-            closeConfigItemModal();
-            renderConfigTable();
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeConfigItemModal();
+                    showSuccess(data.message || 'Saved successfully!');
+                    fetchConfigItems(currentConfigType);
+                } else {
+                    alert(data.message || 'Failed to save item.');
+                }
+            })
+            .catch(function(err) {
+                console.error(err);
+                alert('Failed to save item.');
+            });
         }
 
         function deleteConfigItem() {
@@ -666,14 +702,27 @@
             var name = document.getElementById('configItemName').value.trim();
             if (!confirm('Are you sure you want to permanently delete "' + name + '"?')) return;
 
-            var items = configData[currentConfigType] || [];
-            var index = items.findIndex(function(i) { return i.id == id; });
-            if (index !== -1) {
-                items.splice(index, 1);
-                showSuccess('Item deleted successfully!');
-                closeConfigItemModal();
-                renderConfigTable();
-            }
+            fetch('/api/config/' + currentConfigType + '/' + id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeConfigItemModal();
+                    showSuccess(data.message || 'Item deleted successfully!');
+                    fetchConfigItems(currentConfigType);
+                } else {
+                    alert(data.message || 'Failed to delete item.');
+                }
+            })
+            .catch(function(err) {
+                console.error(err);
+                alert('Failed to delete item.');
+            });
         }
 
         // ─── SUCCESS NOTIFICATION ───
@@ -812,7 +861,7 @@
         });
 
         // ─── INIT ───
-        renderConfigTable();
+        fetchConfigItems(currentConfigType);
     </script>
 
 </body>

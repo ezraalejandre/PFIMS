@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Inventory Records - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/inventory.css') }}">
 </head>
@@ -80,95 +81,8 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Portland Cement</strong></td>
-                        <td>Cement</td>
-                        <td>bags</td>
-                        <td>150</td>
-                        <td>Holcim Philippines</td>
-                        <td><span class="type-badge in">IN</span></td>
-                        <td>2026-05-01</td>
-                        <td>450</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Steel Rebar 12mm</strong></td>
-                        <td>Steel</td>
-                        <td>pcs</td>
-                        <td>80</td>
-                        <td>Metro Steel Supply</td>
-                        <td><span class="type-badge out">OUT</span></td>
-                        <td>02-05-2026</td>
-                        <td>220</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>White Latex Paint</strong></td>
-                        <td>Paint</td>
-                        <td>gallons</td>
-                        <td>40</td>
-                        <td>ColorPro Paint Center</td>
-                        <td><span class="type-badge in">IN</span></td>
-                        <td>03-05-2026</td>
-                        <td>95</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Gravel 3/4</strong></td>
-                        <td>Aggregates</td>
-                        <td>tons</td>
-                        <td>25</td>
-                        <td>Laguna Aggregate Supplier</td>
-                        <td><span class="type-badge out">OUT</span></td>
-                        <td>04-05-2026</td>
-                        <td>70</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Concrete Hollow Blocks</strong></td>
-                        <td>Masonry</td>
-                        <td>pcs</td>
-                        <td>500</td>
-                        <td>SolidBlocks Manufacturing</td>
-                        <td><span class="type-badge in">IN</span></td>
-                        <td>05-05-2026</td>
-                        <td>1200</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>PVC Pipe 2-inch</strong></td>
-                        <td>Plumbing</td>
-                        <td>pcs</td>
-                        <td>35</td>
-                        <td>AquaFlow Industrial Supply</td>
-                        <td><span class="type-badge out">OUT</span></td>
-                        <td>06-05-2026</td>
-                        <td>60</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Electrical Wire 5.5mm</strong></td>
-                        <td>Electrical</td>
-                        <td>rolls</td>
-                        <td>20</td>
-                        <td>PowerLine Electricals</td>
-                        <td><span class="type-badge in">IN</span></td>
-                        <td>07-05-2026</td>
-                        <td>45</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Ceramic Floor Tiles</strong></td>
-                        <td>Finishing</td>
-                        <td>boxes</td>
-                        <td>60</td>
-                        <td>Prime Tiles Depot</td>
-                        <td><span class="type-badge out">OUT</span></td>
-                        <td>08-05-2026</td>
-                        <td>140</td>
-                        <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
-                    </tr>
+                <tbody id="inventoryTableBody">
+                    <tr><td colspan="9" style="text-align: center; padding: 20px;">Loading inventory items...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -229,15 +143,7 @@
                     <div class="form-group">
                         <label>Item Category</label>
                         <select id="itemCategory">
-                            <option value="">Choose Category...</option>
-                            <option value="Cement">Cement</option>
-                            <option value="Steel">Steel</option>
-                            <option value="Paint">Paint</option>
-                            <option value="Aggregates">Aggregates</option>
-                            <option value="Masonry">Masonry</option>
-                            <option value="Plumbing">Plumbing</option>
-                            <option value="Electrical">Electrical</option>
-                            <option value="Finishing">Finishing</option>
+                            <option value="">Loading categories...</option>
                         </select>
                     </div>
                 </div>
@@ -255,29 +161,13 @@
                     <div class="form-group">
                         <label>Item Unit</label>
                         <select id="itemUnit">
-                            <option value="">Unit...</option>
-                            <option value="bags">bags</option>
-                            <option value="pcs">pcs</option>
-                            <option value="gallons">gallons</option>
-                            <option value="tons">tons</option>
-                            <option value="rolls">rolls</option>
-                            <option value="boxes">boxes</option>
-                            <option value="m">m</option>
-                            <option value="kg">kg</option>
+                            <option value="">Loading units...</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Item Supplier</label>
                         <select id="itemSupplier">
-                            <option value="">Choose Supplier...</option>
-                            <option value="Holcim Philippines">Holcim Philippines</option>
-                            <option value="Metro Steel Supply">Metro Steel Supply</option>
-                            <option value="ColorPro Paint Center">ColorPro Paint Center</option>
-                            <option value="Laguna Aggregate Supplier">Laguna Aggregate Supplier</option>
-                            <option value="SolidBlocks Manufacturing">SolidBlocks Manufacturing</option>
-                            <option value="AquaFlow Industrial Supply">AquaFlow Industrial Supply</option>
-                            <option value="PowerLine Electricals">PowerLine Electricals</option>
-                            <option value="Prime Tiles Depot">Prime Tiles Depot</option>
+                            <option value="">Loading suppliers...</option>
                         </select>
                     </div>
                 </div>
@@ -375,13 +265,125 @@
     </div>
 
     <script>
+        var csrfToken = '{{ csrf_token() }}';
+        var lookupData = { categories: [], suppliers: [], units: [] };
+        var inventoryItems = [];
+        var allTransactions = [];
+
+        // ─── LOAD LOOKUP DATA ───
+        function loadLookupData() {
+            fetch('/api/inventory/lookup-data', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success && data.data) {
+                    lookupData = data.data;
+                    populateDropdowns();
+                    loadInventoryItems();
+                }
+            })
+            .catch(function(err) {
+                console.error('Error loading lookup data:', err);
+            });
+        }
+
+        // ─── POPULATE FORM DROPDOWNS ───
+        function populateDropdowns() {
+            var categorySelect = document.getElementById('itemCategory');
+            var unitSelect = document.getElementById('itemUnit');
+            var supplierSelect = document.getElementById('itemSupplier');
+
+            // Categories
+            categorySelect.innerHTML = '<option value="">Choose Category...</option>';
+            lookupData.categories.forEach(function(cat) {
+                var opt = document.createElement('option');
+                opt.value = cat.inventory_category_id;
+                opt.textContent = cat.inventory_category_name;
+                categorySelect.appendChild(opt);
+            });
+
+            // Units
+            unitSelect.innerHTML = '<option value="">Choose Unit...</option>';
+            lookupData.units.forEach(function(unit) {
+                var opt = document.createElement('option');
+                opt.value = unit.unit_id;
+                opt.textContent = unit.unit_name;
+                unitSelect.appendChild(opt);
+            });
+
+            // Suppliers
+            supplierSelect.innerHTML = '<option value="">Choose Supplier...</option>';
+            lookupData.suppliers.forEach(function(sup) {
+                var opt = document.createElement('option');
+                opt.value = sup.supplier_id;
+                opt.textContent = sup.supplier_name;
+                supplierSelect.appendChild(opt);
+            });
+        }
+
+        // ─── LOAD INVENTORY ITEMS AND TRANSACTIONS ───
+        var allTransactions = [];
+        function loadInventoryItems() {
+            Promise.all([
+                fetch('/api/inventory', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(function(res) { return res.json(); }),
+                fetch('/api/inventory/transactions', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(function(res) { return res.json(); })
+            ])
+            .then(function(results) {
+                var itemsResult = results[0];
+                var transactionsResult = results[1];
+
+                inventoryItems = itemsResult.success ? itemsResult.data || [] : [];
+                allTransactions = transactionsResult.success ? transactionsResult.data || [] : [];
+                renderInventoryTable();
+            })
+            .catch(function(err) {
+                console.error('Error loading inventory data:', err);
+            });
+        }
+
+        // ─── RENDER INVENTORY TABLE ───
+        function renderInventoryTable() {
+            var tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+
+            if (!allTransactions.length) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">No transactions found.</td></tr>';
+                return;
+            }
+
+            allTransactions.forEach(function(row) {
+                var tr = document.createElement('tr');
+                var status = row.current_stock > row.reorder_level ? 'in-stock' : 'low-stock';
+                var statusText = row.current_stock > row.reorder_level ? 'In Stock' : 'Low Stock';
+                var typeLabel = row.transaction_type || '—';
+                var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
+
+                tr.innerHTML = `
+                    <td><strong>${row.item_name}</strong></td>
+                    <td>${row.category}</td>
+                    <td>${row.unit}</td>
+<td>${row.quantity}</td>
+                    <td>${row.supplier}</td>
+                    <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
+                    <td>${dateValue}</td>
+<td>${row.current_stock}</td>
+                    <td><span class="status-badge ${status}"><span class="dot"></span> ${statusText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.style.display = 'none';
             }
-            // The link will still navigate to /notifications
         }
 
         // ─── MODAL CONTROLS ───
@@ -396,7 +398,8 @@
             document.getElementById('itemUnit').value = '';
             document.getElementById('itemSupplier').value = '';
             document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
-            document.getElementById('transactionDate').value = '2026-05-10';
+            var today = new Date().toISOString().split('T')[0];
+            document.getElementById('transactionDate').value = today;
             // Clear review
             document.getElementById('reviewItemName').textContent = '—';
             document.getElementById('reviewItemCategory').textContent = '—';
@@ -429,26 +432,31 @@
 
         function nextStep(step) {
             // Validate Step 1
-            var name = document.getElementById('itemName').value.trim();
-            var category = document.getElementById('itemCategory').value;
+            var itemName = document.getElementById('itemName').value.trim();
+            var categoryId = document.getElementById('itemCategory').value;
             var quantity = document.getElementById('itemQuantity').value;
-            var unit = document.getElementById('itemUnit').value;
-            var supplier = document.getElementById('itemSupplier').value;
+            var unitId = document.getElementById('itemUnit').value;
+            var supplierId = document.getElementById('itemSupplier').value;
             var date = document.getElementById('transactionDate').value;
 
-            if (!name) { alert('Please enter the item name.'); return; }
-            if (!category) { alert('Please select an item category.'); return; }
+            if (!itemName) { alert('Please enter the item name.'); return; }
+            if (!categoryId) { alert('Please select an item category.'); return; }
             if (!quantity || quantity < 1) { alert('Please enter a valid quantity (minimum 1).'); return; }
-            if (!unit) { alert('Please select an item unit.'); return; }
-            if (!supplier) { alert('Please select a supplier.'); return; }
+            if (!unitId) { alert('Please select an item unit.'); return; }
+            if (!supplierId) { alert('Please select a supplier.'); return; }
             if (!date) { alert('Please select a transaction date.'); return; }
 
+            // Find category and unit names
+            var categoryName = lookupData.categories.find(function(c) { return c.inventory_category_id == categoryId; })?.inventory_category_name || 'N/A';
+            var unitName = lookupData.units.find(function(u) { return u.unit_id == unitId; })?.unit_name || 'N/A';
+            var supplierName = lookupData.suppliers.find(function(s) { return s.supplier_id == supplierId; })?.supplier_name || 'N/A';
+
             // Populate review
-            document.getElementById('reviewItemName').textContent = name;
-            document.getElementById('reviewItemCategory').textContent = category;
-            document.getElementById('reviewItemSupplier').textContent = supplier;
+            document.getElementById('reviewItemName').textContent = itemName;
+            document.getElementById('reviewItemCategory').textContent = categoryName;
+            document.getElementById('reviewItemSupplier').textContent = supplierName;
             document.getElementById('reviewItemQuantity').textContent = quantity;
-            document.getElementById('reviewItemUnit').textContent = unit;
+            document.getElementById('reviewItemUnit').textContent = unitName;
 
             var type = document.querySelector('input[name="transactionType"]:checked');
             var typeLabel = type ? type.value : 'IN';
@@ -473,13 +481,108 @@
 
         // ─── SAVE TRANSACTION ───
         function saveTransaction() {
-            closeModal();
-            showSuccess();
+            var itemName = document.getElementById('itemName').value.trim();
+            var categoryId = document.getElementById('itemCategory').value;
+            var quantity = parseFloat(document.getElementById('itemQuantity').value);
+            var unitId = document.getElementById('itemUnit').value;
+            var supplierId = document.getElementById('itemSupplier').value;
+            var date = document.getElementById('transactionDate').value;
+            var type = document.querySelector('input[name="transactionType"]:checked').value;
+            var categoryName = lookupData.categories.find(function(c) { return c.inventory_category_id == categoryId; })?.inventory_category_name || '';
+            var unitName = lookupData.units.find(function(u) { return u.unit_id == unitId; })?.unit_name || '';
+            var supplierName = lookupData.suppliers.find(function(s) { return s.supplier_id == supplierId; })?.supplier_name || '';
+
+            function normalize(text) {
+                return String(text || '').trim().toLowerCase();
+            }
+
+            // First, check if item already exists, if not create it
+            var existingItem = inventoryItems.find(function(i) {
+                return normalize(i.item_name) === normalize(itemName)
+                    && normalize(i.category) === normalize(categoryName)
+                    && normalize(i.unit) === normalize(unitName)
+                    && normalize(i.supplier) === normalize(supplierName);
+            });
+
+            var itemId;
+            if (existingItem) {
+                itemId = existingItem.item_id;
+                addTransaction(itemId, type, quantity, date);
+            } else {
+                // Create new item first
+                var itemPayload = {
+                    item_name: itemName,
+                    inventory_category_id: categoryId,
+                    supplier_id: supplierId,
+                    unit_id: unitId,
+                    current_stock: 0,
+                    reorder_level: 0
+                };
+
+                fetch('/api/inventory/item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(itemPayload)
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        itemId = data.data.item_id;
+                        addTransaction(itemId, type, quantity, date);
+                    } else {
+                        alert('Failed to create item: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Error creating item:', err);
+                    alert('Failed to create item.');
+                });
+            }
+        }
+
+        function addTransaction(itemId, type, quantity, date) {
+            var payload = {
+                item_id: itemId,
+                project_id: null,
+                transaction_type: type,
+                quantity: quantity,
+                transaction_date: date
+            };
+
+            fetch('/api/inventory/transaction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeModal();
+                    showSuccess(data.message || 'Transaction added successfully!');
+                    loadInventoryItems();
+                } else {
+                    alert('Failed to add transaction: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(function(err) {
+                console.error('Error adding transaction:', err);
+                alert('Failed to add transaction.');
+            });
         }
 
         // ─── SUCCESS NOTIFICATION ───
-        function showSuccess() {
+        function showSuccess(message) {
             var notif = document.getElementById('successNotification');
+            var msgSpan = notif.querySelector('.success-content span:not(.success-icon)');
+            if (msgSpan) msgSpan.textContent = message || 'Transaction added successfully!';
             notif.style.display = 'block';
             setTimeout(function() {
                 closeSuccess();
@@ -504,6 +607,11 @@
                     closeSuccess();
                 }
             }
+        });
+
+        // ─── INIT ───
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLookupData();
         });
     </script>
 

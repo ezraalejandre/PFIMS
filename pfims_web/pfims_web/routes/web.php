@@ -7,6 +7,9 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\InventoryController;
 
 // Landing page (login)
 Route::get('/', function () {
@@ -37,6 +40,28 @@ Route::get('/inventory', function () {
 Route::get('/suppliers', function () {
     return view('suppliers');
 })->middleware('auth');
+
+// Supplier API endpoints
+Route::middleware('auth')->group(function () {
+    Route::get('/api/suppliers', [SupplierController::class, 'index']);
+    Route::post('/api/suppliers', [SupplierController::class, 'store']);
+    Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
+    Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
+
+    // Config API endpoints
+    Route::get('/api/config/{type}', [ConfigController::class, 'index']);
+    Route::post('/api/config/{type}', [ConfigController::class, 'store']);
+    Route::patch('/api/config/{type}/{id}', [ConfigController::class, 'update']);
+    Route::delete('/api/config/{type}/{id}', [ConfigController::class, 'destroy']);
+
+    // Inventory API endpoints
+    Route::get('/api/inventory', [InventoryController::class, 'index']);
+    Route::get('/api/inventory/lookup-data', [InventoryController::class, 'getLookupData']);
+    Route::post('/api/inventory/item', [InventoryController::class, 'storeItem']);
+    Route::post('/api/inventory/transaction', [InventoryController::class, 'addTransaction']);
+    Route::get('/api/inventory/transactions', [InventoryController::class, 'getAllTransactions']);
+    Route::get('/api/inventory/{itemId}/transactions', [InventoryController::class, 'getTransactions']);
+});
 
 // Reports page
 Route::get('/reports', function () {
