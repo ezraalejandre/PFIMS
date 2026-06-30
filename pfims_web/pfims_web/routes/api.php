@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InventoryTransactionController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 
 
 Route::get('/user', function (Request $request) {
@@ -130,3 +131,7 @@ Route::get('/inventory-items-list', function () {
     );
 });
 
+
+Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
+Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
+Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'reset']);
