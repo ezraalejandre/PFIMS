@@ -1,8 +1,10 @@
 import '../services/api_service.dart';
+import 'forgot_password_screen.dart';
 import 'package:flutter/material.dart';
 
 // Brand color pulled from the orange in the E.V. Catapang logo / button.
 const Color kBrandOrange = Color(0xFFC1791F);
+bool _isSubmitting = false;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,14 +16,14 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  // final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
 
-@override
-void dispose() {
-  _emailController.dispose();
-  super.dispose();
-}
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +171,39 @@ void dispose() {
                                   },
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 8),
+                              // Forgot password link
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 0),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ForgotPasswordScreen(
+                                          initialEmail:
+                                              _emailController.text.trim(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    "Forgot Password?",
+                                    style: TextStyle(
+                                      color: kBrandOrange,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
                               SizedBox(
                                 width: double.infinity,
                                 height: 50,
@@ -187,221 +221,54 @@ void dispose() {
                                       ),
                                     ),
                                   ),
-                                  // onPressed: () {
-                                  //   Navigator.pushReplacementNamed(
-                                  //     context,
-                                  //     "/dashboard",
-                                  //   );
-                                  // },
-                                  // onPressed: () {
-                                  //   final username =
-                                  //       _usernameController.text.trim().toLowerCase();
-
-                                  //   if (username == "admin") {
-                                  //     Navigator.pushReplacementNamed(
-                                  //       context,
-                                  //       "/dashboard",
-                                  //     );
-                                  //   } else if (username == "operations") {
-                                  //     Navigator.pushReplacementNamed(
-                                  //       context,
-                                  //       "/ops-dashboard",
-                                  //     );
-                                  //   } else if (username == "accounting") {
-                                  //     Navigator.pushReplacementNamed(
-                                  //       context,
-                                  //       "/acct-dashboard",
-                                  //     );
-                                  //   } else {
-                                  //     ScaffoldMessenger.of(context).showSnackBar(
-                                  //       const SnackBar(
-                                  //         content: Text(
-                                  //           "Invalid username or password",
-                                  //         ),
-                                  //       ),
-                                  //     );
-                                  //   }
-                                  // },
-// onPressed: () async {
-
-//   final username =
-//       _usernameController.text.trim();
-
-//   final password =
-//       _passwordController.text.trim();
-
-
-//   try {
-
-//     final result =
-//         await ApiService.login(
-//           username,
-//           password,
-//         );
-
-// print(result);
-//     final role =
-//         result['role'];
-
-
-//     if(role == "admin"){
-
-//       Navigator.pushReplacementNamed(
-//         context,
-//         "/dashboard",
-//       );
-
-//     }
-//     else if(role == "operations"){
-
-//       Navigator.pushReplacementNamed(
-//         context,
-//         "/ops-dashboard",
-//       );
-
-//     }
-//     else if(role == "accounting"){
-
-//       Navigator.pushReplacementNamed(
-//         context,
-//         "/acct-dashboard",
-//       );
-
-//     }
-
-
-//   } catch(e){
-
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       const SnackBar(
-//         content:
-//           Text("Invalid username or password"),
-//       ),
-//     );
-
-//   }
-
-// },
-
-onPressed: () async {
-
-
-final email =
-_emailController.text.trim();
-
-
-final password =
-_passwordController.text.trim();
-
-
-
-try{
-
-
-final result =
-await ApiService.login(
-email,
-password
-);
-
-
-
-print(result);
-
-
-
-Navigator.pushReplacementNamed(
-context,
-"/dashboard"
-);
-
-
-
-}
-
-catch(e){
-
-
-ScaffoldMessenger.of(context)
-.showSnackBar(
-
-const SnackBar(
-content:
-Text(
-"Invalid email or password"
-)
-
-)
-
-);
-
-
-}
-
-
-},
-//                                   onPressed: () async {
-
-//   final username =
-//       _usernameController.text.trim();
-
-
-//   try {
-
-//     final result =
-//         await ApiService.login(username);
-
-
-//     final role =
-//         result['user']['role'];
-
-
-//     if(role == "admin"){
-
-//       Navigator.pushReplacementNamed(
-//         context,
-//         "/dashboard",
-//       );
-
-//     }
-//     else if(role == "operations"){
-
-//       Navigator.pushReplacementNamed(
-//         context,
-//         "/ops-dashboard",
-//       );
-
-//     }
-//     else if(role == "accounting"){
-
-//       Navigator.pushReplacementNamed(
-//         context,
-//         "/acct-dashboard",
-//       );
-
-//     }
-
-
-//   } catch(e){
-
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       const SnackBar(
-//         content: Text(
-//           "Invalid username or password"
-//         ),
-//       ),
-//     );
-
-//   }
-
-// },
-                                  child: const Text(
-                                    "Sign In",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  onPressed: _isSubmitting
+                                      ? null
+                                      : () async {
+                                          final email = _emailController.text.trim();
+                                          final password = _passwordController.text.trim();
+
+                                          setState(() => _isSubmitting = true);
+
+                                          try {
+                                            final result = await ApiService.login(email, password);
+
+                                            print(result);
+
+                                            Navigator.pushReplacementNamed(context, "/dashboard");
+                                          } catch (e) {
+                                              showDialog(
+                                                context: context,
+                                                builder: (_) => AlertDialog(
+                                                  title: const Text("Sign In Failed"),
+                                                  content: Text(e.toString().replaceFirst("Exception: ", "")),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.of(context).pop(),
+                                                      child: const Text("OK"),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }finally {
+                                            if (mounted) setState(() => _isSubmitting = false);
+                                          }
+                                        },
+                                  child: _isSubmitting
+                                      ? const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.4,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        )
+                                      : const Text(
+                                          "Sign In",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ],

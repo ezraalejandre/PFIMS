@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class InventoryService {
-  static const String baseUrl = "http://127.0.0.1:8000/api";
+   static final String baseUrl = ApiConfig.baseUrl;
 
   static Future<List<Map<String, dynamic>>> fetchCategories() async {
     final response = await http.get(Uri.parse("$baseUrl/inventory-categories"));
