@@ -31,6 +31,11 @@ Route::post(
 [AuthController::class,'profile']
 );
 
+Route::post(
+    '/profile/photo',
+    [AuthController::class,'uploadProfilePhoto']
+);
+
 
 Route::post(
 '/change-password',

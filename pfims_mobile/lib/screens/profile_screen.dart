@@ -1,35 +1,137 @@
 import 'package:flutter/material.dart';
 import '../widgets/app_header.dart';
-// `login_screen.dart` declares its own `kBrandOrange`; hide it here since
-// this file already gets the canonical one from app_header.dart.
 import 'login_screen.dart' hide kBrandOrange;
 import 'notifications_screen.dart';
 import 'security_settings_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import '../services/api_service.dart';
+import 'dart:typed_data';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final String email; // the logged-in user's email, passed in after login
+
+  const ProfileScreen({super.key, required this.email});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // TODO: replace with real data from your backend / auth / state management.
-  String _fullName = 'Elito V. Catapang';
-  String _email = 'e.catapang@evc-dcs.com';
-  String _phone = '+63 917 555 0123';
-  String _location = 'Cebu City, Philippines';
+  String _fullName = '';
+  late String _email;
+  String _phone = '';
+  String _location = '';
+  String _role = '';
+  String? _profilePhotoUrl; // URL returned by the backend (asset('storage/...'))
 
-  static const String _role = 'PROJECT MANAGER';
-  static const String _employeeId = 'EVC-PM-0042';
+  bool _isLoading = true;
+  String? _loadError;
+
+  static const String _employeeId = 'EVC-PM-0042'; // no employee_id column yet — see note below
   static const String _appVersion = 'EVC-DCS v2.4.1 · Build 241';
+
+  Uint8List? _profilePhotoBytes; // local preview after a fresh upload, overrides _profilePhotoUrl
+  final ImagePicker _picker = ImagePicker();
+  bool _isUploadingPhoto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _email = widget.email;
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+
+    try {
+      final result = await ApiService.getProfile(_email);
+      final user = result['user'] as Map<String, dynamic>?;
+
+      if (user == null) {
+        setState(() => _loadError = 'Could not load profile.');
+        return;
+      }
+
+      setState(() {
+        _fullName = user['name'] ?? '';
+        _email = user['email'] ?? _email;
+        _phone = user['phone'] ?? '';
+        _location = user['location'] ?? '';
+        _role = (user['role'] ?? '').toString().toUpperCase();
+        _profilePhotoUrl = user['profile_photo'];
+      });
+    } catch (e) {
+      setState(() => _loadError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   String get _initials {
     final parts = _fullName.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty) return '';
+    if (parts.isEmpty || parts.first.isEmpty) return '';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
   }
+
+  Future<void> _changePhoto() async {
+  final choice = await showModalBottomSheet<ImageSource>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_camera),
+            title: const Text('Take a photo'),
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library),
+            title: const Text('Choose from gallery'),
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (choice == null) return;
+
+  final picked = await _picker.pickImage(
+    source: choice,
+    maxWidth: 800,
+    imageQuality: 85,
+  );
+  if (picked == null) return;
+
+  final bytes = await picked.readAsBytes(); // works on web AND mobile
+  setState(() {
+    _profilePhotoBytes = bytes;
+    _isUploadingPhoto = true;
+  });
+
+try {
+    final result = await ApiService.uploadProfilePhoto(_email, picked);
+    if (!mounted) return;
+    setState(() {
+      _profilePhotoUrl = result['profile_photo']; // canonical server URL
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Photo updated')),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+    );
+  } finally {
+    if (mounted) setState(() => _isUploadingPhoto = false);
+  }
+}
 
   Future<void> _editField({
     required String label,
@@ -141,26 +243,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 36,
-                      backgroundColor: kBrandOrange,
-                      child: Text(
-                        _initials,
-                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () => _showPlaceholder('Change photo'),
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: const BoxDecoration(color: Color(0xFF1A1A2E), shape: BoxShape.circle),
-                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 13),
-                        ),
-                      ),
-                    ),
+CircleAvatar(
+  radius: 36,
+  backgroundColor: kBrandOrange,
+  backgroundImage: _profilePhotoBytes != null
+      ? MemoryImage(_profilePhotoBytes!)
+      : (_profilePhotoUrl != null ? NetworkImage(_profilePhotoUrl!) : null) as ImageProvider?,
+  child: (_profilePhotoBytes == null && _profilePhotoUrl == null)
+      ? Text(
+          _initials,
+          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+        )
+      : null,
+),
+Positioned(
+  bottom: 0,
+  right: 0,
+  child: GestureDetector(
+    onTap: _isUploadingPhoto ? null : () => _changePhoto(),
+    child: Container(
+      padding: const EdgeInsets.all(5),
+      decoration: const BoxDecoration(color: Color(0xFF1A1A2E), shape: BoxShape.circle),
+      child: _isUploadingPhoto
+          ? const SizedBox(
+              width: 13,
+              height: 13,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+          : const Icon(Icons.camera_alt, color: Colors.white, size: 13),
+    ),
+  ),
+),
                   ],
                 ),
                 const SizedBox(width: 16),
@@ -179,9 +292,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: kBrandOrange.withOpacity(0.14),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
+                        child: Text(
                           _role,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: kBrandOrange),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: kBrandOrange),
                         ),
                       ),
                       const SizedBox(height: 6),

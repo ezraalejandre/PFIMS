@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+// import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   // Base URL for API endpoints
@@ -43,85 +46,72 @@ static Future<Map<String, dynamic>> login(
 
 
 static Future<Map<String,dynamic>> changePassword(
-String email,
-String password
+  String email,
+  String password,
 ) async {
+  final response = await http.post(
+    Uri.parse("$baseUrl/change-password"),   // was "$baseUrl/api/change-password"
+    body: {
+      "email": email,
+      "new_password": password,
+    },
+  );
 
-
-final response =
-await http.post(
-
-Uri.parse(
-"$baseUrl/api/change-password"
-),
-
-body:{
-
-"email":email,
-
-"new_password":password
-
-}
-
-);
-
-
-return jsonDecode(
-response.body
-);
-
+  return jsonDecode(response.body);
 }
 
 
 static Future<Map<String,dynamic>> getProfile(
-String email
+  String email,
 ) async {
+  final response = await http.post(
+    Uri.parse("$baseUrl/profile"),           // was "$baseUrl/api/profile"
+    body: {
+      "email": email,
+    },
+  );
 
-
-final response =
-await http.post(
-
-Uri.parse(
-"$baseUrl/api/profile"
-),
-
-body:{
-
-"email":email
-
-}
-
-);
-
-
-return jsonDecode(
-response.body
-);
-
-
+  return jsonDecode(response.body);
 }
 
 
-  // static Future<Map<String, dynamic>> requestPasswordReset(
-  //   String email,
-  // ) async {
-  //   final url = Uri.parse("$baseUrl/forgot-password");
+static Future<Map<String, dynamic>> uploadProfilePhoto(
+  String email,
+  XFile photo,
+) async {
+  final uri = Uri.parse("$baseUrl/profile/photo");
+  final bytes = await photo.readAsBytes();
 
-  //   final response = await http.post(
-  //     url,
-  //     headers: {"Content-Type": "application/json"},
-  //     body: jsonEncode({"email": email}),
-  //   );
+  final request = http.MultipartRequest('POST', uri)
+    ..fields['email'] = email
+    ..files.add(
+      http.MultipartFile.fromBytes(
+        'photo',
+        bytes,
+        filename: photo.name, // e.g. "image.jpg"
+      ),
+    );
 
-  //   if (response.statusCode == 200 || response.statusCode == 201) {
-  //     return jsonDecode(response.body) as Map<String, dynamic>;
-  //   } else {
-  //     throw Exception(
-  //       "Password reset request failed: ${response.statusCode} "
-  //       "${response.body}",
-  //     );
-  //   }
-  // }
+  http.StreamedResponse streamed;
+  try {
+    streamed = await request.send();
+  } catch (e) {
+    throw Exception("No internet connection or server unreachable");
+  }
+
+final response = await http.Response.fromStream(streamed);
+
+if (!(response.headers['content-type'] ?? '').contains('application/json')) {
+  throw Exception("Server returned an unexpected response (${response.statusCode}). Check the API route.");
+}
+
+debugPrint("STATUS: ${response.statusCode}");
+debugPrint("BODY: ${response.body}");
+
+final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+  return body;
+}
 
 
   // Add these three methods inside your existing ApiService class
