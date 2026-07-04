@@ -187,7 +187,7 @@
                         <td>450</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                     <tr data-id="2"
@@ -212,7 +212,7 @@
                         <td>220</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                     <tr data-id="3"
@@ -237,7 +237,7 @@
                         <td>95</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                     <tr data-id="4"
@@ -262,7 +262,7 @@
                         <td>70</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                     <tr data-id="5"
@@ -287,7 +287,7 @@
                         <td>1200</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                     <tr data-id="6"
@@ -312,7 +312,7 @@
                         <td>60</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                     <tr data-id="7"
@@ -337,7 +337,7 @@
                         <td>45</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                     <tr data-id="8"
@@ -362,7 +362,7 @@
                         <td>140</td>
                         <td><span class="status-badge in-stock"><span class="dot"></span> In Stock</span></td>
                         <td style="text-align: center;">
-                            <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 20px; height: 20px; cursor: pointer; opacity: 0.7; transition: 0.2s;" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
                         </td>
                     </tr>
                 </tbody>
@@ -587,7 +587,7 @@
         </div>
     </div>
 
-    <!-- ─── VIEW MODAL (Read-Only – no Edit/Delete) ─── -->
+    <!-- ─── VIEW / EDIT MODAL (Full Edit/Delete – matches Admin) ─── -->
     <div id="viewModal" class="modal-overlay modal-view">
         <div class="modal-container">
             <div class="modal-header">
@@ -595,34 +595,66 @@
                 <button class="modal-close" onclick="closeViewModal()">×</button>
             </div>
 
+            <input type="hidden" id="viewTransactionId" value="">
+
             <div class="view-details-grid">
                 <div class="view-item">
                     <label>Item Name</label>
                     <span id="viewItemNameDisplay" class="view-value">—</span>
+                    <select id="viewItemNameInput" class="view-input" style="display: none;">
+                        <option value="">Select Item...</option>
+                    </select>
                 </div>
                 <div class="view-item">
                     <label>Category</label>
                     <span id="viewCategoryDisplay" class="view-value">—</span>
+                    <select id="viewCategoryInput" class="view-input" style="display: none;">
+                        <option value="Cement">Cement</option>
+                        <option value="Steel">Steel</option>
+                        <option value="Paint">Paint</option>
+                        <option value="Aggregates">Aggregates</option>
+                        <option value="Masonry">Masonry</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Finishing">Finishing</option>
+                    </select>
                 </div>
                 <div class="view-item">
                     <label>Unit</label>
                     <span id="viewUnitDisplay" class="view-value">—</span>
+                    <select id="viewUnitInput" class="view-input" style="display: none;">
+                        <option value="bags">bags</option>
+                        <option value="pcs">pcs</option>
+                        <option value="gallons">gallons</option>
+                        <option value="tons">tons</option>
+                        <option value="rolls">rolls</option>
+                        <option value="boxes">boxes</option>
+                        <option value="m">m</option>
+                        <option value="kg">kg</option>
+                    </select>
                 </div>
                 <div class="view-item">
                     <label>Quantity</label>
                     <span id="viewQuantityDisplay" class="view-value">—</span>
+                    <input type="number" id="viewQuantityInput" class="view-input" style="display: none;" min="1">
                 </div>
                 <div class="view-item">
                     <label>Supplier</label>
                     <span id="viewSupplierDisplay" class="view-value">—</span>
+                    <input type="text" id="viewSupplierInput" class="view-input" style="display: none;">
                 </div>
                 <div class="view-item">
                     <label>Transaction Type</label>
                     <span id="viewTypeDisplay" class="view-value">—</span>
+                    <select id="viewTypeInput" class="view-input" style="display: none;">
+                        <option value="IN">IN</option>
+                        <option value="OUT">OUT</option>
+                    </select>
                 </div>
                 <div class="view-item">
                     <label>Date</label>
                     <span id="viewDateDisplay" class="view-value">—</span>
+                    <input type="date" id="viewDateInput" class="view-input" style="display: none;">
                 </div>
                 <div class="view-item">
                     <label>Current Stock</label>
@@ -635,11 +667,15 @@
                 <div class="view-item" id="viewProjectRow" style="display: none;">
                     <label>Project</label>
                     <span id="viewProjectDisplay" class="view-value">—</span>
+                    <input type="text" id="viewProjectInput" class="view-input" style="display: none;">
                 </div>
             </div>
 
-            <div class="modal-footer" style="justify-content: flex-end;">
+            <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeViewModal()">Close</button>
+                <button class="btn-delete" id="viewDeleteBtn" onclick="deleteTransaction()">Delete</button>
+                <button class="btn-edit-project" id="viewEditBtn" onclick="enableEditMode()">Edit</button>
+                <button class="btn-save" id="viewSaveBtn" style="display: none;" onclick="saveEdit()">Save Changes</button>
             </div>
         </div>
     </div>
@@ -691,6 +727,34 @@
             }
         }
 
+        var deleteCallback = null;
+
+        function openDeleteModal(message, callback) {
+            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this transaction?';
+            deleteCallback = callback;
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            deleteCallback = null;
+        }
+
+        function confirmDelete() {
+            if (typeof deleteCallback === 'function') {
+                deleteCallback();
+            }
+            closeDeleteModal();
+        }
+
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteModal();
+            }
+        });
+
         function populateItemDropdowns() {
             var rows = document.querySelectorAll('#inventoryTableBody tr');
             var items = new Set();
@@ -711,6 +775,19 @@
             });
             if (currentValue && items.has(currentValue)) {
                 selectAdd.value = currentValue;
+            }
+
+            var selectView = document.getElementById('viewItemNameInput');
+            var currentViewValue = selectView.value;
+            selectView.innerHTML = '<option value="">Select Item...</option>';
+            itemArray.forEach(function(item) {
+                var opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                selectView.appendChild(opt);
+            });
+            if (currentViewValue && items.has(currentViewValue)) {
+                selectView.value = currentViewValue;
             }
         }
 
@@ -743,9 +820,10 @@
             document.getElementById('reviewItemSupplier').textContent = '—';
             document.getElementById('reviewItemQuantity').textContent = '—';
             document.getElementById('reviewItemUnit').textContent = '—';
+            document.getElementById('reviewTransactionType').textContent = '—';
+            document.getElementById('reviewTransactionDate').textContent = '—';
             document.getElementById('reviewProjectName').textContent = '—';
             document.getElementById('reviewProjectRow').style.display = 'none';
-            document.getElementById('reviewTransactionDate').textContent = '—';
             populateItemDropdowns();
         }
 
@@ -829,7 +907,13 @@
             populateItemDropdowns();
         }
 
+        var currentRow = null;
+        var isEditMode = false;
+
         function openViewModal(row) {
+            currentRow = row;
+            isEditMode = false;
+            var id = row.dataset.id || '';
             var item = row.dataset.item || '';
             var category = row.dataset.category || '';
             var unit = row.dataset.unit || '';
@@ -841,15 +925,23 @@
             var status = row.dataset.status || '';
             var project = row.dataset.project || '';
 
+            document.getElementById('viewTransactionId').value = id;
             document.getElementById('viewItemNameDisplay').textContent = item;
+            var selectItem = document.getElementById('viewItemNameInput');
+            selectItem.value = item;
             document.getElementById('viewCategoryDisplay').textContent = category;
+            document.getElementById('viewCategoryInput').value = category;
             document.getElementById('viewUnitDisplay').textContent = unit;
+            document.getElementById('viewUnitInput').value = unit;
             document.getElementById('viewQuantityDisplay').textContent = quantity;
+            document.getElementById('viewQuantityInput').value = quantity;
             document.getElementById('viewSupplierDisplay').textContent = supplier;
+            document.getElementById('viewSupplierInput').value = supplier;
             document.getElementById('viewTypeDisplay').textContent = type;
+            document.getElementById('viewTypeInput').value = type;
             document.getElementById('viewDateDisplay').textContent = date;
+            document.getElementById('viewDateInput').value = date;
             document.getElementById('viewStockDisplay').textContent = stock;
-
             var statusEl = document.getElementById('viewStatusDisplay');
             statusEl.textContent = status;
             statusEl.className = 'view-value status-badge';
@@ -861,10 +953,12 @@
             if (type === 'OUT' && project) {
                 projectRow.style.display = 'flex';
                 document.getElementById('viewProjectDisplay').textContent = project;
+                document.getElementById('viewProjectInput').value = project;
             } else {
                 projectRow.style.display = 'none';
             }
 
+            disableEditMode();
             document.getElementById('viewModal').classList.add('active');
             document.body.style.overflow = 'hidden';
         }
@@ -872,6 +966,93 @@
         function closeViewModal() {
             document.getElementById('viewModal').classList.remove('active');
             document.body.style.overflow = '';
+            currentRow = null;
+        }
+
+        function enableEditMode() {
+            isEditMode = true;
+            document.querySelectorAll('#viewModal .view-value').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'block');
+            document.getElementById('viewEditBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
+            document.getElementById('viewSaveBtn').style.display = 'inline-block';
+            var projectRow = document.getElementById('viewProjectRow');
+            if (projectRow.style.display !== 'none') {
+                document.getElementById('viewProjectDisplay').style.display = 'none';
+                document.getElementById('viewProjectInput').style.display = 'block';
+            }
+            populateItemDropdowns();
+        }
+
+        function disableEditMode() {
+            isEditMode = false;
+            document.querySelectorAll('#viewModal .view-value').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'none');
+            document.getElementById('viewEditBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.getElementById('viewSaveBtn').style.display = 'none';
+            var projectRow = document.getElementById('viewProjectRow');
+            if (projectRow.style.display !== 'none') {
+                document.getElementById('viewProjectDisplay').style.display = 'block';
+                document.getElementById('viewProjectInput').style.display = 'none';
+            }
+        }
+
+        function saveEdit() {
+            if (!currentRow) return;
+            var item = document.getElementById('viewItemNameInput').value;
+            var category = document.getElementById('viewCategoryInput').value;
+            var unit = document.getElementById('viewUnitInput').value;
+            var quantity = document.getElementById('viewQuantityInput').value;
+            var supplier = document.getElementById('viewSupplierInput').value.trim();
+            var type = document.getElementById('viewTypeInput').value;
+            var date = document.getElementById('viewDateInput').value;
+            var project = document.getElementById('viewProjectInput').value.trim();
+
+            if (!item) { showError('Please select an item.'); return; }
+            if (!category || !unit || !quantity || !supplier || !date) {
+                showError('Please fill in all required fields.');
+                return;
+            }
+            if (type === 'OUT' && !project) {
+                showError('Project is required for OUT transactions.');
+                return;
+            }
+
+            currentRow.dataset.item = item;
+            currentRow.dataset.category = category;
+            currentRow.dataset.unit = unit;
+            currentRow.dataset.quantity = quantity;
+            currentRow.dataset.supplier = supplier;
+            currentRow.dataset.type = type;
+            currentRow.dataset.date = date;
+            currentRow.dataset.project = project || '';
+
+            var cells = currentRow.querySelectorAll('td');
+            if (cells.length >= 9) {
+                cells[0].innerHTML = '<strong>' + item + '</strong>';
+                cells[1].textContent = category;
+                cells[2].textContent = unit;
+                cells[3].textContent = quantity;
+                cells[4].textContent = supplier;
+                cells[5].innerHTML = '<span class="type-badge ' + (type === 'IN' ? 'in' : 'out') + '">' + type + '</span>';
+                cells[6].textContent = date;
+            }
+
+            populateItemDropdowns();
+            closeViewModal();
+            showSuccess('Transaction updated successfully!');
+        }
+
+        function deleteTransaction() {
+            if (!currentRow) return;
+            openDeleteModal('Are you sure you want to permanently delete this transaction?', function() {
+                currentRow.remove();
+                closeViewModal();
+                populateItemDropdowns();
+                showSuccess('Transaction deleted successfully!');
+                currentRow = null;
+            });
         }
 
         document.getElementById('transactionModal').addEventListener('click', function(e) {
