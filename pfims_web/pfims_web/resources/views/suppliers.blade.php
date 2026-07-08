@@ -6,8 +6,49 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Item Suppliers - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/suppliers.css') }}">
+    <style>
+        #deleteConfirmModal { z-index: 9999 !important; }
+        .btn-delete-supplier {
+            background: #d32f2f;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-delete-supplier:hover {
+            background: #b71c1c;
+            transform: translateY(-2px);
+        }
+        .modal-footer .footer-left,
+        .modal-footer .footer-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+    </style>
 </head>
 <body>
+    
+    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <div id="errorNotification" class="error-notification" style="display: none;">
+        <div class="error-content">
+            <span class="error-icon">⚠</span>
+            <span id="errorMessage">An error occurred. Please try again.</span>
+            <button class="error-close" onclick="closeError()">×</button>
+        </div>
+    </div>
 
     <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none;">
@@ -18,7 +59,79 @@
         </div>
     </div>
 
-    @include('partials.header')
+    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-container" style="width: 400px; max-width: 95%;">
+            <div class="modal-header">
+                <h2>Confirm Deletion</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
+                    Are you sure you want to permanently delete this supplier?
+                </p>
+                <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button class="btn-cancel" onclick="closeDeleteModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
+                <button class="btn-delete" id="confirmDeleteBtn" onclick="confirmDelete()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #d32f2f; color: #fff; transition: 0.3s;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <header class="top-header">
+        <div class="left">
+            <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
+            <div class="brand-text">
+                PFIMS
+                <small>E.V. Catapang Design-Construction & Supply</small>
+            </div>
+        </div>
+        <div class="right">
+            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+                <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
+                <span>Notifications</span>
+                <span class="notif-badge" id="notifBadge">6</span>
+            </a>
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
+                <span>User</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar">
+        <nav>
+            <ul>
+                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
+                <li class="active"><a href="{{ url('/projects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+            </ul>
+        </nav>
+        <div class="bottom-nav">
+            <ul>
+                <li>
+                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                        Settings
+                    </a>
+                </li>
+                <li class="logout">
+                    <a href="{{ url('/') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                        Log out
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </aside>
 
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">

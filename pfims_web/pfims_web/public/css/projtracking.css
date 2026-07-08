@@ -69,7 +69,7 @@ body {
     gap: 5px;
     color: #333;
     text-decoration: none;
-    position: relative; /* added for badge positioning */
+    position: relative;
 }
 
 .top-header .right a:hover {
@@ -358,14 +358,13 @@ body {
 .status-badge.delayed { color: #d32f2f; }
 .status-badge.delayed .dot { background: #d32f2f; }
 
-/* Changed from blue to orange/gold */
 .status-badge.completed { color: #c9a96e; }
 .status-badge.completed .dot { background: #c9a96e; }
 
 .status-badge.at-risk { color: #e65100; }
 .status-badge.at-risk .dot { background: #e65100; }
 
-/* Progress Bar in Table */
+/* Progress Bar in Table (without text) */
 .progress-cell {
     display: flex;
     align-items: center;
@@ -384,12 +383,6 @@ body {
     height: 100%;
     background: #c9a96e;
     border-radius: 10px;
-}
-
-.progress-cell .percent {
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: #333;
 }
 
 .phase-badge {
@@ -511,158 +504,6 @@ body {
 .modal-update .modal-container {
     width: 800px;
     max-width: 95%;
-}
-
-/* Large Progress Bar */
-.progress-bar-large {
-    width: 100%;
-    height: 10px;
-    background: #e9ecef;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.progress-bar-large .progress-fill {
-    height: 100%;
-    background: #c9a96e;
-    border-radius: 10px;
-    transition: width 0.6s ease;
-}
-
-/* Category Sections */
-.update-category {
-    background: #faf8f5;
-    border-radius: 12px;
-    padding: 0 18px;
-    margin-bottom: 12px;
-    border: 1px solid #f0ebe2;
-    overflow: hidden;
-}
-
-.category-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 0;
-    cursor: pointer;
-    user-select: none;
-}
-
-.category-header:hover {
-    opacity: 0.7;
-}
-
-.category-toggle {
-    font-size: 0.7rem;
-    color: #888;
-    transition: transform 0.3s ease;
-}
-
-.category-toggle.open {
-    transform: rotate(180deg);
-}
-
-.category-progress {
-    padding-bottom: 12px;
-}
-
-.category-progress .progress-bar-large {
-    height: 6px;
-}
-
-/* Category Details (Material Table) */
-.category-details {
-    padding-bottom: 16px;
-    overflow: hidden;
-    animation: slideDown 0.3s ease;
-}
-
-.material-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-}
-
-.material-table thead th {
-    text-align: left;
-    padding: 8px 10px;
-    color: #888;
-    font-weight: 600;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid #e9e0d4;
-}
-
-.material-table tbody td {
-    padding: 6px 10px;
-    border-bottom: 1px solid #f5f0e8;
-    color: #333;
-    vertical-align: middle;
-}
-
-.material-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.material-table tbody tr:hover {
-    background: #f5f0e8;
-}
-
-/* Editable Input Fields in Table */
-.material-table .editable-input {
-    width: 80px;
-    padding: 4px 8px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    transition: 0.3s;
-    background: #fff;
-}
-
-.material-table .editable-input:focus {
-    outline: none;
-    border-color: #c9a96e;
-    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
-}
-
-.material-table .editable-input.updated {
-    background: #fff9e6;
-    border-color: #c9a96e;
-}
-
-/* Update Button */
-.btn-update-row {
-    background: #c9a96e;
-    color: #fff;
-    border: none;
-    padding: 4px 14px;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.3s;
-    white-space: nowrap;
-}
-
-.btn-update-row:hover {
-    background: #b8975a;
-    transform: scale(1.05);
-}
-
-.btn-update-row:active {
-    transform: scale(0.95);
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 
 /* ─── MODAL HEADER ─── */
@@ -924,6 +765,91 @@ body {
     transform: translateY(-1px);
 }
 
+/* ─── DELETE BUTTON ─── */
+.btn-delete {
+    background: #d32f2f;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-delete:hover {
+    background: #b71c1c;
+    transform: translateY(-2px);
+}
+
+/* ─── UPDATE PROJECT OVERVIEW ─── */
+.project-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px 30px;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #faf8f5;
+    border-radius: 12px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-item label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.detail-item span {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #1a2b3c;
+}
+
+.detail-item span.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.detail-item span.phase-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: #f0f0f0;
+    color: #666;
+}
+
+/* ─── EDIT PROJECT BUTTON ─── */
+.btn-edit-project {
+    background: #c9a96e;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-edit-project:hover {
+    background: #b8975a;
+    transform: translateY(-2px);
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 900px) {
     .sidebar {
@@ -1049,24 +975,18 @@ body {
         width: 95%;
         padding: 20px;
     }
-    .material-table {
-        font-size: 0.7rem;
+
+    .project-details-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 15px;
     }
-    .material-table thead th,
-    .material-table tbody td {
-        padding: 4px 6px;
+
+    .modal-footer {
+        flex-direction: column;
+        align-items: stretch;
     }
-    .category-header {
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-    .material-table .editable-input {
-        width: 60px;
-        font-size: 0.7rem;
-        padding: 2px 4px;
-    }
-    .btn-update-row {
-        font-size: 0.6rem;
-        padding: 2px 8px;
+    .modal-footer button {
+        width: 100%;
     }
 }

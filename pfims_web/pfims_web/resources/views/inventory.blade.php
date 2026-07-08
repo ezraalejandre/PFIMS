@@ -9,6 +9,37 @@
 </head>
 <body>
 
+    <!-- Error Notification -->
+    <div id="errorNotification" class="error-notification" style="display: none;">
+        <div class="error-content">
+            <span class="error-icon">⚠</span>
+            <span id="errorMessage">An error occurred. Please try again.</span>
+            <button class="error-close" onclick="closeError()">×</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-container" style="width: 400px; max-width: 95%;">
+            <div class="modal-header">
+                <h2>Confirm Deletion</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
+                    Are you sure you want to permanently delete this transaction?
+                </p>
+                <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button class="btn-cancel" onclick="closeDeleteModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
+                <button class="btn-delete" id="confirmDeleteBtn" onclick="confirmDelete()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #d32f2f; color: #fff; transition: 0.3s;">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
@@ -18,7 +49,57 @@
         </div>
     </div>
 
-    @include('partials.header')
+    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <header class="top-header">
+        <div class="left">
+            <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
+            <div class="brand-text">
+                PFIMS
+                <small>E.V. Catapang Design-Construction & Supply</small>
+            </div>
+        </div>
+        <div class="right">
+            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+                <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
+                <span>Notifications</span>
+                <span class="notif-badge" id="notifBadge">6</span>
+            </a>
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
+                <span>{{ auth()->user()->name }}</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar">
+        <nav>
+            <ul>
+                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
+                <li class="active"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+            </ul>
+        </nav>
+        <div class="bottom-nav">
+            <ul>
+                <li>
+                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                        Settings
+                    </a>
+                </li>
+                <li class="logout">
+                    <a href="{{ url('/') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                        Log out
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </aside>
 
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
@@ -79,6 +160,7 @@
                         <th>Date</th>
                         <th>Current Stock</th>
                         <th>Status</th>
+                        <th style="text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="inventoryTableBody">
@@ -111,6 +193,102 @@
         </div>
 
     </main>
+
+    </main>
+
+    <!-- View/Edit Modal -->
+    <div id="viewModal" class="modal-overlay modal-view">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="viewModalTitle">Transaction Details</h2>
+                <button class="modal-close" onclick="closeViewModal()">×</button>
+            </div>
+
+            <input type="hidden" id="viewTransactionId" value="">
+            <input type="hidden" id="viewItemId" value="">
+
+            <div class="view-details-grid">
+                <div class="view-item">
+                    <label>Item Name</label>
+                    <span id="viewItemNameDisplay" class="view-value">—</span>
+                    <input type="text" id="viewItemNameInput" class="view-input" style="display: none;" placeholder="Item Name">
+                </div>
+                <div class="view-item">
+                    <label>Category</label>
+                    <span id="viewCategoryDisplay" class="view-value">—</span>
+                    <select id="viewCategoryInput" class="view-input" style="display: none;">
+                        <option value="Cement">Cement</option>
+                        <option value="Steel">Steel</option>
+                        <option value="Paint">Paint</option>
+                        <option value="Aggregates">Aggregates</option>
+                        <option value="Masonry">Masonry</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Finishing">Finishing</option>
+                    </select>
+                </div>
+                <div class="view-item">
+                    <label>Unit</label>
+                    <span id="viewUnitDisplay" class="view-value">—</span>
+                    <select id="viewUnitInput" class="view-input" style="display: none;">
+                        <option value="bags">bags</option>
+                        <option value="pcs">pcs</option>
+                        <option value="gallons">gallons</option>
+                        <option value="tons">tons</option>
+                        <option value="rolls">rolls</option>
+                        <option value="boxes">boxes</option>
+                        <option value="m">m</option>
+                        <option value="kg">kg</option>
+                    </select>
+                </div>
+                <div class="view-item">
+                    <label>Quantity</label>
+                    <span id="viewQuantityDisplay" class="view-value">—</span>
+                    <input type="number" id="viewQuantityInput" class="view-input" style="display: none;" min="1">
+                </div>
+                <div class="view-item">
+                    <label>Supplier</label>
+                    <span id="viewSupplierDisplay" class="view-value">—</span>
+                    <select id="viewSupplierInput" class="view-input" style="display: none;">
+                        <option value="">Select Supplier...</option>
+                    </select>
+                </div>
+                <div class="view-item">
+                    <label>Transaction Type</label>
+                    <span id="viewTypeDisplay" class="view-value">—</span>
+                    <select id="viewTypeInput" class="view-input" style="display: none;">
+                        <option value="IN">IN</option>
+                        <option value="OUT">OUT</option>
+                    </select>
+                </div>
+                <div class="view-item">
+                    <label>Date</label>
+                    <span id="viewDateDisplay" class="view-value">—</span>
+                    <input type="date" id="viewDateInput" class="view-input" style="display: none;">
+                </div>
+                <div class="view-item">
+                    <label>Current Stock</label>
+                    <span id="viewStockDisplay" class="view-value">—</span>
+                </div>
+                <div class="view-item">
+                    <label>Status</label>
+                    <span id="viewStatusDisplay" class="view-value status-badge">—</span>
+                </div>
+                <div class="view-item" id="viewProjectRow" style="display: none;">
+                    <label>Project</label>
+                    <span id="viewProjectDisplay" class="view-value">—</span>
+                    <input type="text" id="viewProjectInput" class="view-input" style="display: none;">
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
+                <button class="btn-cancel" onclick="closeViewModal()">Close</button>
+                <button class="btn-delete" id="viewDeleteBtn" onclick="deleteTransaction()">Delete</button>
+                <button class="btn-edit-project" id="viewEditBtn" onclick="enableEditMode()">Edit</button>
+                <button class="btn-save" id="viewSaveBtn" style="display: none;" onclick="saveEdit()">Save Changes</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ─── OVERLAY / MODAL (Add Transaction) ─── -->
     <div id="transactionModal" class="modal-overlay">
@@ -348,35 +526,52 @@
 
         // ─── RENDER INVENTORY TABLE ───
         function renderInventoryTable() {
-            var tbody = document.getElementById('inventoryTableBody');
-            tbody.innerHTML = '';
+        var tbody = document.getElementById('inventoryTableBody');
+        tbody.innerHTML = '';
 
-            if (!allTransactions.length) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">No transactions found.</td></tr>';
-                return;
-            }
-
-            allTransactions.forEach(function(row) {
-                var tr = document.createElement('tr');
-                var status = row.current_stock > row.reorder_level ? 'in-stock' : 'low-stock';
-                var statusText = row.current_stock > row.reorder_level ? 'In Stock' : 'Low Stock';
-                var typeLabel = row.transaction_type || '—';
-                var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
-
-                tr.innerHTML = `
-                    <td><strong>${row.item_name}</strong></td>
-                    <td>${row.category}</td>
-                    <td>${row.unit}</td>
-<td>${row.quantity}</td>
-                    <td>${row.supplier}</td>
-                    <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
-                    <td>${dateValue}</td>
-<td>${row.current_stock}</td>
-                    <td><span class="status-badge ${status}"><span class="dot"></span> ${statusText}</span></td>
-                `;
-                tbody.appendChild(tr);
-            });
+        if (!allTransactions.length) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">No transactions found.</td></tr>';
+            return;
         }
+
+        allTransactions.forEach(function(row) {
+            var tr = document.createElement('tr');
+            var status = row.current_stock > row.reorder_level ? 'in-stock' : 'low-stock';
+            var statusText = row.current_stock > row.reorder_level ? 'In Stock' : 'Low Stock';
+            var typeLabel = row.transaction_type || '—';
+            var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
+
+            tr.setAttribute('data-id', row.inventory_transaction_id || '');
+            tr.setAttribute('data-item-id', row.item_id || '');
+            tr.setAttribute('data-item', row.item_name || '');
+            tr.setAttribute('data-category', row.category || '');
+            tr.setAttribute('data-unit', row.unit || '');
+            tr.setAttribute('data-quantity', row.quantity || '');
+            tr.setAttribute('data-supplier', row.supplier || '');
+            tr.setAttribute('data-supplier-id', row.supplier_id || '');
+            tr.setAttribute('data-type', typeLabel);
+            tr.setAttribute('data-date', row.transaction_date || '');
+            tr.setAttribute('data-stock', row.current_stock || '');
+            tr.setAttribute('data-status', statusText);
+            tr.setAttribute('data-project', row.project || '');
+
+            tr.innerHTML = `
+                <td><strong>${row.item_name}</strong></td>
+                <td>${row.category}</td>
+                <td>${row.unit}</td>
+                <td>${row.quantity}</td>
+                <td>${row.supplier}</td>
+                <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
+                <td>${dateValue}</td>
+                <td>${row.current_stock}</td>
+                <td><span class="status-badge ${status}"><span class="dot"></span> ${statusText}</span></td>
+                <td style="text-align: center;">
+                    <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
 
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
@@ -592,6 +787,304 @@
         function closeSuccess() {
             document.getElementById('successNotification').style.display = 'none';
         }
+
+        var deleteCallback = null;
+
+        function openDeleteModal(message, callback) {
+            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this transaction?';
+            deleteCallback = callback;
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            deleteCallback = null;
+        }
+
+        function confirmDelete() {
+            if (typeof deleteCallback === 'function') {
+                deleteCallback();
+            }
+            closeDeleteModal();
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message || 'An error occurred. Please try again.';
+            document.getElementById('errorNotification').style.display = 'block';
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+        }
+
+        function populateViewDropdowns() {
+            var categorySelect = document.getElementById('viewCategoryInput');
+            var unitSelect = document.getElementById('viewUnitInput');
+            var supplierSelect = document.getElementById('viewSupplierInput');
+            if (!categorySelect || !unitSelect || !supplierSelect) return;
+
+            categorySelect.innerHTML = '<option value="">Select Category...</option>';
+            lookupData.categories.forEach(function(cat) {
+                var opt = document.createElement('option');
+                opt.value = cat.inventory_category_name;
+                opt.textContent = cat.inventory_category_name;
+                categorySelect.appendChild(opt);
+            });
+
+            unitSelect.innerHTML = '<option value="">Select Unit...</option>';
+            lookupData.units.forEach(function(unit) {
+                var opt = document.createElement('option');
+                opt.value = unit.unit_name;
+                opt.textContent = unit.unit_name;
+                unitSelect.appendChild(opt);
+            });
+
+            supplierSelect.innerHTML = '<option value="">Select Supplier...</option>';
+            lookupData.suppliers.forEach(function(sup) {
+                var opt = document.createElement('option');
+                opt.value = sup.supplier_id;
+                opt.textContent = sup.supplier_name;
+                supplierSelect.appendChild(opt);
+            });
+        }
+
+        // ─── VIEW/EDIT MODAL ───
+        var currentRow = null;
+        var isEditMode = false;
+
+        function openViewModal(row) {
+            currentRow = row;
+            isEditMode = false;
+            var id = row.dataset.id || '';
+            var itemId = row.dataset.itemId || '';
+            var item = row.dataset.item || '';
+            var category = row.dataset.category || '';
+            var unit = row.dataset.unit || '';
+            var quantity = row.dataset.quantity || '';
+            var supplier = row.dataset.supplier || '';
+            var supplierId = row.dataset.supplierId || '';
+            var type = row.dataset.type || '';
+            var date = row.dataset.date || '';
+            var stock = row.dataset.stock || '';
+            var status = row.dataset.status || '';
+            var project = row.dataset.project || '';
+
+            var selectedItem = inventoryItems.find(function(i) {
+                return i.item_id == itemId;
+            });
+
+            if (selectedItem) {
+                category = category || selectedItem.category || '';
+                unit = unit || selectedItem.unit || '';
+                supplier = supplier || selectedItem.supplier || '';
+                supplierId = supplierId || selectedItem.supplier_id || '';
+            }
+
+            if (!supplierId && supplier) {
+                var supplierRow = lookupData.suppliers.find(function(s) {
+                    return s.supplier_name === supplier;
+                });
+                supplierId = supplierRow ? supplierRow.supplier_id : '';
+            }
+
+            populateViewDropdowns();
+            document.getElementById('viewTransactionId').value = id;
+            document.getElementById('viewItemId').value = itemId;
+            document.getElementById('viewItemNameDisplay').textContent = item;
+            document.getElementById('viewItemNameInput').value = item;
+            document.getElementById('viewCategoryDisplay').textContent = category;
+            document.getElementById('viewCategoryInput').value = category;
+            document.getElementById('viewUnitDisplay').textContent = unit;
+            document.getElementById('viewUnitInput').value = unit;
+            document.getElementById('viewQuantityDisplay').textContent = quantity;
+            document.getElementById('viewQuantityInput').value = quantity;
+            document.getElementById('viewSupplierDisplay').textContent = supplier;
+            document.getElementById('viewSupplierInput').value = supplierId;
+            document.getElementById('viewTypeDisplay').textContent = type;
+            document.getElementById('viewTypeInput').value = type;
+            document.getElementById('viewDateDisplay').textContent = date;
+            document.getElementById('viewDateInput').value = date;
+            document.getElementById('viewStockDisplay').textContent = stock;
+            var statusEl = document.getElementById('viewStatusDisplay');
+            statusEl.textContent = status;
+            statusEl.className = 'view-value status-badge';
+            if (status === 'In Stock') statusEl.classList.add('in-stock');
+            else if (status === 'Low Stock') statusEl.classList.add('low-stock');
+            else if (status === 'Out of Stock') statusEl.classList.add('out-of-stock');
+
+            var projectRow = document.getElementById('viewProjectRow');
+            if (type === 'OUT' && project) {
+                projectRow.style.display = 'flex';
+                document.getElementById('viewProjectDisplay').textContent = project;
+                document.getElementById('viewProjectInput').value = project;
+            } else {
+                projectRow.style.display = 'none';
+            }
+
+            disableEditMode();
+            document.getElementById('viewModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.remove('active');
+            document.body.style.overflow = '';
+            currentRow = null;
+        }
+
+        function enableEditMode() {
+            isEditMode = true;
+            document.querySelectorAll('#viewModal .view-value').forEach(el => {
+                if (el.id === 'viewStockDisplay' || el.id === 'viewStatusDisplay') {
+                    el.style.display = 'block';
+                    return;
+                }
+                el.style.display = 'none';
+            });
+            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'block');
+            document.getElementById('viewEditBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
+            document.getElementById('viewSaveBtn').style.display = 'inline-block';
+            var projectRow = document.getElementById('viewProjectRow');
+            if (projectRow.style.display !== 'none') {
+                document.getElementById('viewProjectDisplay').style.display = 'none';
+                document.getElementById('viewProjectInput').style.display = 'block';
+            }
+            populateViewDropdowns();
+        }
+
+        function disableEditMode() {
+            isEditMode = false;
+            document.querySelectorAll('#viewModal .view-value').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'none');
+            document.getElementById('viewEditBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.getElementById('viewSaveBtn').style.display = 'none';
+            var projectRow = document.getElementById('viewProjectRow');
+            if (projectRow.style.display !== 'none') {
+                document.getElementById('viewProjectDisplay').style.display = 'block';
+                document.getElementById('viewProjectInput').style.display = 'none';
+            }
+        }
+
+        function saveEdit() {
+            if (!currentRow) return;
+            var transactionId = currentRow.dataset.id || '';
+            var itemId = document.getElementById('viewItemId').value || currentRow.dataset.itemId || '';
+            var itemName = document.getElementById('viewItemNameInput').value.trim();
+            var categoryName = document.getElementById('viewCategoryInput').value;
+            var unitName = document.getElementById('viewUnitInput').value;
+            var supplierId = document.getElementById('viewSupplierInput').value;
+            var quantity = parseFloat(document.getElementById('viewQuantityInput').value);
+            var type = document.getElementById('viewTypeInput').value;
+            var date = document.getElementById('viewDateInput').value;
+            var project = document.getElementById('viewProjectInput').value.trim();
+
+            if (!transactionId) { showError('Transaction ID missing.'); return; }
+            if (!itemId) { showError('Item ID missing.'); return; }
+            if (!itemName) { showError('Please enter an item name.'); return; }
+            if (!categoryName) { showError('Please select a category.'); return; }
+            if (!unitName) { showError('Please select a unit.'); return; }
+            if (!supplierId) { showError('Please select a supplier.'); return; }
+            if (!quantity || quantity < 0.01) {
+                showError('Please enter a valid quantity.');
+                return;
+            }
+            if (!type || !date) {
+                showError('Please fill in all required fields.');
+                return;
+            }
+            if (type === 'OUT' && !project) {
+                showError('Project is required for OUT transactions.');
+                return;
+            }
+
+            var category = lookupData.categories.find(function(c) { return c.inventory_category_name === categoryName; });
+            var unit = lookupData.units.find(function(u) { return u.unit_name === unitName; });
+
+            if (!category || !unit) {
+                showError('Invalid category or unit.');
+                return;
+            }
+
+            var payload = {
+                item_name: itemName,
+                inventory_category_id: category.inventory_category_id,
+                unit_id: unit.unit_id,
+                supplier_id: parseInt(supplierId, 10),
+                quantity: quantity,
+                transaction_type: type,
+                transaction_date: date,
+                project_id: project || null
+            };
+
+            fetch('/api/inventory/transaction/' + transactionId, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeViewModal();
+                    showSuccess(data.message || 'Transaction updated successfully!');
+                    loadInventoryItems();
+                } else {
+                    showError(data.message || 'Failed to save changes.');
+                }
+            })
+            .catch(function(err) {
+                console.error('Error saving transaction:', err);
+                showError('Failed to save changes.');
+            });
+        }
+
+        function deleteTransaction() {
+            if (!currentRow) return;
+            var transactionId = currentRow.dataset.id || '';
+            if (!transactionId) {
+                showError('Transaction ID missing.');
+                return;
+            }
+
+            openDeleteModal('Are you sure you want to permanently delete this transaction?', function() {
+                fetch('/api/inventory/transaction/' + transactionId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        closeViewModal();
+                        showSuccess(data.message || 'Transaction deleted successfully!');
+                        loadInventoryItems();
+                    } else {
+                        showError(data.message || 'Failed to delete transaction.');
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Error deleting transaction:', err);
+                    showError('Failed to delete transaction.');
+                });
+            });
+        }
+
+        document.getElementById('viewModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeViewModal(); }
+        });
+
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeDeleteModal(); }
+        });
 
         // ─── CLOSE MODAL ON BACKDROP CLICK ───
         document.getElementById('transactionModal').addEventListener('click', function(e) {

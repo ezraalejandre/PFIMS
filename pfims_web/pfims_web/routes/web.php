@@ -59,6 +59,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/inventory/lookup-data', [InventoryController::class, 'getLookupData']);
     Route::post('/api/inventory/item', [InventoryController::class, 'storeItem']);
     Route::post('/api/inventory/transaction', [InventoryController::class, 'addTransaction']);
+    Route::patch('/api/inventory/transaction/{id}', [InventoryController::class, 'updateTransaction']);
+    Route::delete('/api/inventory/transaction/{id}', [InventoryController::class, 'destroyTransaction']);
     Route::get('/api/inventory/transactions', [InventoryController::class, 'getAllTransactions']);
     Route::get('/api/inventory/{itemId}/transactions', [InventoryController::class, 'getTransactions']);
 });
