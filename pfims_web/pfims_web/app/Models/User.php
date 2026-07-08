@@ -34,6 +34,7 @@ class User extends Authenticatable
         'phone',
         'location',
         'status',
+        'profile_photo',
     ];
 
     /**

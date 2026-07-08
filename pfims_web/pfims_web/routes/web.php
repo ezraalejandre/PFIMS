@@ -14,7 +14,7 @@ use App\Http\Controllers\InventoryController;
 // Landing page (login)
 Route::get('/', function () {
     return view('landing');
-});
+})->name('login');
 
 // Dashboard page
 Route::get('/dashboard', function () {
@@ -43,10 +43,10 @@ Route::get('/suppliers', function () {
 
 // Supplier API endpoints
 Route::middleware('auth')->group(function () {
-    Route::get('/api/suppliers', [SupplierController::class, 'index']);
-    Route::post('/api/suppliers', [SupplierController::class, 'store']);
-    Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
-    Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
+    // Route::get('/api/suppliers', [SupplierController::class, 'index']);
+    // Route::post('/api/suppliers', [SupplierController::class, 'store']);
+    // Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
+    // Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
 
     // Config API endpoints
     Route::get('/api/config/{type}', [ConfigController::class, 'index']);

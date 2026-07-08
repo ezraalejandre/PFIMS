@@ -49,7 +49,7 @@ class PFIMSMobile extends StatelessWidget {
         '/inventory': (_) => const InventoryTrackingScreen(),
         '/ops-inventory': (_) => const OpsInventoryTrackingScreen(),
         '/notifications': (_) => const NotificationsScreen(),
-        '/profile': (_) => const ProfileScreen(),
+        '/profile': (_) => const ProfileScreen(email: '',),
       },
     );
   }
