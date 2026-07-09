@@ -611,7 +611,7 @@ body {
     }
 }
 
-/* ─── MODAL OVERLAY (Centered Floating) ─── */
+/* ─── MODAL OVERLAY ─── */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -685,7 +685,7 @@ body {
     color: #333;
 }
 
-/* ─── STEP INDICATOR (Numbered) ─── */
+/* ─── STEP INDICATOR ─── */
 .step-indicator {
     display: flex;
     gap: 0;
@@ -805,7 +805,6 @@ body {
     margin-bottom: 18px;
 }
 
-/* 3-column form row */
 .form-row-three {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -859,7 +858,7 @@ body {
     box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
 }
 
-/* Radio group */
+/* ─── RADIO GROUP ─── */
 .radio-group {
     display: flex;
     gap: 30px;
@@ -880,17 +879,17 @@ body {
     width: 18px;
     height: 18px;
     accent-color: #c9a96e;
+    cursor: pointer;
 }
 
 .radio-group .radio-sub {
-    display: block;
     font-size: 0.75rem;
     color: #888;
     font-weight: 300;
     margin-left: 26px;
 }
 
-/* ─── SUMMARY (Review) ─── */
+/* ─── SUMMARY ─── */
 .summary-list {
     background: #f8f6f2;
     padding: 20px 24px;
@@ -921,24 +920,6 @@ body {
 .summary-item .summary-value {
     color: #1a2b3c;
     font-weight: 500;
-}
-
-.summary-item .summary-value .type-indicator {
-    display: inline-block;
-    padding: 2px 12px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.summary-item .summary-value .type-indicator.in {
-    background: #e6f7e6;
-    color: #2e7d32;
-}
-
-.summary-item .summary-value .type-indicator.out {
-    background: #fde8e8;
-    color: #d32f2f;
 }
 
 /* ─── MODAL FOOTER ─── */
@@ -1140,9 +1121,6 @@ body {
     .main-content {
         margin-left: 0;
         padding: 20px 15px;
-    }
-    .stats-grid-inv {
-        grid-template-columns: 1fr 1fr;
     }
     .top-header {
         flex-wrap: wrap;

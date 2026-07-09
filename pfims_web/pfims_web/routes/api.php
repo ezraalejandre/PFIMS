@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\SupplierController;
 
 
 Route::get('/user', function (Request $request) {
@@ -29,6 +30,11 @@ Route::post(
 Route::post(
 '/profile',
 [AuthController::class,'profile']
+);
+
+Route::post(
+    '/profile/photo',
+    [AuthController::class,'uploadProfilePhoto']
 );
 
 
@@ -64,9 +70,85 @@ Route::get('/units', function () {
 Route::get('/projects', function () {
     return response()->json(
         DB::table('project_tbl')
-            ->select('project_id', 'project_name')
+            ->select(
+                'project_id',
+                'project_name',
+                'client_name',
+                'budget',
+                'project_manager',
+                'start_date',
+                'estimated_end_date',
+                'actual_end_date',
+                'worker_count',
+                'phase',
+                'completion_percentage',
+                'status'
+            )
             ->get()
     );
+});
+
+Route::post('/projects', function (Request $request) {
+    $projectId = DB::table('project_tbl')->insertGetId([
+        'project_name' => $request->project_name,
+        'client_name' => $request->client_name,
+        'budget' => $request->budget,
+        'project_manager' => $request->project_manager,
+        'start_date' => $request->start_date,
+        'estimated_end_date' => $request->estimated_end_date,
+        'actual_end_date' => $request->actual_end_date,
+        'worker_count' => $request->worker_count,
+        'phase' => $request->phase,
+        'completion_percentage' => $request->completion_percentage,
+        'status' => $request->status,
+    ]);
+
+    $project = DB::table('project_tbl')->where('project_id', $projectId)->first();
+    return response()->json($project, 201);
+});
+
+Route::put('/projects/{id}', function (Request $request, $id) {
+    $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Project not found'], 404);
+    }
+
+    $data = [];
+    foreach ([
+        'project_name' => 'project_name',
+        'client_name' => 'client_name',
+        'budget' => 'budget',
+        'project_manager' => 'project_manager',
+        'start_date' => 'start_date',
+        'estimated_end_date' => 'estimated_end_date',
+        'actual_end_date' => 'actual_end_date',
+        'worker_count' => 'worker_count',
+        'phase' => 'phase',
+        'completion_percentage' => 'completion_percentage',
+        'status' => 'status',
+    ] as $requestKey => $column) {
+        if ($request->has($requestKey)) {
+            $data[$column] = $request->input($requestKey);
+        }
+    }
+
+    if (empty($data)) {
+        return response()->json(['message' => 'No fields to update'], 422);
+    }
+
+    DB::table('project_tbl')->where('project_id', $id)->update($data);
+    $project = DB::table('project_tbl')->where('project_id', $id)->first();
+    return response()->json($project);
+});
+
+Route::delete('/projects/{id}', function ($id) {
+    $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Project not found'], 404);
+    }
+
+    DB::table('project_tbl')->where('project_id', $id)->delete();
+    return response()->json(['message' => 'Project deleted successfully']);
 });
 
 /*
@@ -151,6 +233,135 @@ Route::delete('/inventory-items/{id}', function ($id) {
     return response()->json(['message' => 'Item deleted'], 200);
 });
 
+Route::get('/expense-categories', function () {
+    return response()->json(
+        DB::table('expense_category_tbl')
+            ->select('expense_category_id', 'category_name')
+            ->get()
+    );
+});
+
+Route::get('/expenses', function () {
+    return response()->json(
+        DB::table('expense_tbl as e')
+            ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+            ->leftJoin('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
+            ->select(
+                'e.expense_id',
+                'e.project_id',
+                'p.project_name',
+                'e.expense_description',
+                'e.expense_category_id',
+                'c.category_name as expense_category_name',
+                'e.actual_amount',
+                'e.expense_date',
+                'e.remarks'
+            )
+            ->get()
+    );
+});
+
+Route::post('/expenses', function (Request $request) {
+    $validated = $request->validate([
+        'project_id' => ['required', 'integer', 'exists:project_tbl,project_id'],
+        'expense_category_id' => ['required', 'integer', 'exists:expense_category_tbl,expense_category_id'],
+        'expense_description' => ['required', 'string', 'max:255'],
+        'actual_amount' => ['required', 'numeric', 'min:0.01'],
+        'expense_date' => ['required', 'date'],
+        'remarks' => ['nullable', 'string'],
+    ]);
+
+    $expenseId = DB::table('expense_tbl')->insertGetId([
+        'project_id' => $validated['project_id'],
+        'expense_category_id' => $validated['expense_category_id'],
+        'expense_description' => $validated['expense_description'],
+        'actual_amount' => $validated['actual_amount'],
+        'expense_date' => $validated['expense_date'],
+        'remarks' => $validated['remarks'] ?? null,
+    ]);
+
+    $expense = DB::table('expense_tbl as e')
+        ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+        ->leftJoin('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
+        ->select(
+            'e.expense_id',
+            'e.project_id',
+            'p.project_name',
+            'e.expense_description',
+            'e.expense_category_id',
+            'c.category_name as expense_category_name',
+            'e.actual_amount',
+            'e.expense_date',
+            'e.remarks'
+        )
+        ->where('e.expense_id', $expenseId)
+        ->first();
+
+    return response()->json($expense, 201);
+});
+
+Route::put('/expenses/{id}', function (Request $request, $id) {
+    $exists = DB::table('expense_tbl')->where('expense_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Expense not found'], 404);
+    }
+
+    $data = [];
+    if ($request->has('project_id')) {
+        $data['project_id'] = $request->input('project_id');
+    }
+    if ($request->has('expense_category_id')) {
+        $data['expense_category_id'] = $request->input('expense_category_id');
+    }
+    if ($request->has('expense_description')) {
+        $data['expense_description'] = $request->input('expense_description');
+    }
+    if ($request->has('actual_amount')) {
+        $data['actual_amount'] = $request->input('actual_amount');
+    }
+    if ($request->has('expense_date')) {
+        $data['expense_date'] = $request->input('expense_date');
+    }
+    if ($request->has('remarks')) {
+        $data['remarks'] = $request->input('remarks');
+    }
+
+    if (empty($data)) {
+        return response()->json(['message' => 'No fields to update'], 422);
+    }
+
+    DB::table('expense_tbl')->where('expense_id', $id)->update($data);
+
+    $expense = DB::table('expense_tbl as e')
+        ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+        ->leftJoin('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
+        ->select(
+            'e.expense_id',
+            'e.project_id',
+            'p.project_name',
+            'e.expense_description',
+            'e.expense_category_id',
+            'c.category_name as expense_category_name',
+            'e.actual_amount',
+            'e.expense_date',
+            'e.remarks'
+        )
+        ->where('e.expense_id', $id)
+        ->first();
+
+    return response()->json($expense);
+});
+
+Route::delete('/expenses/{id}', function ($id) {
+    $exists = DB::table('expense_tbl')->where('expense_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Expense not found'], 404);
+    }
+
+    DB::table('expense_tbl')->where('expense_id', $id)->delete();
+    return response()->json(['message' => 'Expense deleted successfully']);
+});
+
 Route::get('/inventory-items-list', function () {
     return response()->json(
         DB::table('inventory_item_tbl as i')
@@ -185,83 +396,13 @@ Route::get('/inventory-items-list', function () {
 |--------------------------------------------------------------------------
 | Suppliers
 |--------------------------------------------------------------------------
-| NOTE: this assumes supplier_tbl has: supplier_id, supplier_name,
-| contact_number, address, is_active (tinyint/bool). Rename the columns
-| below if your actual schema differs.
 */
 
-Route::get('/suppliers', function () {
-    return response()->json(
-        DB::table('supplier_tbl as s')
-            ->leftJoin('inventory_item_tbl as i', 'i.supplier_id', '=', 's.supplier_id')
-            ->select(
-                's.supplier_id',
-                's.supplier_name',
-                's.contact_number',
-                's.address',
-                DB::raw('COUNT(i.item_id) as item_count')
-            )
-            ->groupBy('s.supplier_id', 's.supplier_name', 's.contact_number', 's.address')
-            ->get()
-    );
-});
-
-Route::post('/suppliers', function (Request $request) {
-    $id = DB::table('supplier_tbl')->insertGetId([
-        'supplier_name'   => $request->supplier_name,
-        'contact_number'  => $request->contact_number,
-        'address'         => $request->address,
-    ]);
-
-    return response()->json(['supplier_id' => $id], 201);
-});
-
-Route::put('/suppliers/{id}', function (Request $request, $id) {
-    $exists = DB::table('supplier_tbl')->where('supplier_id', $id)->exists();
-    if (!$exists) {
-        return response()->json(['message' => 'Supplier not found'], 404);
-    }
-
-    $data = [];
-    foreach ([
-        'supplier_name'  => 'supplier_name',
-        'contact_number' => 'contact_number',
-        'address'        => 'address',
-    ] as $requestKey => $column) {
-        if ($request->has($requestKey)) {
-            $data[$column] = $request->input($requestKey);
-        }
-    }
-
-    if (empty($data)) {
-        return response()->json(['message' => 'No fields to update'], 422);
-    }
-
-    DB::table('supplier_tbl')->where('supplier_id', $id)->update($data);
-
-    $supplier = DB::table('supplier_tbl')->where('supplier_id', $id)->first();
-    return response()->json($supplier);
-});
-
-Route::delete('/suppliers/{id}', function ($id) {
-    $exists = DB::table('supplier_tbl')->where('supplier_id', $id)->exists();
-    if (!$exists) {
-        return response()->json(['message' => 'Supplier not found'], 404);
-    }
-
-    $hasItems = DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists();
-    if ($hasItems) {
-        // Prevent orphaning inventory items. The client shows this message
-        // back to the user rather than silently failing.
-        return response()->json([
-            'message' => 'Cannot delete supplier: it is still linked to inventory items.'
-        ], 409);
-    }
-
-    DB::table('supplier_tbl')->where('supplier_id', $id)->delete();
-
-    return response()->json(['message' => 'Supplier deleted'], 200);
-});
+Route::get('/suppliers', [SupplierController::class, 'index']);
+Route::post('/suppliers', [SupplierController::class, 'store']);
+Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
+Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
+Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
 
 
 Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);

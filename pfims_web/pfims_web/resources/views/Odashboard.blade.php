@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+    <title>Operations Dashboard - PFIMS</title>
+    <link rel="stylesheet" href="{{ asset('css/Odashboard.css') }}">
     <style>
         .error-notification { z-index: 9999 !important; }
         .success-notification { z-index: 9999 !important; }
@@ -40,14 +40,14 @@
             </div>
         </div>
         <div class="right">
-            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+            <a href="{{ url('/onotifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span>Notifications</span>
                 <span class="notif-badge" id="notifBadge">6</span>
             </a>
-            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+            <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>User</span>
             </a>
         </div>
     </header>
@@ -56,24 +56,23 @@
     <aside class="sidebar">
         <nav>
             <ul>
-                <li class="active">DASHBOARD</li>
-                <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
+                <li class="active"><a href="{{ url('/odashboard') }}">DASHBOARD</a></li>
+                <li><a href="{{ url('/oprojects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/oinventory') }}">INVENTORY</a></li>
+                <li><a href="{{ url('/osuppliers') }}">SUPPLIERS</a></li>
+                <li><a href="{{ url('/oreports') }}">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
             <ul>
                 <li>
-                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                    <a href="{{ url('/osettings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                         <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
                         Settings
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                    <a href="{{ url('/olandig') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                         <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
                         Log out
                     </a>
@@ -87,19 +86,15 @@
 
         <!-- Page Title -->
         <div class="page-header">
-            <h1>DASHBOARD <small>construction operation overview</small></h1>
+            <h1>DASHBOARD <small>operations overview</small></h1>
         </div>
 
-        <!-- Stats Cards -->
+        <!-- Stats Cards (Operational only) -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Active Projects</div>
                 <div class="stat-value">24</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Total Budget</div>
-                <div class="stat-value">$18.6M</div>
-                <div class="stat-sub">$2.1M remaining</div>
+                <div class="stat-sub">6 completed this month</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Equipment Units</div>
@@ -113,9 +108,9 @@
             </div>
         </div>
 
-        <!-- ─── CHARTS ROW ─── -->
+        <!-- ─── PROJECT COMPLETION TREND (BAR CHART) ─── -->
         <div class="charts-row">
-            <div class="chart-box">
+            <div class="chart-box" style="grid-column: 1 / -1; max-width: 800px; margin: 0 auto;">
                 <h3>PROJECT COMPLETION TREND</h3>
                 <div class="bar-chart">
                     <div class="bar-group"><div class="bar" style="height:35px;"></div><span class="bar-label">Jan</span></div>
@@ -126,47 +121,9 @@
                     <div class="bar-group"><div class="bar" style="height:90px;"></div><span class="bar-label">Jun</span></div>
                 </div>
             </div>
-
-            <div class="chart-box">
-                <h3>BUDGET ALLOCATION VS SPENDING</h3>
-                <div class="line-chart">
-                    <svg viewBox="0 0 500 180" preserveAspectRatio="xMidYMid meet">
-                        <line x1="40" y1="20" x2="480" y2="20" class="grid-line" />
-                        <line x1="40" y1="60" x2="480" y2="60" class="grid-line" />
-                        <line x1="40" y1="100" x2="480" y2="100" class="grid-line" />
-                        <line x1="40" y1="140" x2="480" y2="140" class="grid-line" />
-                        <text x="30" y="20" class="y-label">500</text>
-                        <text x="30" y="60" class="y-label">400</text>
-                        <text x="30" y="100" class="y-label">300</text>
-                        <text x="30" y="140" class="y-label">200</text>
-                        <text x="30" y="170" class="y-label">100</text>
-                        <text x="30" y="175" class="y-label">0</text>
-                        <polygon class="area-path" points="40,40 128,33 216,30 304,26 392,23 480,20 480,170 40,170" />
-                        <polyline class="line-path" points="40,40 128,33 216,30 304,26 392,23 480,20" />
-                        <circle cx="40" cy="40" r="5" class="dot" />
-                        <text x="40" y="30" class="dot-label">430</text>
-                        <text x="40" y="175" class="x-label">Jan</text>
-                        <circle cx="128" cy="33" r="5" class="dot" />
-                        <text x="128" y="23" class="dot-label">450</text>
-                        <text x="128" y="175" class="x-label">Feb</text>
-                        <circle cx="216" cy="30" r="5" class="dot" />
-                        <text x="216" y="20" class="dot-label">460</text>
-                        <text x="216" y="175" class="x-label">Mar</text>
-                        <circle cx="304" cy="26" r="5" class="dot" />
-                        <text x="304" y="16" class="dot-label">470</text>
-                        <text x="304" y="175" class="x-label">Apr</text>
-                        <circle cx="392" cy="23" r="5" class="dot" />
-                        <text x="392" y="13" class="dot-label">480</text>
-                        <text x="392" y="175" class="x-label">May</text>
-                        <circle cx="480" cy="20" r="5" class="dot" />
-                        <text x="480" y="10" class="dot-label">490</text>
-                        <text x="480" y="175" class="x-label">Jun</text>
-                    </svg>
-                </div>
-            </div>
         </div>
 
-        <!-- Projects List -->
+        <!-- ─── ACTIVE PROJECTS LIST ─── -->
         <div class="projects-section">
             <h2>ACTIVE PROJECTS</h2>
             <div class="projects-list">
@@ -388,7 +345,7 @@
         }
 
         function viewProject() {
-            window.location.href = "{{ url('/projects') }}";
+            window.location.href = "{{ url('/oprojects') }}";
         }
 
         document.getElementById('projectDetailModal').addEventListener('click', function(e) {
