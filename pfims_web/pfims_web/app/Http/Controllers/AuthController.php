@@ -97,7 +97,7 @@ public function profile(Request $request)
             "location" => $user->location,
             "role" => $user->role,
             "profile_photo" => $user->profile_photo
-                ? asset('storage/' . $user->profile_photo)
+                ? url('/api/profile-photo/' . basename($user->profile_photo))
                 : null,
         ],
     ]);
@@ -107,7 +107,7 @@ public function uploadProfilePhoto(Request $request)
 {
     $request->validate([
         'email' => ['required', 'email'],
-        'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'], // 5MB
+        'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
     ]);
 
     $user = User::where('email', $request->email)->first();
@@ -119,7 +119,6 @@ public function uploadProfilePhoto(Request $request)
         ], 404);
     }
 
-    // Delete the old photo, if any, before saving the new one.
     if ($user->profile_photo) {
         \Illuminate\Support\Facades\Storage::disk('public')->delete($user->profile_photo);
     }
@@ -131,7 +130,7 @@ public function uploadProfilePhoto(Request $request)
 
     return response()->json([
         "success" => true,
-        "profile_photo" => asset('storage/' . $path),
+        "profile_photo" => url('/api/profile-photo/' . basename($path)),
     ]);
 }
 

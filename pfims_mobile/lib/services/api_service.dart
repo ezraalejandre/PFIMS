@@ -64,14 +64,37 @@ static Future<Map<String,dynamic>> changePassword(
 static Future<Map<String,dynamic>> getProfile(
   String email,
 ) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/profile"),           // was "$baseUrl/api/profile"
-    body: {
-      "email": email,
-    },
-  );
+  http.Response response;
 
-  return jsonDecode(response.body);
+  try {
+    response = await http.post(
+      Uri.parse("$baseUrl/profile"),           // was "$baseUrl/api/profile"
+      body: {
+        "email": email,
+      },
+    );
+  } catch (e) {
+    throw Exception("No internet connection or server unreachable");
+  }
+
+  // TEMP DEBUG: remove once the /profile response shape is confirmed.
+  debugPrint("PROFILE STATUS: ${response.statusCode}");
+  debugPrint("PROFILE BODY: ${response.body}");
+
+  Map<String, dynamic> body;
+  try {
+    body = jsonDecode(response.body) as Map<String, dynamic>;
+  } catch (e) {
+    throw Exception(
+      "Server returned an unexpected response (${response.statusCode}). Check the API route.",
+    );
+  }
+
+  if (response.statusCode != 200) {
+    throw Exception(body['message']?.toString() ?? "Unable to load profile (${response.statusCode})");
+  }
+
+  return body;
 }
 
 
@@ -112,6 +135,58 @@ final body = jsonDecode(response.body) as Map<String, dynamic>;
 
   return body;
 }
+
+
+  // ---------------------------------------------------------------------
+  // Profile field updates
+  // ---------------------------------------------------------------------
+  // Saves a single profile field (e.g. "name", "phone", "location",
+  // "email") to the backend. Assumed route: POST /profile/update with
+  // {email, field, value}. Update the route/keys here if your backend's
+  // actual update-profile endpoint differs.
+  //
+  // `email` is the CURRENT email of the logged-in user, used to identify
+  // the account being updated — even when the field being changed is
+  // "email" itself (in that case `value` is the new email address).
+  static Future<Map<String, dynamic>> updateProfileField(
+    String email,
+    String field,
+    String value,
+  ) async {
+    http.Response response;
+
+    try {
+      response = await http.post(
+        Uri.parse("$baseUrl/profile/update"),
+        body: {
+          "email": email,
+          "field": field,
+          "value": value,
+        },
+      );
+    } catch (e) {
+      throw Exception("No internet connection or server unreachable");
+    }
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception(
+        "Server returned an unexpected response (${response.statusCode}). Check the API route.",
+      );
+    }
+
+    if (response.statusCode == 422) {
+      throw Exception(body['message'] ?? "Invalid value for $field");
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception(body['message'] ?? "Unable to update $field");
+    }
+
+    return body;
+  }
 
 
   // Add these three methods inside your existing ApiService class

@@ -7,9 +7,16 @@ const Color kBrandOrange = Color(0xFFF2811D);
 /// Fixed top bar used on Dashboard, Project Tracking, etc:
 /// logo + company name/tagline + notification bell + profile avatar.
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
-  const AppHeader({super.key, this.showBackButton = false});
+  const AppHeader({super.key, this.showBackButton = false, this.email = ''});
 
   final bool showBackButton;
+
+  // The current signed-in user's email, forwarded to /profile when the
+  // avatar is tapped. Pass this in from whichever screen uses AppHeader
+  // (e.g. AppHeader(email: widget.email)) so the profile page loads the
+  // right account instead of an empty one. Defaults to '' for screens
+  // that haven't been updated yet.
+  final String email;
 
   // TODO: wire to real unread-notifications count once notifications data layer exists.
   static const int _unreadCount = 4;
@@ -79,7 +86,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () {
-                  Navigator.of(context).pushNamed('/profile');
+                  Navigator.of(context).pushNamed('/profile', arguments: email);
                 },
                 customBorder: const CircleBorder(),
                 child: const Padding(

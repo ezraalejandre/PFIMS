@@ -272,3 +272,26 @@ Route::delete('/suppliers/{id}', function ($id) {
 Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'reset']);
+
+
+// Serves profile photos through Laravel (instead of the static /storage
+// symlink) so we can attach CORS headers — needed for Flutter Web, since
+// static files served directly by the web server never pass through
+// Laravel's CORS middleware.
+Route::get('/profile-photo/{filename}', function (string $filename) {
+    // Basic guard against path traversal (e.g. "../../.env").
+    if (str_contains($filename, '/') || str_contains($filename, '..')) {
+        abort(404);
+    }
+
+    $path = storage_path('app/public/profile_photos/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->file($path, [
+        'Access-Control-Allow-Origin' => '*',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+});

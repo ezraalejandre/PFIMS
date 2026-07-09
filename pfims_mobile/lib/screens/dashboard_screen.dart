@@ -86,7 +86,14 @@ const List<_ActiveProjectData> _activeProjects = [
 /// ---------------------------------------------------------------------
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  // The logged-in user's email, passed via route arguments from
+  // Navigator.pushReplacementNamed(context, "/dashboard", arguments: email)
+  // in login_screen.dart, and forwarded here from main.dart's
+  // onGenerateRoute. Used to carry identity into /profile when the header
+  // avatar is tapped.
+  final String email;
+
+  const DashboardScreen({super.key, this.email = ''});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -117,7 +124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPageBg,
-      appBar: _DashboardHeader(),
+      appBar: _DashboardHeader(email: widget.email),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -330,13 +337,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 0, email: widget.email),
     );
   }
 }
 
 /// Custom top app bar: logo + company name + notification bell + profile avatar.
 class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
+  const _DashboardHeader({required this.email});
+
+  final String email;
+
   /// TODO: wire to real unread-notifications count once notifications data layer exists.
   static const int _unreadCount = 4;
 
@@ -394,7 +405,7 @@ class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: () => Navigator.of(context).pushNamed('/profile'),
+                onTap: () => Navigator.of(context).pushNamed('/profile', arguments: email),
                 customBorder: const CircleBorder(),
                 child: const Padding(
                   padding: EdgeInsets.all(4),

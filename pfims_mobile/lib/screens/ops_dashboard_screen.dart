@@ -53,7 +53,12 @@ const List<_ActiveProjectData> _activeProjects = [
 ];
 
 class OpsDashboardScreen extends StatefulWidget {
-  const OpsDashboardScreen({super.key});
+  // The logged-in user's email, forwarded to /profile via the header's
+  // profile avatar. Pass this in via route arguments when navigating here
+  // (see main.dart's onGenerateRoute) so the profile page loads correctly.
+  final String email;
+
+  const OpsDashboardScreen({super.key, this.email = ''});
 
   @override
   State<OpsDashboardScreen> createState() => _OpsDashboardScreenState();
@@ -84,7 +89,7 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPageBg,
-      appBar: _OpsHeader(),
+      appBar: _OpsHeader(email: widget.email),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -224,12 +229,16 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const OpsBottomNavBar(currentIndex: 0),
+      bottomNavigationBar: OpsBottomNavBar(currentIndex: 0, email: widget.email),
     );
   }
 }
 
 class _OpsHeader extends StatelessWidget implements PreferredSizeWidget {
+  const _OpsHeader({required this.email});
+
+  final String email;
+
   static const int _unreadCount = 4;
 
   @override
@@ -293,7 +302,8 @@ class _OpsHeader extends StatelessWidget implements PreferredSizeWidget {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: () => Navigator.of(context).pushNamed('/profile'),
+                onTap: () => Navigator.of(context)
+                    .pushNamed('/profile', arguments: email),
                 customBorder: const CircleBorder(),
                 child: const Padding(
                   padding: EdgeInsets.all(4),

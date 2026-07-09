@@ -125,7 +125,9 @@ const List<_ProjectData> _projects = [
 /// ---------------------------------------------------------------------
 
 class ProjectTrackingScreen extends StatefulWidget {
-  const ProjectTrackingScreen({super.key});
+  final String email;
+
+  const ProjectTrackingScreen({super.key, this.email = ''});
 
   @override
   State<ProjectTrackingScreen> createState() => _ProjectTrackingScreenState();
@@ -144,7 +146,7 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F5),
-      appBar: const AppHeader(),
+      appBar: AppHeader(email: widget.email),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -298,7 +300,7 @@ onPressed: () {
 ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNavBar(currentIndex: 1),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 1, email: widget.email),
     );
   }
 }

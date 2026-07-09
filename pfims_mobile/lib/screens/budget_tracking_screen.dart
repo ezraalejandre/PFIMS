@@ -102,7 +102,9 @@ const String _companyPhone = "09123456789";
 /// ---------------------------------------------------------------------
 
 class BudgetTrackingScreen extends StatefulWidget {
-  const BudgetTrackingScreen({super.key});
+  final String email;
+
+  const BudgetTrackingScreen({super.key, this.email = ''});
 
   @override
   State<BudgetTrackingScreen> createState() => _BudgetTrackingScreenState();
@@ -120,7 +122,7 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F5),
-      appBar: const AppHeader(),
+      appBar: AppHeader(email: widget.email),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -471,7 +473,7 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNavBar(currentIndex: 2),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 2, email: widget.email),
     );
   }
 }

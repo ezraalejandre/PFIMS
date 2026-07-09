@@ -232,9 +232,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                           try {
                                             final result = await ApiService.login(email, password);
 
-                                            print(result);
+                                            // Carry the logged-in email forward via route
+                                            // arguments so downstream screens (Dashboard,
+                                            // Profile, etc.) know who's signed in. Falls
+                                            // back to the typed email if the backend
+                                            // response shape ever changes.
+                                            final loggedInEmail =
+                                                (result['user']?['email'] as String?) ?? email;
+                                            final role =
+                                                (result['user']?['role'] as String?)?.toLowerCase() ?? '';
 
-                                            Navigator.pushReplacementNamed(context, "/dashboard");
+                                            // Route to the dashboard that matches the
+                                            // account's role. AuthController::login
+                                            // returns role as one of 'admin',
+                                            // 'operations', or 'accounting' (see the
+                                            // users table enum) — anything else
+                                            // (including 'admin') falls back to the
+                                            // default /dashboard.
+                                            final String destinationRoute;
+                                            switch (role) {
+                                              case 'operations':
+                                                destinationRoute = '/ops-dashboard';
+                                                break;
+                                              case 'accounting':
+                                                destinationRoute = '/acct-dashboard';
+                                                break;
+                                              default:
+                                                destinationRoute = '/dashboard';
+                                            }
+
+                                            if (!mounted) return;
+                                            Navigator.pushReplacementNamed(
+                                              context,
+                                              destinationRoute,
+                                              arguments: loggedInEmail,
+                                            );
                                           } catch (e) {
                                               showDialog(
                                                 context: context,
