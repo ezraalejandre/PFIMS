@@ -5,7 +5,9 @@ import 'notifications_screen.dart';
 import 'security_settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import '../services/user_session.dart';
 import 'dart:typed_data';
+import 'dart:convert';
 
 class ProfileScreen extends StatefulWidget {
   final String email; // the logged-in user's email, passed in after login
@@ -22,14 +24,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _phone = '';
   String _location = '';
   String _role = '';
-  String? _profilePhotoUrl; // URL returned by the backend (asset('storage/...'))
+  // The photo is now stored in the DB and returned as a base64 data URI
+  // ("data:image/jpeg;base64,...") rather than a URL, so there's no
+  // separate network fetch (and therefore no CORS issue) — we decode it
+  // straight into bytes and use MemoryImage everywhere, the same way a
+  // freshly-picked local photo is already previewed below.
 
   bool _isLoading = true;
   String? _loadError;
 
   static const String _appVersion = 'EVC-DCS v2.4.1 · Build 241';
 
-  Uint8List? _profilePhotoBytes; // local preview after a fresh upload, overrides _profilePhotoUrl
+  Uint8List? _profilePhotoBytes; // decoded from the data URI, or a local preview after a fresh upload
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingPhoto = false;
 
@@ -84,8 +90,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _phone = profile['phone'] ?? '';
         _location = profile['location'] ?? '';
         _role = (profile['role'] ?? '').toString().toUpperCase();
-        _profilePhotoUrl = profile['profile_photo'];
+        _profilePhotoBytes = _decodeDataUri(profile['profile_photo']);
       });
+      // Keep AppHeader's session cache in sync so other screens' avatars
+      // reflect the latest email/photo without each of them having to
+      // fetch the profile themselves.
+      UserSession.updateFromProfile(profile);
     } catch (e) {
       setState(() => _loadError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -98,6 +108,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (parts.isEmpty || parts.first.isEmpty) return '';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+  }
+
+  // Decodes a "data:<mime>;base64,<data>" URI into raw bytes. Returns
+  // null if the input is null/empty or isn't a valid data URI, so a
+  // malformed value from the backend just falls back to the initials
+  // avatar instead of crashing.
+  Uint8List? _decodeDataUri(String? dataUri) {
+    if (dataUri == null || dataUri.isEmpty) return null;
+    final commaIndex = dataUri.indexOf(',');
+    if (commaIndex == -1) return null;
+    try {
+      return base64Decode(dataUri.substring(commaIndex + 1));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _changePhoto() async {
@@ -140,8 +165,9 @@ try {
     final result = await ApiService.uploadProfilePhoto(_email, picked);
     if (!mounted) return;
     setState(() {
-      _profilePhotoUrl = result['profile_photo']; // canonical server URL
+      _profilePhotoBytes = _decodeDataUri(result['profile_photo']) ?? _profilePhotoBytes;
     });
+    UserSession.photoDataUri = result['profile_photo'] as String?;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Photo updated')),
     );
@@ -202,6 +228,9 @@ try {
         onSaved(result);
         _savingField = null;
       });
+      if (fieldKey == 'email') {
+        UserSession.email = result;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$label updated')),
       );
@@ -254,31 +283,12 @@ try {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppHeader(email: _email),
+      appBar: const _ProfileAppBar(),
       body: RefreshIndicator(
         onRefresh: _loadProfile,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  splashRadius: 22,
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  'PROFILE',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text('account & settings management', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-            const SizedBox(height: 16),
-
             // ---- Loading / error states for the initial profile fetch ----
             if (_isLoading)
               const Padding(
@@ -327,8 +337,8 @@ try {
                           backgroundColor: kBrandOrange,
                           backgroundImage: _profilePhotoBytes != null
                               ? MemoryImage(_profilePhotoBytes!)
-                              : (_profilePhotoUrl != null ? NetworkImage(_profilePhotoUrl!) : null) as ImageProvider?,
-                          child: (_profilePhotoBytes == null && _profilePhotoUrl == null)
+                              : null,
+                          child: _profilePhotoBytes == null
                               ? Text(
                                   _initials,
                                   style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
@@ -537,6 +547,58 @@ try {
       ),
     );
   }
+}
+
+// ---- App bar: back arrow + title, with a subtitle line underneath ----
+class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _ProfileAppBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 16, 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  splashRadius: 22,
+                ),
+                const Text(
+                  'PROFILE',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 48),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'account & settings management',
+                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(78);
 }
 
 class _Card extends StatelessWidget {

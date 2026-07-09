@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../screens/notifications_screen.dart';
+import '../services/user_session.dart';
 
 // TODO: move shared brand colors into theme/app_theme.dart
 const Color kBrandOrange = Color(0xFFF2811D);
@@ -7,22 +10,52 @@ const Color kBrandOrange = Color(0xFFF2811D);
 /// Fixed top bar used on Dashboard, Project Tracking, etc:
 /// logo + company name/tagline + notification bell + profile avatar.
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
-  const AppHeader({super.key, this.showBackButton = false, this.email = ''});
+  const AppHeader({
+    super.key,
+    this.showBackButton = false,
+    this.email = '',
+    this.photoDataUri,
+  });
 
   final bool showBackButton;
 
   // The current signed-in user's email, forwarded to /profile when the
   // avatar is tapped. Pass this in from whichever screen uses AppHeader
   // (e.g. AppHeader(email: widget.email)) so the profile page loads the
-  // right account instead of an empty one. Defaults to '' for screens
-  // that haven't been updated yet.
+  // right account instead of an empty one. Falls back to
+  // UserSession.email if left as ''/unset.
   final String email;
+
+  // The signed-in user's profile photo, in the same base64 data URI
+  // format the backend returns from /profile and /profile/photo (e.g.
+  // "data:image/jpeg;base64,..."). Optional — if not passed, falls back
+  // to UserSession.photoDataUri, which login and ProfileScreen keep
+  // updated automatically. Explicitly pass this only if a screen has a
+  // more current value than the session cache. Null/empty/invalid falls
+  // back to the generic person icon.
+  final String? photoDataUri;
 
   // TODO: wire to real unread-notifications count once notifications data layer exists.
   static const int _unreadCount = 4;
 
+  String get _resolvedEmail => email.isNotEmpty ? email : UserSession.email;
+
+  Uint8List? _decodePhoto() {
+    final uri = photoDataUri ?? UserSession.photoDataUri;
+    if (uri == null || uri.isEmpty) return null;
+    final commaIndex = uri.indexOf(',');
+    if (commaIndex == -1) return null;
+    try {
+      return base64Decode(uri.substring(commaIndex + 1));
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final photoBytes = _decodePhoto();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -86,15 +119,18 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () {
-                  Navigator.of(context).pushNamed('/profile', arguments: email);
+                  Navigator.of(context).pushNamed('/profile', arguments: _resolvedEmail);
                 },
                 customBorder: const CircleBorder(),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
                   child: CircleAvatar(
                     radius: 18,
                     backgroundColor: kBrandOrange,
-                    child: Icon(Icons.person, color: Colors.white, size: 20),
+                    backgroundImage: photoBytes != null ? MemoryImage(photoBytes) : null,
+                    child: photoBytes == null
+                        ? const Icon(Icons.person, color: Colors.white, size: 20)
+                        : null,
                   ),
                 ),
               ),

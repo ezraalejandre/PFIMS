@@ -96,9 +96,7 @@ public function profile(Request $request)
             "phone" => $user->phone,
             "location" => $user->location,
             "role" => $user->role,
-            "profile_photo" => $user->profile_photo
-                ? url('/api/profile-photo/' . basename($user->profile_photo))
-                : null,
+            "profile_photo" => $this->photoDataUri($user),
         ],
     ]);
 }
@@ -119,55 +117,68 @@ public function uploadProfilePhoto(Request $request)
         ], 404);
     }
 
-    if ($user->profile_photo) {
-        \Illuminate\Support\Facades\Storage::disk('public')->delete($user->profile_photo);
-    }
+    $file = $request->file('photo');
 
-    $path = $request->file('photo')->store('profile_photos', 'public');
-
-    $user->profile_photo = $path;
+    // Store the image directly in the database as base64 text, rather
+    // than on local disk. This removes the CORS problem entirely (the
+    // browser never fetches a separate static file — the image comes
+    // back embedded in this same JSON response) and means the photo
+    // can never go "missing" because a file got deleted or the storage
+    // symlink wasn't set up.
+    $user->profile_photo_data = base64_encode(file_get_contents($file->getRealPath()));
+    $user->profile_photo_mime = $file->getMimeType();
     $user->save();
 
     return response()->json([
         "success" => true,
-        "profile_photo" => url('/api/profile-photo/' . basename($path)),
+        "profile_photo" => $this->photoDataUri($user),
     ]);
+}
+
+// Builds a "data:image/jpeg;base64,...." URI from the stored base64
+// image data + MIME type, or null if the user has no photo saved.
+// Flutter decodes this directly into bytes for MemoryImage.
+private function photoDataUri(User $user): ?string
+{
+    if (!$user->profile_photo_data || !$user->profile_photo_mime) {
+        return null;
+    }
+
+    return "data:{$user->profile_photo_mime};base64,{$user->profile_photo_data}";
 }
 
 
 public function changePassword(Request $request)
 {
+    $request->validate([
+        'email' => ['required', 'email'],
+        'current_password' => ['required', 'string'],
+        'new_password' => ['required', 'string', 'min:8'],
+    ]);
 
+    $user = User::where('email', $request->email)->first();
 
-$user = User::where(
-'email',
-$request->email
-)->first();
+    if (!$user) {
+        return response()->json([
+            "success" => false,
+            "message" => "User not found",
+        ], 404);
+    }
 
+    if (!Hash::check($request->current_password, $user->password)) {
+        return response()->json([
+            "success" => false,
+            "message" => "Current password is incorrect",
+        ], 401);
+    }
 
+    // Hash the new password before storing it — never save plaintext.
+    $user->password = Hash::make($request->new_password);
+    $user->save();
 
-$user->password =
-$request->new_password;
-
-
-$user->save();
-
-
-
-return response()->json([
-
-"success"=>true,
-
-"user"=>$user
-
-]);
-
-
+    return response()->json([
+        "success" => true,
+        "message" => "Password updated successfully",
+    ]);
 }
 }
-
-
-
-
-
-

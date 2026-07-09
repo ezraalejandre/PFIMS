@@ -1,4 +1,5 @@
 import '../services/api_service.dart';
+import '../services/user_session.dart';
 import 'forgot_password_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -259,6 +260,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 break;
                                               default:
                                                 destinationRoute = '/dashboard';
+                                            }
+
+                                            UserSession.email = loggedInEmail;
+
+                                            // Best-effort: fetch the full profile (name,
+                                            // phone, location, photo) so AppHeader's
+                                            // avatar is populated right away instead of
+                                            // showing the generic icon until the user
+                                            // visits Profile. Login itself only returns
+                                            // id/name/email/role, not the photo. A
+                                            // failure here is non-critical — the header
+                                            // just falls back to the icon.
+                                            try {
+                                              final profileResult =
+                                                  await ApiService.getProfile(loggedInEmail);
+                                              final profileUser =
+                                                  profileResult['user'] as Map<String, dynamic>?;
+                                              if (profileUser != null) {
+                                                UserSession.updateFromProfile(profileUser);
+                                              }
+                                            } catch (_) {
+                                              // Ignore — login already succeeded.
                                             }
 
                                             if (!mounted) return;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/app_header.dart';
+import '../services/api_service.dart';
+import '../services/user_session.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -27,68 +29,148 @@ class _SecuritySettingsScreenState
 
 
   Future<void> _editPassword() async {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
 
-    final controller = TextEditingController();
+    bool isSaving = false;
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    String? currentErrorText;
+    String? newErrorText;
 
-
-    final result = await showDialog<String>(
+    await showDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          Future<void> submit() async {
+            final currentPassword = currentPasswordController.text;
+            final newPassword = newPasswordController.text;
 
-        title: const Text("Change Password"),
+            setDialogState(() {
+              currentErrorText = null;
+              newErrorText = null;
+            });
 
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          decoration:
-              const InputDecoration(
-                labelText: "New Password",
+            var hasError = false;
+            if (currentPassword.isEmpty) {
+              setDialogState(
+                  () => currentErrorText = "Enter your current password");
+              hasError = true;
+            }
+            if (newPassword.trim().isEmpty) {
+              setDialogState(() => newErrorText = "Enter a new password");
+              hasError = true;
+            } else if (newPassword.length < 8) {
+              setDialogState(
+                  () => newErrorText = "Must be at least 8 characters");
+              hasError = true;
+            }
+            if (hasError) return;
+
+            setDialogState(() => isSaving = true);
+
+            try {
+              await ApiService.changePassword(
+                UserSession.email,
+                currentPassword,
+                newPassword,
+              );
+
+              if (!mounted) return;
+              Navigator.of(dialogContext).pop();
+
+              setState(() {
+                _maskedPassword = "••••••••••";
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Password updated")),
+              );
+            } catch (e) {
+              setDialogState(() {
+                isSaving = false;
+                currentErrorText = e.toString().replaceFirst('Exception: ', '');
+              });
+            }
+          }
+
+          return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            title: const Text("Change Password"),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: currentPasswordController,
+                    obscureText: obscureCurrent,
+                    autofocus: true,
+                    enabled: !isSaving,
+                    decoration: InputDecoration(
+                      labelText: "Current Password",
+                      errorText: currentErrorText,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureCurrent
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () => setDialogState(
+                            () => obscureCurrent = !obscureCurrent),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: obscureNew,
+                    enabled: !isSaving,
+                    decoration: InputDecoration(
+                      labelText: "New Password",
+                      errorText: newErrorText,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureNew
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () =>
+                            setDialogState(() => obscureNew = !obscureNew),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-        ),
-
-
-        actions: [
-
-          TextButton(
-            onPressed: ()=>Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-
-
-FilledButton(
-  style: FilledButton.styleFrom(
-    backgroundColor: kBrandOrange,
-  ),
-  onPressed: (){
-    Navigator.pop(context);
-  },
-  child: const Text("Update"),
-),
-
-        ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: const Text("Cancel"),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: kBrandOrange),
+                onPressed: isSaving ? null : submit,
+                child: isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text("Update"),
+              ),
+            ],
+          );
+        },
       ),
     );
-
-
-    if(result != null && result.isNotEmpty){
-
-      setState((){
-
-        _maskedPassword =
-            "••••••••••";
-
-      });
-
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content:
-          Text("Password updated"),
-        ),
-      );
-    }
-
   }
 
 
@@ -236,63 +318,18 @@ FilledButton(
           const Color(0xFFF5F5F5),
 
       appBar:
-          const AppHeader(),
+          const _SecurityAppBar(),
 
 
       body:ListView(
 
         padding:
         const EdgeInsets.fromLTRB(
-          16,16,16,24
+          16,24,16,24
         ),
 
 
         children:[
-
-
-
-          Row(
-
-            children:[
-
-              IconButton(
-                icon:
-                const Icon(
-                  Icons.arrow_back,
-                ),
-
-                onPressed:
-                ()=>Navigator.pop(context),
-              ),
-
-
-              const Text(
-                "PRIVACY & SECURITY",
-                style:
-                TextStyle(
-                  fontSize:20,
-                  fontWeight:
-                  FontWeight.w800,
-                ),
-              )
-
-            ],
-          ),
-
-
-          Text(
-            "password & account protection",
-            style:
-            TextStyle(
-              color:
-              Colors.grey.shade600,
-              fontSize:13,
-            ),
-          ),
-
-
-
-          const SizedBox(height:16),
 
 
 
@@ -497,9 +534,57 @@ FilledButton(
 }
 
 
+// ---- App bar: back arrow + title, with a subtitle line underneath ----
+class _SecurityAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _SecurityAppBar();
 
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 16, 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  splashRadius: 22,
+                ),
+                const Text(
+                  'PRIVACY & SECURITY',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 48),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'password & account protection',
+                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-
+  @override
+  Size get preferredSize => const Size.fromHeight(78);
+}
 
 
 class _Card extends StatelessWidget {

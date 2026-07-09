@@ -45,20 +45,59 @@ static Future<Map<String, dynamic>> login(
 }
 
 
-static Future<Map<String,dynamic>> changePassword(
-  String email,
-  String password,
-) async {
-  final response = await http.post(
-    Uri.parse("$baseUrl/change-password"),   // was "$baseUrl/api/change-password"
-    body: {
-      "email": email,
-      "new_password": password,
-    },
-  );
+  // Updates the logged-in user's password. The current password is sent
+  // along so the backend can verify it (Hash::check) before allowing the
+  // change; the new password is hashed server-side (Hash::make) before
+  // storing — plaintext is never persisted. Throws an Exception with a
+  // user-facing message on failure (e.g. wrong current password, user not
+  // found, new password too short/invalid).
+  static Future<Map<String, dynamic>> changePassword(
+    String email,
+    String currentPassword,
+    String newPassword,
+  ) async {
+    http.Response response;
 
-  return jsonDecode(response.body);
-}
+    try {
+      response = await http.post(
+        Uri.parse("$baseUrl/change-password"),
+        body: {
+          "email": email,
+          "current_password": currentPassword,
+          "new_password": newPassword,
+        },
+      );
+    } catch (e) {
+      throw Exception("No internet connection or server unreachable");
+    }
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception(
+        "Server returned an unexpected response (${response.statusCode}). Check the API route.",
+      );
+    }
+
+    if (response.statusCode == 404) {
+      throw Exception(body['message'] ?? "Account not found");
+    }
+
+    if (response.statusCode == 401) {
+      throw Exception(body['message'] ?? "Current password is incorrect");
+    }
+
+    if (response.statusCode == 422) {
+      throw Exception(body['message'] ?? "Invalid password");
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception(body['message'] ?? "Unable to update password");
+    }
+
+    return body;
+  }
 
 
 static Future<Map<String,dynamic>> getProfile(
