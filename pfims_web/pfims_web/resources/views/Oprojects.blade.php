@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operations Projects - PFIMS</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Project Tracking - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Oprojects.css') }}">
     <style>
         .error-notification { z-index: 9999 !important; }
@@ -70,7 +71,7 @@
             </a>
             <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>User</span>
+                <span>{{ auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -95,10 +96,13 @@
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/olandig') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
-                        Log out
-                    </a>
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>
@@ -161,328 +165,7 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- Skyline Tower -->
-                    <tr onclick="openUpdateModal(
-                        'Skyline Tower',
-                        'Mega Reality Corp.',
-                        '₱15,000,000',
-                        'Jan 15, 2025',
-                        'Dec 30, 2025',
-                        '—',
-                        '11.5 mo',
-                        'Structure',
-                        'At Risk',
-                        72,
-                        'A. Santos',
-                        50,
-                        '2025-01-15',
-                        '2025-12-30'
-                    )">
-                        <td><strong>Skyline Tower</strong></td>
-                        <td>Mega Reality Corp.</td>
-                        <td>₱15,000,000</td>
-                        <td>Jan 15, 2025</td>
-                        <td>Dec 30, 2025</td>
-                        <td>—</td>
-                        <td>11.5 mo</td>
-                        <td><span class="phase-badge">Structure</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:72%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <!-- Harbor Bridge Annex -->
-                    <tr onclick="openUpdateModal(
-                        'Harbor Bridge Annex',
-                        'City Gov — NCR',
-                        '₱8,500,000',
-                        'Mar 1, 2025',
-                        'Aug 15, 2025',
-                        '—',
-                        '5.5 mo',
-                        'Finishing',
-                        'On Track',
-                        91,
-                        'B. Reyes',
-                        30,
-                        '2025-03-01',
-                        '2025-08-15'
-                    )">
-                        <td><strong>Harbor Bridge Annex</strong></td>
-                        <td>City Gov — NCR</td>
-                        <td>₱8,500,000</td>
-                        <td>Mar 1, 2025</td>
-                        <td>Aug 15, 2025</td>
-                        <td>—</td>
-                        <td>5.5 mo</td>
-                        <td><span class="phase-badge">Finishing</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:91%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge on-track"><span class="dot"></span> On Track</span></td>
-                    </tr>
-                    <!-- Green Hills Residences -->
-                    <tr onclick="openUpdateModal(
-                        'Green Hills Residences',
-                        'Verde Homes Inc.',
-                        '₱12,200,000',
-                        'Nov 10, 2024',
-                        'May 20, 2025',
-                        '—',
-                        '6.3 mo',
-                        'Complete',
-                        'Completed',
-                        100,
-                        'C. Mendoza',
-                        40,
-                        '2024-11-10',
-                        '2025-05-20'
-                    )">
-                        <td><strong>Green Hills Residences</strong></td>
-                        <td>Verde Homes Inc.</td>
-                        <td>₱12,200,000</td>
-                        <td>Nov 10, 2024</td>
-                        <td>May 20, 2025</td>
-                        <td>—</td>
-                        <td>6.3 mo</td>
-                        <td><span class="phase-badge">Complete</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:100%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge completed"><span class="dot"></span> Completed</span></td>
-                    </tr>
-                    <!-- Eastwood Mall -->
-                    <tr onclick="openUpdateModal(
-                        'Eastwood Mall',
-                        'LKP Commercial',
-                        '₱20,000,000',
-                        'Feb 22, 2025',
-                        'Jul 30, 2025',
-                        '—',
-                        '5.2 mo',
-                        'Foundation',
-                        'At Risk',
-                        55,
-                        'D. Cruz',
-                        60,
-                        '2025-02-22',
-                        '2025-07-30'
-                    )">
-                        <td><strong>Eastwood Mall</strong></td>
-                        <td>LKP Commercial</td>
-                        <td>₱20,000,000</td>
-                        <td>Feb 22, 2025</td>
-                        <td>Jul 30, 2025</td>
-                        <td>—</td>
-                        <td>5.2 mo</td>
-                        <td><span class="phase-badge">Foundation</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:55%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <!-- BPO Hub Bldg. C -->
-                    <tr onclick="openUpdateModal(
-                        'BPO Hub Bldg. C',
-                        'TechZone Holdings',
-                        '₱6,800,000',
-                        'Apr 5, 2025',
-                        'Jan 5, 2026',
-                        '—',
-                        '9 mo',
-                        'Planning',
-                        'At Risk',
-                        28,
-                        'A. Santos',
-                        25,
-                        '2025-04-05',
-                        '2026-01-05'
-                    )">
-                        <td><strong>BPO Hub Bldg. C</strong></td>
-                        <td>TechZone Holdings</td>
-                        <td>₱6,800,000</td>
-                        <td>Apr 5, 2025</td>
-                        <td>Jan 5, 2026</td>
-                        <td>—</td>
-                        <td>9 mo</td>
-                        <td><span class="phase-badge">Planning</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:28%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <!-- North Rail Station -->
-                    <tr onclick="openUpdateModal(
-                        'North Rail Station',
-                        'DOTR — PH',
-                        '₱45,000,000',
-                        'Sep 1, 2024',
-                        'Mar 1, 2025',
-                        '—',
-                        '6 mo',
-                        'Structure',
-                        'Delayed',
-                        44,
-                        'E. Villanueva',
-                        80,
-                        '2024-09-01',
-                        '2025-03-01'
-                    )">
-                        <td><strong>North Rail Station</strong></td>
-                        <td>DOTR — PH</td>
-                        <td>₱45,000,000</td>
-                        <td>Sep 1, 2024</td>
-                        <td>Mar 1, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td><span class="phase-badge">Structure</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:44%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge delayed"><span class="dot"></span> Delayed</span></td>
-                    </tr>
-                    <!-- Pasig River Walk -->
-                    <tr onclick="openUpdateModal(
-                        'Pasig River Walk',
-                        'Pasig City LGU',
-                        '₱3,200,000',
-                        'Jan 2, 2025',
-                        'Jun 30, 2025',
-                        '—',
-                        '6 mo',
-                        'Finishing',
-                        'On Track',
-                        80,
-                        'C. Mendoza',
-                        35,
-                        '2025-01-02',
-                        '2025-06-30'
-                    )">
-                        <td><strong>Pasig River Walk</strong></td>
-                        <td>Pasig City LGU</td>
-                        <td>₱3,200,000</td>
-                        <td>Jan 2, 2025</td>
-                        <td>Jun 30, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td><span class="phase-badge">Finishing</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:80%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge on-track"><span class="dot"></span> On Track</span></td>
-                    </tr>
-                    <!-- Metro Interchange -->
-                    <tr onclick="openUpdateModal(
-                        'Metro Interchange',
-                        'MMDA',
-                        '₱28,000,000',
-                        'Oct 15, 2024',
-                        'Apr 15, 2025',
-                        '—',
-                        '6 mo',
-                        'Foundation',
-                        'Delayed',
-                        38,
-                        'B. Reyes',
-                        70,
-                        '2024-10-15',
-                        '2025-04-15'
-                    )">
-                        <td><strong>Metro Interchange</strong></td>
-                        <td>MMDA</td>
-                        <td>₱28,000,000</td>
-                        <td>Oct 15, 2024</td>
-                        <td>Apr 15, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td><span class="phase-badge">Foundation</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:38%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge delayed"><span class="dot"></span> Delayed</span></td>
-                    </tr>
-                    <!-- Laguna Warehouse Complex -->
-                    <tr onclick="openUpdateModal(
-                        'Laguna Warehouse Complex',
-                        'STAR Logistics',
-                        '₱9,500,000',
-                        'Mar 18, 2025',
-                        'Sep 18, 2025',
-                        '—',
-                        '6 mo',
-                        'Planning',
-                        'At Risk',
-                        20,
-                        'A. Santos',
-                        20,
-                        '2025-03-18',
-                        '2025-09-18'
-                    )">
-                        <td><strong>Laguna Warehouse Complex</strong></td>
-                        <td>STAR Logistics</td>
-                        <td>₱9,500,000</td>
-                        <td>Mar 18, 2025</td>
-                        <td>Sep 18, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td><span class="phase-badge">Planning</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:20%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <!-- Alabang Medical -->
-                    <tr onclick="openUpdateModal(
-                        'Alabang Medical',
-                        'HealthFirst PH',
-                        '₱18,000,000',
-                        'Dec 1, 2024',
-                        'Nov 30, 2025',
-                        '—',
-                        '12 mo',
-                        'Structure',
-                        'On Track',
-                        60,
-                        'D. Cruz',
-                        90,
-                        '2024-12-01',
-                        '2025-11-30'
-                    )">
-                        <td><strong>Alabang Medical</strong></td>
-                        <td>HealthFirst PH</td>
-                        <td>₱18,000,000</td>
-                        <td>Dec 1, 2024</td>
-                        <td>Nov 30, 2025</td>
-                        <td>—</td>
-                        <td>12 mo</td>
-                        <td><span class="phase-badge">Structure</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="mini-bar"><div class="fill" style="width:60%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="status-badge on-track"><span class="dot"></span> On Track</span></td>
-                    </tr>
-                </tbody>
+                <tbody id="projectTableBody"></tbody>
             </table>
         </div>
 
@@ -595,13 +278,13 @@
         </div>
     </div>
 
-    <!-- ─── UPDATE PROJECT OVERVIEW MODAL ─── -->
+    <!-- ─── UPDATE PROJECT OVERVIEW MODAL (with Delete) ─── -->
     <div id="updateModal" class="modal-overlay modal-update">
         <div class="modal-container">
             <div class="modal-header">
                 <div>
-                    <h2 id="updateProjectName" style="margin-bottom: 2px;">Skyline Tower</h2>
-                    <span class="subtitle" id="updateClientName">Mega Realty Corp</span>
+                    <h2 id="updateProjectName" style="margin-bottom: 2px;">Project Name</h2>
+                    <span class="subtitle" id="updateClientName">Client Name</span>
                 </div>
                 <button class="modal-close" onclick="closeUpdateModal()">×</button>
             </div>
@@ -609,7 +292,7 @@
             <div class="project-details-grid">
                 <div class="detail-item">
                     <label>Budget</label>
-                    <span id="updateBudget">₱15,000,000</span>
+                    <span id="updateBudget">—</span>
                 </div>
                 <div class="detail-item">
                     <label>Start Date</label>
@@ -645,7 +328,7 @@
         </div>
     </div>
 
-    <!-- ─── EDIT PROJECT MODAL ─── -->
+    <!-- ─── EDIT PROJECT MODAL (standalone) ─── -->
     <div id="editProjectModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
@@ -678,10 +361,6 @@
                     <div class="form-group">
                         <label>Actual End Date</label>
                         <input type="date" id="editActualEndDate">
-                    </div>
-                    <div class="form-group">
-                        <label>Duration</label>
-                        <input type="text" id="editDuration" placeholder="e.g. 11.5 mo">
                     </div>
                 </div>
             </div>
@@ -839,9 +518,192 @@
             goToStep(step);
         }
 
+        function calculateDuration(start, end) {
+            if (!start) {
+                return '—';
+            }
+            var startDate = new Date(start);
+            var endDate = end ? new Date(end) : new Date();
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate) {
+                return '—';
+            }
+            var diffDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+            return (diffDays / 30).toFixed(1) + ' mo';
+        }
+
+        function getCsrfToken() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.content : '';
+        }
+
+        function formatDate(rawDate) {
+            if (!rawDate) return '—';
+            var date = new Date(rawDate);
+            if (isNaN(date.getTime())) return rawDate;
+            var options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function mapProjectApiRecord(record) {
+            var actualDate = record.actual_end_date || null;
+            return {
+                id: record.project_id,
+                name: record.project_name || 'Untitled Project',
+                client: record.client_name || '—',
+                budget: record.budget || '',
+                manager: record.project_manager || '',
+                workers: record.worker_count || '0',
+                startDate: record.start_date || '',
+                endDate: record.estimated_end_date || '',
+                actualEndDate: actualDate || '',
+                phase: record.phase || 'Planning',
+                progress: record.completion_percentage || 0,
+                status: record.status || 'On Track',
+                duration: calculateDuration(record.start_date, actualDate),
+                startDateDisplay: formatDate(record.start_date),
+                estEndDateDisplay: formatDate(record.estimated_end_date),
+                actualEndDateDisplay: actualDate ? formatDate(actualDate) : '—'
+            };
+        }
+
+        function fetchProjects() {
+            fetch('/api/projects', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Unable to load projects');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                var tbody = document.getElementById('projectTableBody');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                data.forEach(function(item) {
+                    tbody.appendChild(createProjectRow(mapProjectApiRecord(item)));
+                });
+            })
+            .catch(function(error) {
+                console.error(error);
+                showError('Failed to load projects.');
+            });
+        }
+
+        function updateProjectRow(row, project) {
+            row.dataset.projectId = project.id || '';
+            row.dataset.manager = project.manager || '';
+            row.dataset.workers = project.workers || '';
+            row.dataset.startDateRaw = project.startDate || '';
+            row.dataset.endDateRaw = project.endDate || '';
+            row.dataset.actualEndDate = project.actualEndDate || '';
+            row.dataset.duration = project.duration || '';
+            row.dataset.phase = project.phase || 'Planning';
+            row.dataset.progress = project.progress || 0;
+            row.dataset.status = project.status || 'On Track';
+
+            row.onclick = function() {
+                openUpdateModal(
+                    this,
+                    project.id,
+                    project.name,
+                    project.client,
+                    project.budget,
+                    project.startDateDisplay,
+                    project.estEndDateDisplay,
+                    project.actualEndDateDisplay,
+                    project.duration,
+                    project.phase,
+                    project.status,
+                    project.progress,
+                    project.manager,
+                    project.workers,
+                    project.startDate,
+                    project.endDate
+                );
+            };
+
+            row.innerHTML = '' +
+                '<td><strong>' + project.name + '</strong></td>' +
+                '<td>' + project.client + '</td>' +
+                '<td>' + (project.budget || '—') + '</td>' +
+                '<td>' + project.startDateDisplay + '</td>' +
+                '<td>' + project.estEndDateDisplay + '</td>' +
+                '<td>' + (project.actualEndDateDisplay || '—') + '</td>' +
+                '<td>' + project.duration + '</td>' +
+                '<td><span class="phase-badge">' + project.phase + '</span></td>' +
+                '<td>' +
+                    '<div class="progress-cell">' +
+                        '<div class="mini-bar"><div class="fill" style="width:' + project.progress + '%;"></div></div>' +
+                    '</div>' +
+                '</td>' +
+                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'On Track' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + project.status + '</span></td>';
+        }
+
+        function createProjectRow(project) {
+            var tr = document.createElement('tr');
+            updateProjectRow(tr, project);
+            return tr;
+        }
+
         function saveProject() {
-            closeModal();
-            showSuccess('Project saved successfully!');
+            var name = document.getElementById('projectName').value.trim();
+            var client = document.getElementById('clientName').value.trim();
+            var manager = document.getElementById('projectManager').value.trim();
+            var workers = document.getElementById('workerCount').value.trim();
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+
+            if (!name) { showError('Please enter the project name.'); return; }
+            if (!client) { showError('Please enter the client name.'); return; }
+            if (!manager) { showError('Please select a project manager.'); return; }
+            if (!startDate) { showError('Please select a start date.'); return; }
+            if (!endDate) { showError('Please select an estimated end date.'); return; }
+
+            var payload = {
+                project_name: name,
+                client_name: client,
+                budget: '',
+                project_manager: manager,
+                start_date: startDate,
+                estimated_end_date: endDate,
+                actual_end_date: '',
+                worker_count: workers ? parseInt(workers, 10) : 0,
+                phase: 'Planning',
+                completion_percentage: 0,
+                status: 'On Track'
+            };
+
+            fetch('/api/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(err) {
+                        throw new Error(err.message || 'Failed to save project');
+                    });
+                }
+                return response.json();
+            })
+            .then(function(savedProject) {
+                var project = mapProjectApiRecord(savedProject);
+                var tbody = document.getElementById('projectTableBody');
+                if (tbody) {
+                    tbody.appendChild(createProjectRow(project));
+                }
+                closeModal();
+                showSuccess('Project added successfully!');
+            })
+            .catch(function(error) {
+                console.error(error);
+                showError(error.message || 'Failed to save project.');
+            });
         }
 
         document.getElementById('projectModal').addEventListener('click', function(e) {
@@ -850,17 +712,26 @@
 
         // ─── UPDATE PROJECT OVERVIEW MODAL ───
         function openUpdateModal(
+            row,
+            projectId,
             projectName, clientName, budget, startDate, estEndDate, actualEndDate,
             duration, phase, status, progress, manager, workers, startDateRaw, endDateRaw
         ) {
+            currentProjectRow = row;
+
             currentEditData = {
+                id: projectId,
                 name: projectName,
                 client: clientName,
+                budget: budget || '',
                 manager: manager || '',
                 workers: workers || '',
                 startDate: startDateRaw || '',
                 endDate: endDateRaw || '',
+                actualEndDate: actualEndDate || '',
                 phase: phase,
+                progress: progress || 0,
+                status: status || 'On Track',
                 startDateDisplay: startDate,
                 estEndDateDisplay: estEndDate,
                 actualEndDateDisplay: actualEndDate || '—',
@@ -869,7 +740,7 @@
 
             document.getElementById('updateProjectName').textContent = projectName;
             document.getElementById('updateClientName').textContent = clientName;
-            document.getElementById('updateBudget').textContent = budget;
+            document.getElementById('updateBudget').textContent = budget || '—';
             document.getElementById('updateStartDate').textContent = startDate;
             document.getElementById('updateEstEndDate').textContent = estEndDate;
             document.getElementById('updateActualEndDate').textContent = actualEndDate || '—';
@@ -895,22 +766,46 @@
 
         // ─── DELETE PROJECT ───
         function deleteProject() {
-            if (!currentEditData) {
+            if (!currentProjectRow) {
                 showError('No project selected to delete.');
                 return;
             }
-            openDeleteModal('Are you sure you want to permanently delete "' + currentEditData.name + '"?', function() {
-                // Find and remove the row from the table
-                var rows = document.querySelectorAll('.table-wrapper tbody tr');
-                rows.forEach(function(row) {
-                    var nameCell = row.querySelector('td:first-child strong');
-                    if (nameCell && nameCell.textContent === currentEditData.name) {
-                        row.remove();
+
+            var projectId = currentProjectRow.dataset.projectId;
+            openDeleteModal('Are you sure you want to permanently delete this project?', function() {
+                if (!projectId) {
+                    currentProjectRow.remove();
+                    closeUpdateModal();
+                    showSuccess('Project deleted successfully!');
+                    currentProjectRow = null;
+                    return;
+                }
+
+                fetch('/api/projects/' + projectId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        return response.json().then(function(err) {
+                            throw new Error(err.message || 'Failed to delete project');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(function() {
+                    currentProjectRow.remove();
+                    closeUpdateModal();
+                    showSuccess('Project deleted successfully!');
+                    currentProjectRow = null;
+                })
+                .catch(function(error) {
+                    console.error(error);
+                    showError(error.message || 'Failed to delete project.');
                 });
-                closeUpdateModal();
-                showSuccess('Project "' + currentEditData.name + '" deleted successfully!');
-                currentEditData = null;
             });
         }
 
@@ -924,8 +819,7 @@
             document.getElementById('editPhase').value = currentEditData.phase || 'Planning';
             document.getElementById('editStartDate').value = currentEditData.startDate || '';
             document.getElementById('editEstEndDate').value = currentEditData.endDate || '';
-            document.getElementById('editActualEndDate').value = currentEditData.actualEndDateDisplay !== '—' ? currentEditData.actualEndDateDisplay : '';
-            document.getElementById('editDuration').value = currentEditData.duration || '';
+            document.getElementById('editActualEndDate').value = currentEditData.actualEndDate || '';
 
             closeUpdateModal();
             document.getElementById('editProjectModal').classList.add('active');
@@ -938,21 +832,81 @@
         }
 
         function saveEditProject() {
-            var name = document.getElementById('editProjectOriginalName').value;
+            if (!currentProjectRow || !currentEditData) {
+                showError('No project selected to edit.');
+                return;
+            }
+
             var phase = document.getElementById('editPhase').value;
             var start = document.getElementById('editStartDate').value;
             var estEnd = document.getElementById('editEstEndDate').value;
             var actualEnd = document.getElementById('editActualEndDate').value;
-            var duration = document.getElementById('editDuration').value.trim();
 
-            if (!start || !estEnd || !duration) {
-                showError('Please fill in all required fields (Start Date, Estimated End Date, Duration).');
+            if (!start || !estEnd) {
+                showError('Please fill in all required fields (Start Date, Estimated End Date).');
                 return;
             }
 
-            closeEditProjectModal();
-            showSuccess('Project "' + name + '" updated successfully!');
-            console.log('Updated project:', { name, phase, start, estEnd, actualEnd, duration });
+            var payload = {
+                phase: phase,
+                start_date: start,
+                estimated_end_date: estEnd,
+                actual_end_date: actualEnd || null
+            };
+
+            fetch('/api/projects/' + currentEditData.id, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(err) {
+                        throw new Error(err.message || 'Failed to save project changes');
+                    });
+                }
+                return response.json();
+            })
+            .then(function(updatedProject) {
+                currentEditData.phase = phase;
+                currentEditData.startDate = start;
+                currentEditData.endDate = estEnd;
+                currentEditData.actualEndDate = actualEnd || '';
+                currentEditData.startDateDisplay = formatDate(start);
+                currentEditData.estEndDateDisplay = formatDate(estEnd);
+                currentEditData.actualEndDateDisplay = actualEnd ? formatDate(actualEnd) : '—';
+                currentEditData.duration = calculateDuration(start, actualEnd);
+
+                updateProjectRow(currentProjectRow, currentEditData);
+                closeEditProjectModal();
+                showSuccess('Project "' + currentEditData.name + '" updated successfully!');
+                openUpdateModal(
+                    currentProjectRow,
+                    currentEditData.id,
+                    currentEditData.name,
+                    currentEditData.client,
+                    currentEditData.budget,
+                    currentEditData.startDateDisplay,
+                    currentEditData.estEndDateDisplay,
+                    currentEditData.actualEndDateDisplay,
+                    currentEditData.duration,
+                    currentEditData.phase,
+                    currentEditData.status,
+                    currentEditData.progress,
+                    currentEditData.manager,
+                    currentEditData.workers,
+                    currentEditData.startDate,
+                    currentEditData.endDate
+                );
+            })
+            .catch(function(error) {
+                console.error(error);
+                showError(error.message || 'Failed to save project changes.');
+            });
         }
 
         // ─── CLOSE MODALS ON BACKDROP CLICK ───
@@ -971,6 +925,16 @@
                 if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
         });
+
+        function initializeProjectPage() {
+            fetchProjects();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeProjectPage);
+        } else {
+            initializeProjectPage();
+        }
     </script>
 
 </body>

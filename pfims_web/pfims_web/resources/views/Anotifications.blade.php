@@ -70,7 +70,7 @@
             </a>
             <a href="{{ url('/aprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>User</span>
+                <span>{{ auth()->user()->name }}</span>
             </a>
         </div>
     </header>

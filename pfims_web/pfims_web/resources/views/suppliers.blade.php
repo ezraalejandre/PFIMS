@@ -98,7 +98,7 @@
             </a>
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>User</span>
+                <span>{{ auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -108,10 +108,10 @@
         <nav>
             <ul>
                 <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
-                <li class="active"><a href="{{ url('/projects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}">FINANCE</a></li>
                 <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
+                <li class="active"><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
                 <li><a href="{{ url('/reports') }}">REPORTS</a></li>
             </ul>
         </nav>
@@ -124,10 +124,13 @@
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
-                        Log out
-                    </a>
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>
@@ -254,7 +257,10 @@
 
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-                <button class="btn-save" onclick="updateSupplier()">Add Supplier</button>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
+                    <button class="btn-save" onclick="updateSupplier()">Save Changes</button>
+                </div>
             </div>
         </div>
     </div>
@@ -396,6 +402,50 @@
             currentSupplierId = null;
         }
 
+        let supplierToDelete = null;
+
+        function openDeleteModal(supplierId) {
+            supplierToDelete = supplierId;
+            document.getElementById('deleteConfirmMessage').textContent = 'Are you sure you want to permanently delete this supplier?';
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            supplierToDelete = null;
+        }
+
+        function confirmDelete() {
+            if (!supplierToDelete) {
+                closeDeleteModal();
+                return;
+            }
+
+            fetch(`/api/suppliers/${supplierToDelete}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                closeDeleteModal();
+                if (data.success) {
+                    showSuccess(data.message || 'Supplier deleted successfully!');
+                    loadSuppliers();
+                } else {
+                    showError(data.message || 'Error deleting supplier');
+                }
+            })
+            .catch(error => {
+                closeDeleteModal();
+                console.error('Error deleting supplier:', error);
+                showError('Error deleting supplier');
+            });
+        }
+
         function updateSupplier() {
             var name = document.getElementById('editSupplierName').value.trim();
             var address = document.getElementById('editSupplierAddress').value.trim();
@@ -456,12 +506,31 @@
             document.getElementById('successNotification').style.display = 'none';
         }
 
+        function showError(message) {
+            var notif = document.getElementById('errorNotification');
+            var msgSpan = document.getElementById('errorMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            }
+            notif.style.display = 'block';
+            setTimeout(function() {
+                closeError();
+            }, 5000);
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+        }
+
         // ─── CLOSE MODALS ON BACKDROP CLICK ───
         document.getElementById('addSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeAddModal(); }
         });
         document.getElementById('editSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeEditModal(); }
+        });
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeDeleteModal(); }
         });
 
         document.addEventListener('click', function(e) {

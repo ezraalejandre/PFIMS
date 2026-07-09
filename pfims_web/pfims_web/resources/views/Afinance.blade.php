@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accounting Finance - PFIMS</title>
+    <title>Budget & Finance - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Afinance.css') }}">
     <style>
+        /* Override: Delete modal must be above everything */
         #deleteConfirmModal { z-index: 9999 !important; }
     </style>
 </head>
@@ -68,7 +69,7 @@
             </a>
             <a href="{{ url('/aprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>User</span>
+                <span>{{ auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -91,7 +92,7 @@
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/alanding') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                    <a href="{{ url('/landing') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                         <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
                         Log out
                     </a>
@@ -116,11 +117,11 @@
         <div class="stats-row">
             <div class="stat-mini">
                 <div class="stat-label">Total Budget</div>
-                <div class="stat-value blue">₱67,000,000</div>
+                <div class="stat-value blue" id="totalBudgetValue">₱0.00</div>
             </div>
             <div class="stat-mini">
                 <div class="stat-label">Net Variance</div>
-                <div class="stat-value red">-₱440</div>
+                <div class="stat-value red" id="netVarianceValue">₱0.00</div>
             </div>
         </div>
 
@@ -136,16 +137,6 @@
         <div class="filter-row">
             <select id="projectFilter" class="project-filter" onchange="filterByProject()">
                 <option value="all">All Projects</option>
-                <option value="Skyline Tower">Skyline Tower</option>
-                <option value="Harbor Bridge Annex">Harbor Bridge Annex</option>
-                <option value="Green Hills Residences">Green Hills Residences</option>
-                <option value="Eastwood Mall">Eastwood Mall</option>
-                <option value="BPO Hub Bldg. C">BPO Hub Bldg. C</option>
-                <option value="North Rail Station">North Rail Station</option>
-                <option value="Pasig River Walk">Pasig River Walk</option>
-                <option value="Metro Interchange">Metro Interchange</option>
-                <option value="Laguna Warehouse Complex">Laguna Warehouse Complex</option>
-                <option value="Alabang Medical">Alabang Medical</option>
             </select>
         </div>
 
@@ -162,71 +153,7 @@
                         <th>Remarks</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr onclick="openExpenseModal(this)" data-project="Skyline Tower" data-desc="Portland Cement stock-in" data-category="Materials" data-amount="11800" data-date="2026-06-11" data-remarks="From INV-2026-06-11">
-                        <td><strong>Skyline Tower</strong></td>
-                        <td>Portland Cement stock-in</td>
-                        <td><span class="category-badge material">Materials</span></td>
-                        <td>₱11,800</td>
-                        <td>2026-06-11</td>
-                        <td>From INV-2026-06-11</td>
-                    </tr>
-                    <tr onclick="openExpenseModal(this)" data-project="Skyline Tower" data-desc="Salary" data-category="Labor" data-amount="4800" data-date="2026-06-15" data-remarks="Overtime included">
-                        <td><strong>Skyline Tower</strong></td>
-                        <td>Salary</td>
-                        <td><span class="category-badge labor">Labor</span></td>
-                        <td>₱4,800</td>
-                        <td>2026-06-15</td>
-                        <td>Overtime included</td>
-                    </tr>
-                    <tr onclick="openExpenseModal(this)" data-project="Harbor Bridge Annex" data-desc="Foreman wages" data-category="Labor" data-amount="3200" data-date="2026-06-14" data-remarks="—">
-                        <td><strong>Harbor Bridge Annex</strong></td>
-                        <td>Foreman wages</td>
-                        <td><span class="category-badge labor">Labor</span></td>
-                        <td>₱3,200</td>
-                        <td>2026-06-14</td>
-                        <td>—</td>
-                    </tr>
-                    <tr onclick="openExpenseModal(this)" data-project="Green Hills Residences" data-desc="Safety officer salary" data-category="Labor" data-amount="2500" data-date="2026-06-13" data-remarks="—">
-                        <td><strong>Green Hills Residences</strong></td>
-                        <td>Safety officer salary</td>
-                        <td><span class="category-badge labor">Labor</span></td>
-                        <td>₱2,500</td>
-                        <td>2026-06-13</td>
-                        <td>—</td>
-                    </tr>
-                    <tr onclick="openExpenseModal(this)" data-project="Skyline Tower" data-desc="Ready-mix concrete delivery" data-category="Materials" data-amount="14500" data-date="2026-06-12" data-remarks="From INV-2026-06-12">
-                        <td><strong>Skyline Tower</strong></td>
-                        <td>Ready-mix concrete delivery</td>
-                        <td><span class="category-badge material">Materials</span></td>
-                        <td>₱14,500</td>
-                        <td>2026-06-12</td>
-                        <td>From INV-2026-06-12</td>
-                    </tr>
-                    <tr onclick="openExpenseModal(this)" data-project="BPO Hub Bldg. C" data-desc="Steel rebar purchase" data-category="Materials" data-amount="7800" data-date="2026-06-10" data-remarks="From INV-2026-06-10">
-                        <td><strong>BPO Hub Bldg. C</strong></td>
-                        <td>Steel rebar purchase</td>
-                        <td><span class="category-badge material">Materials</span></td>
-                        <td>₱7,800</td>
-                        <td>2026-06-10</td>
-                        <td>From INV-2026-06-10</td>
-                    </tr>
-                    <tr onclick="openExpenseModal(this)" data-project="Eastwood Mall" data-desc="Electrical wires" data-category="Materials" data-amount="4500" data-date="2026-06-09" data-remarks="From INV-2026-06-09">
-                        <td><strong>Eastwood Mall</strong></td>
-                        <td>Electrical wires</td>
-                        <td><span class="category-badge material">Materials</span></td>
-                        <td>₱4,500</td>
-                        <td>2026-06-09</td>
-                        <td>From INV-2026-06-09</td>
-                    </tr>
-                    <tr onclick="openExpenseModal(this)" data-project="Skyline Tower" data-desc="Miscellaneous supplies" data-category="Other" data-amount="1200" data-date="2026-06-16" data-remarks="Office supplies">
-                        <td><strong>Skyline Tower</strong></td>
-                        <td>Miscellaneous supplies</td>
-                        <td><span class="category-badge other">Other</span></td>
-                        <td>₱1,200</td>
-                        <td>2026-06-16</td>
-                        <td>Office supplies</td>
-                    </tr>
+                <tbody id="expenseTableBody">
                 </tbody>
             </table>
         </div>
@@ -268,16 +195,6 @@
                     <label>Project <span class="required">*</span></label>
                     <select id="expenseProject">
                         <option value="">Select Project...</option>
-                        <option value="Skyline Tower">Skyline Tower</option>
-                        <option value="Harbor Bridge Annex">Harbor Bridge Annex</option>
-                        <option value="Green Hills Residences">Green Hills Residences</option>
-                        <option value="Eastwood Mall">Eastwood Mall</option>
-                        <option value="BPO Hub Bldg. C">BPO Hub Bldg. C</option>
-                        <option value="North Rail Station">North Rail Station</option>
-                        <option value="Pasig River Walk">Pasig River Walk</option>
-                        <option value="Metro Interchange">Metro Interchange</option>
-                        <option value="Laguna Warehouse Complex">Laguna Warehouse Complex</option>
-                        <option value="Alabang Medical">Alabang Medical</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -325,16 +242,6 @@
                     <label>Project <span class="required">*</span></label>
                     <select id="budgetProject">
                         <option value="">Select Project...</option>
-                        <option value="Skyline Tower">Skyline Tower</option>
-                        <option value="Harbor Bridge Annex">Harbor Bridge Annex</option>
-                        <option value="Green Hills Residences">Green Hills Residences</option>
-                        <option value="Eastwood Mall">Eastwood Mall</option>
-                        <option value="BPO Hub Bldg. C">BPO Hub Bldg. C</option>
-                        <option value="North Rail Station">North Rail Station</option>
-                        <option value="Pasig River Walk">Pasig River Walk</option>
-                        <option value="Metro Interchange">Metro Interchange</option>
-                        <option value="Laguna Warehouse Complex">Laguna Warehouse Complex</option>
-                        <option value="Alabang Medical">Alabang Medical</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -364,16 +271,6 @@
                     <label>Project</label>
                     <span id="detailProjectDisplay" class="detail-value">—</span>
                     <select id="detailProjectEdit" class="detail-edit" style="display:none;">
-                        <option value="Skyline Tower">Skyline Tower</option>
-                        <option value="Harbor Bridge Annex">Harbor Bridge Annex</option>
-                        <option value="Green Hills Residences">Green Hills Residences</option>
-                        <option value="Eastwood Mall">Eastwood Mall</option>
-                        <option value="BPO Hub Bldg. C">BPO Hub Bldg. C</option>
-                        <option value="North Rail Station">North Rail Station</option>
-                        <option value="Pasig River Walk">Pasig River Walk</option>
-                        <option value="Metro Interchange">Metro Interchange</option>
-                        <option value="Laguna Warehouse Complex">Laguna Warehouse Complex</option>
-                        <option value="Alabang Medical">Alabang Medical</option>
                     </select>
                 </div>
                 <div class="detail-item">
@@ -417,7 +314,12 @@
     </div>
 
     <script>
-        // ─── HIDE NOTIFICATION BADGE ───
+        var financeProjects = [];
+        var financeCategories = [];
+        var financeExpenses = [];
+        var currentDetailRow = null;
+        var isEditMode = false;
+
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -425,7 +327,6 @@
             }
         }
 
-        // ─── ERROR NOTIFICATION ───
         function showError(message) {
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
@@ -447,7 +348,6 @@
             }
         }
 
-        // ─── SUCCESS NOTIFICATION ───
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
@@ -469,7 +369,6 @@
             }
         }
 
-        // ─── DELETE CONFIRMATION MODAL ───
         var deleteCallback = null;
 
         function openDeleteModal(message, callback) {
@@ -498,17 +397,173 @@
             }
         });
 
-        // ─── FILTER TABS ───
         function setActiveTab(el) {
             var tabs = document.querySelectorAll('.filter-tabs .tab');
             tabs.forEach(function(tab) {
                 tab.classList.remove('active');
             });
             el.classList.add('active');
-            console.log('Filtering by: ' + el.textContent.trim());
         }
 
-        // ─── ADD EXPENSE MODAL ───
+        function formatCurrency(value) {
+            var amount = parseFloat(value) || 0;
+            return '₱' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function fetchProjects() {
+            return fetch('/api/projects')
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Failed to load projects.');
+                    return response.json();
+                })
+                .then(function(data) {
+                    financeProjects = data || [];
+                    populateProjectDropdowns();
+                    populateProjectFilter();
+                    updateFinanceTotals();
+                })
+                .catch(function(error) {
+                    showError(error.message);
+                });
+        }
+
+        function fetchExpenseCategories() {
+            return fetch('/api/expense-categories')
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Failed to load expense categories.');
+                    return response.json();
+                })
+                .then(function(data) {
+                    financeCategories = data || [];
+                    populateCategoryDropdown();
+                })
+                .catch(function(error) {
+                    showError(error.message);
+                });
+        }
+
+        function fetchExpenses() {
+            return fetch('/api/expenses')
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Failed to load expenses.');
+                    return response.json();
+                })
+                .then(function(data) {
+                    financeExpenses = data || [];
+                    renderExpenseTable();
+                    updateFinanceTotals();
+                })
+                .catch(function(error) {
+                    showError(error.message);
+                });
+        }
+
+        function populateProjectDropdowns() {
+            var projectSelects = [
+                document.getElementById('expenseProject'),
+                document.getElementById('budgetProject'),
+                document.getElementById('detailProjectEdit'),
+            ];
+
+            projectSelects.forEach(function(select) {
+                if (!select) return;
+                select.innerHTML = '<option value="">Select Project...</option>';
+                financeProjects.forEach(function(project) {
+                    var option = document.createElement('option');
+                    option.value = project.project_id;
+                    option.textContent = project.project_name;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        function populateCategoryDropdown() {
+            var expenseCategory = document.getElementById('expenseCategory');
+            var detailCategoryEdit = document.getElementById('detailCategoryEdit');
+            [expenseCategory, detailCategoryEdit].forEach(function(select) {
+                if (!select) return;
+                select.innerHTML = '<option value="">Select Category...</option>';
+                financeCategories.forEach(function(category) {
+                    var option = document.createElement('option');
+                    option.value = category.expense_category_id;
+                    option.textContent = category.category_name;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        function populateProjectFilter() {
+            var filter = document.getElementById('projectFilter');
+            filter.innerHTML = '<option value="all">All Projects</option>';
+            financeProjects.forEach(function(project) {
+                var option = document.createElement('option');
+                option.value = project.project_name;
+                option.textContent = project.project_name;
+                filter.appendChild(option);
+            });
+        }
+
+        function getProjectNameById(projectId) {
+            var project = financeProjects.find(function(item) {
+                return String(item.project_id) === String(projectId);
+            });
+            return project ? project.project_name : '';
+        }
+
+        function getCategoryNameById(categoryId) {
+            var category = financeCategories.find(function(item) {
+                return String(item.expense_category_id) === String(categoryId);
+            });
+            return category ? category.category_name : '';
+        }
+
+        function renderExpenseTable() {
+            var tbody = document.getElementById('expenseTableBody');
+            tbody.innerHTML = '';
+            financeExpenses.forEach(function(expense) {
+                var row = document.createElement('tr');
+                row.setAttribute('data-expense-id', expense.expense_id);
+                row.setAttribute('data-project-id', expense.project_id || '');
+                row.setAttribute('data-project', expense.project_name || '');
+                row.setAttribute('data-desc', expense.expense_description || '');
+                row.setAttribute('data-category-id', expense.expense_category_id || '');
+                row.setAttribute('data-category', expense.expense_category_name || '');
+                row.setAttribute('data-amount', expense.actual_amount || '0');
+                row.setAttribute('data-date', expense.expense_date || '');
+                row.setAttribute('data-remarks', expense.remarks || '');
+                row.onclick = function() {
+                    openExpenseModal(this);
+                };
+
+                var categoryClass = (expense.expense_category_name || '').toLowerCase();
+                if (categoryClass === 'materials') categoryClass = 'material';
+                if (categoryClass === 'labor') categoryClass = 'labor';
+                if (categoryClass === 'other') categoryClass = 'other';
+
+                row.innerHTML = '<td><strong>' + (expense.project_name || '') + '</strong></td>' +
+                    '<td>' + (expense.expense_description || '') + '</td>' +
+                    '<td><span class="category-badge ' + categoryClass + '">' + (expense.expense_category_name || '') + '</span></td>' +
+                    '<td>' + formatCurrency(expense.actual_amount) + '</td>' +
+                    '<td>' + (expense.expense_date || '') + '</td>' +
+                    '<td>' + (expense.remarks || '—') + '</td>';
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateFinanceTotals() {
+            var totalBudget = financeProjects.reduce(function(sum, project) {
+                return sum + parseFloat(project.budget || 0);
+            }, 0);
+            var totalExpenses = financeExpenses.reduce(function(sum, expense) {
+                return sum + parseFloat(expense.actual_amount || 0);
+            }, 0);
+            var netVariance = totalBudget - totalExpenses;
+
+            document.getElementById('totalBudgetValue').textContent = formatCurrency(totalBudget);
+            document.getElementById('netVarianceValue').textContent = formatCurrency(netVariance);
+            document.getElementById('netVarianceValue').classList.toggle('red', netVariance < 0);
+        }
+
         function openAddExpenseModal() {
             document.getElementById('addExpenseModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -526,13 +581,14 @@
         }
 
         function saveExpense() {
-            var project = document.getElementById('expenseProject').value;
+            var projectId = document.getElementById('expenseProject').value;
             var desc = document.getElementById('expenseDesc').value.trim();
-            var category = document.getElementById('expenseCategory').value;
+            var categoryId = document.getElementById('expenseCategory').value;
             var amount = document.getElementById('expenseAmount').value;
             var date = document.getElementById('expenseDate').value;
+            var remarks = document.getElementById('expenseRemarks').value.trim();
 
-            if (!project || !desc || !category || !amount || !date) {
+            if (!projectId || !desc || !categoryId || !amount || !date) {
                 showError('Please fill in all required fields.');
                 return;
             }
@@ -541,12 +597,40 @@
                 return;
             }
 
-            closeAddExpenseModal();
-            showSuccess('Expense added successfully!');
-            console.log('Add Expense:', { project, desc, category, amount, date });
+            fetch('/api/expenses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    project_id: projectId,
+                    expense_category_id: categoryId,
+                    expense_description: desc,
+                    actual_amount: amount,
+                    expense_date: date,
+                    remarks: remarks,
+                }),
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        return response.json().then(function(data) {
+                            throw new Error(data.message || 'Unable to save expense.');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(function(expense) {
+                    financeExpenses.push(expense);
+                    renderExpenseTable();
+                    updateFinanceTotals();
+                    closeAddExpenseModal();
+                    showSuccess('Expense added successfully!');
+                })
+                .catch(function(error) {
+                    showError(error.message);
+                });
         }
 
-        // ─── ADD BUDGET MODAL ───
         function openAddBudgetModal() {
             document.getElementById('addBudgetModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -560,20 +644,45 @@
         }
 
         function saveBudget() {
-            var project = document.getElementById('budgetProject').value;
+            var projectId = document.getElementById('budgetProject').value;
             var amount = document.getElementById('budgetAmount').value;
 
-            if (!project || !amount || parseFloat(amount) <= 0) {
+            if (!projectId || !amount || parseFloat(amount) <= 0) {
                 showError('Please select a project and enter a valid budget amount.');
                 return;
             }
 
-            closeAddBudgetModal();
-            showSuccess('Budget added for ' + project + '!');
-            console.log('Add Budget:', { project, amount });
+            fetch('/api/projects/' + projectId, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ budget: amount }),
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        return response.json().then(function(data) {
+                            throw new Error(data.message || 'Unable to save budget.');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(function(project) {
+                    var existing = financeProjects.find(function(item) {
+                        return String(item.project_id) === String(project.project_id);
+                    });
+                    if (existing) {
+                        existing.budget = project.budget;
+                    }
+                    updateFinanceTotals();
+                    closeAddBudgetModal();
+                    showSuccess('Budget updated for ' + project.project_name + '!');
+                })
+                .catch(function(error) {
+                    showError(error.message);
+                });
         }
 
-        // ─── PROJECT FILTER ───
         function filterByProject() {
             var filter = document.getElementById('projectFilter').value;
             var rows = document.querySelectorAll('#expenseTable tbody tr');
@@ -587,22 +696,18 @@
             });
         }
 
-        // ─── EXPENSE DETAIL MODAL ───
-        var currentDetailRow = null;
-        var isEditMode = false;
-
         function openExpenseModal(row) {
             currentDetailRow = row;
             document.getElementById('detailProjectDisplay').textContent = row.dataset.project;
             document.getElementById('detailDescDisplay').textContent = row.dataset.desc;
             document.getElementById('detailCategoryDisplay').textContent = row.dataset.category;
-            document.getElementById('detailAmountDisplay').textContent = '₱' + parseFloat(row.dataset.amount).toLocaleString();
+            document.getElementById('detailAmountDisplay').textContent = formatCurrency(row.dataset.amount);
             document.getElementById('detailDateDisplay').textContent = row.dataset.date;
             document.getElementById('detailRemarksDisplay').textContent = row.dataset.remarks || '—';
 
-            document.getElementById('detailProjectEdit').value = row.dataset.project;
+            document.getElementById('detailProjectEdit').value = row.dataset.projectId || '';
             document.getElementById('detailDescEdit').value = row.dataset.desc;
-            document.getElementById('detailCategoryEdit').value = row.dataset.category;
+            document.getElementById('detailCategoryEdit').value = row.dataset.categoryId || '';
             document.getElementById('detailAmountEdit').value = row.dataset.amount;
             document.getElementById('detailDateEdit').value = row.dataset.date;
             document.getElementById('detailRemarksEdit').value = row.dataset.remarks || '';
@@ -612,8 +717,8 @@
             document.getElementById('detailEditBtn').style.display = 'inline-block';
             document.getElementById('detailDeleteBtn').style.display = 'inline-block';
             document.getElementById('detailSaveBtn').style.display = 'none';
-            document.querySelectorAll('.detail-edit').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.detail-value').forEach(el => el.style.display = '');
+            document.querySelectorAll('.detail-edit').forEach(function(el) { el.style.display = 'none'; });
+            document.querySelectorAll('.detail-value').forEach(function(el) { el.style.display = ''; });
 
             document.getElementById('expenseDetailModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -637,27 +742,27 @@
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'inline-block';
-                displayEls.forEach(el => el.style.display = 'none');
-                editEls.forEach(el => el.style.display = '');
+                displayEls.forEach(function(el) { el.style.display = 'none'; });
+                editEls.forEach(function(el) { el.style.display = ''; });
             } else {
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'none';
-                displayEls.forEach(el => el.style.display = '');
-                editEls.forEach(el => el.style.display = 'none');
+                displayEls.forEach(function(el) { el.style.display = ''; });
+                editEls.forEach(function(el) { el.style.display = 'none'; });
             }
         }
 
         function saveDetailChanges() {
             if (!currentDetailRow) return;
-            var project = document.getElementById('detailProjectEdit').value;
+            var projectId = document.getElementById('detailProjectEdit').value;
             var desc = document.getElementById('detailDescEdit').value.trim();
-            var category = document.getElementById('detailCategoryEdit').value;
+            var categoryId = document.getElementById('detailCategoryEdit').value;
             var amount = document.getElementById('detailAmountEdit').value;
             var date = document.getElementById('detailDateEdit').value;
             var remarks = document.getElementById('detailRemarksEdit').value.trim();
 
-            if (!project || !desc || !category || !amount || !date) {
+            if (!projectId || !desc || !categoryId || !amount || !date) {
                 showError('Please fill in all required fields.');
                 return;
             }
@@ -666,40 +771,98 @@
                 return;
             }
 
-            currentDetailRow.dataset.project = project;
-            currentDetailRow.dataset.desc = desc;
-            currentDetailRow.dataset.category = category;
-            currentDetailRow.dataset.amount = amount;
-            currentDetailRow.dataset.date = date;
-            currentDetailRow.dataset.remarks = remarks;
+            var expenseId = currentDetailRow.getAttribute('data-expense-id');
+            fetch('/api/expenses/' + expenseId, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    project_id: projectId,
+                    expense_category_id: categoryId,
+                    expense_description: desc,
+                    actual_amount: amount,
+                    expense_date: date,
+                    remarks: remarks,
+                }),
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        return response.json().then(function(data) {
+                            throw new Error(data.message || 'Unable to update expense.');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(function(expense) {
+                    currentDetailRow.dataset.projectId = expense.project_id || '';
+                    currentDetailRow.dataset.project = expense.project_name || '';
+                    currentDetailRow.dataset.desc = expense.expense_description || '';
+                    currentDetailRow.dataset.categoryId = expense.expense_category_id || '';
+                    currentDetailRow.dataset.category = expense.expense_category_name || '';
+                    currentDetailRow.dataset.amount = expense.actual_amount || '0';
+                    currentDetailRow.dataset.date = expense.expense_date || '';
+                    currentDetailRow.dataset.remarks = expense.remarks || '';
 
-            var cells = currentDetailRow.querySelectorAll('td');
-            cells[0].innerHTML = '<strong>' + project + '</strong>';
-            cells[1].textContent = desc;
+                    var cells = currentDetailRow.querySelectorAll('td');
+                    var categoryClass = (expense.expense_category_name || '').toLowerCase();
+                    if (categoryClass === 'materials') categoryClass = 'material';
+                    if (categoryClass === 'labor') categoryClass = 'labor';
+                    if (categoryClass === 'other') categoryClass = 'other';
 
-            var catClass = category.toLowerCase();
-            cells[2].innerHTML = '<span class="category-badge ' + catClass + '">' + category + '</span>';
+                    cells[0].innerHTML = '<strong>' + (expense.project_name || '') + '</strong>';
+                    cells[1].textContent = expense.expense_description || '';
+                    cells[2].innerHTML = '<span class="category-badge ' + categoryClass + '">' + (expense.expense_category_name || '') + '</span>';
+                    cells[3].textContent = formatCurrency(expense.actual_amount);
+                    cells[4].textContent = expense.expense_date || '';
+                    cells[5].textContent = expense.remarks || '—';
 
-            cells[3].textContent = '₱' + parseFloat(amount).toLocaleString();
-            cells[4].textContent = date;
-            cells[5].textContent = remarks || '—';
-
-            closeExpenseDetailModal();
-            showSuccess('Expense updated successfully!');
+                    var index = financeExpenses.findIndex(function(item) {
+                        return String(item.expense_id) === String(expense.expense_id);
+                    });
+                    if (index !== -1) {
+                        financeExpenses[index] = expense;
+                    }
+                    updateFinanceTotals();
+                    closeExpenseDetailModal();
+                    showSuccess('Expense updated successfully!');
+                })
+                .catch(function(error) {
+                    showError(error.message);
+                });
         }
 
-        // ─── DELETE EXPENSE ───
         function deleteExpense() {
             if (!currentDetailRow) return;
             openDeleteModal('Are you sure you want to permanently delete this expense?', function() {
-                currentDetailRow.remove();
-                closeExpenseDetailModal();
-                showSuccess('Expense deleted successfully!');
-                currentDetailRow = null;
+                var expenseId = currentDetailRow.getAttribute('data-expense-id');
+                fetch('/api/expenses/' + expenseId, {
+                    method: 'DELETE',
+                })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            return response.json().then(function(data) {
+                                throw new Error(data.message || 'Unable to delete expense.');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function() {
+                        financeExpenses = financeExpenses.filter(function(item) {
+                            return String(item.expense_id) !== String(expenseId);
+                        });
+                        currentDetailRow.remove();
+                        closeExpenseDetailModal();
+                        updateFinanceTotals();
+                        showSuccess('Expense deleted successfully!');
+                        currentDetailRow = null;
+                    })
+                    .catch(function(error) {
+                        showError(error.message);
+                    });
             });
         }
 
-        // ─── CLOSE MODALS ON BACKDROP ───
         document.getElementById('addExpenseModal').addEventListener('click', function(e) {
             if (e.target === this) closeAddExpenseModal();
         });
@@ -717,6 +880,12 @@
             if (document.getElementById('successNotification').style.display === 'block') {
                 if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchProjects();
+            fetchExpenseCategories();
+            fetchExpenses();
         });
     </script>
 

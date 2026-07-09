@@ -16,9 +16,80 @@ Route::get('/', function () {
     return view('landing');
 })->name('login');
 
-// Dashboard page
+// ─── DASHBOARD ROUTES (Role-based) ─────────────────────────────
+// Admin Dashboard
 Route::get('/dashboard', function () {
     return view('dashboard');
+})->middleware('auth')->name('admin.dashboard');
+
+// Accounting Dashboard
+Route::get('/adashboard', function () {
+    return view('Adashboard');
+})->middleware('auth')->name('accounting.dashboard');
+
+// Operations Dashboard
+Route::get('/odashboard', function () {
+    return view('Odashboard');
+})->middleware('auth')->name('operations.dashboard');
+
+// ─── ACCOUNTING ROUTES ──────────────────────────────────────────
+Route::get('/afinance', function () {
+    return view('Afinance');
+})->middleware('auth');
+
+Route::get('/areports', function () {
+    return view('Areports');
+})->middleware('auth');
+
+Route::get('/anotifications', function () {
+    return view('Anotifications');
+})->middleware('auth');
+
+Route::get('/aprofile', function () {
+    return view('Aprofile', [
+        'user' => Auth::user(),
+    ]);
+})->middleware('auth');
+
+Route::get('/asettings', function () {
+    $users = User::orderBy('name')->get();
+    return view('Asettings', [
+        'users' => $users,
+    ]);
+})->middleware('auth');
+
+// ─── OPERATIONS ROUTES ──────────────────────────────────────────
+Route::get('/oprojects', function () {
+    return view('Oprojects');
+})->middleware('auth');
+
+Route::get('/oinventory', function () {
+    return view('Oinventory');
+})->middleware('auth');
+
+Route::get('/osuppliers', function () {
+    return view('Osuppliers');
+})->middleware('auth');
+
+Route::get('/oreports', function () {
+    return view('Oreports');
+})->middleware('auth');
+
+Route::get('/onotifications', function () {
+    return view('Onotifications');
+})->middleware('auth');
+
+Route::get('/oprofile', function () {
+    return view('Oprofile', [
+        'user' => Auth::user(),
+    ]);
+})->middleware('auth');
+
+Route::get('/osettings', function () {
+    $users = User::orderBy('name')->get();
+    return view('Osettings', [
+        'users' => $users,
+    ]);
 })->middleware('auth');
 
 // Project Tracking page
@@ -43,10 +114,11 @@ Route::get('/suppliers', function () {
 
 // Supplier API endpoints
 Route::middleware('auth')->group(function () {
-    // Route::get('/api/suppliers', [SupplierController::class, 'index']);
-    // Route::post('/api/suppliers', [SupplierController::class, 'store']);
-    // Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
-    // Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
+    Route::get('/api/suppliers', [SupplierController::class, 'index']);
+    Route::post('/api/suppliers', [SupplierController::class, 'store']);
+    Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
+    Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
+    Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
 
     // Config API endpoints
     Route::get('/api/config/{type}', [ConfigController::class, 'index']);
@@ -178,6 +250,16 @@ Route::post('/login', function (Request $request) {
             ]);
         }
         $request->session()->regenerate();
+
+        $role = strtolower($user->role ?? '');
+
+        if ($role === 'admin') {
+            return redirect('/dashboard');
+        } elseif ($role === 'accounting') {
+            return redirect('adashboard');
+        } elseif ($role === 'operations') {
+            return redirect('/odashboard');
+        }
 
         return redirect('/dashboard');
     }

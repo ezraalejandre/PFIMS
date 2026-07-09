@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Operations Suppliers - PFIMS</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Item Suppliers - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Osuppliers.css') }}">
     <style>
         #deleteConfirmModal { z-index: 9999 !important; }
@@ -39,7 +40,7 @@
     </style>
 </head>
 <body>
-
+    
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
@@ -49,11 +50,11 @@
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
-            <span id="successMessage">Supplier saved successfully!</span>
+            <span>Supplier saved successfully!</span>
             <button class="success-close" onclick="closeSuccess()">×</button>
         </div>
     </div>
@@ -97,7 +98,7 @@
             </a>
             <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>User</span>
+                <span>{{ auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -122,10 +123,13 @@
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/olandig') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
-                        Log out
-                    </a>
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>
@@ -153,97 +157,8 @@
                         <th style="width: 60px; text-align: center;">Action</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Holcim Philippines</strong></td>
-                        <td>Manila, Philippines</td>
-                        <td>+63 2 8888 1111</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('Holcim Philippines', 'Manila, Philippines', '+63 2 8888 1111')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>SteelAsia</strong></td>
-                        <td>Pasig City, Philippines</td>
-                        <td>+63 2 8888 2222</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('SteelAsia', 'Pasig City, Philippines', '+63 2 8888 2222')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Republic Cement</strong></td>
-                        <td>Makati City, Philippines</td>
-                        <td>+63 2 8888 3333</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('Republic Cement', 'Makati City, Philippines', '+63 2 8888 3333')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Boysen</strong></td>
-                        <td>Mandaluyong, Philippines</td>
-                        <td>+63 2 8888 4444</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('Boysen', 'Mandaluyong, Philippines', '+63 2 8888 4444')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Marlwasa</strong></td>
-                        <td>Quezon City, Philippines</td>
-                        <td>+63 2 8888 5555</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('Marlwasa', 'Quezon City, Philippines', '+63 2 8888 5555')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Atlanta Industries</strong></td>
-                        <td>Muntinlupa, Philippines</td>
-                        <td>+63 2 8888 6666</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('Atlanta Industries', 'Muntinlupa, Philippines', '+63 2 8888 6666')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Yelps Dodge Philippines</strong></td>
-                        <td>Paranaque, Philippines</td>
-                        <td>+63 2 8888 7777</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('Yelps Dodge Philippines', 'Paranaque, Philippines', '+63 2 8888 7777')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>Knauf</strong></td>
-                        <td>Taguig, Philippines</td>
-                        <td>+63 2 8888 8888</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('Knauf', 'Taguig, Philippines', '+63 2 8888 8888')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>DN Steel</strong></td>
-                        <td>Valenzuela, Philippines</td>
-                        <td>+63 2 8888 9999</td>
-                        <td style="text-align: center;">
-                            <button class="btn-edit" onclick="openEditModal('DN Steel', 'Valenzuela, Philippines', '+63 2 8888 9999')">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                            </button>
-                        </td>
-                    </tr>
+                <tbody id="supplierTableBody">
+                    <!-- Suppliers will be loaded here dynamically -->
                 </tbody>
             </table>
         </div>
@@ -259,6 +174,7 @@
             </div>
 
             <div class="modal-body">
+                <!-- Supplier Name: label + input on same row -->
                 <div class="add-row">
                     <div class="add-label">Supplier Name</div>
                     <div class="add-input">
@@ -268,6 +184,7 @@
 
                 <hr class="modal-divider">
 
+                <!-- Supplier Address & Contact side by side -->
                 <div class="add-two-col">
                     <div class="col-group">
                         <label>Supplier Address</label>
@@ -296,12 +213,11 @@
             </div>
 
             <div class="modal-body">
-                <input type="hidden" id="editSupplierOriginalName">
-
+                <!-- Section 1: Supplier Name -->
                 <div class="edit-section">
                     <div class="left-col">
                         <div class="current-label">Current Supplier Name</div>
-                        <div class="current-value" id="editCurrentNameDisplay">Description</div>
+                        <div class="current-value">Description</div>
                     </div>
                     <div class="right-col">
                         <label>Supplier Name</label>
@@ -311,10 +227,11 @@
 
                 <hr class="modal-divider">
 
+                <!-- Section 2: Address -->
                 <div class="edit-section">
                     <div class="left-col">
                         <div class="current-label">Current Supplier Address</div>
-                        <div class="current-value" id="editCurrentAddressDisplay">Description</div>
+                        <div class="current-value">Description</div>
                     </div>
                     <div class="right-col">
                         <label>Address</label>
@@ -324,10 +241,11 @@
 
                 <hr class="modal-divider">
 
+                <!-- Section 3: Contact no. -->
                 <div class="edit-section">
                     <div class="left-col">
                         <div class="current-label">Current Supplier Contact no.</div>
-                        <div class="current-value" id="editCurrentContactDisplay">Description</div>
+                        <div class="current-value">Description</div>
                     </div>
                     <div class="right-col">
                         <label>Contact no.</label>
@@ -337,18 +255,63 @@
             </div>
 
             <div class="modal-footer">
-                <div class="footer-left">
-                    <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-                </div>
-                <div class="footer-right">
-                    <button class="btn-delete-supplier" onclick="deleteSupplier()">Delete</button>
-                    <button class="btn-save" onclick="updateSupplier()">Save</button>
+                <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
+                    <button class="btn-save" onclick="updateSupplier()">Save Changes</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // Global state
+        let currentSupplierId = null;
+
+        // ─── LOAD SUPPLIERS ON PAGE LOAD ───
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSuppliers();
+        });
+
+        // ─── LOAD SUPPLIERS FROM API ───
+        function loadSuppliers() {
+            fetch('/api/suppliers')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderSuppliers(data.data);
+                    }
+                })
+                .catch(error => console.error('Error loading suppliers:', error));
+        }
+
+        // ─── RENDER SUPPLIERS IN TABLE ───
+        function renderSuppliers(suppliers) {
+            const tbody = document.getElementById('supplierTableBody');
+            tbody.innerHTML = '';
+
+            if (suppliers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No suppliers found.</td></tr>';
+                return;
+            }
+
+            suppliers.forEach(supplier => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${supplier.supplier_name}</strong></td>
+                    <td>${supplier.address}</td>
+                    <td>${supplier.contact_number}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-edit" onclick="openEditModal(${supplier.supplier_id})">
+                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -356,81 +319,9 @@
             }
         }
 
-        // ─── ERROR NOTIFICATION ───
-        function showError(message) {
-            var notif = document.getElementById('errorNotification');
-            var msgSpan = document.getElementById('errorMessage');
-            if (msgSpan) {
-                msgSpan.textContent = message || 'An error occurred. Please try again.';
-            }
-            notif.style.display = 'block';
-            if (window.errorTimeout) clearTimeout(window.errorTimeout);
-            window.errorTimeout = setTimeout(function() {
-                closeError();
-            }, 5000);
-        }
-
-        function closeError() {
-            document.getElementById('errorNotification').style.display = 'none';
-            if (window.errorTimeout) {
-                clearTimeout(window.errorTimeout);
-                window.errorTimeout = null;
-            }
-        }
-
-        // ─── SUCCESS NOTIFICATION ───
-        function showSuccess(message) {
-            var notif = document.getElementById('successNotification');
-            var msgSpan = document.getElementById('successMessage');
-            if (msgSpan) {
-                msgSpan.textContent = message || 'Supplier saved successfully!';
-            }
-            notif.style.display = 'block';
-            if (window.successTimeout) clearTimeout(window.successTimeout);
-            window.successTimeout = setTimeout(function() {
-                closeSuccess();
-            }, 5000);
-        }
-
-        function closeSuccess() {
-            document.getElementById('successNotification').style.display = 'none';
-            if (window.successTimeout) {
-                clearTimeout(window.successTimeout);
-                window.successTimeout = null;
-            }
-        }
-
-        // ─── DELETE CONFIRMATION MODAL ───
-        var deleteCallback = null;
-
-        function openDeleteModal(message, callback) {
-            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this supplier?';
-            deleteCallback = callback;
-            document.getElementById('deleteConfirmModal').style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteConfirmModal').style.display = 'none';
-            document.body.style.overflow = '';
-            deleteCallback = null;
-        }
-
-        function confirmDelete() {
-            if (typeof deleteCallback === 'function') {
-                deleteCallback();
-            }
-            closeDeleteModal();
-        }
-
-        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeDeleteModal();
-            }
-        });
-
         // ─── ADD SUPPLIER MODAL ───
         function openAddModal() {
+            currentSupplierId = null;
             document.getElementById('addSupplierModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             document.getElementById('addSupplierName').value = '';
@@ -449,26 +340,56 @@
             var contact = document.getElementById('addSupplierContact').value.trim();
 
             if (!name || !address || !contact) {
-                showError('Please fill in all fields.');
+                alert('Please fill in all fields.');
                 return;
             }
 
-            closeAddModal();
-            showSuccess('Supplier added successfully!');
-            console.log('Add Supplier:', { name, address, contact });
+            const payload = {
+                supplier_name: name,
+                address: address,
+                contact_number: contact
+            };
+
+            fetch('/api/suppliers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeAddModal();
+                    showSuccess(data.message);
+                    loadSuppliers();
+                } else {
+                    alert('Error saving supplier');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving supplier');
+            });
         }
 
         // ─── EDIT SUPPLIER MODAL ───
-        function openEditModal(name, address, contact) {
-            document.getElementById('editSupplierOriginalName').value = name;
-
-            document.getElementById('editCurrentNameDisplay').textContent = name;
-            document.getElementById('editCurrentAddressDisplay').textContent = address || '';
-            document.getElementById('editCurrentContactDisplay').textContent = contact || '';
-
-            document.getElementById('editSupplierName').value = name;
-            document.getElementById('editSupplierAddress').value = address || '';
-            document.getElementById('editSupplierContact').value = contact || '';
+        function openEditModal(supplierId) {
+            currentSupplierId = supplierId;
+            
+            // Fetch supplier details
+            fetch(`/api/suppliers/${supplierId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const supplier = data.data;
+                        document.getElementById('editSupplierName').value = supplier.supplier_name;
+                        document.getElementById('editSupplierAddress').value = supplier.address;
+                        document.getElementById('editSupplierContact').value = supplier.contact_number;
+                    }
+                })
+                .catch(error => console.error('Error loading supplier:', error));
 
             document.getElementById('editSupplierModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -477,51 +398,145 @@
         function closeEditModal() {
             document.getElementById('editSupplierModal').classList.remove('active');
             document.body.style.overflow = '';
+            currentSupplierId = null;
+        }
+
+        let supplierToDelete = null;
+
+        function openDeleteModal(supplierId) {
+            supplierToDelete = supplierId;
+            document.getElementById('deleteConfirmMessage').textContent = 'Are you sure you want to permanently delete this supplier?';
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            supplierToDelete = null;
+        }
+
+        function confirmDelete() {
+            if (!supplierToDelete) {
+                closeDeleteModal();
+                return;
+            }
+
+            fetch(`/api/suppliers/${supplierToDelete}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                closeDeleteModal();
+                if (data.success) {
+                    showSuccess(data.message || 'Supplier deleted successfully!');
+                    loadSuppliers();
+                } else {
+                    showError(data.message || 'Error deleting supplier');
+                }
+            })
+            .catch(error => {
+                closeDeleteModal();
+                console.error('Error deleting supplier:', error);
+                showError('Error deleting supplier');
+            });
         }
 
         function updateSupplier() {
-            var originalName = document.getElementById('editSupplierOriginalName').value;
             var name = document.getElementById('editSupplierName').value.trim();
             var address = document.getElementById('editSupplierAddress').value.trim();
             var contact = document.getElementById('editSupplierContact').value.trim();
 
             if (!name || !address || !contact) {
-                showError('Please fill in all fields.');
+                alert('Please fill in all fields.');
                 return;
             }
 
-            closeEditModal();
-            showSuccess('Supplier updated successfully!');
-            console.log('Update Supplier:', { originalName, name, address, contact });
-        }
-
-        function deleteSupplier() {
-            var name = document.getElementById('editSupplierOriginalName').value;
-            if (!name) {
-                showError('No supplier selected.');
+            if (!currentSupplierId) {
+                alert('Supplier ID not found.');
                 return;
             }
-            openDeleteModal('Are you sure you want to permanently delete "' + name + '"?', function() {
-                closeEditModal();
-                showSuccess('Supplier "' + name + '" has been deleted.');
-                console.log('Supplier deleted:', name);
+
+            const payload = {
+                supplier_name: name,
+                address: address,
+                contact_number: contact
+            };
+
+            fetch(`/api/suppliers/${currentSupplierId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeEditModal();
+                    showSuccess(data.message);
+                    loadSuppliers();
+                } else {
+                    alert('Error updating supplier');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating supplier');
             });
         }
 
-        // ─── CLOSE MODALS ON BACKDROP ───
+        // ─── SUCCESS NOTIFICATION ───
+        function showSuccess(message) {
+            var notif = document.getElementById('successNotification');
+            var msgSpan = notif.querySelector('.success-content span:not(.success-icon)');
+            if (msgSpan) msgSpan.textContent = message || 'Supplier saved successfully!';
+            notif.style.display = 'block';
+            setTimeout(function() {
+                closeSuccess();
+            }, 5000);
+        }
+
+        function closeSuccess() {
+            document.getElementById('successNotification').style.display = 'none';
+        }
+
+        function showError(message) {
+            var notif = document.getElementById('errorNotification');
+            var msgSpan = document.getElementById('errorMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            }
+            notif.style.display = 'block';
+            setTimeout(function() {
+                closeError();
+            }, 5000);
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+        }
+
+        // ─── CLOSE MODALS ON BACKDROP CLICK ───
         document.getElementById('addSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeAddModal(); }
         });
         document.getElementById('editSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeEditModal(); }
         });
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeDeleteModal(); }
+        });
 
         document.addEventListener('click', function(e) {
-            if (document.getElementById('errorNotification').style.display === 'block') {
-                if (!e.target.closest('.error-notification')) { closeError(); }
-            }
             if (document.getElementById('successNotification').style.display === 'block') {
-                if (!e.target.closest('.success-notification')) { closeSuccess(); }
+                if (!e.target.closest('.success-notification')) {
+                    closeSuccess();
+                }
             }
         });
     </script>
