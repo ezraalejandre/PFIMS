@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pfims_mobile/screens/notifications_screen.dart' show NotificationsScreen;
 import '../widgets/app_bottom_nav_bar.dart';
+import '../services/user_session.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 // `notifications_screen.dart` re-exposes `kBrandOrange` from app_header.dart
 // (via `show`); hide it here since this file already declares its own copy.
 // import 'notifications_screen.dart' show kBrandOrange;
@@ -86,7 +89,14 @@ const List<_ActiveProjectData> _activeProjects = [
 /// ---------------------------------------------------------------------
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  // The logged-in user's email, passed via route arguments from
+  // Navigator.pushReplacementNamed(context, "/dashboard", arguments: email)
+  // in login_screen.dart, and forwarded here from main.dart's
+  // onGenerateRoute. Used to carry identity into /profile when the header
+  // avatar is tapped.
+  final String email;
+
+  const DashboardScreen({super.key, this.email = ''});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -117,7 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPageBg,
-      appBar: _DashboardHeader(),
+      appBar: _DashboardHeader(email: widget.email),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -330,18 +340,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 0, email: widget.email),
     );
   }
 }
 
 /// Custom top app bar: logo + company name + notification bell + profile avatar.
 class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
+  const _DashboardHeader({required this.email});
+
+  final String email;
+
   /// TODO: wire to real unread-notifications count once notifications data layer exists.
   static const int _unreadCount = 4;
 
+  String get _resolvedEmail => email.isNotEmpty ? email : UserSession.email;
+
+  Uint8List? _decodePhoto() {
+    final uri = UserSession.photoDataUri;
+    if (uri == null || uri.isEmpty) return null;
+    final commaIndex = uri.indexOf(',');
+    if (commaIndex == -1) return null;
+    try {
+      return base64Decode(uri.substring(commaIndex + 1));
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final photoBytes = _decodePhoto();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
@@ -394,14 +424,17 @@ class _DashboardHeader extends StatelessWidget implements PreferredSizeWidget {
               shape: const CircleBorder(),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: () => Navigator.of(context).pushNamed('/profile'),
+                onTap: () => Navigator.of(context).pushNamed('/profile', arguments: _resolvedEmail),
                 customBorder: const CircleBorder(),
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
                   child: CircleAvatar(
                     radius: 18,
                     backgroundColor: kBrandOrange,
-                    child: Icon(Icons.person, color: Colors.white, size: 20),
+                    backgroundImage: photoBytes != null ? MemoryImage(photoBytes) : null,
+                    child: photoBytes == null
+                        ? const Icon(Icons.person, color: Colors.white, size: 20)
+                        : null,
                   ),
                 ),
               ),

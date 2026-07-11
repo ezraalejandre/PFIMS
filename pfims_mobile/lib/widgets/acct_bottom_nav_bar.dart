@@ -4,9 +4,14 @@ import '../theme/app_theme.dart';
 class AcctBottomNavBar extends StatelessWidget {
   final int currentIndex;
 
+  // The logged-in user's email, forwarded as route arguments on every tab
+  // switch. Defaults to '' for call sites that haven't been updated yet.
+  final String email;
+
   const AcctBottomNavBar({
     super.key,
     required this.currentIndex,
+    this.email = '',
   });
 
   @override
@@ -37,6 +42,7 @@ class AcctBottomNavBar extends StatelessWidget {
         Navigator.pushReplacementNamed(
           context,
           routes[index],
+          arguments: email,
         );
       },
     );

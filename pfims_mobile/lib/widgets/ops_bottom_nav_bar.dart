@@ -4,9 +4,14 @@ import '../theme/app_theme.dart';
 class OpsBottomNavBar extends StatelessWidget {
   final int currentIndex;
 
+  // The logged-in user's email, forwarded as route arguments on every tab
+  // switch. Defaults to '' for call sites that haven't been updated yet.
+  final String email;
+
   const OpsBottomNavBar({
     super.key,
     required this.currentIndex,
+    this.email = '',
   });
 
   @override
@@ -42,7 +47,7 @@ class OpsBottomNavBar extends StatelessWidget {
       indicatorColor: AppColors.orange.withValues(alpha: .2),
       destinations: destinations,
       onDestinationSelected: (i) {
-        Navigator.pushReplacementNamed(context, routes[i]);
+        Navigator.pushReplacementNamed(context, routes[i], arguments: email);
       },
     );
   }

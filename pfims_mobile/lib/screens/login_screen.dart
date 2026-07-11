@@ -1,4 +1,5 @@
 import '../services/api_service.dart';
+import '../services/user_session.dart';
 import 'forgot_password_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -232,9 +233,63 @@ class _LoginScreenState extends State<LoginScreen> {
                                           try {
                                             final result = await ApiService.login(email, password);
 
-                                            print(result);
+                                            // Carry the logged-in email forward via route
+                                            // arguments so downstream screens (Dashboard,
+                                            // Profile, etc.) know who's signed in. Falls
+                                            // back to the typed email if the backend
+                                            // response shape ever changes.
+                                            final loggedInEmail =
+                                                (result['user']?['email'] as String?) ?? email;
+                                            final role =
+                                                (result['user']?['role'] as String?)?.toLowerCase() ?? '';
 
-                                            Navigator.pushReplacementNamed(context, "/dashboard");
+                                            // Route to the dashboard that matches the
+                                            // account's role. AuthController::login
+                                            // returns role as one of 'admin',
+                                            // 'operations', or 'accounting' (see the
+                                            // users table enum) — anything else
+                                            // (including 'admin') falls back to the
+                                            // default /dashboard.
+                                            final String destinationRoute;
+                                            switch (role) {
+                                              case 'operations':
+                                                destinationRoute = '/ops-dashboard';
+                                                break;
+                                              case 'accounting':
+                                                destinationRoute = '/acct-dashboard';
+                                                break;
+                                              default:
+                                                destinationRoute = '/dashboard';
+                                            }
+
+                                            UserSession.email = loggedInEmail;
+
+                                            // Best-effort: fetch the full profile (name,
+                                            // phone, location, photo) so AppHeader's
+                                            // avatar is populated right away instead of
+                                            // showing the generic icon until the user
+                                            // visits Profile. Login itself only returns
+                                            // id/name/email/role, not the photo. A
+                                            // failure here is non-critical — the header
+                                            // just falls back to the icon.
+                                            try {
+                                              final profileResult =
+                                                  await ApiService.getProfile(loggedInEmail);
+                                              final profileUser =
+                                                  profileResult['user'] as Map<String, dynamic>?;
+                                              if (profileUser != null) {
+                                                UserSession.updateFromProfile(profileUser);
+                                              }
+                                            } catch (_) {
+                                              // Ignore — login already succeeded.
+                                            }
+
+                                            if (!mounted) return;
+                                            Navigator.pushReplacementNamed(
+                                              context,
+                                              destinationRoute,
+                                              arguments: loggedInEmail,
+                                            );
                                           } catch (e) {
                                               showDialog(
                                                 context: context,

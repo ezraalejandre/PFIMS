@@ -5,10 +5,17 @@ class AppBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final bool showBudget;
 
+  // The logged-in user's email, forwarded as route arguments on every tab
+  // switch so screens like /profile (reached via AppHeader on the
+  // destination screen) keep knowing who's signed in. Defaults to '' for
+  // call sites that haven't been updated yet.
+  final String email;
+
   const AppBottomNavBar({
     super.key,
     required this.currentIndex,
     this.showBudget = true,
+    this.email = '',
   });
 
   @override
@@ -47,7 +54,7 @@ class AppBottomNavBar extends StatelessWidget {
       indicatorColor: AppColors.orange.withValues(alpha: .2),
       destinations: destinations,
       onDestinationSelected: (i) {
-        Navigator.pushReplacementNamed(context, routes[i]);
+        Navigator.pushReplacementNamed(context, routes[i], arguments: email);
       },
     );
   }

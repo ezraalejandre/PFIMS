@@ -90,7 +90,9 @@ class Supplier {
 }
 
 class InventoryTrackingScreen extends StatefulWidget {
-  const InventoryTrackingScreen({super.key});
+  final String email;
+
+  const InventoryTrackingScreen({super.key, this.email = ''});
 
   @override
   State<InventoryTrackingScreen> createState() => _InventoryTrackingScreenState();
@@ -209,7 +211,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const AppHeader(),
+      appBar: AppHeader(email: widget.email),
       body: SafeArea(
         top: false,
         child: Column(
@@ -372,7 +374,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
           ],
         ),
       ),
-      bottomNavigationBar: const AppBottomNavBar(currentIndex: 3),
+      bottomNavigationBar: AppBottomNavBar(currentIndex: 3, email: widget.email),
     );
   }
 }

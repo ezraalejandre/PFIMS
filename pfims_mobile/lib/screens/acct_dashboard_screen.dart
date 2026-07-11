@@ -57,13 +57,18 @@ const List<double> _budgetVsSpending = [
 ];
 
 class AcctDashboardScreen extends StatelessWidget {
-  const AcctDashboardScreen({super.key});
+  // The logged-in user's email, forwarded to /profile via the header's
+  // profile avatar. Pass this in via route arguments when navigating here
+  // (see main.dart's onGenerateRoute) so the profile page loads correctly.
+  final String email;
+
+  const AcctDashboardScreen({super.key, this.email = ''});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPageBg,
-      appBar: _DashboardHeader(),
+      appBar: _DashboardHeader(email: email),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -206,8 +211,9 @@ class AcctDashboardScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: const AcctBottomNavBar(
+      bottomNavigationBar: AcctBottomNavBar(
         currentIndex: 0,
+        email: email,
       ),
     );
   }
@@ -215,6 +221,10 @@ class AcctDashboardScreen extends StatelessWidget {
 
 class _DashboardHeader extends StatelessWidget
     implements PreferredSizeWidget {
+  const _DashboardHeader({required this.email});
+
+  final String email;
+
   static const int _unreadCount = 4;
 
   @override
@@ -280,6 +290,7 @@ class _DashboardHeader extends StatelessWidget
                 onTap: () => Navigator.pushNamed(
                   context,
                   '/profile',
+                  arguments: email,
                 ),
                 child: const Padding(
                   padding: EdgeInsets.all(4),

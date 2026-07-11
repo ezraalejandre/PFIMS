@@ -5,7 +5,9 @@ import 'notifications_screen.dart';
 import 'security_settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import '../services/user_session.dart';
 import 'dart:typed_data';
+import 'dart:convert';
 
 class ProfileScreen extends StatefulWidget {
   final String email; // the logged-in user's email, passed in after login
@@ -22,17 +24,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _phone = '';
   String _location = '';
   String _role = '';
-  String? _profilePhotoUrl; // URL returned by the backend (asset('storage/...'))
+  // The photo is now stored in the DB and returned as a base64 data URI
+  // ("data:image/jpeg;base64,...") rather than a URL, so there's no
+  // separate network fetch (and therefore no CORS issue) — we decode it
+  // straight into bytes and use MemoryImage everywhere, the same way a
+  // freshly-picked local photo is already previewed below.
 
   bool _isLoading = true;
   String? _loadError;
 
-  static const String _employeeId = 'EVC-PM-0042'; // no employee_id column yet — see note below
   static const String _appVersion = 'EVC-DCS v2.4.1 · Build 241';
 
-  Uint8List? _profilePhotoBytes; // local preview after a fresh upload, overrides _profilePhotoUrl
+  Uint8List? _profilePhotoBytes; // decoded from the data URI, or a local preview after a fresh upload
   final ImagePicker _picker = ImagePicker();
   bool _isUploadingPhoto = false;
+
+  // Tracks which contact field (if any) currently has a save in flight,
+  // so we can show a per-row spinner and block double-edits.
+  String? _savingField;
 
   @override
   void initState() {
@@ -49,21 +58,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final result = await ApiService.getProfile(_email);
-      final user = result['user'] as Map<String, dynamic>?;
+
+      // Different backends shape this response differently — accept the
+      // common variants: {"user": {...}}, {"data": {...}}, or the user
+      // fields directly at the top level.
+      Map<String, dynamic>? user;
+      if (result['user'] is Map<String, dynamic>) {
+        user = result['user'] as Map<String, dynamic>;
+      } else if (result['data'] is Map<String, dynamic>) {
+        user = result['data'] as Map<String, dynamic>;
+      } else if (result.containsKey('email') || result.containsKey('name')) {
+        user = result;
+      }
 
       if (user == null) {
-        setState(() => _loadError = 'Could not load profile.');
+        // Surface exactly what came back so it's clear this is a response
+        // shape mismatch, not a network/auth failure. Check the debug
+        // console (PROFILE BODY log) for the full raw JSON.
+        setState(() {
+          _loadError =
+              'Could not load profile. Unexpected response format from server (keys: ${result.keys.join(", ")}).';
+        });
         return;
       }
 
+      final Map<String, dynamic> profile = user; // now guaranteed non-null
+
       setState(() {
-        _fullName = user['name'] ?? '';
-        _email = user['email'] ?? _email;
-        _phone = user['phone'] ?? '';
-        _location = user['location'] ?? '';
-        _role = (user['role'] ?? '').toString().toUpperCase();
-        _profilePhotoUrl = user['profile_photo'];
+        _fullName = profile['name'] ?? '';
+        _email = profile['email'] ?? _email;
+        _phone = profile['phone'] ?? '';
+        _location = profile['location'] ?? '';
+        _role = (profile['role'] ?? '').toString().toUpperCase();
+        _profilePhotoBytes = _decodeDataUri(profile['profile_photo']);
       });
+      // Keep AppHeader's session cache in sync so other screens' avatars
+      // reflect the latest email/photo without each of them having to
+      // fetch the profile themselves.
+      UserSession.updateFromProfile(profile);
     } catch (e) {
       setState(() => _loadError = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -76,6 +108,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (parts.isEmpty || parts.first.isEmpty) return '';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+  }
+
+  // Decodes a "data:<mime>;base64,<data>" URI into raw bytes. Returns
+  // null if the input is null/empty or isn't a valid data URI, so a
+  // malformed value from the backend just falls back to the initials
+  // avatar instead of crashing.
+  Uint8List? _decodeDataUri(String? dataUri) {
+    if (dataUri == null || dataUri.isEmpty) return null;
+    final commaIndex = dataUri.indexOf(',');
+    if (commaIndex == -1) return null;
+    try {
+      return base64Decode(dataUri.substring(commaIndex + 1));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _changePhoto() async {
@@ -118,8 +165,9 @@ try {
     final result = await ApiService.uploadProfilePhoto(_email, picked);
     if (!mounted) return;
     setState(() {
-      _profilePhotoUrl = result['profile_photo']; // canonical server URL
+      _profilePhotoBytes = _decodeDataUri(result['profile_photo']) ?? _profilePhotoBytes;
     });
+    UserSession.photoDataUri = result['profile_photo'] as String?;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Photo updated')),
     );
@@ -133,9 +181,14 @@ try {
   }
 }
 
+  // Opens the edit dialog for a contact field and, if the value changed,
+  // saves it to the backend via ApiService.updateProfileField before
+  // committing it to local state. On failure, the old value is kept and
+  // an error is shown.
   Future<void> _editField({
     required String label,
     required String currentValue,
+    required String fieldKey,
     required ValueChanged<String> onSaved,
     TextInputType keyboardType = TextInputType.text,
   }) async {
@@ -164,11 +217,28 @@ try {
       ),
     );
 
-    if (result != null && result.isNotEmpty && result != currentValue) {
-      setState(() => onSaved(result));
+    if (result == null || result.isEmpty || result == currentValue) return;
+
+    setState(() => _savingField = fieldKey);
+
+    try {
+      await ApiService.updateProfileField(_email, fieldKey, result);
       if (!mounted) return;
+      setState(() {
+        onSaved(result);
+        _savingField = null;
+      });
+      if (fieldKey == 'email') {
+        UserSession.email = result;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$label updated')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _savingField = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }
@@ -213,243 +283,322 @@ try {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: const AppHeader(),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                onPressed: () => Navigator.of(context).maybePop(),
-                splashRadius: 22,
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'PROFILE',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('account & settings management', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-          const SizedBox(height: 16),
-
-          // ---- Identity card ----
-          _Card(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
+      appBar: const _ProfileAppBar(),
+      body: RefreshIndicator(
+        onRefresh: _loadProfile,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+          children: [
+            // ---- Loading / error states for the initial profile fetch ----
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 48),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_loadError != null)
+              _Card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-CircleAvatar(
-  radius: 36,
-  backgroundColor: kBrandOrange,
-  backgroundImage: _profilePhotoBytes != null
-      ? MemoryImage(_profilePhotoBytes!)
-      : (_profilePhotoUrl != null ? NetworkImage(_profilePhotoUrl!) : null) as ImageProvider?,
-  child: (_profilePhotoBytes == null && _profilePhotoUrl == null)
-      ? Text(
-          _initials,
-          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
-        )
-      : null,
-),
-Positioned(
-  bottom: 0,
-  right: 0,
-  child: GestureDetector(
-    onTap: _isUploadingPhoto ? null : () => _changePhoto(),
-    child: Container(
-      padding: const EdgeInsets.all(5),
-      decoration: const BoxDecoration(color: Color(0xFF1A1A2E), shape: BoxShape.circle),
-      child: _isUploadingPhoto
-          ? const SizedBox(
-              width: 13,
-              height: 13,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-            )
-          : const Icon(Icons.camera_alt, color: Colors.white, size: 13),
-    ),
-  ),
-),
+                    Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Color(0xFFD23B5C)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _loadError!,
+                            style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: kBrandOrange),
+                        onPressed: _loadProfile,
+                        child: const Text('Retry'),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _fullName,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: kBrandOrange.withOpacity(0.14),
-                          borderRadius: BorderRadius.circular(20),
+              )
+            else ...[
+              // ---- Identity card ----
+              _Card(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 36,
+                          backgroundColor: kBrandOrange,
+                          backgroundImage: _profilePhotoBytes != null
+                              ? MemoryImage(_profilePhotoBytes!)
+                              : null,
+                          child: _profilePhotoBytes == null
+                              ? Text(
+                                  _initials,
+                                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+                                )
+                              : null,
                         ),
-                        child: Text(
-                          _role,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: kBrandOrange),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _isUploadingPhoto ? null : () => _changePhoto(),
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: const BoxDecoration(color: Color(0xFF1A1A2E), shape: BoxShape.circle),
+                              child: _isUploadingPhoto
+                                  ? const SizedBox(
+                                      width: 13,
+                                      height: 13,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.camera_alt, color: Colors.white, size: 13),
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _fullName,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: kBrandOrange.withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _role,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: kBrandOrange),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 6),
-                      Text('Employee ID: $_employeeId', style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-          // ---- Contact information ----
-          _Card(
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'CONTACT INFORMATION',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
-                  ),
+              // ---- Contact information ----
+              _Card(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        'CONTACT INFORMATION',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
+                      ),
+                    ),
+                    _ContactField(
+                      icon: Icons.person_outline,
+                      label: 'Full Name',
+                      value: _fullName,
+                      isSaving: _savingField == 'name',
+                      onEdit: () => _editField(
+                        label: 'Full Name',
+                        currentValue: _fullName,
+                        fieldKey: 'name',
+                        onSaved: (v) => _fullName = v,
+                      ),
+                    ),
+                    _ContactField(
+                      icon: Icons.email_outlined,
+                      label: 'Email Address',
+                      value: _email,
+                      isSaving: _savingField == 'email',
+                      onEdit: () => _editField(
+                        label: 'Email Address',
+                        currentValue: _email,
+                        fieldKey: 'email',
+                        keyboardType: TextInputType.emailAddress,
+                        onSaved: (v) => _email = v,
+                      ),
+                    ),
+                    _ContactField(
+                      icon: Icons.phone_outlined,
+                      label: 'Phone Number',
+                      value: _phone,
+                      isSaving: _savingField == 'phone',
+                      onEdit: () => _editField(
+                        label: 'Phone Number',
+                        currentValue: _phone,
+                        fieldKey: 'phone',
+                        keyboardType: TextInputType.phone,
+                        onSaved: (v) => _phone = v,
+                      ),
+                    ),
+                    _ContactField(
+                      icon: Icons.location_on_outlined,
+                      label: 'Location',
+                      value: _location,
+                      isLast: true,
+                      isSaving: _savingField == 'location',
+                      onEdit: () => _editField(
+                        label: 'Location',
+                        currentValue: _location,
+                        fieldKey: 'location',
+                        onSaved: (v) => _location = v,
+                      ),
+                    ),
+                  ],
                 ),
-                _ContactField(
-                  icon: Icons.person_outline,
-                  label: 'Full Name',
-                  value: _fullName,
-                  onEdit: () => _editField(
-                    label: 'Full Name',
-                    currentValue: _fullName,
-                    onSaved: (v) => _fullName = v,
-                  ),
-                ),
-                _ContactField(
-                  icon: Icons.email_outlined,
-                  label: 'Email Address',
-                  value: _email,
-                  onEdit: () => _editField(
-                    label: 'Email Address',
-                    currentValue: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    onSaved: (v) => _email = v,
-                  ),
-                ),
-                _ContactField(
-                  icon: Icons.phone_outlined,
-                  label: 'Phone Number',
-                  value: _phone,
-                  onEdit: () => _editField(
-                    label: 'Phone Number',
-                    currentValue: _phone,
-                    keyboardType: TextInputType.phone,
-                    onSaved: (v) => _phone = v,
-                  ),
-                ),
-                _ContactField(
-                  icon: Icons.location_on_outlined,
-                  label: 'Location',
-                  value: _location,
-                  isLast: true,
-                  onEdit: () => _editField(
-                    label: 'Location',
-                    currentValue: _location,
-                    onSaved: (v) => _location = v,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-          // ---- Account section ----
-          _Card(
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'ACCOUNT',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
-                  ),
+              // ---- Account section ----
+              _Card(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        'ACCOUNT',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
+                      ),
+                    ),
+                    _ActionRow(
+                      icon: Icons.notifications_none_rounded,
+                      title: 'Notifications',
+                      subtitle: 'Manage alerts & reminders',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                        );
+                      },
+                    ),
+                    _ActionRow(
+                      icon: Icons.shield_outlined,
+                      title: 'Privacy & Security',
+                      subtitle: 'Password, 2FA, sessions',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SecuritySettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _ActionRow(
+                      icon: Icons.help_outline,
+                      title: 'Help & Support',
+                      subtitle: 'FAQs, contact us',
+                      isLast: true,
+                      onTap: () => _showPlaceholder('Help & Support'),
+                    ),
+                  ],
                 ),
-                _ActionRow(
-                  icon: Icons.notifications_none_rounded,
-                  title: 'Notifications',
-                  subtitle: 'Manage alerts & reminders',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                    );
-                  },
-                ),
-                _ActionRow(
-                  icon: Icons.shield_outlined,
-                  title: 'Privacy & Security',
-                  subtitle: 'Password, 2FA, sessions',
-onTap: () {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => const SecuritySettingsScreen(),
-    ),
-  );
-},
-                ),
-                _ActionRow(
-                  icon: Icons.help_outline,
-                  title: 'Help & Support',
-                  subtitle: 'FAQs, contact us',
-                  isLast: true,
-                  onTap: () => _showPlaceholder('Help & Support'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-          // ---- Session section ----
-          _Card(
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'SESSION',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
-                  ),
+              // ---- Session section ----
+              _Card(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        'SESSION',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
+                      ),
+                    ),
+                    _ActionRow(
+                      icon: Icons.logout,
+                      title: 'Log Out',
+                      subtitle: 'Sign out of this account',
+                      isLast: true,
+                      iconBackground: const Color(0xFFFBDCE0),
+                      iconColor: const Color(0xFFD23B5C),
+                      titleColor: const Color(0xFFD23B5C),
+                      onTap: _confirmLogOut,
+                    ),
+                  ],
                 ),
-                _ActionRow(
-                  icon: Icons.logout,
-                  title: 'Log Out',
-                  subtitle: 'Sign out of this account',
-                  isLast: true,
-                  iconBackground: const Color(0xFFFBDCE0),
-                  iconColor: const Color(0xFFD23B5C),
-                  titleColor: const Color(0xFFD23B5C),
-                  onTap: _confirmLogOut,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 16),
 
-          Center(
-            child: Text(_appVersion, style: TextStyle(fontSize: 11.5, color: Colors.grey.shade400)),
-          ),
-        ],
+              Center(
+                child: Text(_appVersion, style: TextStyle(fontSize: 11.5, color: Colors.grey.shade400)),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
+}
+
+// ---- App bar: back arrow + title, with a subtitle line underneath ----
+class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _ProfileAppBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 6, 16, 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  splashRadius: 22,
+                ),
+                const Text(
+                  'PROFILE',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 48),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'account & settings management',
+                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(78);
 }
 
 class _Card extends StatelessWidget {
@@ -481,6 +630,7 @@ class _ContactField extends StatelessWidget {
   final String value;
   final VoidCallback onEdit;
   final bool isLast;
+  final bool isSaving;
 
   const _ContactField({
     required this.icon,
@@ -488,6 +638,7 @@ class _ContactField extends StatelessWidget {
     required this.value,
     required this.onEdit,
     this.isLast = false,
+    this.isSaving = false,
   });
 
   @override
@@ -514,12 +665,22 @@ class _ContactField extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            onPressed: onEdit,
-            icon: Icon(Icons.edit_outlined, size: 18, color: Colors.grey.shade500),
-            visualDensity: VisualDensity.compact,
-            splashRadius: 20,
-          ),
+          if (isSaving)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              onPressed: onEdit,
+              icon: Icon(Icons.edit_outlined, size: 18, color: Colors.grey.shade500),
+              visualDensity: VisualDensity.compact,
+              splashRadius: 20,
+            ),
         ],
       ),
     );
