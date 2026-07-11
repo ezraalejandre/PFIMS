@@ -74,6 +74,96 @@ Route::get('/projects', function () {
     );
 });
 
+Route::get('/projects/list', function () {
+    return response()->json(
+        DB::table('project_tbl')
+            ->select(
+                'project_id',
+                'project_name',
+                'client_name',
+                'project_manager',
+                'start_date',
+                'estimated_end_date',
+                'actual_end_date',
+                'worker_count',
+                'phase',
+                'completion_percentage',
+                'status'
+            )
+            ->orderByDesc('project_id')
+            ->get()
+    );
+});
+
+Route::post('/projects', function (Request $request) {
+    $validated = $request->validate([
+        'project_name'       => ['required', 'string', 'max:100'],
+        'client_name'        => ['required', 'string', 'max:100'],
+        'project_manager'    => ['required', 'string', 'max:100'],
+        'start_date'         => ['required', 'date'],
+        'estimated_end_date' => ['required', 'date', 'after_or_equal:start_date'],
+        'worker_count'       => ['nullable', 'integer', 'min:0'],
+    ]);
+
+    $id = DB::table('project_tbl')->insertGetId([
+        'project_name'          => $validated['project_name'],
+        'client_name'           => $validated['client_name'],
+        'project_manager'       => $validated['project_manager'],
+        'start_date'            => $validated['start_date'],
+        'estimated_end_date'    => $validated['estimated_end_date'],
+        'worker_count'          => $validated['worker_count'] ?? 0,
+        // Not collected by the current form yet — sensible defaults for a
+        // brand-new project. Adjust if you add fields for these later.
+        'phase'                 => 'Planning',
+        'completion_percentage' => 0.00,
+        'status'                => 'Pending',
+    ]);
+
+    $project = DB::table('project_tbl')->where('project_id', $id)->first();
+
+    return response()->json($project, 201);
+});
+
+Route::put('/projects/{id}', function (Request $request, $id) {
+    $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Project not found'], 404);
+    }
+
+    $validated = $request->validate([
+        'project_name'          => ['sometimes', 'required', 'string', 'max:100'],
+        'client_name'           => ['sometimes', 'required', 'string', 'max:100'],
+        'project_manager'       => ['sometimes', 'required', 'string', 'max:100'],
+        'start_date'            => ['sometimes', 'required', 'date'],
+        'estimated_end_date'    => ['sometimes', 'required', 'date'],
+        'actual_end_date'       => ['nullable', 'date'],
+        'worker_count'          => ['sometimes', 'required', 'integer', 'min:0'],
+        'phase'                 => ['sometimes', 'required', 'string', 'in:Planning,Foundation,Structure,Finishing,Complete'],
+        'status'                => ['sometimes', 'required', 'string', 'in:Pending,On Track,At Risk,Delayed,Completed'],
+        'completion_percentage' => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
+    ]);
+
+    if (empty($validated)) {
+        return response()->json(['message' => 'No fields to update'], 422);
+    }
+
+    DB::table('project_tbl')->where('project_id', $id)->update($validated);
+
+    $project = DB::table('project_tbl')->where('project_id', $id)->first();
+    return response()->json($project);
+});
+
+Route::delete('/projects/{id}', function ($id) {
+    $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Project not found'], 404);
+    }
+
+    DB::table('project_tbl')->where('project_id', $id)->delete();
+
+    return response()->json(['message' => 'Project deleted'], 200);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Inventory items
