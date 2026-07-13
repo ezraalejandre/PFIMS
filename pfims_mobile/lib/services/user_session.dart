@@ -17,6 +17,8 @@ class UserSession {
   // photo (or not loaded yet) — callers should fall back to an icon.
   static String? photoDataUri;
 
+  static Object? get token => null;
+
   // Call this after any successful ApiService.getProfile(...) response
   // (the `user` map inside it) to keep the cache in sync with the
   // backend. Only overwrites fields that are actually present, so a

@@ -33,7 +33,7 @@ class AcctBottomNavBar extends StatelessWidget {
         ),
         NavigationDestination(
           icon: Icon(Icons.account_balance_wallet_outlined),
-          label: 'Budget',
+          label: 'Finance',
         ),
       ],
       onDestinationSelected: (index) {

@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\Api\DashboardController;
 
 
 Route::get('/user', function (Request $request) {
@@ -62,6 +65,39 @@ Route::get('/units', function () {
     return response()->json(
         DB::table('unit_tbl')
             ->select('unit_id', 'unit_name')
+            ->get()
+    );
+});
+
+Route::get('/expense-categories', function () {
+    return response()->json(
+        DB::table('expense_category_tbl')
+            ->select('expense_category_id', 'category_name')
+            ->get()
+    );
+});
+
+Route::get('/expenses', function () {
+    return response()->json(
+        DB::table('expense_tbl as e')
+            ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+            ->join('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
+            ->select(
+                'e.expense_id',
+                'e.project_id',
+                'p.project_name',
+                'e.expense_category_id',
+                'c.category_name',
+                'e.expense_description',
+                'e.labor_amount',
+                'e.material_amount',
+                'e.equipment_amount',
+                'e.other_amount',
+                'e.actual_amount',
+                'e.expense_date',
+                'e.remarks'
+            )
+            ->orderByDesc('e.expense_id')
             ->get()
     );
 });
@@ -162,6 +198,195 @@ Route::delete('/projects/{id}', function ($id) {
     DB::table('project_tbl')->where('project_id', $id)->delete();
 
     return response()->json(['message' => 'Project deleted'], 200);
+});
+
+Route::post('/budgets', function (Request $request) {
+    $validated = $request->validate([
+        'project_id'    => ['required', 'integer', 'exists:project_tbl,project_id'],
+        'budget_amount' => ['required', 'numeric', 'min:0.01'],
+    ]);
+
+    // A "budget" row is an expense_tbl row that only carries budget_amount
+    // for a project — no category, no actual spend recorded yet. Treat it
+    // as one row per project: setting a new budget updates that row
+    // instead of inserting a duplicate every time.
+    $existing = DB::table('expense_tbl')
+        ->where('project_id', $validated['project_id'])
+        ->whereNull('expense_category_id')
+        ->whereNull('actual_amount')
+        ->first();
+
+    if ($existing) {
+        DB::table('expense_tbl')
+            ->where('expense_id', $existing->expense_id)
+            ->update(['budget_amount' => $validated['budget_amount']]);
+        $id = $existing->expense_id;
+    } else {
+        $id = DB::table('expense_tbl')->insertGetId([
+            'project_id'    => $validated['project_id'],
+            'budget_amount' => $validated['budget_amount'],
+            'expense_date'  => now()->toDateString(),
+        ]);
+    }
+
+    $budget = DB::table('expense_tbl as e')
+        ->join('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+        ->select('e.expense_id', 'e.project_id', 'p.project_name', 'e.budget_amount')
+        ->where('e.expense_id', $id)
+        ->first();
+
+    return response()->json($budget, 201);
+});
+
+Route::post('/expenses', function (Request $request) {
+    $validated = $request->validate([
+        'project_id'          => ['nullable', 'integer', 'exists:project_tbl,project_id'],
+        'expense_category_id' => ['required', 'integer', 'exists:expense_category_tbl,expense_category_id'],
+        'expense_description' => ['required', 'string', 'max:255'],
+        'amount'              => ['required', 'numeric', 'min:0.01'],
+        'expense_date'        => ['required', 'date'],
+        'remarks'             => ['nullable', 'string'],
+    ]);
+
+    $category = DB::table('expense_category_tbl')
+        ->where('expense_category_id', $validated['expense_category_id'])
+        ->first();
+
+    if (!$category) {
+        return response()->json(['message' => 'Invalid expense category'], 422);
+    }
+
+    // Route the amount into the column matching the chosen category.
+    // Anything that isn't Labor/Material/Equipment falls back to "other".
+    $amountColumn = match (strtolower(trim($category->category_name))) {
+        'labor'     => 'labor_amount',
+        'material'  => 'material_amount',
+        'equipment' => 'equipment_amount',
+        default     => 'other_amount',
+    };
+
+    // project_id is optional now — an expense no longer has to belong to
+    // a specific project.
+    $id = DB::table('expense_tbl')->insertGetId([
+        'project_id'          => $validated['project_id'] ?? null,
+        'expense_category_id' => $validated['expense_category_id'],
+        'expense_description' => $validated['expense_description'],
+        $amountColumn          => $validated['amount'],
+        'actual_amount'        => $validated['amount'],
+        'expense_date'         => $validated['expense_date'],
+        'remarks'              => $validated['remarks'] ?? null,
+    ]);
+
+    // Joined read-back so the client gets project_name / category_name
+    // without a second round trip. leftJoin so project-less expenses
+    // still come back instead of vanishing.
+    $expense = DB::table('expense_tbl as e')
+        ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+        ->join('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
+        ->select(
+            'e.expense_id',
+            'e.project_id',
+            'p.project_name',
+            'e.expense_category_id',
+            'c.category_name',
+            'e.expense_description',
+            'e.labor_amount',
+            'e.material_amount',
+            'e.equipment_amount',
+            'e.other_amount',
+            'e.actual_amount',
+            'e.expense_date',
+            'e.remarks'
+        )
+        ->where('e.expense_id', $id)
+        ->first();
+
+    return response()->json($expense, 201);
+});
+
+Route::put('/expenses/{id}', function (Request $request, $id) {
+    $exists = DB::table('expense_tbl')->where('expense_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Expense not found'], 404);
+    }
+
+    $validated = $request->validate([
+        'project_id'          => ['nullable', 'integer', 'exists:project_tbl,project_id'],
+        'expense_category_id' => ['required', 'integer', 'exists:expense_category_tbl,expense_category_id'],
+        'expense_description' => ['required', 'string', 'max:255'],
+        'amount'              => ['required', 'numeric', 'min:0.01'],
+        'expense_date'        => ['required', 'date'],
+        'remarks'             => ['nullable', 'string'],
+    ]);
+
+    $category = DB::table('expense_category_tbl')
+        ->where('expense_category_id', $validated['expense_category_id'])
+        ->first();
+
+    if (!$category) {
+        return response()->json(['message' => 'Invalid expense category'], 422);
+    }
+
+    $amountColumn = match (strtolower(trim($category->category_name))) {
+        'labor'     => 'labor_amount',
+        'material'  => 'material_amount',
+        'equipment' => 'equipment_amount',
+        default     => 'other_amount',
+    };
+
+    // Clear every amount column first, then set only the one matching the
+    // (possibly new) category — editing can move an expense from e.g.
+    // Labor to Equipment, and the old column shouldn't keep stale data.
+    // project_id is optional now, same as on create.
+    $data = [
+        'project_id'           => $validated['project_id'] ?? null,
+        'expense_category_id'  => $validated['expense_category_id'],
+        'expense_description'  => $validated['expense_description'],
+        'labor_amount'         => null,
+        'material_amount'      => null,
+        'equipment_amount'     => null,
+        'other_amount'         => null,
+        'actual_amount'        => $validated['amount'],
+        'expense_date'         => $validated['expense_date'],
+        'remarks'              => $validated['remarks'] ?? null,
+    ];
+    $data[$amountColumn] = $validated['amount'];
+
+    DB::table('expense_tbl')->where('expense_id', $id)->update($data);
+
+    $expense = DB::table('expense_tbl as e')
+        ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+        ->join('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
+        ->select(
+            'e.expense_id',
+            'e.project_id',
+            'p.project_name',
+            'e.expense_category_id',
+            'c.category_name',
+            'e.expense_description',
+            'e.labor_amount',
+            'e.material_amount',
+            'e.equipment_amount',
+            'e.other_amount',
+            'e.actual_amount',
+            'e.expense_date',
+            'e.remarks'
+        )
+        ->where('e.expense_id', $id)
+        ->first();
+
+    return response()->json($expense);
+});
+
+Route::delete('/expenses/{id}', function ($id) {
+    $exists = DB::table('expense_tbl')->where('expense_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Expense not found'], 404);
+    }
+
+    DB::table('expense_tbl')->where('expense_id', $id)->delete();
+
+    return response()->json(['message' => 'Expense deleted'], 200);
 });
 
 /*
@@ -362,3 +587,13 @@ Route::delete('/suppliers/{id}', function ($id) {
 Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'reset']);
+Route::get('/inventory-transactions', [InventoryTransactionController::class, 'index']);
+Route::get('/budgets', [BudgetController::class, 'index']);
+Route::post('/budgets', [BudgetController::class, 'store']);
+
+Route::get('/expenses', [ExpenseController::class, 'index']);
+Route::post('/expenses', [ExpenseController::class, 'store']);
+Route::put('/expenses/{id}', [ExpenseController::class, 'update']);
+Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
+
+Route::get('/dashboard', [DashboardController::class, 'index']);

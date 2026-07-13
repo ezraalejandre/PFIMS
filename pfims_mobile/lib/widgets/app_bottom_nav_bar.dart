@@ -32,7 +32,7 @@ class AppBottomNavBar extends StatelessWidget {
       if (showBudget)
         const NavigationDestination(
           icon: Icon(Icons.account_balance_wallet_outlined),
-          label: "Budget",
+          label: "Finance",
         ),
       const NavigationDestination(
         icon: Icon(Icons.inventory_2_outlined),

@@ -96,6 +96,47 @@ Color _colorForStatus(String status) {
 }
 
 /// ---------------------------------------------------------------------
+/// Shared blocking validation / error dialog.
+///
+/// Used whenever a save/update/delete cannot proceed — either because the
+/// backend rejected the request (Laravel validation errors, "not found",
+/// etc.) or because the request never reached the server (no internet /
+/// server unreachable). Unlike a SnackBar, this requires the user to tap
+/// "OK" to dismiss, so the failure can't be missed, and the calling modal
+/// stays open (nothing is popped) so the user's entered data is preserved
+/// and they are forced to correct the issue before they can proceed.
+/// ---------------------------------------------------------------------
+Future<void> showValidationDialog(
+  BuildContext context, {
+  String title = "Can't Save",
+  required String message,
+}) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      icon: const Icon(Icons.error_outline, color: kDelayedRed, size: 32),
+      title: Text(title, textAlign: TextAlign.center),
+      content: Text(message, textAlign: TextAlign.center),
+      actionsAlignment: MainAxisAlignment.center,
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: kDarkPill,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: const Text("OK"),
+        ),
+      ],
+    ),
+  );
+}
+
+/// ---------------------------------------------------------------------
 /// Model built from a `project_tbl` row (GET /api/projects/list).
 /// ---------------------------------------------------------------------
 class _ProjectData {
@@ -268,20 +309,31 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
             final allProjects = snapshot.data ?? const <_ProjectData>[];
             final projects = _filter(allProjects);
 
-            final active = allProjects.length;
-            final onSchedule = allProjects
-                .where((p) {
-                  final s = p.status.toLowerCase();
-                  return s != 'at risk' && s != 'delayed';
-                })
-                .length;
-            final delayed = allProjects
-                .where((p) {
-                  final s = p.status.toLowerCase();
-                  return s == 'at risk' || s == 'delayed';
-                })
-                .length;
-            final onSchedulePct = active > 0 ? ((onSchedule / active) * 100).round() : 0;
+           final totalProjects = allProjects.length;
+          final activeProjects = allProjects
+              .where((p) => p.status.toLowerCase() != 'completed')
+              .length;
+
+          final avgProgress = allProjects.isEmpty
+              ? 0
+              : ((allProjects.fold<double>(0, (sum, p) => sum + p.percent) /
+                          allProjects.length) *
+                      100)
+                  .round();
+
+          final needsAttention = allProjects.where((p) {
+            final s = p.status.toLowerCase();
+            return s == 'at risk' || s == 'delayed';
+          }).length;
+
+          final today = DateTime.now();
+          final todayDateOnly = DateTime(today.year, today.month, today.day);
+          final overdue = allProjects.where((p) {
+            if (p.actualEndDate != null) return false; // already finished
+            if (p.status.toLowerCase() == 'completed') return false;
+            if (p.estimatedEndDate == null) return false;
+            return p.estimatedEndDate!.isBefore(todayDateOnly);
+          }).length;
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -337,39 +389,54 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                 const SizedBox(height: 16),
 
                 // ---- Stat tiles ----
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatTile(
-                        label: "ACTIVE PROJECTS",
-                        value: isLoading ? "—" : "$active",
-                        footer: "Across all phases",
-                        footerColor: Colors.grey[600]!,
+                SizedBox(
+                  height: 104, // match roughly what the tiles already render at
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      SizedBox(
+                        width: 150,
+                        child: _StatTile(
+                          label: "ACTIVE PROJECTS",
+                          value: isLoading ? "—" : "$activeProjects",
+                          footer: isLoading ? "" : "$totalProjects total",
+                          footerColor: Colors.grey[600]!,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _StatTile(
-                        label: "ON SCHEDULE",
-                        value: isLoading ? "—" : "$onSchedule",
-                        footer: isLoading ? "" : "$onSchedulePct% of active",
-                        footerColor: Colors.grey[600]!,
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 150,
+                        child: _StatTile(
+                          label: "AVG. PROGRESS",
+                          value: isLoading ? "—" : "$avgProgress%",
+                          footer: "Across active projects",
+                          footerColor: Colors.grey[600]!,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _StatTile(
-                        label: "DELAYED",
-                        value: isLoading ? "—" : "$delayed",
-                        footer: delayed > 0 ? "Needs attention" : "All on schedule",
-                        footerColor: delayed > 0 ? kDelayedRed : Colors.grey[600]!,
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 150,
+                        child: _StatTile(
+                          label: "NEEDS ATTENTION",
+                          value: isLoading ? "—" : "$needsAttention",
+                          footer: needsAttention > 0 ? "At risk or delayed" : "All clear",
+                          footerColor: needsAttention > 0 ? kDelayedRed : Colors.grey[600]!,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 150,
+                        child: _StatTile(
+                          label: "OVERDUE",
+                          value: isLoading ? "—" : "$overdue",
+                          footer: overdue > 0 ? "Past deadline" : "On schedule",
+                          footerColor: overdue > 0 ? kDelayedRed : Colors.grey[600]!,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-
-                // ---- Search + filter ----
+                                // ---- Search + filter ----
                 Row(
                   children: [
                     Expanded(
@@ -726,6 +793,41 @@ class _NewProjectModalState extends State<_NewProjectModal> {
       _endDate != null &&
       _workerCountError == null;
 
+  /// Collects every validation problem across both steps so we can show a
+  /// single, complete list to the user instead of stopping at the first
+  /// one. Used as a final safety net right before the Save button's
+  /// request is sent — the Continue buttons already block navigation
+  /// between steps when a step is invalid, but this protects against the
+  /// user somehow reaching step 3 with stale/invalid data.
+  List<String> get _validationErrors {
+    final errors = <String>[];
+    if (_projectController.text.trim().isEmpty) {
+      errors.add("Project name is required.");
+    }
+    if (_clientController.text.trim().isEmpty) {
+      errors.add("Client name is required.");
+    }
+    if (_managerController.text.trim().isEmpty) {
+      errors.add("Project manager is required.");
+    }
+    final workerError = _workerCountError;
+    if (workerError != null) {
+      errors.add("No. of workers: $workerError.");
+    }
+    if (_startDate == null) {
+      errors.add("Start date is required.");
+    }
+    if (_endDate == null) {
+      errors.add("Estimated end date is required.");
+    }
+    if (_startDate != null &&
+        _endDate != null &&
+        _endDate!.isBefore(_startDate!)) {
+      errors.add("Estimated end date cannot be before the start date.");
+    }
+    return errors;
+  }
+
 Future<void> _pickDate(bool start) async {
     final today = DateTime.now();
     final firstSelectable = DateTime(today.year, today.month, today.day);
@@ -752,6 +854,19 @@ Future<void> _pickDate(bool start) async {
   }
 
   Future<void> _saveProject() async {
+    // Safety net: forbid the request entirely if anything is invalid, and
+    // tell the user exactly what to fix via a blocking dialog rather than
+    // letting a bad request go out to the server.
+    final errors = _validationErrors;
+    if (errors.isNotEmpty) {
+      await showValidationDialog(
+        context,
+        title: "Check the Form",
+        message: errors.join('\n'),
+      );
+      return;
+    }
+
     final workerCount = int.tryParse(_workersController.text.trim());
 
     setState(() => _isSaving = true);
@@ -771,8 +886,9 @@ Future<void> _pickDate(bool start) async {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      await showValidationDialog(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -873,9 +989,22 @@ Future<void> _pickDate(bool start) async {
                 ),
                 ElevatedButton(
                   onPressed: _currentStep == 0
-                      ? (_step1Valid ? () => _goTo(1) : null)
+                      ? (_step1Valid
+                          ? () => _goTo(1)
+                          : () => showValidationDialog(
+                                context,
+                                title: "Check the Form",
+                                message:
+                                    "Please enter both the project name and client name before continuing.",
+                              ))
                       : _currentStep == 1
-                          ? (_step2Valid ? () => _goTo(2) : null)
+                          ? (_step2Valid
+                              ? () => _goTo(2)
+                              : () => showValidationDialog(
+                                    context,
+                                    title: "Check the Form",
+                                    message: _validationErrors.join('\n'),
+                                  ))
                           : (_isSaving ? null : _saveProject),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kDarkPill,
@@ -1009,6 +1138,15 @@ Future<void> _pickDate(bool start) async {
             ),
           ],
         ),
+        if (_startDate != null &&
+            _endDate != null &&
+            _endDate!.isBefore(_startDate!)) ...[
+          const SizedBox(height: 10),
+          Text(
+            "Estimated end date cannot be before the start date.",
+            style: TextStyle(color: kDelayedRed, fontSize: 12.5),
+          ),
+        ],
       ],
     );
   }
@@ -1239,6 +1377,43 @@ class _EditProjectModalState extends State<_EditProjectModal> {
       _endDate != null &&
       _workerCountError == null;
 
+  /// Full list of validation problems, shown in the blocking dialog so the
+  /// user knows exactly what to fix instead of the Save button silently
+  /// doing nothing.
+  List<String> get _validationErrors {
+    final errors = <String>[];
+    if (_projectController.text.trim().isEmpty) {
+      errors.add("Project name is required.");
+    }
+    if (_clientController.text.trim().isEmpty) {
+      errors.add("Client name is required.");
+    }
+    if (_managerController.text.trim().isEmpty) {
+      errors.add("Project manager is required.");
+    }
+    final workerError = _workerCountError;
+    if (workerError != null) {
+      errors.add("No. of workers: $workerError.");
+    }
+    if (_startDate == null) {
+      errors.add("Start date is required.");
+    }
+    if (_endDate == null) {
+      errors.add("Estimated end date is required.");
+    }
+    if (_startDate != null &&
+        _endDate != null &&
+        _endDate!.isBefore(_startDate!)) {
+      errors.add("Estimated end date cannot be before the start date.");
+    }
+    if (_actualEndDate != null &&
+        _startDate != null &&
+        _actualEndDate!.isBefore(_startDate!)) {
+      errors.add("Actual end date cannot be before the start date.");
+    }
+    return errors;
+  }
+
   Future<void> _pickDate({required bool isStart, required bool isActual}) async {
     final today = DateTime.now();
     final firstSelectable = DateTime(today.year, today.month, today.day);
@@ -1266,6 +1441,18 @@ class _EditProjectModalState extends State<_EditProjectModal> {
   }
 
   Future<void> _save() async {
+    // Forbid the request from going out at all if the form is invalid —
+    // show every problem at once in a blocking dialog instead.
+    final errors = _validationErrors;
+    if (errors.isNotEmpty) {
+      await showValidationDialog(
+        context,
+        title: "Check the Form",
+        message: errors.join('\n'),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -1290,8 +1477,9 @@ class _EditProjectModalState extends State<_EditProjectModal> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      await showValidationDialog(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -1433,6 +1621,15 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                         ),
                       ],
                     ),
+                    if (_startDate != null &&
+                        _endDate != null &&
+                        _endDate!.isBefore(_startDate!)) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "Estimated end date cannot be before the start date.",
+                        style: TextStyle(color: kDelayedRed, fontSize: 12.5),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     _field(
                       label: "Actual end date",
@@ -1473,7 +1670,15 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                       style: TextStyle(fontSize: 16, color: Colors.black54)),
                 ),
                 ElevatedButton(
-                  onPressed: (_isValid && !_isSaving) ? _save : null,
+                  onPressed: _isSaving
+                      ? null
+                      : (_isValid
+                          ? _save
+                          : () => showValidationDialog(
+                                context,
+                                title: "Check the Form",
+                                message: _validationErrors.join('\n'),
+                              )),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kDarkPill,
                     foregroundColor: Colors.white,
@@ -1645,8 +1850,10 @@ class _ProjectDetailsModalState extends State<_ProjectDetailsModal> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isDeleting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      await showValidationDialog(
+        context,
+        title: "Can't Delete",
+        message: e.toString().replaceFirst('Exception: ', ''),
       );
     }
   }

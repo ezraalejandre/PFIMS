@@ -56,6 +56,18 @@ class InventoryService {
     return response.statusCode == 201;
   }
 
+  // NEW: fetch every individual transaction row (not just the latest per
+  // item). Used to render the Inventory tab as a transaction history list
+  // instead of one row per item.
+  static Future<List<Map<String, dynamic>>> fetchTransactions() async {
+    final response = await http.get(Uri.parse("$baseUrl/inventory-transactions"));
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    }
+    throw Exception("Failed to fetch transactions: ${response.statusCode}");
+  }
+
   static Future<List<Map<String, dynamic>>> fetchProjects() async {
     final response = await http.get(Uri.parse("$baseUrl/projects"));
     if (response.statusCode == 200) {
