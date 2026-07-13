@@ -64,12 +64,12 @@
             </div>
         </div>
         <div class="right">
-            <a href="{{ url('/onotifications') }}" onclick="hideBadge(event)" style="position: relative;">
+            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span>Notifications</span>
                 <span class="notif-badge" id="notifBadge">6</span>
             </a>
-            <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
                 <span>{{ auth()->user()->name }}</span>
             </a>
@@ -80,17 +80,18 @@
     <aside class="sidebar">
         <nav>
             <ul>
-                <li><a href="{{ url('/odashboard') }}">DASHBOARD</a></li>
-                <li class="active"><a href="{{ url('/oprojects') }}">PROJECTS</a></li>
-                <li><a href="{{ url('/oinventory') }}">INVENTORY</a></li>
-                <li><a href="{{ url('/osuppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/oreports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
+                <li class="active"><a href="{{ url('/projects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
             <ul>
                 <li>
-                    <a href="{{ url('/osettings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                         <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
                         Settings
                     </a>
@@ -121,29 +122,29 @@
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">Active Projects</div>
-                    <div class="stat-value">12</div>
-                    <div class="stat-sub">+2 this month</div>
+                    <div class="stat-value" id="activeProjectsCount">0</div>
+                    <div class="stat-sub" id="activeProjectsSub">Loading...</div>
                 </div>
             </div>
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">On Schedule</div>
-                    <div class="stat-value">8</div>
-                    <div class="stat-sub">67% of active</div>
+                    <div class="stat-value" id="onScheduleCount">0</div>
+                    <div class="stat-sub" id="onScheduleSub">0% of active</div>
                 </div>
             </div>
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">Delayed</div>
-                    <div class="stat-value">3</div>
-                    <div class="stat-sub">Needs attention</div>
+                    <div class="stat-value" id="delayedCount">0</div>
+                    <div class="stat-sub" id="delayedSub">Needs attention</div>
                 </div>
             </div>
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">Avg Completion</div>
-                    <div class="stat-value">61%</div>
-                    <div class="stat-sub">+6% vs last month</div>
+                    <div class="stat-value" id="avgCompletion">0%</div>
+                    <div class="stat-sub" id="avgCompletionSub">Across all projects</div>
                 </div>
             </div>
         </div>
@@ -167,6 +168,22 @@
                 </thead>
                 <tbody id="projectTableBody"></tbody>
             </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper">
+            <div class="rows-info">
+                Rows Displayed:
+                <select id="projectRowsPerPage" onchange="changeProjectPageSize()">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="pagination-links" id="projectPaginationLinks">
+                <!-- Generated by JavaScript -->
+            </div>
         </div>
 
     </main>
@@ -194,11 +211,11 @@
             <div class="modal-step" id="step1">
                 <h3>BASIC INFORMATION</h3>
                 <div class="form-group">
-                    <label>Project name</label>
+                    <label>Project name <span class="required">*</span></label>
                     <input type="text" placeholder="e.g. Skyline Tower Phase 2" id="projectName">
                 </div>
                 <div class="form-group">
-                    <label>Client name</label>
+                    <label>Client name <span class="required">*</span></label>
                     <input type="text" placeholder="e.g. Mega Realty Corporation" id="clientName">
                 </div>
                 <div class="modal-footer">
@@ -296,11 +313,11 @@
                 </div>
                 <div class="detail-item">
                     <label>Start Date</label>
-                    <span id="updateStartDate">Jan 15, 2025</span>
+                    <span id="updateStartDate">—</span>
                 </div>
                 <div class="detail-item">
                     <label>Est. End Date</label>
-                    <span id="updateEstEndDate">Dec 30, 2025</span>
+                    <span id="updateEstEndDate">—</span>
                 </div>
                 <div class="detail-item">
                     <label>Actual End Date</label>
@@ -308,15 +325,15 @@
                 </div>
                 <div class="detail-item">
                     <label>Duration</label>
-                    <span id="updateDuration">11.5 mo</span>
+                    <span id="updateDuration">—</span>
                 </div>
                 <div class="detail-item">
                     <label>Phase</label>
-                    <span id="updatePhase" class="phase-badge">Structure</span>
+                    <span id="updatePhase" class="phase-badge">—</span>
                 </div>
                 <div class="detail-item">
                     <label>Status</label>
-                    <span id="updateStatus" class="status-badge at-risk">At Risk</span>
+                    <span id="updateStatus" class="status-badge at-risk">—</span>
                 </div>
             </div>
 
@@ -376,6 +393,7 @@
         var currentEditData = null;
         var currentProjectRow = null;
         var deleteCallback = null;
+        var allProjects = [];
 
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
@@ -544,6 +562,11 @@
             return date.toLocaleDateString('en-US', options);
         }
 
+        function formatCurrency(value) {
+            var amount = parseFloat(value) || 0;
+            return '₱' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
         function mapProjectApiRecord(record) {
             var actualDate = record.actual_end_date || null;
             return {
@@ -566,6 +589,137 @@
             };
         }
 
+        // ─── PAGINATION VARIABLES ───
+        var projectPageSize = 25;
+        var projectCurrentPage = 1;
+        var projectFilteredData = [];
+
+        // ─── RENDER PROJECT PAGE ───
+        function renderProjectPage(page) {
+            projectCurrentPage = page;
+            var start = (page - 1) * projectPageSize;
+            var end = Math.min(start + projectPageSize, projectFilteredData.length);
+            var pageData = projectFilteredData.slice(start, end);
+            
+            var tbody = document.getElementById('projectTableBody');
+            tbody.innerHTML = '';
+            
+            pageData.forEach(function(project) {
+                tbody.appendChild(createProjectRow(project));
+            });
+            
+            renderProjectPagination();
+        }
+
+        // ─── RENDER PROJECT PAGINATION ───
+        function renderProjectPagination() {
+            var container = document.getElementById('projectPaginationLinks');
+            if (!container) return;
+            
+            var total = projectFilteredData.length;
+            var totalPages = Math.ceil(total / projectPageSize);
+            var current = projectCurrentPage;
+            
+            if (totalPages <= 1) {
+                container.innerHTML = `<span class="pagination-info">Showing all ${total} projects</span>`;
+                return;
+            }
+            
+            var html = '';
+            
+            // Previous
+            html += `<a href="#" onclick="renderProjectPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
+            
+            // Page numbers - show first 3, then dots, then last 2
+            if (totalPages <= 7) {
+                for (var i = 1; i <= totalPages; i++) {
+                    html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+            } else {
+                // First 3 pages
+                for (var i = 1; i <= 3; i++) {
+                    html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                
+                // Dots if current is beyond page 4
+                if (current > 4) {
+                    html += `<span class="dots">...</span>`;
+                }
+                
+                // Pages around current
+                var startPage = Math.max(4, current - 1);
+                var endPage = Math.min(totalPages - 2, current + 1);
+                for (var i = startPage; i <= endPage; i++) {
+                    html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                
+                // Dots if current is before page total-3
+                if (current < totalPages - 3) {
+                    html += `<span class="dots">...</span>`;
+                }
+                
+                // Last 2 pages
+                for (var i = totalPages - 1; i <= totalPages; i++) {
+                    if (i > 3) {
+                        html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                    }
+                }
+            }
+            
+            // Next
+            html += `<a href="#" onclick="renderProjectPage(${current + 1}); return false;" class="${current >= totalPages ? 'disabled' : ''}">»</a>`;
+            
+            container.innerHTML = html;
+        }
+
+        // ─── CHANGE PROJECT PAGE SIZE ───
+        function changeProjectPageSize() {
+            var select = document.getElementById('projectRowsPerPage');
+            projectPageSize = parseInt(select.value) || 25;
+            projectCurrentPage = 1;
+            renderProjectPage(1);
+        }
+
+        // ─── UPDATE STATS (modified) ───
+        function updateStats(projects) {
+            allProjects = projects;
+            
+            var activeProjects = projects.filter(function(p) {
+                return p.status !== 'Completed';
+            });
+            
+            var onSchedule = projects.filter(function(p) {
+                return p.status === 'On Track';
+            });
+            
+            var delayed = projects.filter(function(p) {
+                return p.status === 'Delayed' || p.status === 'At Risk';
+            });
+            
+            var totalProgress = 0;
+            projects.forEach(function(p) {
+                totalProgress += parseFloat(p.progress) || 0;
+            });
+            var avgProgress = projects.length > 0 ? Math.round(totalProgress / projects.length) : 0;
+            
+            document.getElementById('activeProjectsCount').textContent = activeProjects.length;
+            document.getElementById('activeProjectsSub').textContent = activeProjects.length + ' active projects';
+            
+            document.getElementById('onScheduleCount').textContent = onSchedule.length;
+            var onSchedulePercent = activeProjects.length > 0 ? Math.round((onSchedule.length / activeProjects.length) * 100) : 0;
+            document.getElementById('onScheduleSub').textContent = onSchedulePercent + '% of active';
+            
+            document.getElementById('delayedCount').textContent = delayed.length;
+            document.getElementById('delayedSub').textContent = delayed.length > 0 ? 'Needs attention' : 'All projects on track';
+            
+            document.getElementById('avgCompletion').textContent = avgProgress + '%';
+            document.getElementById('avgCompletionSub').textContent = 'Across ' + projects.length + ' projects';
+            
+            projectFilteredData = projects;
+            renderProjectPage(1);
+        }
+
+        // ─── FETCH PROJECTS (modified) ───
         function fetchProjects() {
             fetch('/api/projects', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -577,12 +731,12 @@
                 return response.json();
             })
             .then(function(data) {
-                var tbody = document.getElementById('projectTableBody');
-                if (!tbody) return;
-                tbody.innerHTML = '';
-                data.forEach(function(item) {
-                    tbody.appendChild(createProjectRow(mapProjectApiRecord(item)));
+                var projects = data.map(function(item) {
+                    return mapProjectApiRecord(item);
                 });
+                
+                // Update stats and render first page
+                updateStats(projects);
             })
             .catch(function(error) {
                 console.error(error);
@@ -601,6 +755,7 @@
             row.dataset.phase = project.phase || 'Planning';
             row.dataset.progress = project.progress || 0;
             row.dataset.status = project.status || 'On Track';
+            row.dataset.budget = project.budget || '';
 
             row.onclick = function() {
                 openUpdateModal(
@@ -626,7 +781,7 @@
             row.innerHTML = '' +
                 '<td><strong>' + project.name + '</strong></td>' +
                 '<td>' + project.client + '</td>' +
-                '<td>' + (project.budget || '—') + '</td>' +
+                '<td>' + (project.budget ? formatCurrency(project.budget) : '—') + '</td>' +
                 '<td>' + project.startDateDisplay + '</td>' +
                 '<td>' + project.estEndDateDisplay + '</td>' +
                 '<td>' + (project.actualEndDateDisplay || '—') + '</td>' +
@@ -646,6 +801,7 @@
             return tr;
         }
 
+        // ─── SAVE PROJECT ───
         function saveProject() {
             var name = document.getElementById('projectName').value.trim();
             var client = document.getElementById('clientName').value.trim();
@@ -663,7 +819,6 @@
             var payload = {
                 project_name: name,
                 client_name: client,
-                budget: '',
                 project_manager: manager,
                 start_date: startDate,
                 estimated_end_date: endDate,
@@ -697,6 +852,9 @@
                 if (tbody) {
                     tbody.appendChild(createProjectRow(project));
                 }
+                // Update stats
+                allProjects.push(project);
+                updateStats(allProjects);
                 closeModal();
                 showSuccess('Project added successfully!');
             })
@@ -740,7 +898,7 @@
 
             document.getElementById('updateProjectName').textContent = projectName;
             document.getElementById('updateClientName').textContent = clientName;
-            document.getElementById('updateBudget').textContent = budget || '—';
+            document.getElementById('updateBudget').textContent = budget ? formatCurrency(budget) : '—';
             document.getElementById('updateStartDate').textContent = startDate;
             document.getElementById('updateEstEndDate').textContent = estEndDate;
             document.getElementById('updateActualEndDate').textContent = actualEndDate || '—';
@@ -775,6 +933,11 @@
             openDeleteModal('Are you sure you want to permanently delete this project?', function() {
                 if (!projectId) {
                     currentProjectRow.remove();
+                    // Update stats
+                    allProjects = allProjects.filter(function(p) {
+                        return p.id !== currentEditData.id;
+                    });
+                    updateStats(allProjects);
                     closeUpdateModal();
                     showSuccess('Project deleted successfully!');
                     currentProjectRow = null;
@@ -798,6 +961,11 @@
                 })
                 .then(function() {
                     currentProjectRow.remove();
+                    // Update stats
+                    allProjects = allProjects.filter(function(p) {
+                        return p.id !== currentEditData.id;
+                    });
+                    updateStats(allProjects);
                     closeUpdateModal();
                     showSuccess('Project deleted successfully!');
                     currentProjectRow = null;
@@ -882,6 +1050,16 @@
                 currentEditData.duration = calculateDuration(start, actualEnd);
 
                 updateProjectRow(currentProjectRow, currentEditData);
+                
+                // Update stats
+                var index = allProjects.findIndex(function(p) {
+                    return p.id === currentEditData.id;
+                });
+                if (index !== -1) {
+                    allProjects[index] = currentEditData;
+                    updateStats(allProjects);
+                }
+                
                 closeEditProjectModal();
                 showSuccess('Project "' + currentEditData.name + '" updated successfully!');
                 openUpdateModal(

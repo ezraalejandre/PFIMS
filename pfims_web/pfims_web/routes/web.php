@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\MLController;
 
 // Landing page (login)
 Route::get('/', function () {
@@ -277,4 +278,51 @@ Route::post('/logout', function (Request $request) {
     $request->session()->regenerateToken();
 
     return redirect('/');
+});
+
+// ─── MACHINE LEARNING ROUTES (NO AUTH REQUIRED) ────────────────
+Route::get('/ml-dashboard-test', function () {
+    return view('ml-dashboard-test');
+});
+
+// Test endpoints
+Route::get('/api/ml/test', [MLController::class, 'test']);
+Route::get('/api/ml/test-service', [MLController::class, 'testService']);
+
+// Predictive Analytics - GET for testing, POST for production
+Route::post('/api/ml/predict/cost', [MLController::class, 'predictProjectCost']);
+Route::get('/api/ml/predict/cost', [MLController::class, 'predictProjectCost']); // Also allow GET for testing
+
+Route::get('/api/ml/predict/material-demand', [MLController::class, 'predictMaterialDemand']);
+
+// Model Management
+Route::post('/api/ml/retrain', [MLController::class, 'retrain']);
+Route::get('/api/ml/retrain', [MLController::class, 'retrain']); // Also allow GET for testing
+
+Route::get('/api/ml/status', [MLController::class, 'status']);
+
+// Analytics
+Route::get('/api/ml/analytics/dashboard', [MLController::class, 'dashboardAnalytics']);
+Route::get('/api/ml/analytics/budget-variance', [MLController::class, 'budgetVariance']);
+
+// ─── TEST SERVICE ROUTE ──────────────────────────────────────────
+Route::get('/api/ml/test-service', [MLController::class, 'testService']);
+
+Route::get('/ml-debug', function () {
+    try {
+        $mlService = new \App\Services\MLService();
+        $metrics = $mlService->getModelMetrics();
+        return response()->json([
+            'success' => true,
+            'metrics' => $metrics
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
 });

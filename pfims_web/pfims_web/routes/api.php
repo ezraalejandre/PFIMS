@@ -19,37 +19,15 @@ Route::get('/test', function () {
     ]);
 });
 
+Route::post('/login', [AuthController::class,'login']);
 
+Route::post('/profile', [AuthController::class,'profile']);
 
-Route::post(
-    '/login',
-    [AuthController::class,'login']
-);
+Route::post('/profile/photo', [AuthController::class,'uploadProfilePhoto']);
 
+Route::post('/change-password', [AuthController::class,'changePassword']);
 
-Route::post(
-'/profile',
-[AuthController::class,'profile']
-);
-
-Route::post(
-    '/profile/photo',
-    [AuthController::class,'uploadProfilePhoto']
-);
-
-
-Route::post(
-'/change-password',
-[AuthController::class,'changePassword']
-);
-
-
-
-
-Route::post(
-    '/inventory-transactions',
-    [InventoryTransactionController::class, 'store']
-);
+Route::post('/inventory-transactions', [InventoryTransactionController::class, 'store']);
 
 Route::get('/inventory-categories', function () {
     return response()->json(
@@ -67,27 +45,32 @@ Route::get('/units', function () {
     );
 });
 
+// ─── PROJECTS ROUTES ─────────────────────────────────────────────
+
+// GET /api/projects - Get all projects with their budgets
 Route::get('/projects', function () {
     return response()->json(
-        DB::table('project_tbl')
+        DB::table('project_tbl as p')
+            ->leftJoin('budgets_tbl as b', 'p.project_id', '=', 'b.project_id')
             ->select(
-                'project_id',
-                'project_name',
-                'client_name',
-                'budget',
-                'project_manager',
-                'start_date',
-                'estimated_end_date',
-                'actual_end_date',
-                'worker_count',
-                'phase',
-                'completion_percentage',
-                'status'
+                'p.project_id',
+                'p.project_name',
+                'p.client_name',
+                DB::raw('COALESCE(b.budget_amount, 0) as budget'),
+                'p.project_manager',
+                'p.start_date',
+                'p.estimated_end_date',
+                'p.actual_end_date',
+                'p.worker_count',
+                'p.phase',
+                'p.completion_percentage',
+                'p.status'
             )
             ->get()
     );
 });
 
+// GET /api/projects/list - Simplified list for dropdowns
 Route::get('/projects/list', function () {
     return response()->json(
         DB::table('project_tbl')
@@ -109,6 +92,7 @@ Route::get('/projects/list', function () {
     );
 });
 
+// POST /api/projects - Create new project
 Route::post('/projects', function (Request $request) {
     $validated = $request->validate([
         'project_name'       => ['required', 'string', 'max:100'],
@@ -117,27 +101,43 @@ Route::post('/projects', function (Request $request) {
         'start_date'         => ['required', 'date'],
         'estimated_end_date' => ['required', 'date', 'after_or_equal:start_date'],
         'worker_count'       => ['nullable', 'integer', 'min:0'],
+        'budget'             => ['nullable', 'numeric', 'min:0'],
     ]);
 
-    $id = DB::table('project_tbl')->insertGetId([
+    $projectId = DB::table('project_tbl')->insertGetId([
         'project_name'          => $validated['project_name'],
         'client_name'           => $validated['client_name'],
         'project_manager'       => $validated['project_manager'],
         'start_date'            => $validated['start_date'],
         'estimated_end_date'    => $validated['estimated_end_date'],
         'worker_count'          => $validated['worker_count'] ?? 0,
-        // Not collected by the current form yet — sensible defaults for a
-        // brand-new project. Adjust if you add fields for these later.
         'phase'                 => 'Planning',
         'completion_percentage' => 0.00,
         'status'                => 'Pending',
     ]);
 
-    $project = DB::table('project_tbl')->where('project_id', $id)->first();
+    // Create budget entry if budget is provided
+    if (!empty($validated['budget']) && $validated['budget'] > 0) {
+        DB::table('budgets_tbl')->insert([
+            'project_id' => $projectId,
+            'budget_amount' => $validated['budget'],
+            'actual_amount' => 0,
+        ]);
+    }
+
+    $project = DB::table('project_tbl as p')
+        ->leftJoin('budgets_tbl as b', 'p.project_id', '=', 'b.project_id')
+        ->select(
+            'p.*',
+            DB::raw('COALESCE(b.budget_amount, 0) as budget')
+        )
+        ->where('p.project_id', $projectId)
+        ->first();
 
     return response()->json($project, 201);
 });
 
+// PUT /api/projects/{id} - Update project
 Route::put('/projects/{id}', function (Request $request, $id) {
     $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
     if (!$exists) {
@@ -155,15 +155,45 @@ Route::put('/projects/{id}', function (Request $request, $id) {
         'phase'                 => ['sometimes', 'required', 'string', 'in:Planning,Foundation,Structure,Finishing,Complete'],
         'status'                => ['sometimes', 'required', 'string', 'in:Pending,On Track,At Risk,Delayed,Completed'],
         'completion_percentage' => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
+        'budget'                => ['nullable', 'numeric', 'min:0'],
     ]);
 
-    if (empty($validated)) {
-        return response()->json(['message' => 'No fields to update'], 422);
+    // Update project fields
+    $projectData = array_intersect_key($validated, array_flip([
+        'project_name', 'client_name', 'project_manager', 'start_date',
+        'estimated_end_date', 'actual_end_date', 'worker_count',
+        'phase', 'status', 'completion_percentage'
+    ]));
+
+    if (!empty($projectData)) {
+        DB::table('project_tbl')->where('project_id', $id)->update($projectData);
     }
 
-    DB::table('project_tbl')->where('project_id', $id)->update($validated);
+    // Update budget
+    if (array_key_exists('budget', $validated)) {
+        $budgetExists = DB::table('budgets_tbl')->where('project_id', $id)->exists();
+        if ($budgetExists) {
+            DB::table('budgets_tbl')
+                ->where('project_id', $id)
+                ->update(['budget_amount' => $validated['budget']]);
+        } else {
+            DB::table('budgets_tbl')->insert([
+                'project_id' => $id,
+                'budget_amount' => $validated['budget'],
+                'actual_amount' => 0,
+            ]);
+        }
+    }
 
-    $project = DB::table('project_tbl')->where('project_id', $id)->first();
+    $project = DB::table('project_tbl as p')
+        ->leftJoin('budgets_tbl as b', 'p.project_id', '=', 'b.project_id')
+        ->select(
+            'p.*',
+            DB::raw('COALESCE(b.budget_amount, 0) as budget')
+        )
+        ->where('p.project_id', $id)
+        ->first();
+
     return response()->json($project);
 });
 
@@ -211,9 +241,6 @@ Route::post('/inventory-items', function (Request $request) {
     return response()->json(['item_id' => $id], 201);
 });
 
-// NEW: update an inventory item. Every field is optional so the client can
-// send just the ones it actually changed (e.g. name + stock from the Edit
-// Item modal) without clobbering the rest.
 Route::put('/inventory-items/{id}', function (Request $request, $id) {
     $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
     if (!$exists) {
@@ -244,21 +271,19 @@ Route::put('/inventory-items/{id}', function (Request $request, $id) {
     return response()->json($item);
 });
 
-// NEW: delete an inventory item.
 Route::delete('/inventory-items/{id}', function ($id) {
     $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
     if (!$exists) {
         return response()->json(['message' => 'Item not found'], 404);
     }
 
-    // If you'd rather keep transaction history for deleted items, remove this
-    // line and add an `is_deleted` / soft-delete column to inventory_item_tbl
-    // instead of hard-deleting.
     DB::table('inventory_transaction_tbl')->where('item_id', $id)->delete();
     DB::table('inventory_item_tbl')->where('item_id', $id)->delete();
 
     return response()->json(['message' => 'Item deleted'], 200);
 });
+
+// ─── EXPENSES ROUTES ─────────────────────────────────────────────
 
 Route::get('/expense-categories', function () {
     return response()->json(
@@ -268,6 +293,7 @@ Route::get('/expense-categories', function () {
     );
 });
 
+// GET /api/expenses - Get expenses with proper calculations
 Route::get('/expenses', function () {
     return response()->json(
         DB::table('expense_tbl as e')
@@ -280,7 +306,11 @@ Route::get('/expenses', function () {
                 'e.expense_description',
                 'e.expense_category_id',
                 'c.category_name as expense_category_name',
-                'e.actual_amount',
+                'e.labor_amount',
+                'e.material_amount',
+                'e.equipment_amount',
+                'e.other_amount',
+                DB::raw('COALESCE(e.labor_amount, 0) + COALESCE(e.material_amount, 0) + COALESCE(e.equipment_amount, 0) + COALESCE(e.other_amount, 0) as actual_amount'),
                 'e.expense_date',
                 'e.remarks'
             )
@@ -288,21 +318,34 @@ Route::get('/expenses', function () {
     );
 });
 
+// POST /api/expenses - Create expense
 Route::post('/expenses', function (Request $request) {
     $validated = $request->validate([
-        'project_id' => ['required', 'integer', 'exists:project_tbl,project_id'],
+        'project_id' => ['nullable', 'integer', 'exists:project_tbl,project_id'],
         'expense_category_id' => ['required', 'integer', 'exists:expense_category_tbl,expense_category_id'],
         'expense_description' => ['required', 'string', 'max:255'],
-        'actual_amount' => ['required', 'numeric', 'min:0.01'],
+        'labor_amount' => ['nullable', 'numeric', 'min:0'],
+        'material_amount' => ['nullable', 'numeric', 'min:0'],
+        'equipment_amount' => ['nullable', 'numeric', 'min:0'],
+        'other_amount' => ['nullable', 'numeric', 'min:0'],
         'expense_date' => ['required', 'date'],
         'remarks' => ['nullable', 'string'],
     ]);
 
+    // At least one amount must be provided
+    if (empty($validated['labor_amount']) && empty($validated['material_amount']) && 
+        empty($validated['equipment_amount']) && empty($validated['other_amount'])) {
+        return response()->json(['message' => 'At least one amount must be provided'], 422);
+    }
+
     $expenseId = DB::table('expense_tbl')->insertGetId([
-        'project_id' => $validated['project_id'],
+        'project_id' => $validated['project_id'] ?? null,
         'expense_category_id' => $validated['expense_category_id'],
         'expense_description' => $validated['expense_description'],
-        'actual_amount' => $validated['actual_amount'],
+        'labor_amount' => $validated['labor_amount'] ?? 0,
+        'material_amount' => $validated['material_amount'] ?? 0,
+        'equipment_amount' => $validated['equipment_amount'] ?? 0,
+        'other_amount' => $validated['other_amount'] ?? 0,
         'expense_date' => $validated['expense_date'],
         'remarks' => $validated['remarks'] ?? null,
     ]);
@@ -311,15 +354,10 @@ Route::post('/expenses', function (Request $request) {
         ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
         ->leftJoin('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
         ->select(
-            'e.expense_id',
-            'e.project_id',
+            'e.*',
             'p.project_name',
-            'e.expense_description',
-            'e.expense_category_id',
             'c.category_name as expense_category_name',
-            'e.actual_amount',
-            'e.expense_date',
-            'e.remarks'
+            DB::raw('COALESCE(e.labor_amount, 0) + COALESCE(e.material_amount, 0) + COALESCE(e.equipment_amount, 0) + COALESCE(e.other_amount, 0) as actual_amount')
         )
         ->where('e.expense_id', $expenseId)
         ->first();
@@ -327,6 +365,7 @@ Route::post('/expenses', function (Request $request) {
     return response()->json($expense, 201);
 });
 
+// PUT /api/expenses/{id} - Update expense
 Route::put('/expenses/{id}', function (Request $request, $id) {
     $exists = DB::table('expense_tbl')->where('expense_id', $id)->exists();
     if (!$exists) {
@@ -334,23 +373,18 @@ Route::put('/expenses/{id}', function (Request $request, $id) {
     }
 
     $data = [];
-    if ($request->has('project_id')) {
-        $data['project_id'] = $request->input('project_id');
+    $amountFields = ['labor_amount', 'material_amount', 'equipment_amount', 'other_amount'];
+    
+    foreach (['project_id', 'expense_category_id', 'expense_description', 'expense_date', 'remarks'] as $field) {
+        if ($request->has($field)) {
+            $data[$field] = $request->input($field);
+        }
     }
-    if ($request->has('expense_category_id')) {
-        $data['expense_category_id'] = $request->input('expense_category_id');
-    }
-    if ($request->has('expense_description')) {
-        $data['expense_description'] = $request->input('expense_description');
-    }
-    if ($request->has('actual_amount')) {
-        $data['actual_amount'] = $request->input('actual_amount');
-    }
-    if ($request->has('expense_date')) {
-        $data['expense_date'] = $request->input('expense_date');
-    }
-    if ($request->has('remarks')) {
-        $data['remarks'] = $request->input('remarks');
+    
+    foreach ($amountFields as $field) {
+        if ($request->has($field)) {
+            $data[$field] = $request->input($field) ?? 0;
+        }
     }
 
     if (empty($data)) {
@@ -363,15 +397,10 @@ Route::put('/expenses/{id}', function (Request $request, $id) {
         ->leftJoin('project_tbl as p', 'e.project_id', '=', 'p.project_id')
         ->leftJoin('expense_category_tbl as c', 'e.expense_category_id', '=', 'c.expense_category_id')
         ->select(
-            'e.expense_id',
-            'e.project_id',
+            'e.*',
             'p.project_name',
-            'e.expense_description',
-            'e.expense_category_id',
             'c.category_name as expense_category_name',
-            'e.actual_amount',
-            'e.expense_date',
-            'e.remarks'
+            DB::raw('COALESCE(e.labor_amount, 0) + COALESCE(e.material_amount, 0) + COALESCE(e.equipment_amount, 0) + COALESCE(e.other_amount, 0) as actual_amount')
         )
         ->where('e.expense_id', $id)
         ->first();
@@ -430,7 +459,6 @@ Route::post('/suppliers', [SupplierController::class, 'store']);
 Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
 Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
 Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
-
 
 Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);

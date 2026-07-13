@@ -44,7 +44,7 @@
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
-            <span>Transaction added successfully!</span>
+            <span id="successMessage">Transaction added successfully!</span>
             <button class="success-close" onclick="closeSuccess()">×</button>
         </div>
     </div>
@@ -59,12 +59,12 @@
             </div>
         </div>
         <div class="right">
-            <a href="{{ url('/onotifications') }}" onclick="hideBadge(event)" style="position: relative;">
+            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span>Notifications</span>
                 <span class="notif-badge" id="notifBadge">6</span>
             </a>
-            <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
                 <span>{{ auth()->user()->name }}</span>
             </a>
@@ -75,17 +75,18 @@
     <aside class="sidebar">
         <nav>
             <ul>
-                <li><a href="{{ url('/odashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/oprojects') }}">PROJECTS</a></li>
-                <li class="active"><a href="{{ url('/oinventory') }}">INVENTORY</a></li>
-                <li><a href="{{ url('/osuppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/oreports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
+                <li class="active"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
             <ul>
                 <li>
-                    <a href="{{ url('/osettings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                         <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
                         Settings
                     </a>
@@ -115,23 +116,18 @@
         <div class="stats-grid-inv">
             <div class="stat-card-inv">
                 <div class="stat-label">Total Items</div>
-                <div class="stat-value">188</div>
-                <div class="stat-sub">Across all transactions</div>
-            </div>
-            <div class="stat-card-inv">
-                <div class="stat-label">Total Value</div>
-                <div class="stat-value">$31,963.12</div>
-                <div class="stat-sub">Current Inventory Value</div>
+                <div class="stat-value" id="totalItemsCount">0</div>
+                <div class="stat-sub" id="totalItemsSub">Across all transactions</div>
             </div>
             <div class="stat-card-inv">
                 <div class="stat-label">Low Stock Items</div>
-                <div class="stat-value">0</div>
-                <div class="stat-sub">Items for restocking</div>
+                <div class="stat-value" id="lowStockCount">0</div>
+                <div class="stat-sub" id="lowStockSub">Items for restocking</div>
             </div>
             <div class="stat-card-inv">
                 <div class="stat-label">Categories</div>
-                <div class="stat-value">10</div>
-                <div class="stat-sub">Item categories</div>
+                <div class="stat-value" id="categoriesCount">0</div>
+                <div class="stat-sub" id="categoriesSub">Item categories</div>
             </div>
         </div>
 
@@ -166,35 +162,26 @@
                     </tr>
                 </thead>
                 <tbody id="inventoryTableBody">
-                    <tr><td colspan="9" style="text-align: center; padding: 20px;">Loading inventory items...</td></tr>
+                    <tr><td colspan="10" style="text-align: center; padding: 20px;">Loading inventory items...</td></tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- Pagination -->
+        <!-- ─── PAGINATION ─── -->
         <div class="pagination-wrapper">
             <div class="rows-info">
                 Rows Displayed:
-                <select>
-                    <option>10</option>
-                    <option>25</option>
-                    <option>50</option>
-                    <option>100</option>
+                <select id="inventoryRowsPerPage" onchange="changeInventoryPageSize()">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
                 </select>
             </div>
-            <div class="pagination-links">
-                <a href="#">&laquo;</a>
-                <a href="#" class="active">1</a>
-                <a href="#">2</a>
-                <a href="#">3</a>
-                <span class="dots">...</span>
-                <a href="#">67</a>
-                <a href="#">68</a>
-                <a href="#">&raquo;</a>
+            <div class="pagination-links" id="inventoryPaginationLinks">
+                <!-- Generated by JavaScript -->
             </div>
         </div>
-
-    </main>
 
     </main>
 
@@ -380,6 +367,14 @@
                     </div>
                 </div>
 
+                <!-- Project Selection for OUT transactions -->
+                <div class="form-group" id="projectGroup" style="display: none;">
+                    <label>Project <span class="required" id="projectRequired" style="display:none;">*</span></label>
+                    <select id="transactionProject">
+                        <option value="">Select Project...</option>
+                    </select>
+                </div>
+
                 <div class="modal-footer">
                     <div class="footer-left">
                         <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -429,6 +424,10 @@
                         <strong>Transaction Date</strong>
                         <span class="summary-value" id="reviewTransactionDate">—</span>
                     </div>
+                    <div class="summary-item" id="reviewProjectRow" style="display: none;">
+                        <strong>Project</strong>
+                        <span class="summary-value" id="reviewProject">—</span>
+                    </div>
                 </div>
 
                 <div class="modal-footer">
@@ -449,6 +448,44 @@
         var lookupData = { categories: [], suppliers: [], units: [] };
         var inventoryItems = [];
         var allTransactions = [];
+
+        // ─── UPDATE STATS CARDS ───
+        function updateStats(transactions, items, categories) {
+            // Total unique items
+            var uniqueItems = new Set();
+            transactions.forEach(function(t) {
+                if (t.item_name) {
+                    uniqueItems.add(t.item_name + '|' + t.category);
+                }
+            });
+            var totalItems = uniqueItems.size || items.length || 0;
+            document.getElementById('totalItemsCount').textContent = totalItems;
+            document.getElementById('totalItemsSub').textContent = totalItems > 0 ? totalItems + ' unique items' : 'No items found';
+
+            // Count low stock items (current_stock <= 5)
+            var lowStockItems = 0;
+            var lowStockList = [];
+            items.forEach(function(item) {
+                var stock = parseFloat(item.current_stock) || 0;
+                if (stock <= 5 && stock > 0) {
+                    lowStockItems++;
+                    lowStockList.push(item.item_name);
+                }
+            });
+            document.getElementById('lowStockCount').textContent = lowStockItems;
+            document.getElementById('lowStockSub').textContent = lowStockItems > 0 ? 
+                lowStockList.join(', ').substring(0, 30) + (lowStockList.length > 2 ? '...' : '') : 
+                'All items well stocked';
+
+            // Count unique categories
+            var uniqueCategories = new Set();
+            categories.forEach(function(c) {
+                uniqueCategories.add(c.inventory_category_name);
+            });
+            var categoryCount = uniqueCategories.size || 0;
+            document.getElementById('categoriesCount').textContent = categoryCount;
+            document.getElementById('categoriesSub').textContent = categoryCount + ' active categories';
+        }
 
         // ─── LOAD LOOKUP DATA ───
         function loadLookupData() {
@@ -520,60 +557,153 @@
                 inventoryItems = itemsResult.success ? itemsResult.data || [] : [];
                 allTransactions = transactionsResult.success ? transactionsResult.data || [] : [];
                 renderInventoryTable();
+                // Update stats with all data
+                updateStats(allTransactions, inventoryItems, lookupData.categories);
             })
             .catch(function(err) {
                 console.error('Error loading inventory data:', err);
             });
         }
 
-        // ─── RENDER INVENTORY TABLE ───
-        function renderInventoryTable() {
-        var tbody = document.getElementById('inventoryTableBody');
-        tbody.innerHTML = '';
+        // ─── PAGINATION VARIABLES ───
+        var inventoryPageSize = 25;
+        var inventoryCurrentPage = 1;
+        var inventoryFilteredData = [];
 
-        if (!allTransactions.length) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">No transactions found.</td></tr>';
-            return;
+        // ─── RENDER INVENTORY PAGE ───
+        function renderInventoryPage(page) {
+            inventoryCurrentPage = page;
+            var start = (page - 1) * inventoryPageSize;
+            var end = Math.min(start + inventoryPageSize, inventoryFilteredData.length);
+            var pageData = inventoryFilteredData.slice(start, end);
+            
+            var tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+            
+            if (!pageData.length) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">No transactions found.</td></tr>';
+                return;
+            }
+            
+            pageData.forEach(function(row) {
+                var tr = document.createElement('tr');
+                var stock = parseFloat(row.current_stock) || 0;
+                var reorderLevel = parseFloat(row.reorder_level) || 0;
+                var status = stock > reorderLevel ? 'in-stock' : (stock <= 0 ? 'out-of-stock' : 'low-stock');
+                var statusText = stock > reorderLevel ? 'In Stock' : (stock <= 0 ? 'Out of Stock' : 'Low Stock');
+                var typeLabel = row.transaction_type || '—';
+                var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
+
+                tr.setAttribute('data-id', row.inventory_transaction_id || '');
+                tr.setAttribute('data-item-id', row.item_id || '');
+                tr.setAttribute('data-item', row.item_name || '');
+                tr.setAttribute('data-category', row.category || '');
+                tr.setAttribute('data-unit', row.unit || '');
+                tr.setAttribute('data-quantity', row.quantity || '');
+                tr.setAttribute('data-supplier', row.supplier || '');
+                tr.setAttribute('data-supplier-id', row.supplier_id || '');
+                tr.setAttribute('data-type', typeLabel);
+                tr.setAttribute('data-date', row.transaction_date || '');
+                tr.setAttribute('data-stock', stock);
+                tr.setAttribute('data-status', statusText);
+                tr.setAttribute('data-project', row.project || '');
+
+                var statusClass = status === 'in-stock' ? 'in-stock' : (status === 'out-of-stock' ? 'out-of-stock' : 'low-stock');
+
+                tr.innerHTML = `
+                    <td><strong>${row.item_name}</strong></td>
+                    <td>${row.category}</td>
+                    <td>${row.unit}</td>
+                    <td>${row.quantity}</td>
+                    <td>${row.supplier}</td>
+                    <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
+                    <td>${dateValue}</td>
+                    <td>${stock}</td>
+                    <td><span class="status-badge ${statusClass}"><span class="dot"></span> ${statusText}</span></td>
+                    <td style="text-align: center;">
+                        <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            renderInventoryPagination();
         }
 
-        allTransactions.forEach(function(row) {
-            var tr = document.createElement('tr');
-            var status = row.current_stock > row.reorder_level ? 'in-stock' : 'low-stock';
-            var statusText = row.current_stock > row.reorder_level ? 'In Stock' : 'Low Stock';
-            var typeLabel = row.transaction_type || '—';
-            var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
+        // ─── RENDER INVENTORY PAGINATION ───
+        function renderInventoryPagination() {
+            var container = document.getElementById('inventoryPaginationLinks');
+            if (!container) return;
+            
+            var total = inventoryFilteredData.length;
+            var totalPages = Math.ceil(total / inventoryPageSize);
+            var current = inventoryCurrentPage;
+            
+            if (totalPages <= 1) {
+                container.innerHTML = `<span class="pagination-info">Showing all ${total} transactions</span>`;
+                return;
+            }
+            
+            var html = '';
+            
+            // Previous
+            html += `<a href="#" onclick="renderInventoryPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
+            
+            // Page numbers
+            if (totalPages <= 7) {
+                for (var i = 1; i <= totalPages; i++) {
+                    html += `<a href="#" onclick="renderInventoryPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+            } else {
+                // First 3 pages
+                for (var i = 1; i <= 3; i++) {
+                    html += `<a href="#" onclick="renderInventoryPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                
+                // Dots if current is beyond page 4
+                if (current > 4) {
+                    html += `<span class="dots">...</span>`;
+                }
+                
+                // Pages around current
+                var startPage = Math.max(4, current - 1);
+                var endPage = Math.min(totalPages - 2, current + 1);
+                for (var i = startPage; i <= endPage; i++) {
+                    html += `<a href="#" onclick="renderInventoryPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                
+                // Dots if current is before page total-3
+                if (current < totalPages - 3) {
+                    html += `<span class="dots">...</span>`;
+                }
+                
+                // Last 2 pages
+                for (var i = totalPages - 1; i <= totalPages; i++) {
+                    if (i > 3) {
+                        html += `<a href="#" onclick="renderInventoryPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                    }
+                }
+            }
+            
+            // Next
+            html += `<a href="#" onclick="renderInventoryPage(${current + 1}); return false;" class="${current >= totalPages ? 'disabled' : ''}">»</a>`;
+            
+            container.innerHTML = html;
+        }
 
-            tr.setAttribute('data-id', row.inventory_transaction_id || '');
-            tr.setAttribute('data-item-id', row.item_id || '');
-            tr.setAttribute('data-item', row.item_name || '');
-            tr.setAttribute('data-category', row.category || '');
-            tr.setAttribute('data-unit', row.unit || '');
-            tr.setAttribute('data-quantity', row.quantity || '');
-            tr.setAttribute('data-supplier', row.supplier || '');
-            tr.setAttribute('data-supplier-id', row.supplier_id || '');
-            tr.setAttribute('data-type', typeLabel);
-            tr.setAttribute('data-date', row.transaction_date || '');
-            tr.setAttribute('data-stock', row.current_stock || '');
-            tr.setAttribute('data-status', statusText);
-            tr.setAttribute('data-project', row.project || '');
+        // ─── CHANGE INVENTORY PAGE SIZE ───
+        function changeInventoryPageSize() {
+            var select = document.getElementById('inventoryRowsPerPage');
+            inventoryPageSize = parseInt(select.value) || 25;
+            inventoryCurrentPage = 1;
+            renderInventoryPage(1);
+        }
 
-            tr.innerHTML = `
-                <td><strong>${row.item_name}</strong></td>
-                <td>${row.category}</td>
-                <td>${row.unit}</td>
-                <td>${row.quantity}</td>
-                <td>${row.supplier}</td>
-                <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
-                <td>${dateValue}</td>
-                <td>${row.current_stock}</td>
-                <td><span class="status-badge ${status}"><span class="dot"></span> ${statusText}</span></td>
-                <td style="text-align: center;">
-                    <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+        // ─── RENDER INVENTORY TABLE (modified) ───
+        function renderInventoryTable() {
+            inventoryFilteredData = allTransactions;
+            renderInventoryPage(1);
+        }
 
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
@@ -597,6 +727,9 @@
             document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
             var today = new Date().toISOString().split('T')[0];
             document.getElementById('transactionDate').value = today;
+            // Hide project group initially
+            document.getElementById('projectGroup').style.display = 'none';
+            document.getElementById('projectRequired').style.display = 'none';
             // Clear review
             document.getElementById('reviewItemName').textContent = '—';
             document.getElementById('reviewItemCategory').textContent = '—';
@@ -605,6 +738,8 @@
             document.getElementById('reviewItemUnit').textContent = '—';
             document.getElementById('reviewTransactionType').textContent = '—';
             document.getElementById('reviewTransactionDate').textContent = '—';
+            document.getElementById('reviewProjectRow').style.display = 'none';
+            document.getElementById('reviewProject').textContent = '—';
         }
 
         function closeModal() {
@@ -635,6 +770,7 @@
             var unitId = document.getElementById('itemUnit').value;
             var supplierId = document.getElementById('itemSupplier').value;
             var date = document.getElementById('transactionDate').value;
+            var type = document.querySelector('input[name="transactionType"]:checked');
 
             if (!itemName) { alert('Please enter the item name.'); return; }
             if (!categoryId) { alert('Please select an item category.'); return; }
@@ -642,6 +778,21 @@
             if (!unitId) { alert('Please select an item unit.'); return; }
             if (!supplierId) { alert('Please select a supplier.'); return; }
             if (!date) { alert('Please select a transaction date.'); return; }
+
+            // Check if OUT transaction requires project
+            var typeLabel = type ? type.value : 'IN';
+            if (typeLabel === 'OUT') {
+                var projectId = document.getElementById('transactionProject').value;
+                if (!projectId) {
+                    alert('Please select a project for OUT transactions.');
+                    return;
+                }
+                var projectName = document.getElementById('transactionProject').options[document.getElementById('transactionProject').selectedIndex].text;
+                document.getElementById('reviewProjectRow').style.display = 'flex';
+                document.getElementById('reviewProject').textContent = projectName;
+            } else {
+                document.getElementById('reviewProjectRow').style.display = 'none';
+            }
 
             // Find category and unit names
             var categoryName = lookupData.categories.find(function(c) { return c.inventory_category_id == categoryId; })?.inventory_category_name || 'N/A';
@@ -655,8 +806,6 @@
             document.getElementById('reviewItemQuantity').textContent = quantity;
             document.getElementById('reviewItemUnit').textContent = unitName;
 
-            var type = document.querySelector('input[name="transactionType"]:checked');
-            var typeLabel = type ? type.value : 'IN';
             var typeDisplay = typeLabel === 'IN' ? 'IN (Item Stock in)' : 'OUT (Item Stock out)';
             document.getElementById('reviewTransactionType').textContent = typeDisplay;
             document.getElementById('reviewTransactionDate').textContent = date;
@@ -685,6 +834,16 @@
             var supplierId = document.getElementById('itemSupplier').value;
             var date = document.getElementById('transactionDate').value;
             var type = document.querySelector('input[name="transactionType"]:checked').value;
+            var projectId = null;
+            
+            if (type === 'OUT') {
+                projectId = document.getElementById('transactionProject').value;
+                if (!projectId) {
+                    alert('Please select a project for OUT transactions.');
+                    return;
+                }
+            }
+            
             var categoryName = lookupData.categories.find(function(c) { return c.inventory_category_id == categoryId; })?.inventory_category_name || '';
             var unitName = lookupData.units.find(function(u) { return u.unit_id == unitId; })?.unit_name || '';
             var supplierName = lookupData.suppliers.find(function(s) { return s.supplier_id == supplierId; })?.supplier_name || '';
@@ -704,7 +863,7 @@
             var itemId;
             if (existingItem) {
                 itemId = existingItem.item_id;
-                addTransaction(itemId, type, quantity, date);
+                addTransaction(itemId, type, quantity, date, projectId);
             } else {
                 // Create new item first
                 var itemPayload = {
@@ -729,7 +888,7 @@
                 .then(function(data) {
                     if (data.success) {
                         itemId = data.data.item_id;
-                        addTransaction(itemId, type, quantity, date);
+                        addTransaction(itemId, type, quantity, date, projectId);
                     } else {
                         alert('Failed to create item: ' + (data.message || 'Unknown error'));
                     }
@@ -741,12 +900,12 @@
             }
         }
 
-        function addTransaction(itemId, type, quantity, date) {
+        function addTransaction(itemId, type, quantity, date, projectId) {
             var payload = {
-                item_id: itemId,
-                project_id: null,
+                item_id: parseInt(itemId),
+                project_id: projectId || null,
                 transaction_type: type,
-                quantity: quantity,
+                quantity: parseFloat(quantity),
                 transaction_date: date
             };
 
@@ -938,14 +1097,14 @@
 
         function enableEditMode() {
             isEditMode = true;
-            document.querySelectorAll('#viewModal .view-value').forEach(el => {
+            document.querySelectorAll('#viewModal .view-value').forEach(function(el) {
                 if (el.id === 'viewStockDisplay' || el.id === 'viewStatusDisplay') {
                     el.style.display = 'block';
                     return;
                 }
                 el.style.display = 'none';
             });
-            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'block'; });
             document.getElementById('viewEditBtn').style.display = 'none';
             document.getElementById('viewDeleteBtn').style.display = 'none';
             document.getElementById('viewSaveBtn').style.display = 'inline-block';
@@ -959,8 +1118,8 @@
 
         function disableEditMode() {
             isEditMode = false;
-            document.querySelectorAll('#viewModal .view-value').forEach(el => el.style.display = 'block');
-            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
+            document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
             document.getElementById('viewEditBtn').style.display = 'inline-block';
             document.getElementById('viewDeleteBtn').style.display = 'inline-block';
             document.getElementById('viewSaveBtn').style.display = 'none';
@@ -1080,6 +1239,47 @@
             });
         }
 
+        // ─── PROJECT DROPDOWN ───
+        function populateProjectDropdown() {
+            fetch('/api/projects/list')
+                .then(function(res) { return res.json(); })
+                .then(function(projects) {
+                    var select = document.getElementById('transactionProject');
+                    select.innerHTML = '<option value="">Select Project...</option>';
+                    projects.forEach(function(project) {
+                        var opt = document.createElement('option');
+                        opt.value = project.project_id;
+                        opt.textContent = project.project_name;
+                        select.appendChild(opt);
+                    });
+                })
+                .catch(function(err) {
+                    console.error('Error loading projects:', err);
+                });
+        }
+
+        // ─── TRANSACTION TYPE CHANGE LISTENER ───
+        document.addEventListener('DOMContentLoaded', function() {
+            // Populate project dropdown
+            populateProjectDropdown();
+            
+            // Add listener for transaction type changes
+            document.querySelectorAll('input[name="transactionType"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    var projectGroup = document.getElementById('projectGroup');
+                    var projectRequired = document.getElementById('projectRequired');
+                    if (this.value === 'OUT') {
+                        projectGroup.style.display = 'block';
+                        projectRequired.style.display = 'inline';
+                    } else {
+                        projectGroup.style.display = 'none';
+                        projectRequired.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // ─── CLOSE MODALS ON BACKDROP CLICK ───
         document.getElementById('viewModal').addEventListener('click', function(e) {
             if (e.target === this) { closeViewModal(); }
         });
@@ -1088,7 +1288,6 @@
             if (e.target === this) { closeDeleteModal(); }
         });
 
-        // ─── CLOSE MODAL ON BACKDROP CLICK ───
         document.getElementById('transactionModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
