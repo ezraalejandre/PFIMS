@@ -67,14 +67,14 @@
             </div>
         </div>
 
-        <!-- ─── CHARTS SECTION ─── -->
+        <!-- ─── CHARTS SECTION ───
         <div class="charts-section">
             <div class="section-label">Charts</div>
             <div class="charts-grid">
                 <div class="chart-card">Chart placeholder</div>
                 <div class="chart-card">Chart placeholder</div>
             </div>
-        </div>
+        </div> -->
 
         <!-- ─── TABLE ─── -->
         <div class="table-wrapper">

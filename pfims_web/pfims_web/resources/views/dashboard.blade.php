@@ -8,6 +8,99 @@
     <style>
         .error-notification { z-index: 9999 !important; }
         .success-notification { z-index: 9999 !important; }
+        
+        /* Pagination Styles */
+        .pagination-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-top: 1px solid #e5e7eb;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .rows-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .rows-info select {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        .rows-info select:focus {
+            border-color: #3b82f6;
+            ring: 2px solid #93c5fd;
+        }
+        
+        .pagination-links {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        
+        .pagination-links button {
+            padding: 8px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+            color: #374151;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .pagination-links button:hover:not(:disabled) {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        
+        .pagination-links button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination-links button.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .pagination-links button.active:hover {
+            background: #2563eb;
+        }
+        
+        .pagination-links .ellipsis {
+            padding: 8px 10px;
+            color: #6b7280;
+        }
+        
+        @media (max-width: 768px) {
+            .pagination-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .rows-info {
+                justify-content: center;
+            }
+            
+            .pagination-links {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+        }
     </style>
 </head>
 <body>
@@ -52,27 +145,27 @@
         </div>
     </header>
 
-<!-- ─── SIDEBAR ─── -->
-<aside class="sidebar">
-    <nav>
-        <ul>
-            <li class="active">DASHBOARD</li>
-            <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
-            <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
-            <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-            <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-            <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
-        </ul>
-    </nav>
-    <div class="bottom-nav">
-        <ul>
-            <li>
-                <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                    <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
-                    Settings
-                </a>
-            </li>
-            <li class="logout">
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar">
+        <nav>
+            <ul>
+                <li class="active">DASHBOARD</li>
+                <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
+            </ul>
+        </nav>
+        <div class="bottom-nav">
+            <ul>
+                <li>
+                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                        Settings
+                    </a>
+                </li>
+                <li class="logout">
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
@@ -80,10 +173,10 @@
                             Log out
                         </button>
                     </form>
-            </li>
-        </ul>
-    </div>
-</aside>
+                </li>
+            </ul>
+        </div>
+    </aside>
 
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
@@ -93,26 +186,16 @@
             <h1>DASHBOARD <small>construction operation overview</small></h1>
         </div>
 
-        <!-- Stats Cards -->
+        <!-- Stats Cards (Removed Equipment Units and Workforce) -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Active Projects</div>
-                <div class="stat-value">24</div>
+                <div class="stat-value">{{ $activeProjects ?? 0 }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Total Budget</div>
-                <div class="stat-value">$18.6M</div>
-                <div class="stat-sub">$2.1M remaining</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Equipment Units</div>
-                <div class="stat-value">156</div>
-                <div class="stat-sub">12 under maintenance</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Workforce</div>
-                <div class="stat-value">342</div>
-                <div class="stat-sub">28 new hires this month</div>
+                <div class="stat-value">₱{{ number_format(($totalBudget ?? 0), 0) }}</div>
+                <div class="stat-sub">₱{{ number_format(($remainingBudget ?? 0), 0) }} remaining</div>
             </div>
         </div>
 
@@ -121,12 +204,21 @@
             <div class="chart-box">
                 <h3>PROJECT COMPLETION TREND</h3>
                 <div class="bar-chart">
-                    <div class="bar-group"><div class="bar" style="height:35px;"></div><span class="bar-label">Jan</span></div>
-                    <div class="bar-group"><div class="bar" style="height:60px;"></div><span class="bar-label">Feb</span></div>
-                    <div class="bar-group"><div class="bar" style="height:50px;"></div><span class="bar-label">Mar</span></div>
-                    <div class="bar-group"><div class="bar" style="height:80px;"></div><span class="bar-label">Apr</span></div>
-                    <div class="bar-group"><div class="bar" style="height:70px;"></div><span class="bar-label">May</span></div>
-                    <div class="bar-group"><div class="bar" style="height:90px;"></div><span class="bar-label">Jun</span></div>
+                    @if(isset($completionData) && count($completionData['months']) > 0)
+                        @foreach($completionData['months'] as $index => $month)
+                            <div class="bar-group">
+                                <div class="bar" style="height:{{ $completionData['percentages'][$index] ?? 35 }}px;"></div>
+                                <span class="bar-label">{{ $month }}</span>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="bar-group"><div class="bar" style="height:35px;"></div><span class="bar-label">Jan</span></div>
+                        <div class="bar-group"><div class="bar" style="height:60px;"></div><span class="bar-label">Feb</span></div>
+                        <div class="bar-group"><div class="bar" style="height:50px;"></div><span class="bar-label">Mar</span></div>
+                        <div class="bar-group"><div class="bar" style="height:80px;"></div><span class="bar-label">Apr</span></div>
+                        <div class="bar-group"><div class="bar" style="height:70px;"></div><span class="bar-label">May</span></div>
+                        <div class="bar-group"><div class="bar" style="height:90px;"></div><span class="bar-label">Jun</span></div>
+                    @endif
                 </div>
             </div>
 
@@ -169,77 +261,64 @@
             </div>
         </div>
 
-        <!-- Projects List -->
+        <!-- Projects List with Pagination -->
         <div class="projects-section">
             <h2>ACTIVE PROJECTS</h2>
-            <div class="projects-list">
-                <div class="project-item" 
-                     data-name="Riverside Commercial Complex"
-                     data-client="Riverside Client"
-                     data-budget="$2.4M"
-                     data-start="Jan 15, 2025"
-                     data-est-end="Dec 30, 2025"
-                     data-actual-end="—"
-                     data-duration="11.5 mo"
-                     data-phase="Structure"
-                     data-status="At Risk"
-                     data-progress="78"
-                     onclick="openProjectDetail(this)">
-                    <img src="{{ asset('images/building1.jpg') }}" alt="Riverside Commercial Complex">
-                    <div class="info">
-                        <h4>Riverside Commercial Complex</h4>
-                        <div class="budget">Budget: $2.4M</div>
+            <div class="projects-list" id="projectsList">
+                @if(isset($projects) && count($projects) > 0)
+                    @foreach($projects as $project)
+                        <div class="project-item" 
+                             data-name="{{ $project->project_name }}"
+                             data-client="{{ $project->client_name ?? '—' }}"
+                             data-budget="₱{{ number_format($project->budget->budget_amount ?? 0, 2) }}"
+                             data-start="{{ $project->start_date ? \Carbon\Carbon::parse($project->start_date)->format('M d, Y') : '—' }}"
+                             data-est-end="{{ $project->estimated_end_date ? \Carbon\Carbon::parse($project->estimated_end_date)->format('M d, Y') : '—' }}"
+                             data-actual-end="{{ $project->actual_end_date ? \Carbon\Carbon::parse($project->actual_end_date)->format('M d, Y') : '—' }}"
+                             data-duration="{{ $project->estimated_end_date && $project->start_date ? \Carbon\Carbon::parse($project->start_date)->diffInMonths(\Carbon\Carbon::parse($project->estimated_end_date)) . ' mo' : '—' }}"
+                             data-phase="{{ $project->phase ?? '—' }}"
+                             data-status="{{ $project->status ?? '—' }}"
+                             data-progress="{{ $project->completion_percentage ?? 0 }}"
+                             onclick="openProjectDetail(this)">
+                            <img src="{{ asset('images/building1.jpg') }}" alt="{{ $project->project_name }}">
+                            <div class="info">
+                                <h4>{{ $project->project_name }}</h4>
+                                <div class="budget">Budget: ₱{{ number_format($project->budget->budget_amount ?? 0, 0) }}</div>
+                            </div>
+                            <div class="progress-wrapper">
+                                <div class="progress-bar">
+                                    <div class="fill" style="width:{{ $project->completion_percentage ?? 0 }}%;"></div>
+                                </div>
+                                <div class="progress-label">
+                                    <span>{{ $project->completion_percentage ?? 0 }}%</span>
+                                    <span>Complete</span>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="project-item" style="justify-content: center; padding: 30px;">
+                        <div class="info" style="text-align: center; width: 100%;">
+                            <h4 style="color: #666;">No active projects</h4>
+                            <div class="budget">All projects are completed</div>
+                        </div>
                     </div>
-                    <div class="progress-wrapper">
-                        <div class="progress-bar"><div class="fill" style="width:78%;"></div></div>
-                        <div class="progress-label"><span>78%</span><span>Complete</span></div>
-                    </div>
-                </div>
+                @endif
+            </div>
 
-                <div class="project-item" 
-                     data-name="Downtown Office Tower"
-                     data-client="Downtown Client"
-                     data-budget="$5.8M"
-                     data-start="Mar 1, 2025"
-                     data-est-end="Aug 15, 2025"
-                     data-actual-end="—"
-                     data-duration="5.5 mo"
-                     data-phase="Finishing"
-                     data-status="On Track"
-                     data-progress="45"
-                     onclick="openProjectDetail(this)">
-                    <img src="{{ asset('images/building2.jpg') }}" alt="Downtown Office Tower">
-                    <div class="info">
-                        <h4>Downtown Office Tower</h4>
-                        <div class="budget">Budget: $5.8M</div>
-                    </div>
-                    <div class="progress-wrapper">
-                        <div class="progress-bar"><div class="fill" style="width:45%;"></div></div>
-                        <div class="progress-label"><span>45%</span><span>Complete</span></div>
-                    </div>
+            <!-- ─── PAGINATION ─── -->
+            <div class="pagination-wrapper">
+                <div class="rows-info">
+                    Rows Displayed:
+                    <select id="projectsRowsPerPage" onchange="changeProjectPageSize()">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
                 </div>
-
-                <div class="project-item" 
-                     data-name="Suburban Housing Development"
-                     data-client="Suburban Client"
-                     data-budget="$3.2M"
-                     data-start="Nov 10, 2024"
-                     data-est-end="May 20, 2025"
-                     data-actual-end="—"
-                     data-duration="6.3 mo"
-                     data-phase="Complete"
-                     data-status="Completed"
-                     data-progress="92"
-                     onclick="openProjectDetail(this)">
-                    <img src="{{ asset('images/building3.jpg') }}" alt="Suburban Housing Development">
-                    <div class="info">
-                        <h4>Suburban Housing Development</h4>
-                        <div class="budget">Budget: $3.2M</div>
-                    </div>
-                    <div class="progress-wrapper">
-                        <div class="progress-bar"><div class="fill" style="width:92%;"></div></div>
-                        <div class="progress-label"><span>92%</span><span>Complete</span></div>
-                    </div>
+                <div class="pagination-links" id="projectPaginationLinks">
+                    <!-- Generated by JavaScript -->
                 </div>
             </div>
         </div>
@@ -288,12 +367,126 @@
             </div>
             <div class="modal-footer" style="justify-content: flex-end;">
                 <button class="btn-cancel" onclick="closeProjectDetail()">Close</button>
-                <button class="btn-view-project" onclick="viewProject()">View Project</button>
             </div>
         </div>
     </div>
 
     <script>
+        // Store all projects data
+        let allProjects = [];
+        let currentPage = 1;
+        let pageSize = 10;
+
+        // Initialize pagination
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all project items
+            const projectItems = document.querySelectorAll('.project-item');
+            allProjects = Array.from(projectItems);
+            
+            // Update total count display
+            updateTotalCount();
+            
+            // Apply pagination
+            applyPagination();
+        });
+
+        function updateTotalCount() {
+            const total = allProjects.length;
+            const rowsInfo = document.querySelector('.rows-info');
+            if (rowsInfo && total > 0) {
+                const span = rowsInfo.querySelector('span');
+                if (!span) {
+                    const newSpan = document.createElement('span');
+                    newSpan.className = 'total-count';
+                    newSpan.textContent = `Total: ${total}`;
+                    rowsInfo.appendChild(newSpan);
+                } else {
+                    span.textContent = `Total: ${total}`;
+                }
+            }
+        }
+
+        function applyPagination() {
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            
+            // Hide all projects first
+            allProjects.forEach(item => {
+                item.style.display = 'none';
+            });
+            
+            // Show only current page items
+            const pageItems = allProjects.slice(start, end);
+            pageItems.forEach(item => {
+                item.style.display = 'flex';
+            });
+            
+            // Update pagination links
+            renderPaginationLinks();
+        }
+
+        function renderPaginationLinks() {
+            const container = document.getElementById('projectPaginationLinks');
+            const totalPages = Math.ceil(allProjects.length / pageSize);
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // Previous button
+            html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>‹</button>`;
+            
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+            
+            if (startPage > 1) {
+                html += `<button onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="ellipsis">…</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="ellipsis">…</span>`;
+                }
+                html += `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // Next button
+            html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>›</button>`;
+            
+            container.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(allProjects.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            applyPagination();
+        }
+
+        function changeProjectPageSize() {
+            const select = document.getElementById('projectsRowsPerPage');
+            pageSize = parseInt(select.value);
+            currentPage = 1;
+            applyPagination();
+        }
+
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {

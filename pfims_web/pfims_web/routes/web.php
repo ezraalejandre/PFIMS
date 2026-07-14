@@ -11,6 +11,8 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MLController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Auth\PasswordController;
 
 // Landing page (login)
 Route::get('/', function () {
@@ -19,9 +21,9 @@ Route::get('/', function () {
 
 // ─── DASHBOARD ROUTES (Role-based) ─────────────────────────────
 // Admin Dashboard
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware('auth')->name('admin.dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('admin.dashboard');
 
 // Accounting Dashboard
 Route::get('/adashboard', function () {
@@ -279,6 +281,9 @@ Route::post('/logout', function (Request $request) {
 
     return redirect('/');
 });
+
+// Change password route
+Route::post('/change-password', [PasswordController::class, 'update'])->middleware('auth')->name('password.update');
 
 // ─── MACHINE LEARNING ROUTES (NO AUTH REQUIRED) ────────────────
 Route::get('/ml-dashboard-test', function () {
