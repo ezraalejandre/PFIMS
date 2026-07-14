@@ -9,6 +9,8 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Services\NotificationService;
 
 
 Route::get('/user', function (Request $request) {
@@ -161,8 +163,12 @@ Route::post('/projects', function (Request $request) {
 });
 
 Route::put('/projects/{id}', function (Request $request, $id) {
-    $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
-    if (!$exists) {
+    // Fetch the CURRENT row (before update) so we can compare old vs new
+    // status. Previously this fetch happened AFTER the update, which meant
+    // $oldStatus and $newStatus were always identical and the
+    // delayed/at-risk notifications never fired.
+    $existingProject = DB::table('project_tbl')->where('project_id', $id)->first();
+    if (!$existingProject) {
         return response()->json(['message' => 'Project not found'], 404);
     }
 
@@ -183,11 +189,48 @@ Route::put('/projects/{id}', function (Request $request, $id) {
         return response()->json(['message' => 'No fields to update'], 422);
     }
 
+    // Captured BEFORE the update runs — this is the fix.
+    $oldStatus = strtolower((string) $existingProject->status);
+
     DB::table('project_tbl')->where('project_id', $id)->update($validated);
 
     $project = DB::table('project_tbl')->where('project_id', $id)->first();
+
+    // --- Notification check ---
+    if (array_key_exists('status', $validated)) {
+        $newStatus = strtolower((string) $validated['status']);
+
+        if ($newStatus !== $oldStatus) {
+            $notifications = app(NotificationService::class);
+
+            if ($newStatus === 'delayed' && !$notifications->alreadyNotified('project_delayed', 'project', (int) $id)) {
+                $notifications->notify(
+                    title: 'Project Delayed',
+                    message: "\"{$project->project_name}\" has been marked as delayed.",
+                    type: 'project_delayed',
+                    kind: 'overdue',
+                    filter: 'alerts',
+                    referenceType: 'project',
+                    referenceId: (int) $id,
+                );
+            } elseif ($newStatus === 'at risk' && !$notifications->alreadyNotified('project_at_risk', 'project', (int) $id)) {
+                $notifications->notify(
+                    title: 'Project At Risk',
+                    message: "\"{$project->project_name}\" is now flagged as at risk.",
+                    type: 'project_at_risk',
+                    kind: 'warning',
+                    filter: 'alerts',
+                    referenceType: 'project',
+                    referenceId: (int) $id,
+                );
+            }
+        }
+    }
+    // --- end notification check ---
+
     return response()->json($project);
 });
+
 
 Route::delete('/projects/{id}', function ($id) {
     $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
@@ -425,6 +468,12 @@ Route::post('/inventory-items', function (Request $request) {
 // NEW: update an inventory item. Every field is optional so the client can
 // send just the ones it actually changed (e.g. name + stock from the Edit
 // Item modal) without clobbering the rest.
+//
+// NOTE: low-stock notification is NOT wired in here yet — see the message
+// after this file. It needs the same "capture old value before update"
+// pattern used above for project status, plus it likely also needs to live
+// inside InventoryTransactionController::store, since stock probably
+// changes there too (not just through this route).
 Route::put('/inventory-items/{id}', function (Request $request, $id) {
     $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
     if (!$exists) {
@@ -597,3 +646,18 @@ Route::put('/expenses/{id}', [ExpenseController::class, 'update']);
 Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
 
 Route::get('/dashboard', [DashboardController::class, 'index']);
+Route::get('/notifications', [NotificationController::class, 'index']);
+Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
+Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
+Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
+Route::get('/test-notify', function () {
+    app(App\Services\NotificationService::class)->notify(
+        title: 'Test',
+        message: 'This is a test notification',
+        type: 'test',
+        kind: 'info',
+    );
+    return 'ok';
+});

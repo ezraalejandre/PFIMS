@@ -1,15 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../screens/notifications_screen.dart';
+import '../services/notification_service.dart';
 import '../services/user_session.dart';
 
-// TODO: move shared brand colors into theme/app_theme.dart
 const Color kBrandOrange = Color(0xFFF2811D);
 
-/// Fixed top bar used on Dashboard, Project Tracking, etc:
-/// logo + company name/tagline + notification bell + profile avatar.
-class AppHeader extends StatelessWidget implements PreferredSizeWidget {
+class AppHeader extends StatefulWidget implements PreferredSizeWidget {
   const AppHeader({
     super.key,
     this.showBackButton = false,
@@ -18,30 +17,72 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   });
 
   final bool showBackButton;
-
-  // The current signed-in user's email, forwarded to /profile when the
-  // avatar is tapped. Pass this in from whichever screen uses AppHeader
-  // (e.g. AppHeader(email: widget.email)) so the profile page loads the
-  // right account instead of an empty one. Falls back to
-  // UserSession.email if left as ''/unset.
   final String email;
-
-  // The signed-in user's profile photo, in the same base64 data URI
-  // format the backend returns from /profile and /profile/photo (e.g.
-  // "data:image/jpeg;base64,..."). Optional — if not passed, falls back
-  // to UserSession.photoDataUri, which login and ProfileScreen keep
-  // updated automatically. Explicitly pass this only if a screen has a
-  // more current value than the session cache. Null/empty/invalid falls
-  // back to the generic person icon.
   final String? photoDataUri;
 
-  // TODO: wire to real unread-notifications count once notifications data layer exists.
-  static const int _unreadCount = 4;
+  @override
+  State<AppHeader> createState() => _AppHeaderState();
 
-  String get _resolvedEmail => email.isNotEmpty ? email : UserSession.email;
+  @override
+  Size get preferredSize => const Size.fromHeight(64);
+}
+
+class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
+  int _unreadCount = 0;
+  Timer? _pollTimer;
+
+  // How often to re-check the unread count while the app is in the
+  // foreground and this header is on screen. Adjust to taste — lower is
+  // more "live" but hits the API more often.
+  static const _pollInterval = Duration(seconds: 20);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadUnreadCount();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Polling pauses in the background anyway (no point hitting the API
+    // while the user can't see it), so re-check immediately and restart
+    // the timer whenever the app comes back to the foreground.
+    if (state == AppLifecycleState.resumed) {
+      _loadUnreadCount();
+      _startPolling();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _pollTimer?.cancel();
+    }
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _loadUnreadCount());
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await NotificationService.fetchUnreadCount();
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (_) {
+      // Badge just stays as-is if this fails — not worth surfacing an error for.
+    }
+  }
+
+  String get _resolvedEmail => widget.email.isNotEmpty ? widget.email : UserSession.email;
 
   Uint8List? _decodePhoto() {
-    final uri = photoDataUri ?? UserSession.photoDataUri;
+    final uri = widget.photoDataUri ?? UserSession.photoDataUri;
     if (uri == null || uri.isEmpty) return null;
     final commaIndex = uri.indexOf(',');
     if (commaIndex == -1) return null;
@@ -50,6 +91,15 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+    // Coming back from the notifications screen — re-check the count since
+    // the user may have read/dismissed/cleared things while there.
+    _loadUnreadCount();
   }
 
   @override
@@ -68,7 +118,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
         bottom: false,
         child: Row(
           children: [
-            if (showBackButton) ...[
+            if (widget.showBackButton) ...[
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black87),
                 onPressed: () => Navigator.of(context).maybePop(),
@@ -111,7 +161,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                 ],
               ),
             ),
-            _NotificationBell(unreadCount: _unreadCount),
+            _NotificationBell(unreadCount: _unreadCount, onTap: _openNotifications),
             const SizedBox(width: 6),
             Material(
               color: Colors.transparent,
@@ -140,15 +190,13 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
     );
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(64);
 }
 
 class _NotificationBell extends StatelessWidget {
   final int unreadCount;
+  final VoidCallback onTap;
 
-  const _NotificationBell({required this.unreadCount});
+  const _NotificationBell({required this.unreadCount, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -157,11 +205,7 @@ class _NotificationBell extends StatelessWidget {
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-          );
-        },
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(6),
           child: Stack(

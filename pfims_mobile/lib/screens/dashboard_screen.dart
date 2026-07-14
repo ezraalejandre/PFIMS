@@ -6,6 +6,7 @@ import '../services/user_session.dart';
 import '../services/dashboard_service.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import '../widgets/app_header.dart' show AppHeader;
 
 const Color kBrandOrange = Color(0xFFF2811D);
 const Color kDarkNavy = Color(0xFF1A1F36);
@@ -36,7 +37,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final PageController _statsController = PageController(viewportFraction: .42);
+  final PageController _statsController = PageController(viewportFraction: .58);
   late Future<DashboardData> _dashboardFuture;
 
   @override
@@ -71,7 +72,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPageBg,
-      appBar: _DashboardHeader(email: widget.email),
+      appBar: AppHeader(email: widget.email), 
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: FutureBuilder<DashboardData>(
@@ -102,7 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
                 SizedBox(
-                  height: 104,
+                  height: 140,
                   child: PageView.builder(
                     controller: _statsController,
                     itemCount: data.statCards.length,
@@ -517,33 +518,50 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(data.label,
-                    style: TextStyle(fontSize: 11.5, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
-              ),
-              if (data.badge != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(6)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_badgeIcon(data.badgeType), size: 9, color: color),
-                      const SizedBox(width: 2),
-                      Text(data.badge!, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: color)),
-                    ],
-                  ),
-                ),
-            ],
+          Text(
+            data.label,
+            style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const Spacer(),
-          Text(data.value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+          if (data.badge != null) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_badgeIcon(data.badgeType), size: 9, color: color),
+                  const SizedBox(width: 2),
+                  Text(data.badge!,
+                      style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: color)),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              data.value,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(data.subtitle, style: TextStyle(fontSize: 10.5, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            data.subtitle,
+            style: TextStyle(fontSize: 10.5, color: Colors.grey[500]),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

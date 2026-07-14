@@ -15,8 +15,8 @@ class InventoryItem {
   final String name;
   final String category;
   final String unit;
-  final int stock; // running current_stock of the item at load time
-  final double quantity; // amount moved by THIS specific transaction
+  final int stock;
+  final double quantity;
   final StockStatus status;
   final DateTime date;
   final String? projectName;
@@ -106,12 +106,6 @@ class Supplier {
     required this.isActive,
   });
 
-  
-
-  // Build a Supplier from the JSON returned by GET /suppliers.
-  // NOTE: supplier_tbl has no is_active column, so every supplier loaded
-  // from the API is treated as active. Add the column + wire it through
-  // api.php and InventoryService if you want real active/inactive tracking.
   factory Supplier.fromJson(Map<String, dynamic> json) {
     final rawCount = json['item_count'];
 
@@ -152,7 +146,6 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
   List<ItemRecord> _itemRecords = [];
   bool _loadingItemRecords = true;
   String? _itemRecordsError;
-  
 
   List<Supplier> _suppliers = [];
   bool _loadingSuppliers = true;
@@ -186,8 +179,6 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
     super.dispose();
   }
 
-  // Loads every transaction row (one entry per stock movement) instead of
-  // "latest transaction per item", so the Inventory tab shows full history.
   Future<void> _loadInventoryItems() async {
     setState(() {
       _loadingItems = true;
@@ -197,10 +188,6 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
       final data = await InventoryService.fetchTransactions();
       if (mounted) {
         final parsed = data.map((json) => InventoryItem.fromJson(json)).toList();
-        // Newest transaction first. Sort by date, then by transactionId as
-        // a tiebreaker for same-day entries (higher id = created later),
-        // so the list stays correctly ordered even if the API's own
-        // ordering changes.
         parsed.sort((a, b) {
           final dateCompare = b.date.compareTo(a.date);
           if (dateCompare != 0) return dateCompare;
@@ -243,98 +230,85 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
       }
     }
   }
+
   Future<void> _loadItemRecords() async {
-  setState(() {
-    _loadingItemRecords = true;
-    _itemRecordsError = null;
-  });
-  try {
-    final results = await Future.wait([
-      InventoryService.fetchItems(),
-      InventoryService.fetchCategories(),
-      InventoryService.fetchUnits(),
-      InventoryService.fetchSuppliers(),
-    ]);
-    if (!mounted) return;
-
-    final rawItems = results[0];
-    final categoryNames = {
-      for (final c in results[1]) c['inventory_category_id']: c['inventory_category_name'] as String? ?? '-'
-    };
-    final unitNames = {
-      for (final u in results[2]) u['unit_id']: u['unit_name'] as String? ?? '-'
-    };
-    final supplierNames = {
-      for (final s in results[3]) s['supplier_id']: s['supplier_name'] as String? ?? '-'
-    };
-
-    final parsed = rawItems.map((json) {
-      final categoryId = json['inventory_category_id'] is int
-          ? json['inventory_category_id'] as int
-          : int.tryParse('${json['inventory_category_id']}');
-      final unitId = json['unit_id'] is int
-          ? json['unit_id'] as int
-          : int.tryParse('${json['unit_id']}');
-      final supplierId = json['supplier_id'] is int
-          ? json['supplier_id'] as int
-          : int.tryParse('${json['supplier_id']}');
-      final rawStock = json['current_stock'];
-
-      return ItemRecord(
-        itemId: json['item_id'] is int ? json['item_id'] as int : int.tryParse('${json['item_id']}') ?? 0,
-        name: json['item_name'] as String? ?? '',
-        categoryId: categoryId,
-        categoryName: categoryNames[categoryId] ?? '-',
-        unitId: unitId,
-        unitName: unitNames[unitId] ?? '-',
-        supplierId: supplierId,
-        supplierName: supplierNames[supplierId] ?? '-',
-        currentStock: rawStock is num ? rawStock.toDouble() : (double.tryParse('$rawStock') ?? 0),
-      );
-    }).toList();
-
-    parsed.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
     setState(() {
-      _itemRecords = parsed;
-      _loadingItemRecords = false;
+      _loadingItemRecords = true;
+      _itemRecordsError = null;
     });
-  } catch (e) {
-    if (mounted) {
+    try {
+      final results = await Future.wait([
+        InventoryService.fetchItems(),
+        InventoryService.fetchCategories(),
+        InventoryService.fetchUnits(),
+        InventoryService.fetchSuppliers(),
+      ]);
+      if (!mounted) return;
+
+      final rawItems = results[0];
+      final categoryNames = {
+        for (final c in results[1]) c['inventory_category_id']: c['inventory_category_name'] as String? ?? '-'
+      };
+      final unitNames = {
+        for (final u in results[2]) u['unit_id']: u['unit_name'] as String? ?? '-'
+      };
+      final supplierNames = {
+        for (final s in results[3]) s['supplier_id']: s['supplier_name'] as String? ?? '-'
+      };
+
+      final parsed = rawItems.map((json) {
+        final categoryId = json['inventory_category_id'] is int
+            ? json['inventory_category_id'] as int
+            : int.tryParse('${json['inventory_category_id']}');
+        final unitId = json['unit_id'] is int
+            ? json['unit_id'] as int
+            : int.tryParse('${json['unit_id']}');
+        final supplierId = json['supplier_id'] is int
+            ? json['supplier_id'] as int
+            : int.tryParse('${json['supplier_id']}');
+        final rawStock = json['current_stock'];
+
+        return ItemRecord(
+          itemId: json['item_id'] is int ? json['item_id'] as int : int.tryParse('${json['item_id']}') ?? 0,
+          name: json['item_name'] as String? ?? '',
+          categoryId: categoryId,
+          categoryName: categoryNames[categoryId] ?? '-',
+          unitId: unitId,
+          unitName: unitNames[unitId] ?? '-',
+          supplierId: supplierId,
+          supplierName: supplierNames[supplierId] ?? '-',
+          currentStock: rawStock is num ? rawStock.toDouble() : (double.tryParse('$rawStock') ?? 0),
+        );
+      }).toList();
+
+      parsed.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
       setState(() {
-        _itemRecordsError = "Failed to load items. Pull to refresh.";
+        _itemRecords = parsed;
         _loadingItemRecords = false;
       });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _itemRecordsError = "Failed to load items. Pull to refresh.";
+          _loadingItemRecords = false;
+        });
+      }
     }
   }
-}
 
-// After any create/edit/delete on the Items tab, refresh both this list
-// AND the transaction-derived Inventory tab, since that tab also reads
-// item.stock and would otherwise show stale values.
-void _refreshAfterItemChange() {
-  _loadItemRecords();
-  _loadInventoryItems();
-}
+  void _refreshAfterItemChange() {
+    _loadItemRecords();
+    _loadInventoryItems();
+  }
 
-  // ---- KPI cards (driven by real data, not placeholders) ----
-
-  // Total distinct items tracked, sourced from the Items tab data (the
-  // item master list) rather than the transaction list, so it can never
-  // double count an item with multiple transactions.
   int get _totalItemsCount => _itemRecords.length;
 
-  // Items at or below the low-stock threshold, computed from the same
-  // item master data the Items tab itself renders from, so this KPI and
-  // the "Low Stock" pills on that tab always agree.
   int get _lowStockItemsCount =>
       _itemRecords.where((i) => i.currentStock < kLowStockThreshold).length;
 
-  // Active suppliers on file.
   int get _totalSuppliersCount => _suppliers.length;
 
-  // Stock movements recorded in the current calendar month, split by
-  // direction so the card can show an IN/OUT breakdown at a glance.
   int get _movementsInThisMonth {
     final now = DateTime.now();
     return _items
@@ -369,199 +343,217 @@ void _refreshAfterItemChange() {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    
     return Scaffold(
       appBar: AppHeader(email: widget.email),
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'INVENTORY',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.dark,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'construction operation overview',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // NEW: when on the Inventory tab, show "Add Item" beside
-                      // "Add Transaction". When on the Suppliers tab, show only
-                      // "Add Supplier" like before.
-                      Wrap(
-                        spacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_currentTab == 1) // Items tab
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (_) => _AddItemModal(onSaved: _refreshAfterItemChange),
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: kDarkPill,
-                                side: const BorderSide(color: kDarkPill),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'INVENTORY',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.dark,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'construction operation overview',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              icon: const Icon(Icons.inventory_2_outlined, size: 16),
-                              label: const Text('Add Item', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                            )
-                          else
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                if (_currentTab == 0) {
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    builder: (_) => _AddTransactionModal(onSaved: _loadInventoryItems),
-                                  );
-                                } else {
-                                  // _currentTab == 2 (Suppliers)
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    builder: (_) => _AddSupplierModal(onSaved: _loadSuppliers),
-                                  );
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: kDarkPill,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (_currentTab == 1)
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (_) => _AddItemModal(onSaved: _refreshAfterItemChange),
+                                        );
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: kDarkPill,
+                                        side: const BorderSide(color: kDarkPill),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                        textStyle: const TextStyle(fontSize: 10),
+                                      ),
+                                      icon: const Icon(Icons.inventory_2_outlined, size: 14),
+                                      label: const Text('Add Item'),
+                                    )
+                                  else
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        if (_currentTab == 0) {
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (_) => _AddTransactionModal(onSaved: _loadInventoryItems),
+                                          );
+                                        } else {
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (_) => _AddSupplierModal(onSaved: _loadSuppliers),
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: kDarkPill,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                        textStyle: const TextStyle(fontSize: 10),
+                                      ),
+                                      icon: const Icon(Icons.add, size: 14),
+                                      label: Text(
+                                        _currentTab == 0 ? 'Add Transaction' : 'Add Supplier',
+                                      ),
+                                    ),
+                                ],
                               ),
-                              icon: const Icon(Icons.add, size: 16),
-                              label: Text(
-                                _currentTab == 0 ? 'Add Transaction' : 'Add Supplier',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                              ),
-                            ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          _StatsGrid(
+                            totalItems: _totalItemsCount,
+                            lowStock: _lowStockItemsCount,
+                            totalSuppliers: _totalSuppliersCount,
+                            movementsIn: _movementsInThisMonth,
+                            movementsOut: _movementsOutThisMonth,
+                            onSelectTab: _goToTab,
+                          ),
+                          const SizedBox(height: 12),
+                          TabBar(
+                            controller: _tabController,
+                            labelColor: AppColors.orange,
+                            unselectedLabelColor: Colors.black54,
+                            indicatorColor: AppColors.orange,
+                            indicatorSize: TabBarIndicatorSize.label,
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            tabs: const [
+                              Tab(text: 'Inventory'),
+                              Tab(text: 'Items'),
+                              Tab(text: 'Suppliers'),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _StatsGrid(
-                    totalItems: _totalItemsCount,
-                    lowStock: _lowStockItemsCount,
-                    totalSuppliers: _totalSuppliersCount,
-                    movementsIn: _movementsInThisMonth,
-                    movementsOut: _movementsOutThisMonth,
-                    onSelectTab: _goToTab,
-                  ),
-                  const SizedBox(height: 14),
-                  TabBar(
-                    controller: _tabController,
-                    labelColor: AppColors.orange,
-                    unselectedLabelColor: Colors.black54,
-                    indicatorColor: AppColors.orange,
-                    indicatorSize: TabBarIndicatorSize.label,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    tabs: const [
-                      Tab(text: 'Inventory'),
-                      Tab(text: 'Items'),      // NEW
-                      Tab(text: 'Suppliers'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-           Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  // --- Inventory (transactions) — unchanged ---
-                  _loadingItems
-                      ? const Center(child: CircularProgressIndicator())
-                      : _itemsError != null
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(_itemsError!),
-                                  const SizedBox(height: 8),
-                                  ElevatedButton(onPressed: _loadInventoryItems, child: const Text("Retry")),
-                                ],
-                              ),
-                            )
-                          : _InventoryList(
-                              items: _items,
-                              formatDate: _formatDate,
-                              onTap: (item) {
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (_) => _InventoryDetailsModal(item: item, onChanged: _loadInventoryItems),
-                                );
-                              },
-                            ),
-
-                  // --- NEW: Items (item master data) ---
-                  _loadingItemRecords
-                      ? const Center(child: CircularProgressIndicator())
-                      : _itemRecordsError != null
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(_itemRecordsError!),
-                                  const SizedBox(height: 8),
-                                  ElevatedButton(onPressed: _loadItemRecords, child: const Text("Retry")),
-                                ],
-                              ),
-                            )
-                          : _ItemsList(
-                              items: _itemRecords,
-                              onTap: (item) {
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (_) => _ItemDetailsModal(item: item, onChanged: _refreshAfterItemChange),
-                                );
-                              },
-                            ),
-
-                  // --- Suppliers — unchanged ---
-                  _loadingSuppliers
-                      ? const Center(child: CircularProgressIndicator())
-                      : _suppliersError != null
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(_suppliersError!),
-                                  const SizedBox(height: 8),
-                                  ElevatedButton(onPressed: _loadSuppliers, child: const Text("Retry")),
-                                ],
-                              ),
-                            )
-                          : _SuppliersList(suppliers: _suppliers, onChanged: _loadSuppliers),
-                ],
+                    ),
+                    SizedBox(
+                      height: screenHeight * 0.55,
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // Inventory Tab
+                          _loadingItems
+                              ? const Center(child: CircularProgressIndicator())
+                              : _itemsError != null
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(_itemsError!),
+                                          const SizedBox(height: 8),
+                                          ElevatedButton(onPressed: _loadInventoryItems, child: const Text("Retry")),
+                                        ],
+                                      ),
+                                    )
+                                  : _InventoryList(
+                                      items: _items,
+                                      formatDate: _formatDate,
+                                      onTap: (item) {
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (_) => _InventoryDetailsModal(
+                                            item: item,
+                                            rootContext: context,
+                                            onChanged: _loadInventoryItems,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                          // Items Tab
+                          _loadingItemRecords
+                              ? const Center(child: CircularProgressIndicator())
+                              : _itemRecordsError != null
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(_itemRecordsError!),
+                                          const SizedBox(height: 8),
+                                          ElevatedButton(onPressed: _loadItemRecords, child: const Text("Retry")),
+                                        ],
+                                      ),
+                                    )
+                                  : _ItemsList(
+                                      items: _itemRecords,
+                                      onTap: (item) {
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (_) => _ItemDetailsModal(
+                                            item: item,
+                                            rootContext: context,
+                                            onChanged: _refreshAfterItemChange,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                          // Suppliers Tab
+                          _loadingSuppliers
+                              ? const Center(child: CircularProgressIndicator())
+                              : _suppliersError != null
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(_suppliersError!),
+                                          const SizedBox(height: 8),
+                                          ElevatedButton(onPressed: _loadSuppliers, child: const Text("Retry")),
+                                        ],
+                                      ),
+                                    )
+                                  : _SuppliersList(suppliers: _suppliers, onChanged: _loadSuppliers),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -572,9 +564,7 @@ void _refreshAfterItemChange() {
   }
 }
 
-// KPI cards laid out as a 2x2 grid (rather than a single cramped row) so
-// four metrics fit comfortably on a phone-width screen. Each card is
-// tappable and jumps to the tab that explains that number.
+// Stats Grid
 class _StatsGrid extends StatelessWidget {
   final int totalItems;
   final int lowStock;
@@ -594,6 +584,10 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final spacing = isCompact ? 6.0 : 10.0;
+    final padding = isCompact ? 8.0 : 12.0;
+    
     return Column(
       children: [
         Row(
@@ -605,9 +599,10 @@ class _StatsGrid extends StatelessWidget {
                 caption: 'Tracked in inventory',
                 icon: Icons.inventory_2_outlined,
                 onTap: () => onSelectTab(1),
+                padding: padding,
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: spacing),
             Expanded(
               child: _StatCard(
                 label: 'LOW STOCK',
@@ -616,11 +611,12 @@ class _StatsGrid extends StatelessWidget {
                 valueColor: lowStock == 0 ? Colors.green.shade700 : const Color(0xFFD23B5C),
                 icon: Icons.warning_amber_rounded,
                 onTap: () => onSelectTab(1),
+                padding: padding,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: spacing),
         Row(
           children: [
             Expanded(
@@ -630,9 +626,10 @@ class _StatsGrid extends StatelessWidget {
                 caption: 'Active partners',
                 icon: Icons.local_shipping_outlined,
                 onTap: () => onSelectTab(2),
+                padding: padding,
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: spacing),
             Expanded(
               child: _StatCard(
                 label: 'THIS MONTH',
@@ -640,6 +637,7 @@ class _StatsGrid extends StatelessWidget {
                 caption: 'Stock movements',
                 icon: Icons.swap_vert_rounded,
                 onTap: () => onSelectTab(0),
+                padding: padding,
               ),
             ),
           ],
@@ -656,6 +654,7 @@ class _StatCard extends StatelessWidget {
   final Color? valueColor;
   final IconData? icon;
   final VoidCallback? onTap;
+  final double padding;
 
   const _StatCard({
     required this.label,
@@ -664,12 +663,15 @@ class _StatCard extends StatelessWidget {
     this.valueColor,
     this.icon,
     this.onTap,
+    this.padding = 12,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    
     final card = Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(14),
@@ -686,27 +688,37 @@ class _StatCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .3),
+                  style: TextStyle(
+                    fontSize: isCompact ? 8 : 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black45,
+                    letterSpacing: .3,
+                  ),
                 ),
               ),
-              if (icon != null) Icon(icon, size: 14, color: Colors.black26),
+              if (icon != null) Icon(icon, size: isCompact ? 12 : 14, color: Colors.black26),
             ],
           ),
-          const SizedBox(height: 6),
-          // FittedBox keeps longer values (e.g. "12 in / 5 out") from
-          // overflowing the card instead of hard-coding a smaller font.
+          SizedBox(height: isCompact ? 4 : 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: valueColor ?? AppColors.dark),
+              style: TextStyle(
+                fontSize: isCompact ? 16 : 20,
+                fontWeight: FontWeight.w800,
+                color: valueColor ?? AppColors.dark,
+              ),
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: isCompact ? 2 : 4),
           Text(
             caption,
-            style: const TextStyle(fontSize: 10, color: Colors.black38),
+            style: TextStyle(
+              fontSize: isCompact ? 8 : 10,
+              color: Colors.black38,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -724,6 +736,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+// Inventory List
 class _InventoryList extends StatelessWidget {
   final List<InventoryItem> items;
   final String Function(DateTime) formatDate;
@@ -745,7 +758,7 @@ class _InventoryList extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final item = items[index];
         final isIn = item.status == StockStatus.stockIn;
@@ -753,7 +766,7 @@ class _InventoryList extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: () => onTap(item),
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.card,
               borderRadius: BorderRadius.circular(14),
@@ -768,20 +781,18 @@ class _InventoryList extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.dark)),
-                      const SizedBox(height: 3),
-                      Text('${item.category} · ${item.unit}', style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
-                      // OUT transactions are tied to a project — show which
-                      // one this stock left for.
+                      Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.dark)),
+                      const SizedBox(height: 2),
+                      Text('${item.category} · ${item.unit}', style: const TextStyle(fontSize: 11.5, color: Colors.black54)),
                       if (!isIn && (item.projectName ?? '').isNotEmpty && item.projectName != '-')
                         Padding(
-                          padding: const EdgeInsets.only(top: 3),
-                          child: Text('For: ${item.projectName}', style: const TextStyle(fontSize: 12, color: Colors.black45)),
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text('For: ${item.projectName}', style: const TextStyle(fontSize: 10.5, color: Colors.black45)),
                         ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -790,9 +801,9 @@ class _InventoryList extends StatelessWidget {
                       children: [
                         Text(
                           '${isIn ? '+' : '-'}${_formatQty(item.quantity)} ${item.unit}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.dark),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.dark),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         _StatusPill(
                           text: isIn ? 'IN' : 'OUT',
                           background: isIn ? const Color(0xFFDCF2DE) : const Color(0xFFFBDCE0),
@@ -800,10 +811,10 @@ class _InventoryList extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(formatDate(item.date), style: const TextStyle(fontSize: 11, color: Colors.black38)),
+                    const SizedBox(height: 4),
+                    Text(formatDate(item.date), style: const TextStyle(fontSize: 10, color: Colors.black38)),
                     const SizedBox(height: 2),
-                    Text('Stock now: ${item.stock}', style: const TextStyle(fontSize: 10.5, color: Colors.black38)),
+                    Text('Stock now: ${item.stock}', style: const TextStyle(fontSize: 9.5, color: Colors.black38)),
                   ],
                 ),
               ],
@@ -815,6 +826,7 @@ class _InventoryList extends StatelessWidget {
   }
 }
 
+// Suppliers List
 class _SuppliersList extends StatelessWidget {
   final List<Supplier> suppliers;
   final VoidCallback onChanged;
@@ -830,7 +842,7 @@ class _SuppliersList extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       itemCount: suppliers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final supplier = suppliers[index];
 
@@ -842,12 +854,13 @@ class _SuppliersList extends StatelessWidget {
               barrierDismissible: false,
               builder: (_) => _SupplierDetailsModal(
                 supplier: supplier,
+                rootContext: context,
                 onChanged: onChanged,
               ),
             );
           },
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.card,
               borderRadius: BorderRadius.circular(14),
@@ -869,31 +882,31 @@ class _SuppliersList extends StatelessWidget {
                       Text(
                         supplier.name,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.dark,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         '${supplier.itemCount} item${supplier.itemCount == 1 ? '' : 's'} supplied',
                         style: const TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                           color: Colors.black54,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         supplier.phone,
                         style: const TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                           color: Colors.black54,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _StatusPill(
                   text: supplier.isActive ? 'Active' : 'Inactive',
                   background: supplier.isActive
@@ -910,6 +923,7 @@ class _SuppliersList extends StatelessWidget {
   }
 }
 
+// Items List
 class _ItemsList extends StatelessWidget {
   final List<ItemRecord> items;
   final Function(ItemRecord) onTap;
@@ -926,7 +940,7 @@ class _ItemsList extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final item = items[index];
         final lowStock = item.currentStock < kLowStockThreshold;
@@ -934,7 +948,7 @@ class _ItemsList extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: () => onTap(item),
           child: Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.card,
               borderRadius: BorderRadius.circular(14),
@@ -949,23 +963,23 @@ class _ItemsList extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.dark)),
-                      const SizedBox(height: 3),
-                      Text('${item.categoryName} · ${item.unitName}', style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
-                      const SizedBox(height: 3),
-                      Text('Supplier: ${item.supplierName}', style: const TextStyle(fontSize: 12, color: Colors.black45)),
+                      Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.dark)),
+                      const SizedBox(height: 2),
+                      Text('${item.categoryName} · ${item.unitName}', style: const TextStyle(fontSize: 11.5, color: Colors.black54)),
+                      const SizedBox(height: 2),
+                      Text('Supplier: ${item.supplierName}', style: const TextStyle(fontSize: 10.5, color: Colors.black45)),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       '${_formatStock(item.currentStock)} ${item.unitName}',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.dark),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.dark),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     _StatusPill(
                       text: lowStock ? 'Low Stock' : 'In Stock',
                       background: lowStock ? const Color(0xFFFBDCE0) : const Color(0xFFDCF2DE),
@@ -982,11 +996,17 @@ class _ItemsList extends StatelessWidget {
   }
 }
 
+// Item Details Modal
 class _ItemDetailsModal extends StatelessWidget {
   final ItemRecord item;
   final VoidCallback? onChanged;
+  final BuildContext rootContext;
 
-  const _ItemDetailsModal({required this.item, this.onChanged});
+  const _ItemDetailsModal({
+    required this.item,
+    required this.rootContext,
+    this.onChanged,
+  });
 
   Future<void> _confirmDelete(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -1018,68 +1038,79 @@ class _ItemDetailsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 20.0 : 30.0;
+    final fontSize = isCompact ? 22.0 : 26.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
+        ),
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Item Details", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-                InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.close)),
-              ],
-            ),
-            const SizedBox(height: 30),
-            _detail("Item Name", item.name),
-            _detail("Category", item.categoryName),
-            _detail("Unit", item.unitName),
-            _detail("Supplier", item.supplierName),
-            _detail(
-              "Current Stock",
-              "${item.currentStock % 1 == 0 ? item.currentStock.toInt() : item.currentStock} ${item.unitName}",
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => _confirmDelete(context),
-                  child: const Text("Delete", style: TextStyle(color: Colors.red)),
-                ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.black54))),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Future.delayed(const Duration(milliseconds: 100), () {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (_) => _EditItemFullModal(item: item, onSaved: onChanged),
-                          );
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kDarkPill,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text("Edit Item"),
+                    Text("Item Details", style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold)),
+                    InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _detail("Item Name", item.name),
+                _detail("Category", item.categoryName),
+                _detail("Unit", item.unitName),
+                _detail("Supplier", item.supplierName),
+                _detail(
+                  "Current Stock",
+                  "${item.currentStock % 1 == 0 ? item.currentStock.toInt() : item.currentStock} ${item.unitName}",
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => _confirmDelete(context),
+                      child: const Text("Delete", style: TextStyle(color: Colors.red)),
+                    ),
+                    Row(
+                      children: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel", style: TextStyle(color: Colors.black54))),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            if (!rootContext.mounted) return;
+                            showDialog(
+                              context: rootContext,
+                              barrierDismissible: false,
+                              builder: (_) => _EditItemFullModal(item: item, onSaved: onChanged),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kDarkPill,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("Edit Item"),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1087,19 +1118,20 @@ class _ItemDetailsModal extends StatelessWidget {
 
   Widget _detail(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.grey)),
-          const SizedBox(height: 5),
-          Text(value, style: const TextStyle(fontSize: 16, color: Colors.black87)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 15, color: Colors.black87)),
         ],
       ),
     );
   }
 }
 
+// Edit Item Full Modal
 class _EditItemFullModal extends StatefulWidget {
   final ItemRecord item;
   final VoidCallback? onSaved;
@@ -1215,128 +1247,138 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 16.0 : 30.0;
+    final fontSize = isCompact ? 22.0 : 26.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
-        child: _loading
-            ? const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
-            : _error != null
-                ? SizedBox(
-                    height: 200,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_error!, style: const TextStyle(color: Colors.red)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _loading = true;
-                                _error = null;
-                              });
-                              _loadDropdownData();
-                            },
-                            child: const Text("Retry"),
-                          ),
-                        ],
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
+        ),
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+          child: _loading
+              ? const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
+              : _error != null
+                  ? SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_error!, style: const TextStyle(color: Colors.red)),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _loading = true;
+                                  _error = null;
+                                });
+                                _loadDropdownData();
+                              },
+                              child: const Text("Retry"),
+                            ),
+                          ],
+                        ),
                       ),
+                    )
+                  : SingleChildScrollView(
+                      child: _buildForm(context, isCompact, fontSize),
                     ),
-                  )
-                : _buildForm(context),
+        ),
       ),
     );
   }
 
-  Widget _buildForm(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Edit item", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-              InkWell(onTap: _saving ? null : () => Navigator.pop(context), child: const Icon(Icons.close)),
-            ],
+  Widget _buildForm(BuildContext context, bool isCompact, double fontSize) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Edit item", style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold)),
+            InkWell(onTap: _saving ? null : () => Navigator.pop(context), child: const Icon(Icons.close)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        _field("Item Name", TextField(controller: nameController, decoration: _decoration("Item Name"))),
+        const SizedBox(height: 16),
+        _field(
+          "Item Category",
+          _dbDropdown(
+            value: selectedCategoryId,
+            hint: "Choose Category...",
+            items: _categories,
+            idKey: "inventory_category_id",
+            nameKey: "inventory_category_name",
+            onChanged: (id, name) => setState(() => selectedCategoryId = id),
           ),
-          const SizedBox(height: 25),
-          _field("Item Name", TextField(controller: nameController, decoration: _decoration("Item Name"))),
-          const SizedBox(height: 20),
-          _field(
-            "Item Category",
-            _dbDropdown(
-              value: selectedCategoryId,
-              hint: "Choose Category...",
-              items: _categories,
-              idKey: "inventory_category_id",
-              nameKey: "inventory_category_name",
-              onChanged: (id, name) => setState(() => selectedCategoryId = id),
+        ),
+        const SizedBox(height: 16),
+        _field(
+          "Item Unit",
+          _dbDropdown(
+            value: selectedUnitId,
+            hint: "Choose Unit...",
+            items: _units,
+            idKey: "unit_id",
+            nameKey: "unit_name",
+            onChanged: (id, name) => setState(() => selectedUnitId = id),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _field(
+          "Item Supplier",
+          _dbDropdown(
+            value: selectedSupplierId,
+            hint: "Choose Supplier...",
+            items: _suppliers,
+            idKey: "supplier_id",
+            nameKey: "supplier_name",
+            onChanged: (id, name) => setState(() => selectedSupplierId = id),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _field(
+          "Current Stock",
+          TextField(
+            controller: stockController,
+            keyboardType: TextInputType.number,
+            decoration: _decoration("Enter stock amount"),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.black54)),
             ),
-          ),
-          const SizedBox(height: 20),
-          _field(
-            "Item Unit",
-            _dbDropdown(
-              value: selectedUnitId,
-              hint: "Choose Unit...",
-              items: _units,
-              idKey: "unit_id",
-              nameKey: "unit_name",
-              onChanged: (id, name) => setState(() => selectedUnitId = id),
-            ),
-          ),
-          const SizedBox(height: 20),
-          _field(
-            "Item Supplier",
-            _dbDropdown(
-              value: selectedSupplierId,
-              hint: "Choose Supplier...",
-              items: _suppliers,
-              idKey: "supplier_id",
-              nameKey: "supplier_name",
-              onChanged: (id, name) => setState(() => selectedSupplierId = id),
-            ),
-          ),
-          const SizedBox(height: 20),
-          _field(
-            "Current Stock",
-            TextField(
-              controller: stockController,
-              keyboardType: TextInputType.number,
-              decoration: _decoration("Enter stock amount"),
-            ),
-          ),
-          const SizedBox(height: 30),
-          const Divider(),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: _saving ? null : () => Navigator.pop(context),
-                child: const Text("Cancel", style: TextStyle(color: Colors.black54, fontSize: 18)),
+            ElevatedButton(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kDarkPill,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              ElevatedButton(
-                onPressed: _saving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kDarkPill,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: _saving
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text("Save Changes", style: TextStyle(fontSize: 18)),
-              ),
-            ],
-          ),
-        ],
-      ),
+              child: _saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text("Save Changes"),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1348,14 +1390,11 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
     required String nameKey,
     required void Function(int id, String name) onChanged,
   }) {
-    // If the item's stored category/unit/supplier id no longer exists in
-    // the freshly loaded list (e.g. it was deleted elsewhere), fall back
-    // to no selection instead of crashing the dropdown.
     final validValue = items.any((i) => i[idKey] == value) ? value : null;
 
     return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
@@ -1379,8 +1418,8 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey)),
-        const SizedBox(height: 8),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 13)),
+        const SizedBox(height: 6),
         child,
       ],
     );
@@ -1389,12 +1428,15 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
   InputDecoration _decoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
   }
 }
 
+// Status Pill
 class _StatusPill extends StatelessWidget {
   final String text;
   final Color background;
@@ -1404,19 +1446,24 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 10, vertical: isCompact ? 3 : 5),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(20)),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textColor)),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: isCompact ? 9 : 11,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
     );
   }
 }
 
-// NEW: standalone "Add Item" modal. Item name is free text; category, unit,
-// and supplier are dropdowns sourced straight from the database via the
-// same InventoryService calls the transaction modal already uses. New
-// items are created with 0 stock — use "Edit Item" from the details modal
-// (or an Add Transaction) to bring stock in afterwards.
+// Add Item Modal
 class _AddItemModal extends StatefulWidget {
   final VoidCallback? onSaved;
 
@@ -1525,49 +1572,61 @@ class _AddItemModalState extends State<_AddItemModal> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 16.0 : 30.0;
+    final fontSize = isCompact ? 24.0 : 30.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
         ),
-        child: _loading
-            ? const SizedBox(
-                height: 200,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : _error != null
-                ? SizedBox(
-                    height: 200,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_error!, style: const TextStyle(color: Colors.red)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _loading = true;
-                                _error = null;
-                              });
-                              _loadDropdownData();
-                            },
-                            child: const Text("Retry"),
-                          ),
-                        ],
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: _loading
+              ? const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : _error != null
+                  ? SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_error!, style: const TextStyle(color: Colors.red)),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _loading = true;
+                                  _error = null;
+                                });
+                                _loadDropdownData();
+                              },
+                              child: const Text("Retry"),
+                            ),
+                          ],
+                        ),
                       ),
+                    )
+                  : SingleChildScrollView(
+                      child: _buildForm(context, isCompact, fontSize),
                     ),
-                  )
-                : _buildForm(context),
+        ),
       ),
     );
   }
 
-  Widget _buildForm(BuildContext context) {
+  Widget _buildForm(BuildContext context, bool isCompact, double fontSize) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1575,9 +1634,9 @@ class _AddItemModalState extends State<_AddItemModal> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               "Add new item",
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
             ),
             InkWell(
               onTap: () => Navigator.pop(context),
@@ -1585,9 +1644,7 @@ class _AddItemModalState extends State<_AddItemModal> {
             ),
           ],
         ),
-
-        const SizedBox(height: 28),
-
+        const SizedBox(height: 20),
         _field(
           "Item Name",
           TextField(
@@ -1595,9 +1652,7 @@ class _AddItemModalState extends State<_AddItemModal> {
             decoration: _decoration("Item Name"),
           ),
         ),
-
-        const SizedBox(height: 22),
-
+        const SizedBox(height: 16),
         _field(
           "Item Category",
           _dbDropdown(
@@ -1614,9 +1669,7 @@ class _AddItemModalState extends State<_AddItemModal> {
             },
           ),
         ),
-
-        const SizedBox(height: 22),
-
+        const SizedBox(height: 16),
         _field(
           "Item Unit",
           _dbDropdown(
@@ -1633,9 +1686,7 @@ class _AddItemModalState extends State<_AddItemModal> {
             },
           ),
         ),
-
-        const SizedBox(height: 22),
-
+        const SizedBox(height: 16),
         _field(
           "Item Supplier",
           _dbDropdown(
@@ -1652,21 +1703,17 @@ class _AddItemModalState extends State<_AddItemModal> {
             },
           ),
         ),
-
-        const SizedBox(height: 30),
-
+        const SizedBox(height: 24),
         const Divider(),
-
-        const SizedBox(height: 20),
-
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             TextButton(
               onPressed: _saving ? null : () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 "Cancel",
-                style: TextStyle(color: Colors.black54, fontSize: 18),
+                style: TextStyle(fontSize: isCompact ? 16 : 18, color: Colors.black54),
               ),
             ),
             ElevatedButton(
@@ -1674,7 +1721,10 @@ class _AddItemModalState extends State<_AddItemModal> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: kDarkPill,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 16 : 26,
+                  vertical: isCompact ? 10 : 15,
+                ),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: _saving
@@ -1683,7 +1733,10 @@ class _AddItemModalState extends State<_AddItemModal> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text("Add Item", style: TextStyle(fontSize: 18)),
+                  : Text(
+                      "Add Item",
+                      style: TextStyle(fontSize: isCompact ? 16 : 18),
+                    ),
             ),
           ],
         ),
@@ -1700,8 +1753,8 @@ class _AddItemModalState extends State<_AddItemModal> {
     required void Function(int id, String name) onChanged,
   }) {
     return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(10),
@@ -1710,7 +1763,7 @@ class _AddItemModalState extends State<_AddItemModal> {
         child: DropdownButton<int>(
           isExpanded: true,
           value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.grey.shade400)),
+          hint: Text(hint, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
           items: items.map((item) {
             return DropdownMenuItem<int>(
               value: item[idKey] as int,
@@ -1733,9 +1786,9 @@ class _AddItemModalState extends State<_AddItemModal> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 13),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         child,
       ],
     );
@@ -1744,15 +1797,18 @@ class _AddItemModalState extends State<_AddItemModal> {
   InputDecoration _decoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
   }
 }
 
+// Add Transaction Modal
 class _AddTransactionModal extends StatefulWidget {
   final VoidCallback? onSaved;
 
@@ -1770,15 +1826,9 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
   String transactionType = "IN";
   DateTime? selectedDate;
 
-  // The item is now picked from a dropdown of existing inventory items
-  // (created ahead of time via "Add Item") instead of being typed/created
-  // here. Category, unit, and supplier already live on the item itself in
-  // the database, so this modal no longer needs to collect them.
   int? selectedItemId;
   String? selectedItemName;
   String? selectedItemUnitName;
-  // Current stock of the selected item, used to cap/validate OUT quantity
-  // so you can never take out more than what's actually on hand.
   double? selectedItemCurrentStock;
 
   int? selectedProjectId;
@@ -1802,12 +1852,6 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
         InventoryService.fetchProjects(),
       ]);
       if (mounted) {
-        // The API's inventory-items-list can return more than one row per
-        // item (e.g. once it's been joined against multiple transactions),
-        // which duplicated entries in this dropdown. The item picker should
-        // reflect the item table 1:1, so dedupe by item_id here — first
-        // occurrence wins since current_stock is a property of the item,
-        // not of any individual transaction.
         final seenIds = <dynamic>{};
         final dedupedItems = <Map<String, dynamic>>[];
         for (final item in results[0]) {
@@ -1833,10 +1877,6 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
     }
   }
 
-  // Shows validation messages as a small dialog stacked ON TOP of this
-  // modal (since showDialog always layers above whatever's already open),
-  // instead of a SnackBar — which renders on the Scaffold behind the modal
-  // and can go unnoticed.
   void _showValidationError(String message) {
     showDialog(
       context: context,
@@ -1881,52 +1921,61 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 16.0 : 30.0;
+    final fontSize = isCompact ? 24.0 : 30.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
         ),
-        child: _loading
-            ? const SizedBox(
-                height: 200,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : _error != null
-                ? SizedBox(
-                    height: 200,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_error!, style: const TextStyle(color: Colors.red)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _loading = true;
-                                _error = null;
-                              });
-                              _loadDropdownData();
-                            },
-                            child: const Text("Retry"),
-                          ),
-                        ],
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: _loading
+              ? const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : _error != null
+                  ? SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_error!, style: const TextStyle(color: Colors.red)),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _loading = true;
+                                  _error = null;
+                                });
+                                _loadDropdownData();
+                              },
+                              child: const Text("Retry"),
+                            ),
+                          ],
+                        ),
                       ),
+                    )
+                  : SingleChildScrollView(
+                      child: _buildForm(context, isCompact, fontSize),
                     ),
-                  )
-                : _buildForm(context),
+        ),
       ),
     );
   }
 
-  // Reordered: Transaction Type is decided first, since it controls whether
-  // the Project field even shows. IN never has a project (stock is just
-  // replenished); OUT always needs one (stock leaves TO a project).
-  Widget _buildForm(BuildContext context) {
+  Widget _buildForm(BuildContext context, bool isCompact, double fontSize) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1934,9 +1983,9 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               "Add new transaction",
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
             ),
             InkWell(
               onTap: () => Navigator.pop(context),
@@ -1944,9 +1993,7 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
             ),
           ],
         ),
-
-        const SizedBox(height: 28),
-
+        const SizedBox(height: 20),
         Row(
           children: [
             Expanded(
@@ -1962,31 +2009,31 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
                           groupValue: transactionType,
                           onChanged: (v) => setState(() {
                             transactionType = "IN";
-                            // Stock IN doesn't belong to a project — clear
-                            // any previous OUT selection.
                             selectedProjectId = null;
                             selectedProjectName = null;
                           }),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         const Text("IN"),
-                        const SizedBox(width: 25),
+                        const SizedBox(width: 16),
                         Radio(
                           value: "OUT",
                           groupValue: transactionType,
                           onChanged: (v) => setState(() => transactionType = "OUT"),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         const Text("OUT"),
                       ],
                     ),
                     Text(
                       transactionType == "IN" ? "Item Stock in" : "Item Stock out",
-                      style: const TextStyle(color: Colors.grey),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 12),
             Expanded(
               child: _field(
                 "Transaction Date",
@@ -1996,8 +2043,10 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
                     child: TextField(
                       controller: dateController,
                       decoration: _decoration("DD-MM-YYYY").copyWith(
-                        suffixIcon: const Icon(Icons.calendar_month),
+                        suffixIcon: const Icon(Icons.calendar_month, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
+                      style: const TextStyle(fontSize: 14),
                     ),
                   ),
                 ),
@@ -2005,10 +2054,7 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
             ),
           ],
         ),
-
-        const SizedBox(height: 22),
-
-        // Project only applies to OUT transactions.
+        const SizedBox(height: 16),
         if (transactionType == "OUT") ...[
           _field(
             "Project",
@@ -2026,9 +2072,8 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
               },
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
         ],
-
         _field(
           "Item Name",
           _dbDropdown(
@@ -2048,28 +2093,21 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
                 selectedItemName = name;
                 selectedItemUnitName = match["unit_name"] as String?;
                 selectedItemCurrentStock = stock;
-                // Switching items resets the quantity so a leftover value
-                // from a previous, higher-stock item can't slip through.
                 quantity = 1;
                 quantityController.text = "1";
               });
             },
           ),
         ),
-
-        // Shows how much is on hand for the selected item so it's clear
-        // what the OUT quantity is limited to.
         if (selectedItemId != null && selectedItemCurrentStock != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: 4),
             child: Text(
               "Available stock: ${selectedItemCurrentStock! % 1 == 0 ? selectedItemCurrentStock!.toInt() : selectedItemCurrentStock} ${selectedItemUnitName ?? ''}",
-              style: const TextStyle(fontSize: 12.5, color: Colors.black54),
+              style: const TextStyle(fontSize: 11.5, color: Colors.black54),
             ),
           ),
-
-        const SizedBox(height: 22),
-
+        const SizedBox(height: 16),
         _field(
           "Item Quantity",
           Row(
@@ -2081,8 +2119,8 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
                     quantityController.text = quantity.toString();
                   });
                 }
-              }),
-              const SizedBox(width: 10),
+              }, isCompact),
+              const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: quantityController,
@@ -2090,16 +2128,17 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
                   textAlign: TextAlign.center,
                   decoration: _decoration("Quantity").copyWith(
                     suffixText: selectedItemUnitName,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   ),
+                  style: const TextStyle(fontSize: 14),
                   onChanged: (value) {
                     final number = int.tryParse(value);
                     if (number != null) quantity = number;
                   },
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               _smallBtn("+", () {
-                // OUT can't add stock beyond what's available.
                 if (transactionType == "OUT" &&
                     selectedItemCurrentStock != null &&
                     quantity >= selectedItemCurrentStock!) {
@@ -2112,27 +2151,23 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
                   quantity++;
                   quantityController.text = quantity.toString();
                 });
-              }),
+              }, isCompact),
             ],
           ),
         ),
-
-        const SizedBox(height: 30),
-
+        const SizedBox(height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
+              child: Text(
                 "Cancel",
-                style: TextStyle(color: Colors.black54, fontSize: 18),
+                style: TextStyle(fontSize: isCompact ? 16 : 18, color: Colors.black54),
               ),
             ),
             ElevatedButton(
               onPressed: () {
-                // Every field must be filled before moving to Review —
-                // nothing here is optional.
                 if (transactionType == "OUT" && selectedProjectId == null) {
                   _showValidationError("Please choose a project for this stock out.");
                   return;
@@ -2176,9 +2211,18 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
                   ),
                 );
               },
-              child: const Text(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kDarkPill,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 16 : 26,
+                  vertical: isCompact ? 10 : 15,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
                 "Review",
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: isCompact ? 16 : 18),
               ),
             ),
           ],
@@ -2196,8 +2240,8 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
     required void Function(int id, String name) onChanged,
   }) {
     return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(10),
@@ -2206,7 +2250,7 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
         child: DropdownButton<int>(
           isExpanded: true,
           value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.grey.shade400)),
+          hint: Text(hint, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
           items: items.map((item) {
             return DropdownMenuItem<int>(
               value: item[idKey] as int,
@@ -2229,26 +2273,26 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 13),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         child,
       ],
     );
   }
 
-  Widget _smallBtn(String text, VoidCallback tap) {
+  Widget _smallBtn(String text, VoidCallback tap, bool isCompact) {
     return InkWell(
       onTap: tap,
       child: Container(
-        width: 32,
-        height: 38,
+        width: isCompact ? 28 : 32,
+        height: isCompact ? 34 : 38,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: kDarkPill,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 20)),
+        child: Text(text, style: TextStyle(color: Colors.white, fontSize: isCompact ? 16 : 20)),
       ),
     );
   }
@@ -2256,22 +2300,22 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
   InputDecoration _decoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
   }
 }
 
+// Review Transaction Modal
 class _ReviewTransactionModal extends StatefulWidget {
   final VoidCallback? onSaved;
 
   final int? projectId;
-  // The item now always already exists (picked from the dropdown in
-  // _AddTransactionModal), so this modal only records a transaction
-  // against it — it no longer creates a new inventory item.
   final int itemId;
   final String projectName;
   final String itemName;
@@ -2303,7 +2347,7 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
     if (date == "-" || date.isEmpty) return date;
     final parts = date.split("-");
     if (parts.length != 3) return date;
-    return "${parts[2]}-${parts[1]}-${parts[0]}"; // YYYY-MM-DD
+    return "${parts[2]}-${parts[1]}-${parts[0]}";
   }
 
   Future<void> _finishTransaction(BuildContext context) async {
@@ -2321,16 +2365,9 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
 
     if (success) {
       widget.onSaved?.call();
-      // Grab the messenger before popping — after the pops below, this
-      // widget's own context is no longer in the tree.
       final messenger = ScaffoldMessenger.of(context);
-      // Close just the two dialogs opened for this flow (this Review modal,
-      // then the Add Transaction modal beneath it) instead of popping all
-      // the way back to the app's first route — popUntil(isFirst) was
-      // going past the Inventory screen back to Login on stacks where
-      // Inventory isn't the root route.
-      Navigator.of(context).pop(); // close Review modal
-      Navigator.of(context).pop(); // close Add Transaction modal
+      Navigator.of(context).pop();
+      Navigator.of(context).pop();
       messenger.showSnackBar(
         const SnackBar(content: Text("Transaction saved successfully.")),
       );
@@ -2343,17 +2380,6 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
 
   @override
   Widget build(BuildContext context) {
-    // RESPONSIVE FIX: the old version used a fixed 170px width per data box
-    // and a fixed padding: all(30), which overflowed (yellow/black stripes)
-    // on narrower phones. This version:
-    //  - caps the dialog's max width/height using MediaQuery so it never
-    //    exceeds the viewport
-    //  - wraps content in SingleChildScrollView so tall content scrolls
-    //    instead of overflowing vertically
-    //  - uses LayoutBuilder to size each data box to a fraction of the
-    //    *actual* available width instead of a hardcoded pixel value
-    //  - lets the bottom action buttons wrap onto a second line on very
-    //    narrow screens instead of overflowing horizontally
     final media = MediaQuery.of(context);
     final screenWidth = media.size.width;
     final screenHeight = media.size.height;
@@ -2399,24 +2425,19 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
                     ),
                   ],
                 ),
-
                 SizedBox(height: isCompact ? 20 : 35),
-
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    const spacing = 24.0;
-                    // 1 column on very narrow dialogs, 2 columns otherwise.
-                    final isSingleColumn = constraints.maxWidth < 300;
+                    const spacing = 20.0;
+                    final isSingleColumn = constraints.maxWidth < 280;
                     final itemWidth = isSingleColumn
                         ? constraints.maxWidth
                         : (constraints.maxWidth - spacing) / 2;
 
                     return Wrap(
                       spacing: spacing,
-                      runSpacing: 20,
+                      runSpacing: 16,
                       children: [
-                        // Project only shown for OUT — IN transactions
-                        // aren't attached to a project.
                         if (widget.transactionType == "OUT")
                           _data("Project", widget.projectName, itemWidth),
                         _data("Item Name", widget.itemName.isEmpty ? "-" : widget.itemName, itemWidth),
@@ -2432,12 +2453,10 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
                     );
                   },
                 ),
-
-                const Divider(height: 40),
-
+                const Divider(height: 30),
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,
-                  runSpacing: 12,
+                  runSpacing: 10,
                   children: [
                     TextButton(
                       onPressed: _saving ? null : () => Navigator.pop(context),
@@ -2447,14 +2466,15 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
                       ),
                     ),
                     Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         ElevatedButton(
                           onPressed: _saving ? null : () => Navigator.pop(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kDarkPill,
                             foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           ),
                           child: const Text("← Back"),
                         ),
@@ -2463,6 +2483,7 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kDarkPill,
                             foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           ),
                           child: _saving
                               ? const SizedBox(
@@ -2494,20 +2515,23 @@ class _ReviewTransactionModalState extends State<_ReviewTransactionModal> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.grey)),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 16, color: Colors.black54)),
+          const SizedBox(height: 6),
+          Text(value, style: const TextStyle(fontSize: 15, color: Colors.black54)),
         ],
       ),
     );
   }
 }
 
+// Inventory Details Modal
 class _InventoryDetailsModal extends StatelessWidget {
   final InventoryItem item;
   final VoidCallback? onChanged;
+  final BuildContext rootContext;
 
   const _InventoryDetailsModal({
     required this.item,
+    required this.rootContext,
     this.onChanged,
   });
 
@@ -2515,7 +2539,6 @@ class _InventoryDetailsModal extends StatelessWidget {
     final y = date.year.toString().padLeft(4, '0');
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
-
     return '$y-$m-$d';
   }
 
@@ -2559,127 +2582,128 @@ class _InventoryDetailsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 20.0 : 30.0;
+    final fontSize = isCompact ? 22.0 : 26.0;
     final isIn = item.status == StockStatus.stockIn;
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Inventory Details",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Icon(Icons.close),
-                )
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            _detail("Item Name", item.name),
-            _detail("Category", item.category),
-            _detail("Unit", item.unit),
-            _detail("Transaction Quantity",
-                "${item.quantity % 1 == 0 ? item.quantity.toInt() : item.quantity} ${item.unit}"),
-            _detail("Current Stock (item total)", "${item.stock} ${item.unit}"),
-            if (!isIn && (item.projectName ?? '').isNotEmpty && item.projectName != '-')
-              _detail("Project", item.projectName!),
-
-            Row(
-              children: [
-                const Text(
-                  "Status",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(width: 20),
-                _StatusPill(
-                  text: isIn ? "IN" : "OUT",
-                  background: isIn ? const Color(0xFFDCF2DE) : const Color(0xFFFBDCE0),
-                  textColor: isIn ? const Color(0xFF2E8B3D) : const Color(0xFFD23B5C),
-                )
-              ],
-            ),
-
-            const SizedBox(height: 15),
-
-            _detail("Transaction Date", _formatDate(item.date)),
-
-            const SizedBox(height: 25),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => _confirmDelete(context),
-                  child: const Text(
-                    "Delete",
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(color: Colors.black54),
+                    Text(
+                      "Inventory Details",
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Future.delayed(const Duration(milliseconds: 100), () {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (_) => _EditInventoryModal(
-                              item: item,
-                              onSaved: onChanged,
-                            ),
-                          );
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kDarkPill,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 13,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close),
+                    )
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _detail("Item Name", item.name),
+                _detail("Category", item.category),
+                _detail("Unit", item.unit),
+                _detail("Transaction Quantity",
+                    "${item.quantity % 1 == 0 ? item.quantity.toInt() : item.quantity} ${item.unit}"),
+                _detail("Current Stock (item total)", "${item.stock} ${item.unit}"),
+                if (!isIn && (item.projectName ?? '').isNotEmpty && item.projectName != '-')
+                  _detail("Project", item.projectName!),
+                Row(
+                  children: [
+                    const Text(
+                      "Status",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey,
                       ),
-                      child: const Text("Edit Item"),
+                    ),
+                    const SizedBox(width: 16),
+                    _StatusPill(
+                      text: isIn ? "IN" : "OUT",
+                      background: isIn ? const Color(0xFFDCF2DE) : const Color(0xFFFBDCE0),
+                      textColor: isIn ? const Color(0xFF2E8B3D) : const Color(0xFFD23B5C),
+                    )
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _detail("Transaction Date", _formatDate(item.date)),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => _confirmDelete(context),
+                      child: const Text(
+                        "Delete",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            if (!rootContext.mounted) return;
+                            showDialog(
+                              context: rootContext,
+                              barrierDismissible: false,
+                              builder: (_) => _EditInventoryModal(
+                                item: item,
+                                onSaved: onChanged,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kDarkPill,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text("Edit Item"),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -2687,7 +2711,7 @@ class _InventoryDetailsModal extends StatelessWidget {
 
   Widget _detail(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2698,11 +2722,11 @@ class _InventoryDetailsModal extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               color: Colors.black87,
             ),
           )
@@ -2712,12 +2736,15 @@ class _InventoryDetailsModal extends StatelessWidget {
   }
 }
 
+// Supplier Details Modal
 class _SupplierDetailsModal extends StatelessWidget {
   final Supplier supplier;
   final VoidCallback? onChanged;
+  final BuildContext rootContext;
 
   const _SupplierDetailsModal({
     required this.supplier,
+    required this.rootContext,
     this.onChanged,
   });
 
@@ -2757,100 +2784,97 @@ class _SupplierDetailsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 20.0 : 30.0;
+    final fontSize = isCompact ? 22.0 : 26.0;
     final active = supplier.isActive;
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Supplier Details",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Icon(Icons.close),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            _supplierDetail("Supplier Name", supplier.name),
-            _supplierDetail("Total Items Supplied", "${supplier.itemCount} items"),
-            _supplierDetail("Contact Number", supplier.phone),
-            _supplierDetail("Address", supplier.address),
-
-            Row(
-              children: [
-                const Text(
-                  "Status",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(width: 20),
-                _StatusPill(
-                  text: active ? "Active" : "Inactive",
-                  background: active ? const Color(0xFFDCF2DE) : const Color(0xFFEAEAEA),
-                  textColor: active ? const Color(0xFF2E8B3D) : Colors.black45,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 25),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () => _confirmDelete(context),
-                  child: const Text(
-                    "Delete",
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(
-                          color: Colors.black54,
-                        ),
+                    Text(
+                      "Supplier Details",
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-
-                        Future.delayed(
-                          const Duration(milliseconds: 100),
-                          () {
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _supplierDetail("Supplier Name", supplier.name),
+                _supplierDetail("Total Items Supplied", "${supplier.itemCount} items"),
+                _supplierDetail("Contact Number", supplier.phone),
+                _supplierDetail("Address", supplier.address),
+                Row(
+                  children: [
+                    const Text(
+                      "Status",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    _StatusPill(
+                      text: active ? "Active" : "Inactive",
+                      background: active ? const Color(0xFFDCF2DE) : const Color(0xFFEAEAEA),
+                      textColor: active ? const Color(0xFF2E8B3D) : Colors.black45,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => _confirmDelete(context),
+                      child: const Text(
+                        "Delete",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            if (!rootContext.mounted) return;
                             showDialog(
-                              context: context,
+                              context: rootContext,
                               barrierDismissible: false,
                               builder: (_) => _EditSupplierModal(
                                 supplier: supplier,
@@ -2858,26 +2882,26 @@ class _SupplierDetailsModal extends StatelessWidget {
                               ),
                             );
                           },
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kDarkPill,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 13,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kDarkPill,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text("Edit Supplier"),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text("Edit Supplier"),
+                      ],
                     ),
                   ],
-                ),
+                )
               ],
-            )
-          ],
+            ),
+          ),
         ),
       ),
     );
@@ -2885,7 +2909,7 @@ class _SupplierDetailsModal extends StatelessWidget {
 
   Widget _supplierDetail(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2896,11 +2920,11 @@ class _SupplierDetailsModal extends StatelessWidget {
               color: Colors.grey,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               color: Colors.black87,
             ),
           ),
@@ -2910,6 +2934,7 @@ class _SupplierDetailsModal extends StatelessWidget {
   }
 }
 
+// Add Supplier Modal
 class _AddSupplierModal extends StatefulWidget {
   final VoidCallback? onSaved;
 
@@ -2968,131 +2993,119 @@ class _AddSupplierModalState extends State<_AddSupplierModal> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 16.0 : 30.0;
+    final fontSize = isCompact ? 24.0 : 30.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Add Supplier",
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Add Supplier",
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _field(
+                  "Supplier Name",
+                  TextField(
+                    controller: nameController,
+                    decoration: _decoration("Enter supplier name..."),
                   ),
                 ),
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Icon(Icons.close),
-                )
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Supplier Name",
-                    TextField(
-                      controller: nameController,
-                      decoration: _decoration("Enter supplier name..."),
-                    ),
+                const SizedBox(height: 16),
+                _field(
+                  "Address",
+                  TextField(
+                    controller: addressController,
+                    decoration: _decoration("Enter supplier address..."),
+                    maxLines: 2,
                   ),
                 ),
-                const SizedBox(width: 20),
-              ],
-            ),
-
-            const SizedBox(height: 22),
-
-            _field(
-              "Address",
-              TextField(
-                controller: addressController,
-                decoration: _decoration("Enter supplier address..."),
-                maxLines: 2,
-              ),
-            ),
-
-            const SizedBox(height: 22),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Contact Number",
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: _decoration("+63"),
-                    ),
+                const SizedBox(height: 16),
+                _field(
+                  "Contact Number",
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: _decoration("+63"),
                   ),
+                ),
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: _saving ? null : () => Navigator.pop(context),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(
+                          fontSize: isCompact ? 16 : 18,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _saving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kDarkPill,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isCompact ? 16 : 26,
+                          vertical: isCompact ? 10 : 15,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              "Add Supplier",
+                              style: TextStyle(fontSize: isCompact ? 16 : 18),
+                            ),
+                    ),
+                  ],
                 ),
               ],
             ),
-
-            const SizedBox(height: 30),
-
-            const Divider(),
-
-            const SizedBox(height: 20),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: _saving ? null : () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    "Cancel",
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kDarkPill,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 15,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text("Add Supplier"),
-                )
-              ],
-            )
-          ],
+          ),
         ),
       ),
     );
@@ -3107,9 +3120,10 @@ class _AddSupplierModalState extends State<_AddSupplierModal> {
           style: const TextStyle(
             fontWeight: FontWeight.w600,
             color: Colors.grey,
+            fontSize: 13,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         child,
       ],
     );
@@ -3118,6 +3132,7 @@ class _AddSupplierModalState extends State<_AddSupplierModal> {
   InputDecoration _decoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
       ),
@@ -3125,10 +3140,12 @@ class _AddSupplierModalState extends State<_AddSupplierModal> {
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
   }
 }
 
+// Edit Supplier Modal
 class _EditSupplierModal extends StatefulWidget {
   final Supplier supplier;
   final VoidCallback? onSaved;
@@ -3206,154 +3223,152 @@ class _EditSupplierModalState extends State<_EditSupplierModal> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 16.0 : 30.0;
+    final fontSize = isCompact ? 22.0 : 26.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Edit supplier details",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Edit supplier details",
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close),
+                    )
+                  ],
                 ),
-                InkWell(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Icon(Icons.close),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        "Current Supplier Name",
+                        _textValue(widget.supplier.name),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _field(
+                        "Supplier Name",
+                        TextField(
+                          controller: nameController,
+                          decoration: _decoration("Supplier Name"),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        "Current Supplier Address",
+                        _textValue(widget.supplier.address),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _field(
+                        "Address",
+                        TextField(
+                          controller: addressController,
+                          decoration: _decoration("Address"),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        "Current Supplier Contact no.",
+                        _textValue(widget.supplier.phone),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _field(
+                        "Contact no.",
+                        TextField(
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: _decoration("Contact no."),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _saving ? null : () => Navigator.pop(context),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _saving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kDarkPill,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text("Save Changes"),
+                    )
+                  ],
                 )
               ],
             ),
-
-            const SizedBox(height: 25),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Current Supplier Name",
-                    _textValue(widget.supplier.name),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _field(
-                    "Supplier Name",
-                    TextField(
-                      controller: nameController,
-                      decoration: _decoration("Supplier Name"),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Current Supplier Address",
-                    _textValue(widget.supplier.address),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _field(
-                    "Address",
-                    TextField(
-                      controller: addressController,
-                      decoration: _decoration("Address"),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Current Supplier Contact no.",
-                    _textValue(widget.supplier.phone),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _field(
-                    "Contact no.",
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: _decoration("Contact no."),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const Divider(
-              height: 40,
-            ),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _saving ? null : () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    "Cancel",
-                    style: TextStyle(
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kDarkPill,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 13,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text("Save Changes"),
-                )
-              ],
-            )
-          ],
+          ),
         ),
       ),
     );
@@ -3361,9 +3376,9 @@ class _EditSupplierModalState extends State<_EditSupplierModal> {
 
   Widget _textValue(String text) {
     return Container(
-      height: 50,
+      height: 46,
       alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: const Color(0xffF7F7F7),
         borderRadius: BorderRadius.circular(10),
@@ -3375,6 +3390,7 @@ class _EditSupplierModalState extends State<_EditSupplierModal> {
         text,
         style: const TextStyle(
           color: Colors.black87,
+          fontSize: 14,
         ),
       ),
     );
@@ -3389,9 +3405,10 @@ class _EditSupplierModalState extends State<_EditSupplierModal> {
           style: const TextStyle(
             fontWeight: FontWeight.w600,
             color: Colors.grey,
+            fontSize: 13,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         child,
       ],
     );
@@ -3400,6 +3417,7 @@ class _EditSupplierModalState extends State<_EditSupplierModal> {
   InputDecoration _decoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
       ),
@@ -3409,10 +3427,12 @@ class _EditSupplierModalState extends State<_EditSupplierModal> {
           color: Colors.grey.shade300,
         ),
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     );
   }
 }
 
+// Edit Inventory Modal
 class _EditInventoryModal extends StatefulWidget {
   final InventoryItem item;
   final VoidCallback? onSaved;
@@ -3493,140 +3513,144 @@ class _EditInventoryModalState extends State<_EditInventoryModal> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isCompact = MediaQuery.of(context).size.width < 380;
+    final padding = isCompact ? 16.0 : 30.0;
+    final fontSize = isCompact ? 22.0 : 26.0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(12),
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.85,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Container(
+          padding: EdgeInsets.all(padding),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Edit item details",
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                ),
-                InkWell(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 25),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Current Item Name",
-                    _textValue(widget.item.name),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _field(
-                    "Item Name",
-                    TextField(
-                      controller: nameController,
-                      decoration: _decoration("Enter item name"),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Edit item details",
+                      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Current Category",
-                    _textValue(widget.item.category),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _field(
-                    "Current Unit",
-                    _textValue(widget.item.unit),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _field(
-                    "Current Stock",
-                    _textValue("${widget.item.stock} ${widget.item.unit}"),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: _field(
-                    "New Stock",
-                    TextField(
-                      controller: stockController,
-                      keyboardType: TextInputType.number,
-                      decoration: _decoration("Enter stock amount"),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close),
                     ),
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        "Current Item Name",
+                        _textValue(widget.item.name),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _field(
+                        "Item Name",
+                        TextField(
+                          controller: nameController,
+                          decoration: _decoration("Enter item name"),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        "Current Category",
+                        _textValue(widget.item.category),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _field(
+                        "Current Unit",
+                        _textValue(widget.item.unit),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _field(
+                        "Current Stock",
+                        _textValue("${widget.item.stock} ${widget.item.unit}"),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _field(
+                        "New Stock",
+                        TextField(
+                          controller: stockController,
+                          keyboardType: TextInputType.number,
+                          decoration: _decoration("Enter stock amount"),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _saving ? null : () => Navigator.pop(context),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _saving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kDarkPill,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text("Save Changes"),
+                    ),
+                  ],
                 ),
               ],
             ),
-
-            const Divider(height: 40),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _saving ? null : () => Navigator.pop(context),
-                  child: const Text(
-                    "Cancel",
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kDarkPill,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 13,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text("Save Changes"),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -3634,15 +3658,18 @@ class _EditInventoryModalState extends State<_EditInventoryModal> {
 
   Widget _textValue(String text) {
     return Container(
-      height: 50,
+      height: 46,
       alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: const Color(0xffF7F7F7),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: Text(text, style: const TextStyle(color: Colors.black87)),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.black87, fontSize: 14),
+      ),
     );
   }
 
@@ -3652,9 +3679,9 @@ class _EditInventoryModalState extends State<_EditInventoryModal> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+          style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 13),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         child,
       ],
     );
@@ -3663,11 +3690,13 @@ class _EditInventoryModalState extends State<_EditInventoryModal> {
   InputDecoration _decoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: Colors.grey.shade300),
       ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     );
   }
 }

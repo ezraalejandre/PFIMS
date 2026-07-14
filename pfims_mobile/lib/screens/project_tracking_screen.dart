@@ -893,417 +893,483 @@ Future<void> _pickDate(bool start) async {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+@override
+Widget build(BuildContext context) {
+  final mq = MediaQuery.of(context);
+  final maxDialogHeight = mq.size.height - mq.viewInsets.bottom - mq.padding.top - 40;
+
+  return Dialog(
+    backgroundColor: Colors.transparent,
+    insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: 460,
+        maxHeight: maxDialogHeight.clamp(200, mq.size.height),
+      ),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // HEADER
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Add new project",
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Add new project",
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
                   ),
-                ),
-                InkWell(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(Icons.close, size: 26),
-                ),
-              ],
+                  InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.close, size: 18, color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
+              ),
             ),
-
-            const SizedBox(height: 24),
 
             // STEPPER
-            Row(
-              children: [
-                _stepCircle("1", _currentStep >= 0, done: _currentStep > 0),
-                _line(_currentStep > 0),
-                _stepCircle("2", _currentStep >= 1, done: _currentStep > 1),
-                _line(_currentStep > 1),
-                _stepCircle("3", _currentStep >= 2, done: false),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: _buildStepper(),
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 20),
+            Divider(height: 1, color: Colors.grey[200]),
 
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Project info", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                Text("Team & Schedule", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                Text("Review", style: TextStyle(color: Colors.grey, fontSize: 14)),
-              ],
+            // BODY
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
+                child: IndexedStack(
+                  index: _currentStep,
+                  children: [
+                    _buildStep1(),
+                    _buildStep2(),
+                    _buildStep3(),
+                  ],
+                ),
+              ),
             ),
 
-            const SizedBox(height: 28),
-
-            // BODY — all three steps are built up front and shown/hidden
-            // via IndexedStack, keeping every controller alive across steps.
-            IndexedStack(
-              index: _currentStep,
-              children: [
-                _buildStep1(),
-                _buildStep2(),
-                _buildStep3(),
-              ],
-            ),
-
-            const SizedBox(height: 32),
+            Divider(height: 1, color: Colors.grey[200]),
 
             // FOOTER
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                OutlinedButton(
-                  onPressed: () {
-                    if (_currentStep == 0) {
-                      Navigator.of(context).pop();
-                    } else {
-                      _goTo(_currentStep - 1);
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  OutlinedButton(
+                    onPressed: () {
+                      if (_currentStep == 0) {
+                        Navigator.of(context).pop();
+                      } else {
+                        _goTo(_currentStep - 1);
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      side: BorderSide(color: Colors.grey[300]!),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: Text(_currentStep == 0 ? "Cancel" : "Back",
+                        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
                   ),
-                  child: Text(
-                    _currentStep == 0 ? "Cancel" : "Back",
-                    style: const TextStyle(fontSize: 16, color: Colors.black54),
+                  ElevatedButton(
+                    onPressed: _currentStep == 0
+                        ? (_step1Valid
+                            ? () => _goTo(1)
+                            : () => showValidationDialog(
+                                  context,
+                                  title: "Check the form",
+                                  message:
+                                      "Enter both the project name and client name before continuing.",
+                                ))
+                        : _currentStep == 1
+                            ? (_step2Valid
+                                ? () => _goTo(2)
+                                : () => showValidationDialog(
+                                      context,
+                                      title: "Check the form",
+                                      message: _validationErrors.join('\n'),
+                                    ))
+                            : (_isSaving ? null : _saveProject),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kDarkPill,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey[300],
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: _currentStep < 2
+                        ? const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text("Continue",
+                                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+                              SizedBox(width: 6),
+                              Icon(Icons.arrow_forward, size: 16),
+                            ],
+                          )
+                        : _isSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                ),
+                              )
+                            : const Text("Save project",
+                                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
                   ),
-                ),
-                ElevatedButton(
-                  onPressed: _currentStep == 0
-                      ? (_step1Valid
-                          ? () => _goTo(1)
-                          : () => showValidationDialog(
-                                context,
-                                title: "Check the Form",
-                                message:
-                                    "Please enter both the project name and client name before continuing.",
-                              ))
-                      : _currentStep == 1
-                          ? (_step2Valid
-                              ? () => _goTo(2)
-                              : () => showValidationDialog(
-                                    context,
-                                    title: "Check the Form",
-                                    message: _validationErrors.join('\n'),
-                                  ))
-                          : (_isSaving ? null : _saveProject),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kDarkPill,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey[300],
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: _currentStep < 2
-                      ? const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text("Continue", style: TextStyle(fontSize: 16)),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward, size: 18),
-                          ],
-                        )
-                      : _isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(Colors.white),
-                              ),
-                            )
-                          : const Text("Save project", style: TextStyle(fontSize: 16)),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // ---------------- Step 1: Project info ----------------
-  Widget _buildStep1() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
+// ---------------- stepper ----------------
+Widget _buildStepper() {
+  const labels = ["Project info", "Team & schedule", "Review"];
+  return Row(
+    children: List.generate(5, (i) {
+      if (i.isOdd) {
+        final leftStep = i ~/ 2;
+        return _line(_currentStep > leftStep);
+      }
+      final step = i ~/ 2;
+      return Expanded(
+        child: Column(
           children: [
-            Icon(Icons.menu, size: 18, color: Colors.grey[400]),
-            const SizedBox(width: 8),
+            _stepCircle("${step + 1}", _currentStep >= step, done: _currentStep > step),
+            const SizedBox(height: 6),
             Text(
-              "BASIC INFORMATION",
+              labels[step],
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Colors.grey[400],
-                fontWeight: FontWeight.w600,
-                letterSpacing: .3,
+                fontSize: 11,
+                fontWeight: _currentStep == step ? FontWeight.w600 : FontWeight.w500,
+                color: _currentStep == step ? Colors.black87 : Colors.grey[500],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 18),
-        _inputLabel("Project name *"),
-        const SizedBox(height: 8),
-        _input(controller: _projectController, hint: "e.g. Skyline Tower Phase 2"),
-        const SizedBox(height: 18),
-        _inputLabel("Client name *"),
-        const SizedBox(height: 8),
-        _input(controller: _clientController, hint: "e.g. Mega Realty Corporation"),
-      ],
-    );
-  }
+      );
+    }),
+  );
+}
 
-  // ---------------- Step 2: Team & Schedule ----------------
-  Widget _buildStep2() {
-    return Column(
+Widget _stepCircle(String text, bool active, {required bool done}) {
+  return Container(
+    width: 26,
+    height: 26,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: active ? const Color(0xffff8a2b) : Colors.white,
+      border: Border.all(color: active ? const Color(0xffff8a2b) : Colors.grey[300]!),
+    ),
+    child: Center(
+      child: done
+          ? const Icon(Icons.check, size: 14, color: Colors.white)
+          : Text(text,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: active ? Colors.white : Colors.grey[500],
+              )),
+    ),
+  );
+}
+
+Widget _line(bool active) {
+  return Container(
+    width: 28,
+    height: 1.5,
+    margin: const EdgeInsets.only(bottom: 17),
+    color: active ? const Color(0xffff8a2b) : Colors.grey[300],
+  );
+}
+
+// ---------------- section header ----------------
+Widget _sectionHeader(IconData icon, String title) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: Row(
+      children: [
+        Icon(icon, size: 15, color: Colors.grey[500]),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: .4,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ---------------- Step 1: Project info ----------------
+Widget _buildStep1() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _sectionHeader(Icons.info_outline, "BASIC INFORMATION"),
+      _field(label: "Project name *", child: _input(controller: _projectController, hint: "e.g. Skyline Tower Phase 2")),
+      const SizedBox(height: 16),
+      _field(label: "Client name *", child: _input(controller: _clientController, hint: "e.g. Mega Realty Corporation")),
+    ],
+  );
+}
+
+// ---------------- Step 2: Team & Schedule ----------------
+Widget _buildStep2() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _sectionHeader(Icons.groups_outlined, "TEAM ASSIGNMENT"),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: _field(
+              label: "Project manager *",
+              child: _input(controller: _managerController, hint: "Enter project manager"),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 2,
+            child: _field(
+              label: "No. of workers",
+              child: _input(
+                controller: _workersController,
+                hint: "0",
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                errorText: _workerCountError,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 22),
+      _sectionHeader(Icons.calendar_today_outlined, "TIMELINE"),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _field(
+              label: "Start date *",
+              child: _dateField(date: _startDate, onTap: () => _pickDate(true)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: _field(
+              label: "Estimated end date *",
+              child: _dateField(date: _endDate, onTap: () => _pickDate(false)),
+            ),
+          ),
+        ],
+      ),
+      if (_startDate != null && _endDate != null && _endDate!.isBefore(_startDate!)) ...[
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(Icons.error_outline, size: 14, color: kDelayedRed),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                "Estimated end date cannot be before the start date.",
+                style: TextStyle(color: kDelayedRed, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ],
+  );
+}
+
+// ---------------- Step 3: Review ----------------
+Widget _buildStep3() {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: Colors.grey[50],
+      border: Border.all(color: Colors.grey[200]!),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Icon(Icons.groups, size: 18, color: Colors.grey[400]),
-            const SizedBox(width: 8),
-            Text("TEAM ASSIGNMENT",
-                style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.w600)),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: _field(
-                label: "Project manager *",
-                child: _input(controller: _managerController, hint: "Enter project manager"),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _field(
-                label: "No. of workers",
-                child: _input(
-                  controller: _workersController,
-                  hint: "0",
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  errorText: _workerCountError,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 28),
-        Row(
-          children: [
-            Icon(Icons.access_time, size: 18, color: Colors.grey[400]),
-            const SizedBox(width: 8),
-            Text("TIMELINE",
-                style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.w600)),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: _field(
-                label: "Start date *",
-                child: _dateField(date: _startDate, onTap: () => _pickDate(true)),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: _field(
-                label: "Estimated end date *",
-                child: _dateField(date: _endDate, onTap: () => _pickDate(false)),
-              ),
-            ),
-          ],
-        ),
-        if (_startDate != null &&
-            _endDate != null &&
-            _endDate!.isBefore(_startDate!)) ...[
-          const SizedBox(height: 10),
-          Text(
-            "Estimated end date cannot be before the start date.",
-            style: TextStyle(color: kDelayedRed, fontSize: 12.5),
-          ),
-        ],
+        Text("SUMMARY",
+            style: TextStyle(
+                fontSize: 11.5, fontWeight: FontWeight.w700, letterSpacing: .4, color: Colors.grey[500])),
+        const SizedBox(height: 14),
+        _summaryRow("Project name", _projectController.text.isEmpty ? "—" : _projectController.text),
+        _summaryRow("Client", _clientController.text.isEmpty ? "—" : _clientController.text),
+        _summaryRow("Project manager", _managerController.text.isEmpty ? "—" : _managerController.text),
+        _summaryRow("No. of workers", _workersController.text),
+        _summaryRow("Start date", _startDate == null ? "mm/dd/yy" : "${_startDate!.month}/${_startDate!.day}/${_startDate!.year}"),
+        _summaryRow("Estimated end date", _endDate == null ? "mm/dd/yy" : "${_endDate!.month}/${_endDate!.day}/${_endDate!.year}", isLast: true),
       ],
-    );
-  }
+    ),
+  );
+}
 
-  // ---------------- Step 3: Review ----------------
-  Widget _buildStep3() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text("SUMMARY", style: TextStyle(fontSize: 18, color: Colors.black87)),
-          const SizedBox(height: 22),
-          _summaryRow("Project name",
-              _projectController.text.isEmpty ? "-" : _projectController.text),
-          _summaryRow("Client",
-              _clientController.text.isEmpty ? "-" : _clientController.text),
-          _summaryRow("Project manager",
-              _managerController.text.isEmpty ? "-" : _managerController.text),
-          _summaryRow("No. of workers", _workersController.text),
-          _summaryRow(
-            "Start date",
-            _startDate == null
-                ? "mm/dd/yy"
-                : "${_startDate!.month}/${_startDate!.day}/${_startDate!.year}",
-          ),
-          _summaryRow(
-            "Estimated end date",
-            _endDate == null
-                ? "mm/dd/yy"
-                : "${_endDate!.month}/${_endDate!.day}/${_endDate!.year}",
-          ),
-        ],
-      ),
-    );
-  }
+// ---------------- shared field widgets ----------------
 
-  // ---------------- shared small widgets ----------------
-
-  Widget _stepCircle(String text, bool active, {required bool done}) {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: active ? const Color(0xffff8a2b) : Colors.white,
-        border: Border.all(
-          color: active ? const Color(0xffff8a2b) : Colors.grey[300]!,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          done ? "✓" : text,
-          style: TextStyle(fontSize: 12, color: active ? Colors.white : Colors.grey),
-        ),
-      ),
-    );
-  }
-
-  Widget _line(bool active) {
-    return Expanded(
-      child: Container(
-        height: 1,
-        color: active ? const Color(0xffff8a2b) : Colors.grey[300],
-      ),
-    );
-  }
-
-  Widget _inputLabel(String text) {
-    return Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500));
-  }
-
-  Widget _field({required String label, required Widget child}) {
-    return Column(
+Widget _field({required String label, required Widget child}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 15, color: Colors.black87)),
-        const SizedBox(height: 8),
+        SizedBox(
+          height: 18,
+          child: Text(label,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
+        ),
+        const SizedBox(height: 7),
         child,
       ],
-    );
-  }
+    ),
+  );
+}
 
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-    String? errorText,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[400]),
-        errorText: errorText,
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey[300]!),
-        ),
+Widget _input({
+  required TextEditingController controller,
+  required String hint,
+  TextInputType? keyboardType,
+  List<TextInputFormatter>? inputFormatters,
+  String? errorText,
+}) {
+  return TextField(
+    controller: controller,
+    keyboardType: keyboardType,
+    inputFormatters: inputFormatters,
+    style: const TextStyle(fontSize: 14.5),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+      errorText: errorText,
+      errorStyle: const TextStyle(fontSize: 11.5),
+      filled: true,
+      fillColor: Colors.grey[50],
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey[200]!),
       ),
-      onChanged: (_) => setState(() {}), // keeps Continue button enable-state live
-    );
-  }
-
-  Widget _dateField({required DateTime? date, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              date == null ? "mm/dd/yy" : "${date.month}/${date.day}/${date.year}",
-              style: TextStyle(color: date == null ? Colors.grey[400] : Colors.black87),
-            ),
-            const Icon(Icons.calendar_month, size: 20),
-          ],
-        ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey[200]!),
       ),
-    );
-  }
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: kDarkPill, width: 1.4),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: kDelayedRed),
+      ),
+    ),
+    onChanged: (_) => setState(() {}),
+  );
+}
 
-  Widget _summaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+Widget _dateField({required DateTime? date, required VoidCallback onTap}) {
+  return InkWell(
+    borderRadius: BorderRadius.circular(10),
+    onTap: onTap,
+    child: Container(
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        border: Border.all(color: Colors.grey[200]!),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          SizedBox(
-            width: 160,
-            child: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 16)),
-          ),
           Expanded(
-            child: Text(value, style: TextStyle(color: Colors.grey[700], fontSize: 16)),
+            child: Text(
+              date == null ? "mm/dd/yy" : "${date.month}/${date.day}/${date.year}",
+              style: TextStyle(
+                fontSize: 14,
+                color: date == null ? Colors.grey[400] : Colors.black87,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
           ),
+          const SizedBox(width: 6),
+          Icon(Icons.calendar_month_outlined, size: 18, color: Colors.grey[500]),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+Widget _summaryRow(String label, String value, {bool isLast = false}) {
+  return Padding(
+    padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 130,
+          child: Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+        ),
+        Expanded(
+          child: Text(value,
+              style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
+        ),
+      ],
+    ),
+  );
+}
+
+ 
 }
 
 /// ---------------------------------------------------------------------
@@ -1712,15 +1778,24 @@ class _EditProjectModalState extends State<_EditProjectModal> {
   }
 
   Widget _field({required String label, required Widget child}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 15, color: Colors.black87)),
-        const SizedBox(height: 8),
-        child,
-      ],
-    );
-  }
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(
+        height: 40, // reserves space for up to 2 lines, keeps inputs aligned
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 15, color: Colors.black87),
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      child,
+    ],
+  );
+}
 
   Widget _input({
     required TextEditingController controller,

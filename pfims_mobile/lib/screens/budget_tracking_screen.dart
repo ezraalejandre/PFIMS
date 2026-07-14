@@ -664,79 +664,83 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
                 // ---- Title + Add Expense / Add Budget ---- (unchanged)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "BUDGET & FINANCE",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: .2,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _openAddExpense,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kDarkPill,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                          ),
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text(
-                            "Add Expense",
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: _openAddBudget,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kAmberStrong,
-                            foregroundColor: Colors.black87,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                          ),
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text(
-                            "Add Budget",
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // ---- Expenses / Budgets tab switcher ----
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(child: _tabButton("Expenses", 0)),
-                      Expanded(child: _tabButton("Budgets", 1)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
+               Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    const Text(
+      "BUDGET & FINANCE",
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        letterSpacing: .2,
+        color: Colors.black87,
+      ),
+    ),
+    const SizedBox(height: 4),
+    Text(
+      "Track spending and budgets across all projects",
+      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+    ),
+    const SizedBox(height: 16),
+    Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _openAddExpense,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kDarkPill,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text(
+              "Add Expense",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _openAddBudget,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: kDarkPill,
+              side: BorderSide(color: Colors.grey.shade300, width: 1.2),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text(
+              "Add Budget",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    ),
+    const SizedBox(height: 20),
+    Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _tabButton("Expenses", 0)),
+          Expanded(child: _tabButton("Budgets", 1)),
+        ],
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 16),
 
                 // ---- Stat tiles ----
 
@@ -788,7 +792,7 @@ Builder(
     );
   },
 ),
-
+const SizedBox(height: 16),
                 if (_selectedTab == 0) ...[
                   // ---- Period filter tabs ---- (unchanged)
                   Row(
