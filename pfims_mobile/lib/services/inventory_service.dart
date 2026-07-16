@@ -26,7 +26,11 @@ class InventoryService {
   static Future<List<Map<String, dynamic>>> fetchSuppliers() async {
     final response = await http.get(Uri.parse("$baseUrl/suppliers"));
     if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+      final decoded = jsonDecode(response.body);
+      // SupplierController wraps the list as {"success": true, "data": [...]}.
+      final List data = (decoded is Map && decoded['data'] is List)
+          ? decoded['data'] as List
+          : decoded as List;
       return data.cast<Map<String, dynamic>>();
     }
     throw Exception("Failed to fetch suppliers: ${response.statusCode}");
@@ -56,9 +60,9 @@ class InventoryService {
     return response.statusCode == 201;
   }
 
-  // NEW: fetch every individual transaction row (not just the latest per
-  // item). Used to render the Inventory tab as a transaction history list
-  // instead of one row per item.
+  // Fetch every individual transaction row (not just the latest per item).
+  // Used to render the Inventory tab as a transaction history list instead
+  // of one row per item.
   static Future<List<Map<String, dynamic>>> fetchTransactions() async {
     final response = await http.get(Uri.parse("$baseUrl/inventory-transactions"));
     if (response.statusCode == 200) {
@@ -120,8 +124,8 @@ class InventoryService {
     return null;
   }
 
-  // NEW: partial update of an inventory item. Only send the fields that
-  // changed — pass null for anything you don't want to touch.
+  // Partial update of an inventory item. Only send the fields that changed
+  // — pass null for anything you don't want to touch.
   static Future<bool> updateItem({
     required int itemId,
     String? itemName,
@@ -148,7 +152,7 @@ class InventoryService {
     return response.statusCode == 200;
   }
 
-  // NEW: delete an inventory item.
+  // Delete an inventory item.
   static Future<bool> deleteItem(int itemId) async {
     final response = await http.delete(Uri.parse("$baseUrl/inventory-items/$itemId"));
     print("DELETE ITEM STATUS: ${response.statusCode}");
@@ -169,7 +173,7 @@ class InventoryService {
   // Suppliers
   // ---------------------------------------------------------------------
 
-  // NEW: create a supplier. Returns the new supplier_id, or null on failure.
+  // Create a supplier. Returns the new supplier_id, or null on failure.
   static Future<int?> createSupplier({
     required String name,
     String? contactNumber,
@@ -189,15 +193,19 @@ class InventoryService {
     print("CREATE SUPPLIER BODY: ${response.body}");
 
     if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      return data["supplier_id"] is int
-          ? data["supplier_id"] as int
-          : int.tryParse("${data["supplier_id"]}");
+      final decoded = jsonDecode(response.body);
+      // Supplier object is nested under "data", not top-level:
+      // {"success": true, "message": ..., "data": { "supplier_id": ..., ... }}
+      final supplier = (decoded is Map && decoded['data'] is Map)
+          ? decoded['data'] as Map
+          : decoded as Map;
+      final id = supplier["supplier_id"];
+      return id is int ? id : int.tryParse("$id");
     }
     return null;
   }
 
-  // NEW: partial update of a supplier.
+  // Partial update of a supplier.
   static Future<bool> updateSupplier({
     required int supplierId,
     String? name,
@@ -209,7 +217,9 @@ class InventoryService {
     if (contactNumber != null) body["contact_number"] = contactNumber;
     if (address != null) body["address"] = address;
 
-    final response = await http.put(
+    final response = await http.patch(
+      // was http.put — the Laravel route is PATCH-only:
+      // Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
       Uri.parse("$baseUrl/suppliers/$supplierId"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(body),
@@ -220,7 +230,7 @@ class InventoryService {
     return response.statusCode == 200;
   }
 
-  // NEW: delete a supplier. Returns a (success, message) pair so the UI can
+  // Delete a supplier. Returns a (success, message) pair so the UI can
   // surface a specific error (e.g. supplier still linked to items).
   static Future<({bool success, String message})> deleteSupplier(int supplierId) async {
     final response = await http.delete(Uri.parse("$baseUrl/suppliers/$supplierId"));

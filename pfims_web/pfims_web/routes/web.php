@@ -117,11 +117,11 @@ Route::get('/suppliers', function () {
 
 // Supplier API endpoints
 Route::middleware('auth')->group(function () {
-    Route::get('/api/suppliers', [SupplierController::class, 'index']);
-    Route::post('/api/suppliers', [SupplierController::class, 'store']);
-    Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
-    Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
-    Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
+    // Route::get('/api/suppliers', [SupplierController::class, 'index']);
+    // Route::post('/api/suppliers', [SupplierController::class, 'store']);
+    // Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
+    // Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
+    // Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
 
     // Config API endpoints
     Route::get('/api/config/{type}', [ConfigController::class, 'index']);
@@ -129,7 +129,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/api/config/{type}/{id}', [ConfigController::class, 'update']);
     Route::delete('/api/config/{type}/{id}', [ConfigController::class, 'destroy']);
 
-    // Inventory API endpoints
+    // // Inventory API endpoints
     Route::get('/api/inventory', [InventoryController::class, 'index']);
     Route::get('/api/inventory/lookup-data', [InventoryController::class, 'getLookupData']);
     Route::post('/api/inventory/item', [InventoryController::class, 'storeItem']);

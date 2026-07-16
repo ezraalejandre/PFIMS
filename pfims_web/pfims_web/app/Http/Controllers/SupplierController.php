@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
@@ -81,7 +82,7 @@ class SupplierController extends Controller
     {
         $supplier = Supplier::findOrFail($id);
 
-        $hasItems = \DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists();
+        $hasItems = DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists();
         if ($hasItems) {
             return response()->json([
                 'success' => false,
