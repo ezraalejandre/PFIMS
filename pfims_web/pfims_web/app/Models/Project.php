@@ -1,4 +1,5 @@
 <?php
+// app/Models/Project.php
 
 namespace App\Models;
 
@@ -11,20 +12,27 @@ class Project extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'project_name',
-        'client_name',
+        'project_name', 
+        'client_name', 
         'project_manager',
-        'start_date',
-        'estimated_end_date',
+        'start_date', 
+        'estimated_end_date', 
         'actual_end_date',
-        'worker_count',
-        'phase',
-        'completion_percentage',
-        'status',
+        'worker_count', 
+        'phase', 
+        'completion_percentage', 
+        'status'
     ];
 
-    public function budgets()
+    // Relationship with budget
+    public function budget()
     {
-        return $this->hasMany(Budget::class, 'project_id', 'project_id');
+        return $this->hasOne(Budget::class, 'project_id', 'project_id');
+    }
+
+    // Relationship with expenses
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class, 'project_id', 'project_id');
     }
 }

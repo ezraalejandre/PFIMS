@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/profile.css') }}">
+    <title>Accounting Profile - PFIMS</title>
+    <link rel="stylesheet" href="{{ asset('css/Aprofile.css') }}">
+    <style>
+        .error-notification { z-index: 9999 !important; }
+        .success-notification { z-index: 9999 !important; }
+    </style>
 </head>
 <body>
 
@@ -21,7 +25,7 @@
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
-            <span id="successMessage">Action completed successfully!</span>
+            <span id="successMessage">Profile updated successfully!</span>
             <button class="success-close" onclick="closeSuccess()">×</button>
         </div>
     </div>
@@ -36,12 +40,12 @@
             </div>
         </div>
         <div class="right">
-            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+            <a href="{{ url('/anotifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span>Notifications</span>
                 <span class="notif-badge" id="notifBadge">6</span>
             </a>
-            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+            <a href="{{ url('/aprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
                 <span>{{ auth()->user()->name }}</span>
             </a>
@@ -49,26 +53,23 @@
     </header>
 
     <!-- ─── SIDEBAR ─── -->
-<aside class="sidebar">
-    <nav>
-        <ul>
-            <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;">DASHBOARD</a></li>
-            <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
-            <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
-            <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-            <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-            <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
-        </ul>
-    </nav>
-    <div class="bottom-nav">
-        <ul>
-            <li>
-                <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                    <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
-                    Settings
-                </a>
-            </li>
-            <li class="logout">
+    <aside class="sidebar">
+        <nav>
+            <ul>
+                <li><a href="{{ url('/adashboard') }}">DASHBOARD</a></li>
+                <li><a href="{{ url('/afinance') }}">FINANCE</a></li>
+                <li><a href="{{ url('/areports') }}">REPORTS</a></li>
+            </ul>
+        </nav>
+        <div class="bottom-nav">
+            <ul>
+                <li>
+                    <a href="{{ url('/asettings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                        Settings
+                    </a>
+                </li>
+                <li class="logout">
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
@@ -76,10 +77,10 @@
                             Log out
                         </button>
                     </form>
-            </li>
-        </ul>
-    </div>
-</aside>
+                </li>
+            </ul>
+        </div>
+    </aside>
 
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">

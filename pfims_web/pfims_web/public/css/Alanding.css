@@ -14,15 +14,11 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    
-    /* FULL PAGE BACKGROUND IMAGE */
     background-image: url('../images/landingbg.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-attachment: fixed; /* keeps it fixed on scroll */
-    
-    /* Fallback color if image fails to load */
+    background-attachment: fixed;
     background-color: #1a2b3c;
 }
 
@@ -35,23 +31,22 @@ body {
     width: 100%;
     padding: 40px;
     gap: 40px;
-    /* No background – completely transparent */
 }
 
-/* ─── LEFT SIDE: BRAND (Centered) ─── */
+/* ─── LEFT SIDE: BRAND ─── */
 .brand {
     flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;      /* ← CENTERS EVERYTHING HORIZONTALLY */
+    align-items: center;
     justify-content: center;
-    text-align: center;       /* ← CENTERS THE TEXT */
+    text-align: center;
     color: #fff;
     text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
 }
 
 .brand .logo {
-    max-width: 140px;          /* slightly bigger */
+    max-width: 140px;
     height: auto;
     margin-bottom: 20px;
     filter: drop-shadow(0 4px 15px rgba(0,0,0,0.6));
@@ -74,7 +69,7 @@ body {
     width: 70px;
     height: 4px;
     background: #c9a96e;
-    margin: 20px auto;        /* ← CENTERED */
+    margin: 20px auto;
     border-radius: 2px;
 }
 
@@ -83,11 +78,11 @@ body {
     opacity: 0.9;
     line-height: 1.7;
     max-width: 85%;
-    margin: 0 auto;           /* ← CENTERED */
+    margin: 0 auto;
     font-weight: 400;
 }
 
-/* ─── RIGHT SIDE: FLOATING SIGN-IN CARD ─── */
+/* ─── RIGHT SIDE: SIGN-IN CARD ─── */
 .form-wrapper {
     width: 420px;
     max-width: 100%;
@@ -186,7 +181,7 @@ body {
     font-size: 0.75rem;
     color: #aaa;
     text-align: center;
-    margin-top: 28px;
+    margin-top: 20px;
     line-height: 1.5;
 }
 

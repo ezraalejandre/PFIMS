@@ -269,7 +269,7 @@ body {
     box-shadow: 0 4px 15px rgba(201, 169, 110, 0.3);
 }
 
-/* ─── STATS ROW (two cards) ─── */
+/* ─── STATS ROW ─── */
 .stats-row {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -597,16 +597,6 @@ body {
     background: #fff;
 }
 
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.form-row .form-group {
-    margin-bottom: 18px;
-}
-
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -932,10 +922,6 @@ body {
         padding: 20px;
         max-height: 95vh;
         width: 95%;
-    }
-    .form-row {
-        grid-template-columns: 1fr;
-        gap: 0;
     }
     .modal-footer {
         flex-direction: column;

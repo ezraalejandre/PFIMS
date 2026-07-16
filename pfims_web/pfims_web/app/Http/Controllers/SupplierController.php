@@ -73,4 +73,27 @@ class SupplierController extends Controller
             'data' => $supplier,
         ]);
     }
+
+    /**
+     * Delete a supplier
+     */
+    public function destroy($id)
+    {
+        $supplier = Supplier::findOrFail($id);
+
+        $hasItems = \DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists();
+        if ($hasItems) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete supplier: it is still linked to inventory items.'
+            ], 409);
+        }
+
+        $supplier->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Supplier deleted successfully!',
+        ]);
+    }
 }

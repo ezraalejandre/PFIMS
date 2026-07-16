@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Item Suppliers - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/suppliers.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/Osuppliers.css') }}">
     <style>
         #deleteConfirmModal { z-index: 9999 !important; }
         .btn-delete-supplier {
@@ -91,12 +91,12 @@
             </div>
         </div>
         <div class="right">
-            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+            <a href="{{ url('/onotifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span>Notifications</span>
                 <span class="notif-badge" id="notifBadge">6</span>
             </a>
-            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+            <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
                 <span>{{ auth()->user()->name }}</span>
             </a>
@@ -107,18 +107,17 @@
     <aside class="sidebar">
         <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-                <li class="active"><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/odashboard') }}">DASHBOARD</a></li>
+                <li><a href="{{ url('/oprojects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/oinventory') }}">INVENTORY</a></li>
+                <li class="active"><a href="{{ url('/osuppliers') }}">SUPPLIERS</a></li>
+                <li><a href="{{ url('/oreports') }}">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
             <ul>
                 <li>
-                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                    <a href="{{ url('/osettings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                         <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
                         Settings
                     </a>
