@@ -6,8 +6,49 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Item Suppliers - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/suppliers.css') }}">
+    <style>
+        #deleteConfirmModal { z-index: 9999 !important; }
+        .btn-delete-supplier {
+            background: #d32f2f;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-delete-supplier:hover {
+            background: #b71c1c;
+            transform: translateY(-2px);
+        }
+        .modal-footer .footer-left,
+        .modal-footer .footer-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+    </style>
 </head>
 <body>
+    
+    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <div id="errorNotification" class="error-notification" style="display: none;">
+        <div class="error-content">
+            <span class="error-icon">⚠</span>
+            <span id="errorMessage">An error occurred. Please try again.</span>
+            <button class="error-close" onclick="closeError()">×</button>
+        </div>
+    </div>
 
     <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none;">
@@ -18,7 +59,82 @@
         </div>
     </div>
 
-    @include('partials.header')
+    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-container" style="width: 400px; max-width: 95%;">
+            <div class="modal-header">
+                <h2>Confirm Deletion</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
+                    Are you sure you want to permanently delete this supplier?
+                </p>
+                <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button class="btn-cancel" onclick="closeDeleteModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
+                <button class="btn-delete" id="confirmDeleteBtn" onclick="confirmDelete()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #d32f2f; color: #fff; transition: 0.3s;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <header class="top-header">
+        <div class="left">
+            <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
+            <div class="brand-text">
+                PFIMS
+                <small>E.V. Catapang Design-Construction & Supply</small>
+            </div>
+        </div>
+        <div class="right">
+            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+                <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
+                <span>Notifications</span>
+                <span class="notif-badge" id="notifBadge">6</span>
+            </a>
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
+                <span>{{ auth()->user()->name }}</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar">
+        <nav>
+            <ul>
+                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
+                <li class="active"><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+            </ul>
+        </nav>
+        <div class="bottom-nav">
+            <ul>
+                <li>
+                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                        Settings
+                    </a>
+                </li>
+                <li class="logout">
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </aside>
 
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
@@ -141,7 +257,10 @@
 
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-                <button class="btn-save" onclick="updateSupplier()">Add Supplier</button>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
+                    <button class="btn-save" onclick="updateSupplier()">Save Changes</button>
+                </div>
             </div>
         </div>
     </div>
@@ -283,6 +402,50 @@
             currentSupplierId = null;
         }
 
+        let supplierToDelete = null;
+
+        function openDeleteModal(supplierId) {
+            supplierToDelete = supplierId;
+            document.getElementById('deleteConfirmMessage').textContent = 'Are you sure you want to permanently delete this supplier?';
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            supplierToDelete = null;
+        }
+
+        function confirmDelete() {
+            if (!supplierToDelete) {
+                closeDeleteModal();
+                return;
+            }
+
+            fetch(`/api/suppliers/${supplierToDelete}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                closeDeleteModal();
+                if (data.success) {
+                    showSuccess(data.message || 'Supplier deleted successfully!');
+                    loadSuppliers();
+                } else {
+                    showError(data.message || 'Error deleting supplier');
+                }
+            })
+            .catch(error => {
+                closeDeleteModal();
+                console.error('Error deleting supplier:', error);
+                showError('Error deleting supplier');
+            });
+        }
+
         function updateSupplier() {
             var name = document.getElementById('editSupplierName').value.trim();
             var address = document.getElementById('editSupplierAddress').value.trim();
@@ -343,12 +506,31 @@
             document.getElementById('successNotification').style.display = 'none';
         }
 
+        function showError(message) {
+            var notif = document.getElementById('errorNotification');
+            var msgSpan = document.getElementById('errorMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            }
+            notif.style.display = 'block';
+            setTimeout(function() {
+                closeError();
+            }, 5000);
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+        }
+
         // ─── CLOSE MODALS ON BACKDROP CLICK ───
         document.getElementById('addSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeAddModal(); }
         });
         document.getElementById('editSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeEditModal(); }
+        });
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeDeleteModal(); }
         });
 
         document.addEventListener('click', function(e) {

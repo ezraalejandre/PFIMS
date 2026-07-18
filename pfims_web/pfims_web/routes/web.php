@@ -10,15 +10,89 @@ use App\Models\User;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\MLController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Auth\PasswordController;
 
 // Landing page (login)
 Route::get('/', function () {
     return view('landing');
 })->name('login');
 
-// Dashboard page
-Route::get('/dashboard', function () {
-    return view('dashboard');
+// ─── DASHBOARD ROUTES (Role-based) ─────────────────────────────
+// Admin Dashboard
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('admin.dashboard');
+
+// Accounting Dashboard
+Route::get('/adashboard', function () {
+    return view('Adashboard');
+})->middleware('auth')->name('accounting.dashboard');
+
+// Operations Dashboard
+Route::get('/odashboard', function () {
+    return view('Odashboard');
+})->middleware('auth')->name('operations.dashboard');
+
+// ─── ACCOUNTING ROUTES ──────────────────────────────────────────
+Route::get('/afinance', function () {
+    return view('Afinance');
+})->middleware('auth');
+
+Route::get('/areports', function () {
+    return view('Areports');
+})->middleware('auth');
+
+Route::get('/anotifications', function () {
+    return view('Anotifications');
+})->middleware('auth');
+
+Route::get('/aprofile', function () {
+    return view('Aprofile', [
+        'user' => Auth::user(),
+    ]);
+})->middleware('auth');
+
+Route::get('/asettings', function () {
+    $users = User::orderBy('name')->get();
+    return view('Asettings', [
+        'users' => $users,
+    ]);
+})->middleware('auth');
+
+// ─── OPERATIONS ROUTES ──────────────────────────────────────────
+Route::get('/oprojects', function () {
+    return view('Oprojects');
+})->middleware('auth');
+
+Route::get('/oinventory', function () {
+    return view('Oinventory');
+})->middleware('auth');
+
+Route::get('/osuppliers', function () {
+    return view('Osuppliers');
+})->middleware('auth');
+
+Route::get('/oreports', function () {
+    return view('Oreports');
+})->middleware('auth');
+
+Route::get('/onotifications', function () {
+    return view('Onotifications');
+})->middleware('auth');
+
+Route::get('/oprofile', function () {
+    return view('Oprofile', [
+        'user' => Auth::user(),
+    ]);
+})->middleware('auth');
+
+Route::get('/osettings', function () {
+    $users = User::orderBy('name')->get();
+    return view('Osettings', [
+        'users' => $users,
+    ]);
 })->middleware('auth');
 
 // Project Tracking page
@@ -47,6 +121,7 @@ Route::middleware('auth')->group(function () {
     // Route::post('/api/suppliers', [SupplierController::class, 'store']);
     // Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
     // Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
+    // Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
 
     // Config API endpoints
     Route::get('/api/config/{type}', [ConfigController::class, 'index']);
@@ -54,11 +129,13 @@ Route::middleware('auth')->group(function () {
     Route::patch('/api/config/{type}/{id}', [ConfigController::class, 'update']);
     Route::delete('/api/config/{type}/{id}', [ConfigController::class, 'destroy']);
 
-    // Inventory API endpoints
+    // // Inventory API endpoints
     Route::get('/api/inventory', [InventoryController::class, 'index']);
     Route::get('/api/inventory/lookup-data', [InventoryController::class, 'getLookupData']);
     Route::post('/api/inventory/item', [InventoryController::class, 'storeItem']);
     Route::post('/api/inventory/transaction', [InventoryController::class, 'addTransaction']);
+    Route::patch('/api/inventory/transaction/{id}', [InventoryController::class, 'updateTransaction']);
+    Route::delete('/api/inventory/transaction/{id}', [InventoryController::class, 'destroyTransaction']);
     Route::get('/api/inventory/transactions', [InventoryController::class, 'getAllTransactions']);
     Route::get('/api/inventory/{itemId}/transactions', [InventoryController::class, 'getTransactions']);
 });
@@ -177,6 +254,16 @@ Route::post('/login', function (Request $request) {
         }
         $request->session()->regenerate();
 
+        $role = strtolower($user->role ?? '');
+
+        if ($role === 'admin') {
+            return redirect('/dashboard');
+        } elseif ($role === 'accounting') {
+            return redirect('adashboard');
+        } elseif ($role === 'operations') {
+            return redirect('/odashboard');
+        }
+
         return redirect('/dashboard');
     }
 
@@ -193,4 +280,54 @@ Route::post('/logout', function (Request $request) {
     $request->session()->regenerateToken();
 
     return redirect('/');
+});
+
+// Change password route
+Route::post('/change-password', [PasswordController::class, 'update'])->middleware('auth')->name('password.update');
+
+// ─── MACHINE LEARNING ROUTES (NO AUTH REQUIRED) ────────────────
+Route::get('/ml-dashboard-test', function () {
+    return view('ml-dashboard-test');
+});
+
+// Test endpoints
+Route::get('/api/ml/test', [MLController::class, 'test']);
+Route::get('/api/ml/test-service', [MLController::class, 'testService']);
+
+// Predictive Analytics - GET for testing, POST for production
+Route::post('/api/ml/predict/cost', [MLController::class, 'predictProjectCost']);
+Route::get('/api/ml/predict/cost', [MLController::class, 'predictProjectCost']); // Also allow GET for testing
+
+Route::get('/api/ml/predict/material-demand', [MLController::class, 'predictMaterialDemand']);
+
+// Model Management
+Route::post('/api/ml/retrain', [MLController::class, 'retrain']);
+Route::get('/api/ml/retrain', [MLController::class, 'retrain']); // Also allow GET for testing
+
+Route::get('/api/ml/status', [MLController::class, 'status']);
+
+// Analytics
+Route::get('/api/ml/analytics/dashboard', [MLController::class, 'dashboardAnalytics']);
+Route::get('/api/ml/analytics/budget-variance', [MLController::class, 'budgetVariance']);
+
+// ─── TEST SERVICE ROUTE ──────────────────────────────────────────
+Route::get('/api/ml/test-service', [MLController::class, 'testService']);
+
+Route::get('/ml-debug', function () {
+    try {
+        $mlService = new \App\Services\MLService();
+        $metrics = $mlService->getModelMetrics();
+        return response()->json([
+            'success' => true,
+            'metrics' => $metrics
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
 });

@@ -3,21 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Project Tracking - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/projtracking.css') }}">
+    <style>
+        .error-notification { z-index: 9999 !important; }
+        .success-notification { z-index: 9999 !important; }
+        #deleteConfirmModal { z-index: 9999 !important; }
+    </style>
 </head>
 <body>
 
-    <!-- ─── SUCCESS NOTIFICATION ─── -->
+    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <div id="errorNotification" class="error-notification" style="display: none;">
+        <div class="error-content">
+            <span class="error-icon">⚠</span>
+            <span id="errorMessage">An error occurred. Please try again.</span>
+            <button class="error-close" onclick="closeError()">×</button>
+        </div>
+    </div>
+
+    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
-            <span>Project created successfully!</span>
+            <span id="successMessage">Project saved successfully!</span>
             <button class="success-close" onclick="closeSuccess()">×</button>
         </div>
     </div>
 
-    @include('partials.header')
+    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-container" style="width: 400px; max-width: 95%;">
+            <div class="modal-header">
+                <h2>Confirm Deletion</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
+                    Are you sure you want to permanently delete this project?
+                </p>
+                <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button class="btn-cancel" onclick="closeDeleteModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
+                <button class="btn-delete" id="confirmDeleteBtn" onclick="confirmDelete()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #d32f2f; color: #fff; transition: 0.3s;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <header class="top-header">
+        <div class="left">
+            <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
+            <div class="brand-text">
+                PFIMS
+                <small>E.V. Catapang Design-Construction & Supply</small>
+            </div>
+        </div>
+        <div class="right">
+            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+                <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
+                <span>Notifications</span>
+                <span class="notif-badge" id="notifBadge">6</span>
+            </a>
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
+                <span>{{ auth()->user()->name }}</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar">
+        <nav>
+            <ul>
+                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
+                <li class="active"><a href="{{ url('/projects') }}">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+            </ul>
+        </nav>
+        <div class="bottom-nav">
+            <ul>
+                <li>
+                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                        Settings
+                    </a>
+                </li>
+                <li class="logout">
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </aside>
 
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
@@ -32,34 +122,34 @@
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">Active Projects</div>
-                    <div class="stat-value">12</div>
-                    <div class="stat-sub">+2 this month</div>
+                    <div class="stat-value" id="activeProjectsCount">0</div>
+                    <div class="stat-sub" id="activeProjectsSub">Loading...</div>
                 </div>
             </div>
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">On Schedule</div>
-                    <div class="stat-value">8</div>
-                    <div class="stat-sub">67% of active</div>
+                    <div class="stat-value" id="onScheduleCount">0</div>
+                    <div class="stat-sub" id="onScheduleSub">0% of active</div>
                 </div>
             </div>
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">Delayed</div>
-                    <div class="stat-value">3</div>
-                    <div class="stat-sub">Needs attention</div>
+                    <div class="stat-value" id="delayedCount">0</div>
+                    <div class="stat-sub" id="delayedSub">Needs attention</div>
                 </div>
             </div>
             <div class="stat-card-proj">
                 <div class="stat-info">
                     <div class="stat-label">Avg Completion</div>
-                    <div class="stat-value">61%</div>
-                    <div class="stat-sub">+6% vs last month</div>
+                    <div class="stat-value" id="avgCompletion">0%</div>
+                    <div class="stat-sub" id="avgCompletionSub">Across all projects</div>
                 </div>
             </div>
         </div>
 
-        <!-- Table -->
+        <!-- Table with Progress Bar -->
         <div class="table-wrapper">
             <table>
                 <thead>
@@ -71,184 +161,29 @@
                         <th>Est. End Date</th>
                         <th>Actual End Date</th>
                         <th>Duration</th>
-                        <th>% Complete</th>
                         <th>Phase</th>
+                        <th>Progress</th>
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr onclick="openUpdateModal('Skyline Tower', 'Mega Reality Corp.', 72)">
-                        <td><strong>Skyline Tower</strong></td>
-                        <td>Mega Reality Corp.</td>
-                        <td>₱15,000,000</td>
-                        <td>Jan 15, 2025</td>
-                        <td>Dec 30, 2025</td>
-                        <td>—</td>
-                        <td>11.5 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">72%</span>
-                                <div class="mini-bar"><div class="fill" style="width:72%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Structure</span></td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('Harbor Bridge Annex', 'City Gov — NCR', 91)">
-                        <td><strong>Harbor Bridge Annex</strong></td>
-                        <td>City Gov — NCR</td>
-                        <td>₱8,500,000</td>
-                        <td>Mar 1, 2025</td>
-                        <td>Aug 15, 2025</td>
-                        <td>—</td>
-                        <td>5.5 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">91%</span>
-                                <div class="mini-bar"><div class="fill" style="width:91%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Finishing</span></td>
-                        <td><span class="status-badge on-track"><span class="dot"></span> On Track</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('Green Hills Residences', 'Verde Homes Inc.', 100)">
-                        <td><strong>Green Hills Residences</strong></td>
-                        <td>Verde Homes Inc.</td>
-                        <td>₱12,200,000</td>
-                        <td>Nov 10, 2024</td>
-                        <td>May 20, 2025</td>
-                        <td>—</td>
-                        <td>6.3 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">100%</span>
-                                <div class="mini-bar"><div class="fill" style="width:100%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Complete</span></td>
-                        <td><span class="status-badge completed"><span class="dot"></span> Completed</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('Eastwood Mall', 'LKP Commercial', 55)">
-                        <td><strong>Eastwood Mall</strong></td>
-                        <td>LKP Commercial</td>
-                        <td>₱20,000,000</td>
-                        <td>Feb 22, 2025</td>
-                        <td>Jul 30, 2025</td>
-                        <td>—</td>
-                        <td>5.2 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">55%</span>
-                                <div class="mini-bar"><div class="fill" style="width:55%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Foundation</span></td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('BPO Hub Bldg. C', 'TechZone Holdings', 28)">
-                        <td><strong>BPO Hub Bldg. C</strong></td>
-                        <td>TechZone Holdings</td>
-                        <td>₱6,800,000</td>
-                        <td>Apr 5, 2025</td>
-                        <td>Jan 5, 2026</td>
-                        <td>—</td>
-                        <td>9 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">28%</span>
-                                <div class="mini-bar"><div class="fill" style="width:28%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Planning</span></td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('North Rail Station', 'DOTR — PH', 44)">
-                        <td><strong>North Rail Station</strong></td>
-                        <td>DOTR — PH</td>
-                        <td>₱45,000,000</td>
-                        <td>Sep 1, 2024</td>
-                        <td>Mar 1, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">44%</span>
-                                <div class="mini-bar"><div class="fill" style="width:44%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Structure</span></td>
-                        <td><span class="status-badge delayed"><span class="dot"></span> Delayed</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('Pasig River Walk', 'Pasig City LGU', 80)">
-                        <td><strong>Pasig River Walk</strong></td>
-                        <td>Pasig City LGU</td>
-                        <td>₱3,200,000</td>
-                        <td>Jan 2, 2025</td>
-                        <td>Jun 30, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">80%</span>
-                                <div class="mini-bar"><div class="fill" style="width:80%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Finishing</span></td>
-                        <td><span class="status-badge on-track"><span class="dot"></span> On Track</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('Metro Interchange', 'MMDA', 38)">
-                        <td><strong>Metro Interchange</strong></td>
-                        <td>MMDA</td>
-                        <td>₱28,000,000</td>
-                        <td>Oct 15, 2024</td>
-                        <td>Apr 15, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">38%</span>
-                                <div class="mini-bar"><div class="fill" style="width:38%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Foundation</span></td>
-                        <td><span class="status-badge delayed"><span class="dot"></span> Delayed</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('Laguna Warehouse Complex', 'STAR Logistics', 20)">
-                        <td><strong>Laguna Warehouse Complex</strong></td>
-                        <td>STAR Logistics</td>
-                        <td>₱9,500,000</td>
-                        <td>Mar 18, 2025</td>
-                        <td>Sep 18, 2025</td>
-                        <td>—</td>
-                        <td>6 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">20%</span>
-                                <div class="mini-bar"><div class="fill" style="width:20%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Planning</span></td>
-                        <td><span class="status-badge at-risk"><span class="dot"></span> At Risk</span></td>
-                    </tr>
-                    <tr onclick="openUpdateModal('Alabang Medical', 'HealthFirst PH', 60)">
-                        <td><strong>Alabang Medical</strong></td>
-                        <td>HealthFirst PH</td>
-                        <td>₱18,000,000</td>
-                        <td>Dec 1, 2024</td>
-                        <td>Nov 30, 2025</td>
-                        <td>—</td>
-                        <td>12 mo</td>
-                        <td>
-                            <div class="progress-cell">
-                                <span class="percent">60%</span>
-                                <div class="mini-bar"><div class="fill" style="width:60%;"></div></div>
-                            </div>
-                        </td>
-                        <td><span class="phase-badge">Structure</span></td>
-                        <td><span class="status-badge on-track"><span class="dot"></span> On Track</span></td>
-                    </tr>
-                </tbody>
+                <tbody id="projectTableBody"></tbody>
             </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper">
+            <div class="rows-info">
+                Rows Displayed:
+                <select id="projectRowsPerPage" onchange="changeProjectPageSize()">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="pagination-links" id="projectPaginationLinks">
+                <!-- Generated by JavaScript -->
+            </div>
         </div>
 
     </main>
@@ -257,7 +192,7 @@
     <div id="projectModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
-                <h2>Add new project</h2>
+                <h2 id="projectModalTitle">Add new project</h2>
                 <button class="modal-close" onclick="closeModal()">×</button>
             </div>
 
@@ -276,11 +211,11 @@
             <div class="modal-step" id="step1">
                 <h3>BASIC INFORMATION</h3>
                 <div class="form-group">
-                    <label>Project name</label>
+                    <label>Project name <span class="required">*</span></label>
                     <input type="text" placeholder="e.g. Skyline Tower Phase 2" id="projectName">
                 </div>
                 <div class="form-group">
-                    <label>Client name</label>
+                    <label>Client name <span class="required">*</span></label>
                     <input type="text" placeholder="e.g. Mega Realty Corporation" id="clientName">
                 </div>
                 <div class="modal-footer">
@@ -360,234 +295,184 @@
         </div>
     </div>
 
-    <!-- ─── UPDATE PROJECT PROGRESS MODAL ─── -->
+    <!-- ─── UPDATE PROJECT OVERVIEW MODAL (with Delete) ─── -->
     <div id="updateModal" class="modal-overlay modal-update">
         <div class="modal-container">
             <div class="modal-header">
                 <div>
-                    <h2 id="updateProjectName" style="margin-bottom: 2px;">Skyline Tower</h2>
-                    <span class="subtitle" id="updateClientName">Mega Realty Corp</span>
+                    <h2 id="updateProjectName" style="margin-bottom: 2px;">Project Name</h2>
+                    <span class="subtitle" id="updateClientName">Client Name</span>
                 </div>
                 <button class="modal-close" onclick="closeUpdateModal()">×</button>
             </div>
 
-            <!-- Overall Progress -->
-            <div style="margin-bottom: 25px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                    <span style="font-size: 0.8rem; font-weight: 600; color: #888; text-transform: uppercase;">Overall Progress</span>
-                    <span style="font-size: 1.4rem; font-weight: 700; color: #1a2b3c;" id="updateOverallProgress">72%</span>
+            <div class="project-details-grid">
+                <div class="detail-item">
+                    <label>Budget</label>
+                    <span id="updateBudget">—</span>
                 </div>
-                <div class="progress-bar-large">
-                    <div class="progress-fill" id="updateOverallFill" style="width: 72%;"></div>
+                <div class="detail-item">
+                    <label>Start Date</label>
+                    <span id="updateStartDate">—</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #aaa;">
-                    <span>0%</span>
-                    <span>100%</span>
+                <div class="detail-item">
+                    <label>Est. End Date</label>
+                    <span id="updateEstEndDate">—</span>
                 </div>
-            </div>
-
-            <!-- Category 1: Concrete & masonry -->
-            <div class="update-category" id="category1">
-                <div class="category-header" onclick="toggleCategory(1)">
-                    <span style="font-weight: 600; color: #1a2b3c;">Concrete &amp; masonry</span>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-weight: 700; color: #c9a96e;" id="cat1Progress">73%</span>
-                        <span class="category-toggle">&#9660;</span>
-                    </div>
+                <div class="detail-item">
+                    <label>Actual End Date</label>
+                    <span id="updateActualEndDate">—</span>
                 </div>
-                <div class="category-progress">
-                    <div class="progress-bar-large">
-                        <div class="progress-fill" style="width: 73%;"></div>
-                    </div>
+                <div class="detail-item">
+                    <label>Duration</label>
+                    <span id="updateDuration">—</span>
                 </div>
-                <div class="category-details" id="cat1Details">
-                    <table class="material-table" id="materialTable1">
-                        <thead>
-                            <tr>
-                                <th>Material</th>
-                                <th>Planned</th>
-                                <th>Used</th>
-                                <th>Update</th>
-                                <th>Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Ready-mix concrete</td>
-                                <td>2,400 m³</td>
-                                <td>1,750 m³</td>
-                                <td><input type="number" class="editable-input" value="1750" id="update1_1" onchange="updateUsed('update1_1', 'Ready-mix concrete', 2400)"></td>
-                                <td><span class="progress-percent" id="progress1_1">73%</span></td>
-                            </tr>
-                            <tr>
-                                <td>Hollow blocks</td>
-                                <td>85,000 pcs</td>
-                                <td>62,000 pcs</td>
-                                <td><input type="number" class="editable-input" value="62000" id="update1_2" onchange="updateUsed('update1_2', 'Hollow blocks', 85000)"></td>
-                                <td><span class="progress-percent" id="progress1_2">73%</span></td>
-                            </tr>
-                            <tr>
-                                <td>Mortar / grout</td>
-                                <td>480 bags</td>
-                                <td>340 bags</td>
-                                <td><input type="number" class="editable-input" value="340" id="update1_3" onchange="updateUsed('update1_3', 'Mortar / grout', 480)"></td>
-                                <td><span class="progress-percent" id="progress1_3">71%</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="detail-item">
+                    <label>Phase</label>
+                    <span id="updatePhase" class="phase-badge">—</span>
+                </div>
+                <div class="detail-item">
+                    <label>Status</label>
+                    <span id="updateStatus" class="status-badge at-risk">—</span>
                 </div>
             </div>
 
-            <!-- Category 2: Steel & rebar -->
-            <div class="update-category" id="category2">
-                <div class="category-header" onclick="toggleCategory(2)">
-                    <span style="font-weight: 600; color: #1a2b3c;">Steel &amp; rebar</span>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-weight: 700; color: #c9a96e;">79%</span>
-                        <span class="category-toggle">&#9660;</span>
-                    </div>
-                </div>
-                <div class="category-progress">
-                    <div class="progress-bar-large">
-                        <div class="progress-fill" style="width: 79%;"></div>
-                    </div>
-                </div>
-                <div class="category-details" id="cat2Details" style="display: none;">
-                    <table class="material-table" id="materialTable2">
-                        <thead>
-                            <tr>
-                                <th>Material</th>
-                                <th>Planned</th>
-                                <th>Used</th>
-                                <th>Update</th>
-                                <th>Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Steel bars</td>
-                                <td>1,200 tons</td>
-                                <td>950 tons</td>
-                                <td><input type="number" class="editable-input" value="950" id="update2_1" onchange="updateUsed('update2_1', 'Steel bars', 1200)"></td>
-                                <td><span class="progress-percent" id="progress2_1">79%</span></td>
-                            </tr>
-                            <tr>
-                                <td>Rebar</td>
-                                <td>800 tons</td>
-                                <td>630 tons</td>
-                                <td><input type="number" class="editable-input" value="630" id="update2_2" onchange="updateUsed('update2_2', 'Rebar', 800)"></td>
-                                <td><span class="progress-percent" id="progress2_2">79%</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Category 3: Finishing materials -->
-            <div class="update-category" id="category3">
-                <div class="category-header" onclick="toggleCategory(3)">
-                    <span style="font-weight: 600; color: #1a2b3c;">Finishing materials</span>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-weight: 700; color: #c9a96e;">25%</span>
-                        <span class="category-toggle">&#9660;</span>
-                    </div>
-                </div>
-                <div class="category-progress">
-                    <div class="progress-bar-large">
-                        <div class="progress-fill" style="width: 25%;"></div>
-                    </div>
-                </div>
-                <div class="category-details" id="cat3Details" style="display: none;">
-                    <table class="material-table" id="materialTable3">
-                        <thead>
-                            <tr>
-                                <th>Material</th>
-                                <th>Planned</th>
-                                <th>Used</th>
-                                <th>Update</th>
-                                <th>Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Paint</td>
-                                <td>500 gallons</td>
-                                <td>125 gallons</td>
-                                <td><input type="number" class="editable-input" value="125" id="update3_1" onchange="updateUsed('update3_1', 'Paint', 500)"></td>
-                                <td><span class="progress-percent" id="progress3_1">25%</span></td>
-                            </tr>
-                            <tr>
-                                <td>Tiles</td>
-                                <td>3,200 pcs</td>
-                                <td>800 pcs</td>
-                                <td><input type="number" class="editable-input" value="800" id="update3_2" onchange="updateUsed('update3_2', 'Tiles', 3200)"></td>
-                                <td><span class="progress-percent" id="progress3_2">25%</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Category 4: Electrical & plumbing -->
-            <div class="update-category" id="category4">
-                <div class="category-header" onclick="toggleCategory(4)">
-                    <span style="font-weight: 600; color: #1a2b3c;">Electrical &amp; plumbing</span>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-weight: 700; color: #c9a96e;">73%</span>
-                        <span class="category-toggle">&#9660;</span>
-                    </div>
-                </div>
-                <div class="category-progress">
-                    <div class="progress-bar-large">
-                        <div class="progress-fill" style="width: 73%;"></div>
-                    </div>
-                </div>
-                <div class="category-details" id="cat4Details" style="display: none;">
-                    <table class="material-table" id="materialTable4">
-                        <thead>
-                            <tr>
-                                <th>Material</th>
-                                <th>Planned</th>
-                                <th>Used</th>
-                                <th>Update</th>
-                                <th>Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Electrical wires</td>
-                                <td>10,000 m</td>
-                                <td>7,300 m</td>
-                                <td><input type="number" class="editable-input" value="7300" id="update4_1" onchange="updateUsed('update4_1', 'Electrical wires', 10000)"></td>
-                                <td><span class="progress-percent" id="progress4_1">73%</span></td>
-                            </tr>
-                            <tr>
-                                <td>PVC pipes</td>
-                                <td>800 pcs</td>
-                                <td>584 pcs</td>
-                                <td><input type="number" class="editable-input" value="584" id="update4_2" onchange="updateUsed('update4_2', 'PVC pipes', 800)"></td>
-                                <td><span class="progress-percent" id="progress4_2">73%</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="modal-footer" style="justify-content: flex-end;">
+            <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeUpdateModal()">Close</button>
+                <button class="btn-delete" id="deleteProjectBtn" onclick="deleteProject()">Delete</button>
+                <button class="btn-edit-project" id="editProjectBtn" onclick="openEditProjectModal()">Edit Project</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── EDIT PROJECT MODAL (standalone) ─── -->
+    <div id="editProjectModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Edit Project</h2>
+                <button class="modal-close" onclick="closeEditProjectModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editProjectOriginalName">
+                <div class="form-group">
+                    <label>Phase</label>
+                    <select id="editPhase">
+                        <option value="Planning">Planning</option>
+                        <option value="Foundation">Foundation</option>
+                        <option value="Structure">Structure</option>
+                        <option value="Finishing">Finishing</option>
+                        <option value="Complete">Complete</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="editStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Estimated End Date</label>
+                        <input type="date" id="editEstEndDate">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Actual End Date</label>
+                        <input type="date" id="editActualEndDate">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: flex-end;">
+                <button class="btn-cancel" onclick="closeEditProjectModal()">Cancel</button>
+                <button class="btn-save" onclick="saveEditProject()">Save Changes</button>
             </div>
         </div>
     </div>
 
     <script>
+        // ─── GLOBAL VARIABLES ───
+        var currentEditData = null;
+        var currentProjectRow = null;
+        var deleteCallback = null;
+        var allProjects = [];
+
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.style.display = 'none';
             }
-            // The link will still navigate to /notifications.
         }
+
+        // ─── ERROR NOTIFICATION (POP-UP) ───
+        function showError(message) {
+            var notif = document.getElementById('errorNotification');
+            var msgSpan = document.getElementById('errorMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            }
+            notif.style.display = 'block';
+            if (window.errorTimeout) clearTimeout(window.errorTimeout);
+            window.errorTimeout = setTimeout(function() {
+                closeError();
+            }, 5000);
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+            if (window.errorTimeout) {
+                clearTimeout(window.errorTimeout);
+                window.errorTimeout = null;
+            }
+        }
+
+        // ─── SUCCESS NOTIFICATION (POP-UP) ───
+        function showSuccess(message) {
+            var notif = document.getElementById('successNotification');
+            var msgSpan = document.getElementById('successMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'Project saved successfully!';
+            }
+            notif.style.display = 'block';
+            if (window.successTimeout) clearTimeout(window.successTimeout);
+            window.successTimeout = setTimeout(function() {
+                closeSuccess();
+            }, 5000);
+        }
+
+        function closeSuccess() {
+            document.getElementById('successNotification').style.display = 'none';
+            if (window.successTimeout) {
+                clearTimeout(window.successTimeout);
+                window.successTimeout = null;
+            }
+        }
+
+        // ─── DELETE CONFIRMATION MODAL ───
+        function openDeleteModal(message, callback) {
+            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this project?';
+            deleteCallback = callback;
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            deleteCallback = null;
+        }
+
+        function confirmDelete() {
+            if (typeof deleteCallback === 'function') {
+                deleteCallback();
+            }
+            closeDeleteModal();
+        }
+
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteModal();
+            }
+        });
 
         // ─── ADD PROJECT MODAL ───
         function openModal() {
@@ -626,16 +511,16 @@
             if (currentStep === 1) {
                 var name = document.getElementById('projectName').value.trim();
                 var client = document.getElementById('clientName').value.trim();
-                if (!name) { alert('Please enter the project name.'); return; }
-                if (!client) { alert('Please enter the client name.'); return; }
+                if (!name) { showError('Please enter the project name.'); return; }
+                if (!client) { showError('Please enter the client name.'); return; }
             }
             if (currentStep === 2) {
                 var manager = document.getElementById('projectManager').value;
                 var start = document.getElementById('startDate').value;
                 var end = document.getElementById('endDate').value;
-                if (!manager) { alert('Please select a project manager.'); return; }
-                if (!start) { alert('Please select a start date.'); return; }
-                if (!end) { alert('Please select an estimated end date.'); return; }
+                if (!manager) { showError('Please select a project manager.'); return; }
+                if (!start) { showError('Please select a start date.'); return; }
+                if (!end) { showError('Please select an estimated end date.'); return; }
 
                 document.getElementById('summaryName').textContent = document.getElementById('projectName').value;
                 document.getElementById('summaryClient').textContent = document.getElementById('clientName').value;
@@ -651,54 +536,382 @@
             goToStep(step);
         }
 
+        function calculateDuration(start, end) {
+            if (!start) {
+                return '—';
+            }
+            var startDate = new Date(start);
+            var endDate = end ? new Date(end) : new Date();
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate) {
+                return '—';
+            }
+            var diffDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+            return (diffDays / 30).toFixed(1) + ' mo';
+        }
+
+        function getCsrfToken() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.content : '';
+        }
+
+        function formatDate(rawDate) {
+            if (!rawDate) return '—';
+            var date = new Date(rawDate);
+            if (isNaN(date.getTime())) return rawDate;
+            var options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function formatCurrency(value) {
+            var amount = parseFloat(value) || 0;
+            return '₱' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function mapProjectApiRecord(record) {
+            var actualDate = record.actual_end_date || null;
+            return {
+                id: record.project_id,
+                name: record.project_name || 'Untitled Project',
+                client: record.client_name || '—',
+                budget: record.budget || '',
+                manager: record.project_manager || '',
+                workers: record.worker_count || '0',
+                startDate: record.start_date || '',
+                endDate: record.estimated_end_date || '',
+                actualEndDate: actualDate || '',
+                phase: record.phase || 'Planning',
+                progress: record.completion_percentage || 0,
+                status: record.status || 'On Track',
+                duration: calculateDuration(record.start_date, actualDate),
+                startDateDisplay: formatDate(record.start_date),
+                estEndDateDisplay: formatDate(record.estimated_end_date),
+                actualEndDateDisplay: actualDate ? formatDate(actualDate) : '—'
+            };
+        }
+
+        // ─── PAGINATION VARIABLES ───
+        var projectPageSize = 25;
+        var projectCurrentPage = 1;
+        var projectFilteredData = [];
+
+        // ─── RENDER PROJECT PAGE ───
+        function renderProjectPage(page) {
+            projectCurrentPage = page;
+            var start = (page - 1) * projectPageSize;
+            var end = Math.min(start + projectPageSize, projectFilteredData.length);
+            var pageData = projectFilteredData.slice(start, end);
+            
+            var tbody = document.getElementById('projectTableBody');
+            tbody.innerHTML = '';
+            
+            pageData.forEach(function(project) {
+                tbody.appendChild(createProjectRow(project));
+            });
+            
+            renderProjectPagination();
+        }
+
+        // ─── RENDER PROJECT PAGINATION ───
+        function renderProjectPagination() {
+            var container = document.getElementById('projectPaginationLinks');
+            if (!container) return;
+            
+            var total = projectFilteredData.length;
+            var totalPages = Math.ceil(total / projectPageSize);
+            var current = projectCurrentPage;
+            
+            if (totalPages <= 1) {
+                container.innerHTML = `<span class="pagination-info">Showing all ${total} projects</span>`;
+                return;
+            }
+            
+            var html = '';
+            
+            // Previous
+            html += `<a href="#" onclick="renderProjectPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
+            
+            // Page numbers - show first 3, then dots, then last 2
+            if (totalPages <= 7) {
+                for (var i = 1; i <= totalPages; i++) {
+                    html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+            } else {
+                // First 3 pages
+                for (var i = 1; i <= 3; i++) {
+                    html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                
+                // Dots if current is beyond page 4
+                if (current > 4) {
+                    html += `<span class="dots">...</span>`;
+                }
+                
+                // Pages around current
+                var startPage = Math.max(4, current - 1);
+                var endPage = Math.min(totalPages - 2, current + 1);
+                for (var i = startPage; i <= endPage; i++) {
+                    html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                
+                // Dots if current is before page total-3
+                if (current < totalPages - 3) {
+                    html += `<span class="dots">...</span>`;
+                }
+                
+                // Last 2 pages
+                for (var i = totalPages - 1; i <= totalPages; i++) {
+                    if (i > 3) {
+                        html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                    }
+                }
+            }
+            
+            // Next
+            html += `<a href="#" onclick="renderProjectPage(${current + 1}); return false;" class="${current >= totalPages ? 'disabled' : ''}">»</a>`;
+            
+            container.innerHTML = html;
+        }
+
+        // ─── CHANGE PROJECT PAGE SIZE ───
+        function changeProjectPageSize() {
+            var select = document.getElementById('projectRowsPerPage');
+            projectPageSize = parseInt(select.value) || 25;
+            projectCurrentPage = 1;
+            renderProjectPage(1);
+        }
+
+        // ─── UPDATE STATS (modified) ───
+        function updateStats(projects) {
+            allProjects = projects;
+            
+            var activeProjects = projects.filter(function(p) {
+                return p.status !== 'Completed';
+            });
+            
+            var onSchedule = projects.filter(function(p) {
+                return p.status === 'On Track';
+            });
+            
+            var delayed = projects.filter(function(p) {
+                return p.status === 'Delayed' || p.status === 'At Risk';
+            });
+            
+            var totalProgress = 0;
+            projects.forEach(function(p) {
+                totalProgress += parseFloat(p.progress) || 0;
+            });
+            var avgProgress = projects.length > 0 ? Math.round(totalProgress / projects.length) : 0;
+            
+            document.getElementById('activeProjectsCount').textContent = activeProjects.length;
+            document.getElementById('activeProjectsSub').textContent = activeProjects.length + ' active projects';
+            
+            document.getElementById('onScheduleCount').textContent = onSchedule.length;
+            var onSchedulePercent = activeProjects.length > 0 ? Math.round((onSchedule.length / activeProjects.length) * 100) : 0;
+            document.getElementById('onScheduleSub').textContent = onSchedulePercent + '% of active';
+            
+            document.getElementById('delayedCount').textContent = delayed.length;
+            document.getElementById('delayedSub').textContent = delayed.length > 0 ? 'Needs attention' : 'All projects on track';
+            
+            document.getElementById('avgCompletion').textContent = avgProgress + '%';
+            document.getElementById('avgCompletionSub').textContent = 'Across ' + projects.length + ' projects';
+            
+            projectFilteredData = projects;
+            renderProjectPage(1);
+        }
+
+        // ─── FETCH PROJECTS (modified) ───
+        function fetchProjects() {
+            fetch('/api/projects', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Unable to load projects');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                var projects = data.map(function(item) {
+                    return mapProjectApiRecord(item);
+                });
+                
+                // Update stats and render first page
+                updateStats(projects);
+            })
+            .catch(function(error) {
+                console.error(error);
+                showError('Failed to load projects.');
+            });
+        }
+
+        function updateProjectRow(row, project) {
+            row.dataset.projectId = project.id || '';
+            row.dataset.manager = project.manager || '';
+            row.dataset.workers = project.workers || '';
+            row.dataset.startDateRaw = project.startDate || '';
+            row.dataset.endDateRaw = project.endDate || '';
+            row.dataset.actualEndDate = project.actualEndDate || '';
+            row.dataset.duration = project.duration || '';
+            row.dataset.phase = project.phase || 'Planning';
+            row.dataset.progress = project.progress || 0;
+            row.dataset.status = project.status || 'On Track';
+            row.dataset.budget = project.budget || '';
+
+            row.onclick = function() {
+                openUpdateModal(
+                    this,
+                    project.id,
+                    project.name,
+                    project.client,
+                    project.budget,
+                    project.startDateDisplay,
+                    project.estEndDateDisplay,
+                    project.actualEndDateDisplay,
+                    project.duration,
+                    project.phase,
+                    project.status,
+                    project.progress,
+                    project.manager,
+                    project.workers,
+                    project.startDate,
+                    project.endDate
+                );
+            };
+
+            row.innerHTML = '' +
+                '<td><strong>' + project.name + '</strong></td>' +
+                '<td>' + project.client + '</td>' +
+                '<td>' + (project.budget ? formatCurrency(project.budget) : '—') + '</td>' +
+                '<td>' + project.startDateDisplay + '</td>' +
+                '<td>' + project.estEndDateDisplay + '</td>' +
+                '<td>' + (project.actualEndDateDisplay || '—') + '</td>' +
+                '<td>' + project.duration + '</td>' +
+                '<td><span class="phase-badge">' + project.phase + '</span></td>' +
+                '<td>' +
+                    '<div class="progress-cell">' +
+                        '<div class="mini-bar"><div class="fill" style="width:' + project.progress + '%;"></div></div>' +
+                    '</div>' +
+                '</td>' +
+                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'On Track' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + project.status + '</span></td>';
+        }
+
+        function createProjectRow(project) {
+            var tr = document.createElement('tr');
+            updateProjectRow(tr, project);
+            return tr;
+        }
+
+        // ─── SAVE PROJECT ───
         function saveProject() {
-            closeModal();
-            showSuccess();
-        }
+            var name = document.getElementById('projectName').value.trim();
+            var client = document.getElementById('clientName').value.trim();
+            var manager = document.getElementById('projectManager').value.trim();
+            var workers = document.getElementById('workerCount').value.trim();
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
 
-        // ─── SUCCESS NOTIFICATION ───
-        function showSuccess() {
-            var notif = document.getElementById('successNotification');
-            notif.style.display = 'block';
-            setTimeout(function() {
-                closeSuccess();
-            }, 5000);
-        }
+            if (!name) { showError('Please enter the project name.'); return; }
+            if (!client) { showError('Please enter the client name.'); return; }
+            if (!manager) { showError('Please select a project manager.'); return; }
+            if (!startDate) { showError('Please select a start date.'); return; }
+            if (!endDate) { showError('Please select an estimated end date.'); return; }
 
-        function closeSuccess() {
-            document.getElementById('successNotification').style.display = 'none';
+            var payload = {
+                project_name: name,
+                client_name: client,
+                project_manager: manager,
+                start_date: startDate,
+                estimated_end_date: endDate,
+                actual_end_date: '',
+                worker_count: workers ? parseInt(workers, 10) : 0,
+                phase: 'Planning',
+                completion_percentage: 0,
+                status: 'On Track'
+            };
+
+            fetch('/api/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(err) {
+                        throw new Error(err.message || 'Failed to save project');
+                    });
+                }
+                return response.json();
+            })
+            .then(function(savedProject) {
+                var project = mapProjectApiRecord(savedProject);
+                var tbody = document.getElementById('projectTableBody');
+                if (tbody) {
+                    tbody.appendChild(createProjectRow(project));
+                }
+                // Update stats
+                allProjects.push(project);
+                updateStats(allProjects);
+                closeModal();
+                showSuccess('Project added successfully!');
+            })
+            .catch(function(error) {
+                console.error(error);
+                showError(error.message || 'Failed to save project.');
+            });
         }
 
         document.getElementById('projectModal').addEventListener('click', function(e) {
             if (e.target === this) { closeModal(); }
         });
 
-        document.addEventListener('click', function(e) {
-            if (document.getElementById('successNotification').style.display === 'block') {
-                if (!e.target.closest('.success-notification')) {
-                    closeSuccess();
-                }
-            }
-        });
+        // ─── UPDATE PROJECT OVERVIEW MODAL ───
+        function openUpdateModal(
+            row,
+            projectId,
+            projectName, clientName, budget, startDate, estEndDate, actualEndDate,
+            duration, phase, status, progress, manager, workers, startDateRaw, endDateRaw
+        ) {
+            currentProjectRow = row;
 
-        // ─── UPDATE PROJECT MODAL ───
-        function openUpdateModal(projectName, clientName, progress) {
+            currentEditData = {
+                id: projectId,
+                name: projectName,
+                client: clientName,
+                budget: budget || '',
+                manager: manager || '',
+                workers: workers || '',
+                startDate: startDateRaw || '',
+                endDate: endDateRaw || '',
+                actualEndDate: actualEndDate || '',
+                phase: phase,
+                progress: progress || 0,
+                status: status || 'On Track',
+                startDateDisplay: startDate,
+                estEndDateDisplay: estEndDate,
+                actualEndDateDisplay: actualEndDate || '—',
+                duration: duration
+            };
+
             document.getElementById('updateProjectName').textContent = projectName;
             document.getElementById('updateClientName').textContent = clientName;
-            document.getElementById('updateOverallProgress').textContent = progress + '%';
-            document.getElementById('updateOverallFill').style.width = progress + '%';
+            document.getElementById('updateBudget').textContent = budget ? formatCurrency(budget) : '—';
+            document.getElementById('updateStartDate').textContent = startDate;
+            document.getElementById('updateEstEndDate').textContent = estEndDate;
+            document.getElementById('updateActualEndDate').textContent = actualEndDate || '—';
+            document.getElementById('updateDuration').textContent = duration;
+            document.getElementById('updatePhase').textContent = phase;
 
-            // Reset all category details to closed
-            for (var i = 1; i <= 4; i++) {
-                var details = document.getElementById('cat' + i + 'Details');
-                if (details) {
-                    details.style.display = 'none';
-                }
-                var toggle = document.querySelector('#category' + i + ' .category-toggle');
-                if (toggle) {
-                    toggle.classList.remove('open');
-                }
-            }
+            var statusEl = document.getElementById('updateStatus');
+            statusEl.textContent = status;
+            statusEl.className = 'status-badge';
+            if (status === 'On Track') statusEl.classList.add('on-track');
+            else if (status === 'Delayed') statusEl.classList.add('delayed');
+            else if (status === 'Completed') statusEl.classList.add('completed');
+            else statusEl.classList.add('at-risk');
 
             document.getElementById('updateModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -709,70 +922,197 @@
             document.body.style.overflow = '';
         }
 
-        // ─── CATEGORY TOGGLE ───
-        function toggleCategory(catId) {
-            var details = document.getElementById('cat' + catId + 'Details');
-            var toggle = document.querySelector('#category' + catId + ' .category-toggle');
-
-            if (details.style.display === 'none') {
-                details.style.display = 'block';
-                toggle.classList.add('open');
-            } else {
-                details.style.display = 'none';
-                toggle.classList.remove('open');
-            }
-        }
-
-        // ─── AUTO-UPDATE USED VALUE AND PROGRESS ───
-        function updateUsed(inputId, materialName, planned) {
-            var input = document.getElementById(inputId);
-            var newValue = parseFloat(input.value);
-            var oldValue = parseFloat(input.defaultValue);
-
-            if (isNaN(newValue) || newValue < 0) {
-                alert('Please enter a valid number for ' + materialName);
-                input.value = oldValue || 0;
+        // ─── DELETE PROJECT ───
+        function deleteProject() {
+            if (!currentProjectRow) {
+                showError('No project selected to delete.');
                 return;
             }
 
-            // Calculate progress percentage
-            var progress = Math.round((newValue / planned) * 100);
-            if (progress > 100) progress = 100;
-
-            // Find the progress span for this row
-            var row = input.closest('tr');
-            var progressSpan = row.querySelector('.progress-percent');
-
-            // Update the progress display
-            if (progressSpan) {
-                progressSpan.textContent = progress + '%';
-                // Color code the progress
-                if (progress < 30) {
-                    progressSpan.style.color = '#d32f2f';
-                } else if (progress < 70) {
-                    progressSpan.style.color = '#e65100';
-                } else {
-                    progressSpan.style.color = '#2e7d32';
+            var projectId = currentProjectRow.dataset.projectId;
+            openDeleteModal('Are you sure you want to permanently delete this project?', function() {
+                if (!projectId) {
+                    currentProjectRow.remove();
+                    // Update stats
+                    allProjects = allProjects.filter(function(p) {
+                        return p.id !== currentEditData.id;
+                    });
+                    updateStats(allProjects);
+                    closeUpdateModal();
+                    showSuccess('Project deleted successfully!');
+                    currentProjectRow = null;
+                    return;
                 }
-            }
 
-            // Highlight the input to show it's been updated
-            input.classList.add('updated');
-
-            // Update the default value
-            input.defaultValue = newValue;
-
-            // Log for debugging
-            console.log(materialName + ' updated to ' + newValue + ' | Progress: ' + progress + '%');
-
-            // Here you would send an AJAX request to save to the database
+                fetch('/api/projects/' + projectId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        return response.json().then(function(err) {
+                            throw new Error(err.message || 'Failed to delete project');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(function() {
+                    currentProjectRow.remove();
+                    // Update stats
+                    allProjects = allProjects.filter(function(p) {
+                        return p.id !== currentEditData.id;
+                    });
+                    updateStats(allProjects);
+                    closeUpdateModal();
+                    showSuccess('Project deleted successfully!');
+                    currentProjectRow = null;
+                })
+                .catch(function(error) {
+                    console.error(error);
+                    showError(error.message || 'Failed to delete project.');
+                });
+            });
         }
 
+        // ─── EDIT PROJECT MODAL ───
+        function openEditProjectModal() {
+            if (!currentEditData) {
+                showError('No project data to edit.');
+                return;
+            }
+            document.getElementById('editProjectOriginalName').value = currentEditData.name;
+            document.getElementById('editPhase').value = currentEditData.phase || 'Planning';
+            document.getElementById('editStartDate').value = currentEditData.startDate || '';
+            document.getElementById('editEstEndDate').value = currentEditData.endDate || '';
+            document.getElementById('editActualEndDate').value = currentEditData.actualEndDate || '';
+
+            closeUpdateModal();
+            document.getElementById('editProjectModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEditProjectModal() {
+            document.getElementById('editProjectModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function saveEditProject() {
+            if (!currentProjectRow || !currentEditData) {
+                showError('No project selected to edit.');
+                return;
+            }
+
+            var phase = document.getElementById('editPhase').value;
+            var start = document.getElementById('editStartDate').value;
+            var estEnd = document.getElementById('editEstEndDate').value;
+            var actualEnd = document.getElementById('editActualEndDate').value;
+
+            if (!start || !estEnd) {
+                showError('Please fill in all required fields (Start Date, Estimated End Date).');
+                return;
+            }
+
+            var payload = {
+                phase: phase,
+                start_date: start,
+                estimated_end_date: estEnd,
+                actual_end_date: actualEnd || null
+            };
+
+            fetch('/api/projects/' + currentEditData.id, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(err) {
+                        throw new Error(err.message || 'Failed to save project changes');
+                    });
+                }
+                return response.json();
+            })
+            .then(function(updatedProject) {
+                currentEditData.phase = phase;
+                currentEditData.startDate = start;
+                currentEditData.endDate = estEnd;
+                currentEditData.actualEndDate = actualEnd || '';
+                currentEditData.startDateDisplay = formatDate(start);
+                currentEditData.estEndDateDisplay = formatDate(estEnd);
+                currentEditData.actualEndDateDisplay = actualEnd ? formatDate(actualEnd) : '—';
+                currentEditData.duration = calculateDuration(start, actualEnd);
+
+                updateProjectRow(currentProjectRow, currentEditData);
+                
+                // Update stats
+                var index = allProjects.findIndex(function(p) {
+                    return p.id === currentEditData.id;
+                });
+                if (index !== -1) {
+                    allProjects[index] = currentEditData;
+                    updateStats(allProjects);
+                }
+                
+                closeEditProjectModal();
+                showSuccess('Project "' + currentEditData.name + '" updated successfully!');
+                openUpdateModal(
+                    currentProjectRow,
+                    currentEditData.id,
+                    currentEditData.name,
+                    currentEditData.client,
+                    currentEditData.budget,
+                    currentEditData.startDateDisplay,
+                    currentEditData.estEndDateDisplay,
+                    currentEditData.actualEndDateDisplay,
+                    currentEditData.duration,
+                    currentEditData.phase,
+                    currentEditData.status,
+                    currentEditData.progress,
+                    currentEditData.manager,
+                    currentEditData.workers,
+                    currentEditData.startDate,
+                    currentEditData.endDate
+                );
+            })
+            .catch(function(error) {
+                console.error(error);
+                showError(error.message || 'Failed to save project changes.');
+            });
+        }
+
+        // ─── CLOSE MODALS ON BACKDROP CLICK ───
         document.getElementById('updateModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeUpdateModal();
+            if (e.target === this) { closeUpdateModal(); }
+        });
+        document.getElementById('editProjectModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeEditProjectModal(); }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (document.getElementById('errorNotification').style.display === 'block') {
+                if (!e.target.closest('.error-notification')) { closeError(); }
+            }
+            if (document.getElementById('successNotification').style.display === 'block') {
+                if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
         });
+
+        function initializeProjectPage() {
+            fetchProjects();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeProjectPage);
+        } else {
+            initializeProjectPage();
+        }
     </script>
 
 </body>

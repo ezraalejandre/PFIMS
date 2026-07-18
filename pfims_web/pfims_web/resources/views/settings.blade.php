@@ -35,7 +35,7 @@
             </a>
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>User</span>
+                <span>{{ auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -61,10 +61,13 @@
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
-                        Log out
-                    </a>
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>
@@ -119,16 +122,9 @@
                     <div class="security-item">
                         <div class="left">
                             <div class="label">Password</div>
-                            <div class="desc">Last changed 3 months ago</div>
+                            <div class="desc">Last changed {{ auth()->user()->updated_at ? \Carbon\Carbon::parse(auth()->user()->updated_at)->diffForHumans() : 'Never' }}</div>
                         </div>
-                        <button class="btn-change" onclick="alert('Change password functionality coming soon!')">Change Password</button>
-                    </div>
-                    <div class="security-item">
-                        <div class="left">
-                            <div class="label">Session Management</div>
-                            <div class="desc">You are logged in on 2 devices</div>
-                        </div>
-                        <button class="btn-change" onclick="alert('Session management coming soon!')">Manage Sessions</button>
+                        <button class="btn-change" onclick="openChangePasswordModal()">Change Password</button>
                     </div>
                 </div>
 
@@ -422,6 +418,49 @@
                     <button class="btn-cancel" onclick="closeAddUserModal()" style="background: transparent; color: #888; border: 1px solid #ddd; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
                     <button class="btn-save" onclick="saveNewUser()" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Add User</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── CHANGE PASSWORD MODAL ─── -->
+    <div id="changePasswordModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+        <div class="modal-container" style="background: #fff; width: 480px; max-width: 95%; border-radius: 16px; padding: 30px 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 1.4rem; font-weight: 600; color: #1a2b3c; margin: 0;">Change Password</h2>
+                <button class="modal-close" onclick="closeChangePasswordModal()" style="background: none; border: none; font-size: 2rem; cursor: pointer; color: #888; line-height: 1; transition: 0.2s;">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="changePasswordForm" onsubmit="submitChangePassword(event)">
+                    <div class="form-group" style="margin-bottom: 18px;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">Current Password <span style="color: #d32f2f;">*</span></label>
+                        <div style="position: relative;">
+                            <input type="password" id="currentPassword" placeholder="Enter your current password" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required>
+                            <button type="button" onclick="togglePasswordVisibility('currentPassword', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem;"></button>
+                        </div>
+                        <div id="currentPasswordError" style="color: #d32f2f; font-size: 0.8rem; margin-top: 4px; display: none;"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 18px;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">New Password <span style="color: #d32f2f;">*</span></label>
+                        <div style="position: relative;">
+                            <input type="password" id="newPassword" placeholder="Enter new password (min 8 characters)" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required minlength="8">
+                            <button type="button" onclick="togglePasswordVisibility('newPassword', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem;"></button>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">Password must be at least 8 characters long</div>
+                        <div id="newPasswordError" style="color: #d32f2f; font-size: 0.8rem; margin-top: 4px; display: none;"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 18px;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">Confirm New Password <span style="color: #d32f2f;">*</span></label>
+                        <div style="position: relative;">
+                            <input type="password" id="confirmPassword" placeholder="Re-enter new password" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required>
+                            <button type="button" onclick="togglePasswordVisibility('confirmPassword', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem;"></button>
+                        </div>
+                        <div id="confirmPasswordError" style="color: #d32f2f; font-size: 0.8rem; margin-top: 4px; display: none;"></div>
+                    </div>
+                    <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e9ecef; padding-top: 20px;">
+                        <button type="button" class="btn-cancel" onclick="closeChangePasswordModal()" style="background: transparent; color: #888; border: 1px solid #ddd; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Cancel</button>
+                        <button type="submit" class="btn-save" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Update Password</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -724,6 +763,7 @@
                 alert('Failed to delete item.');
             });
         }
+        
 
         // ─── SUCCESS NOTIFICATION ───
         function showSuccess(message) {
@@ -862,6 +902,173 @@
 
         // ─── INIT ───
         fetchConfigItems(currentConfigType);
+
+        // ─── CHANGE PASSWORD FUNCTIONS ───
+
+        function openChangePasswordModal() {
+            // Reset form
+            document.getElementById('changePasswordForm').reset();
+            document.getElementById('currentPasswordError').style.display = 'none';
+            document.getElementById('newPasswordError').style.display = 'none';
+            document.getElementById('confirmPasswordError').style.display = 'none';
+            
+            // Show modal
+            document.getElementById('changePasswordModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('changePasswordModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function togglePasswordVisibility(inputId, button) {
+            var input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁';
+            }
+        }
+
+        function submitChangePassword(event) {
+            event.preventDefault();
+            
+            // Clear previous errors
+            document.getElementById('currentPasswordError').style.display = 'none';
+            document.getElementById('newPasswordError').style.display = 'none';
+            document.getElementById('confirmPasswordError').style.display = 'none';
+            
+            var currentPassword = document.getElementById('currentPassword').value;
+            var newPassword = document.getElementById('newPassword').value;
+            var confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validate
+            var hasError = false;
+            
+            if (newPassword.length < 8) {
+                document.getElementById('newPasswordError').textContent = 'Password must be at least 8 characters long';
+                document.getElementById('newPasswordError').style.display = 'block';
+                hasError = true;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
+                document.getElementById('confirmPasswordError').style.display = 'block';
+                hasError = true;
+            }
+            
+            if (hasError) {
+                return;
+            }
+            
+            // Send request to server
+            var payload = {
+                current_password: currentPassword,
+                new_password: newPassword,
+                new_password_confirmation: confirmPassword,
+                _token: csrfToken
+            };
+            
+            fetch('/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success) {
+                    closeChangePasswordModal();
+                    showSuccess('Password updated successfully!');
+                    // Update the "Last changed" text
+                    var descElement = document.querySelector('.security-item .left .desc');
+                    if (descElement) {
+                        descElement.textContent = 'Last changed just now';
+                    }
+                } else {
+                    if (data.message && data.message.includes('current password')) {
+                        document.getElementById('currentPasswordError').textContent = data.message;
+                        document.getElementById('currentPasswordError').style.display = 'block';
+                    } else {
+                        alert(data.message || 'Failed to update password. Please try again.');
+                    }
+                }
+            })
+            .catch(function(err) {
+                console.error('Error:', err);
+                alert('An error occurred. Please try again.');
+            });
+        }
+
+        // ─── CLOSE CHANGE PASSWORD MODAL ON BACKDROP CLICK ───
+        document.addEventListener('DOMContentLoaded', function() {
+            var passwordModal = document.getElementById('changePasswordModal');
+            if (passwordModal) {
+                passwordModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeChangePasswordModal();
+                    }
+                });
+            }
+        });
+
+        // Add this to your JavaScript
+        document.getElementById('newPassword').addEventListener('input', function() {
+            var password = this.value;
+            var strengthIndicator = document.getElementById('passwordStrength');
+            if (!strengthIndicator) {
+                var indicator = document.createElement('div');
+                indicator.id = 'passwordStrength';
+                indicator.style.marginTop = '4px';
+                indicator.style.fontSize = '0.75rem';
+                this.parentElement.parentElement.appendChild(indicator);
+            }
+            
+            var strength = checkPasswordStrength(password);
+            var indicator = document.getElementById('passwordStrength');
+            indicator.textContent = 'Strength: ' + strength.text;
+            indicator.style.color = strength.color;
+        });
+
+        function checkPasswordStrength(password) {
+            var strength = {
+                text: 'Weak',
+                color: '#d32f2f'
+            };
+            
+            if (password.length >= 8) {
+                var hasUpperCase = /[A-Z]/.test(password);
+                var hasLowerCase = /[a-z]/.test(password);
+                var hasNumbers = /\d/.test(password);
+                var hasSymbols = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+                
+                var score = 0;
+                if (hasUpperCase) score++;
+                if (hasLowerCase) score++;
+                if (hasNumbers) score++;
+                if (hasSymbols) score++;
+                
+                if (score >= 4) {
+                    strength = { text: 'Strong', color: '#2e7d32' };
+                } else if (score >= 3) {
+                    strength = { text: 'Good', color: '#f57c00' };
+                } else if (score >= 2) {
+                    strength = { text: 'Fair', color: '#f57c00' };
+                } else {
+                    strength = { text: 'Weak', color: '#d32f2f' };
+                }
+            }
+            
+            return strength;
+        }
     </script>
 
 </body>
