@@ -162,6 +162,13 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
   // null = All
   StockStatus? _inventoryStatusFilter;
 
+  // Pagination — one page cursor per tab, reset whenever that tab's
+  // filtered list could change shape (search, status filter, refresh).
+  static const int _pageSize = 10;
+  int _inventoryPage = 0;
+  int _itemsPage = 0;
+  int _suppliersPage = 0;
+
   @override
   void initState() {
     super.initState();
@@ -206,6 +213,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
         setState(() {
           _items = parsed;
           _loadingItems = false;
+          _inventoryPage = 0;
         });
       }
     } catch (e) {
@@ -229,6 +237,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
         setState(() {
           _suppliers = data.map((json) => Supplier.fromJson(json)).toList();
           _loadingSuppliers = false;
+          _suppliersPage = 0;
         });
       }
     } catch (e) {
@@ -296,6 +305,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
       setState(() {
         _itemRecords = parsed;
         _loadingItemRecords = false;
+        _itemsPage = 0;
       });
     } catch (e) {
       if (mounted) {
@@ -395,7 +405,10 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
             _SearchField(
               controller: _inventorySearchController,
               hint: 'Search by item, category, or project...',
-              onChanged: (v) => setState(() => _inventoryQuery = v),
+              onChanged: (v) => setState(() {
+                _inventoryQuery = v;
+                _inventoryPage = 0;
+              }),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -405,17 +418,26 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                 _FilterChip(
                   label: 'All',
                   selected: _inventoryStatusFilter == null,
-                  onTap: () => setState(() => _inventoryStatusFilter = null),
+                  onTap: () => setState(() {
+                    _inventoryStatusFilter = null;
+                    _inventoryPage = 0;
+                  }),
                 ),
                 _FilterChip(
                   label: 'Stock In',
                   selected: _inventoryStatusFilter == StockStatus.stockIn,
-                  onTap: () => setState(() => _inventoryStatusFilter = StockStatus.stockIn),
+                  onTap: () => setState(() {
+                    _inventoryStatusFilter = StockStatus.stockIn;
+                    _inventoryPage = 0;
+                  }),
                 ),
                 _FilterChip(
                   label: 'Stock Out',
                   selected: _inventoryStatusFilter == StockStatus.stockOut,
-                  onTap: () => setState(() => _inventoryStatusFilter = StockStatus.stockOut),
+                  onTap: () => setState(() {
+                    _inventoryStatusFilter = StockStatus.stockOut;
+                    _inventoryPage = 0;
+                  }),
                 ),
               ],
             ),
@@ -425,13 +447,19 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
         return _SearchField(
           controller: _itemsSearchController,
           hint: 'Search by item, category, or supplier...',
-          onChanged: (v) => setState(() => _itemsQuery = v),
+          onChanged: (v) => setState(() {
+            _itemsQuery = v;
+            _itemsPage = 0;
+          }),
         );
       case 2:
         return _SearchField(
           controller: _suppliersSearchController,
           hint: 'Search by supplier, phone, or address...',
-          onChanged: (v) => setState(() => _suppliersQuery = v),
+          onChanged: (v) => setState(() {
+            _suppliersQuery = v;
+            _suppliersPage = 0;
+          }),
         );
       default:
         return const SizedBox.shrink();
@@ -442,7 +470,35 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final isCompact = MediaQuery.of(context).size.width < 380;
-    
+
+    final filteredInventory = _filteredInventoryItems;
+    final inventoryTotal = filteredInventory.length;
+    final inventoryMaxPage = inventoryTotal == 0 ? 0 : (inventoryTotal - 1) ~/ _pageSize;
+    final inventoryPage = _inventoryPage.clamp(0, inventoryMaxPage);
+    final inventoryStart = inventoryPage * _pageSize;
+    final inventoryEnd = (inventoryStart + _pageSize) > inventoryTotal
+        ? inventoryTotal
+        : (inventoryStart + _pageSize);
+    final pagedInventory = filteredInventory.sublist(inventoryStart, inventoryEnd);
+
+    final filteredItems = _filteredItemRecords;
+    final itemsTotal = filteredItems.length;
+    final itemsMaxPage = itemsTotal == 0 ? 0 : (itemsTotal - 1) ~/ _pageSize;
+    final itemsPage = _itemsPage.clamp(0, itemsMaxPage);
+    final itemsStart = itemsPage * _pageSize;
+    final itemsEnd = (itemsStart + _pageSize) > itemsTotal ? itemsTotal : (itemsStart + _pageSize);
+    final pagedItems = filteredItems.sublist(itemsStart, itemsEnd);
+
+    final filteredSuppliers = _filteredSuppliers;
+    final suppliersTotal = filteredSuppliers.length;
+    final suppliersMaxPage = suppliersTotal == 0 ? 0 : (suppliersTotal - 1) ~/ _pageSize;
+    final suppliersPage = _suppliersPage.clamp(0, suppliersMaxPage);
+    final suppliersStart = suppliersPage * _pageSize;
+    final suppliersEnd = (suppliersStart + _pageSize) > suppliersTotal
+        ? suppliersTotal
+        : (suppliersStart + _pageSize);
+    final pagedSuppliers = filteredSuppliers.sublist(suppliersStart, suppliersEnd);
+
     return Scaffold(
       appBar: AppHeader(email: widget.email),
       body: SafeArea(
@@ -471,7 +527,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                     Text(
                                       'INVENTORY',
                                       style: TextStyle(
-                                        fontSize: 20,
+                                        fontSize: 27,
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.dark,
                                       ),
@@ -479,7 +535,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                     SizedBox(height: 2),
                                     Text(
                                       'construction operation overview',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      style: TextStyle(fontSize: 14, color: Colors.grey),
                                     ),
                                   ],
                                 ),
@@ -500,12 +556,12 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                       },
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: kDarkPill,
-                                        side: const BorderSide(color: kDarkPill),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                        textStyle: const TextStyle(fontSize: 10),
+                                        side: const BorderSide(color: kDarkPill, width: 1.4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                                       ),
-                                      icon: const Icon(Icons.inventory_2_outlined, size: 14),
+                                      icon: const Icon(Icons.inventory_2_outlined, size: 19),
                                       label: const Text('Add Item'),
                                     )
                                   else
@@ -529,11 +585,11 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                         backgroundColor: kDarkPill,
                                         foregroundColor: Colors.white,
                                         elevation: 0,
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                        textStyle: const TextStyle(fontSize: 10),
+                                        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                                       ),
-                                      icon: const Icon(Icons.add, size: 14),
+                                      icon: const Icon(Icons.add, size: 19),
                                       label: Text(
                                         _currentTab == 0 ? 'Add Transaction' : 'Add Supplier',
                                       ),
@@ -558,8 +614,8 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                             unselectedLabelColor: Colors.black54,
                             indicatorColor: AppColors.orange,
                             indicatorSize: TabBarIndicatorSize.label,
-                            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
                             tabs: const [
                               Tab(text: 'Inventory'),
                               Tab(text: 'Items'),
@@ -590,20 +646,41 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                         ],
                                       ),
                                     )
-                                  : _InventoryList(
-                                      items: _filteredInventoryItems,
-                                      formatDate: _formatDate,
-                                      onTap: (item) {
-                                        showDialog(
-                                          context: context,
-                                          barrierDismissible: false,
-                                          builder: (_) => _InventoryDetailsModal(
-                                            item: item,
-                                            rootContext: context,
-                                            onChanged: _loadInventoryItems,
+                                  : Column(
+                                      children: [
+                                        Expanded(
+                                          child: _InventoryList(
+                                            items: pagedInventory,
+                                            formatDate: _formatDate,
+                                            onTap: (item) {
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => _InventoryDetailsModal(
+                                                  item: item,
+                                                  rootContext: context,
+                                                  onChanged: _loadInventoryItems,
+                                                ),
+                                              );
+                                            },
                                           ),
-                                        );
-                                      },
+                                        ),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                                          ),
+                                          child: _PaginationFooter(
+                                            start: inventoryStart,
+                                            end: inventoryEnd,
+                                            total: inventoryTotal,
+                                            label: 'transactions',
+                                            canGoBack: inventoryPage > 0,
+                                            canGoForward: inventoryEnd < inventoryTotal,
+                                            onBack: () => setState(() => _inventoryPage = inventoryPage - 1),
+                                            onForward: () => setState(() => _inventoryPage = inventoryPage + 1),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                           // Items Tab
                           _loadingItemRecords
@@ -619,19 +696,40 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                         ],
                                       ),
                                     )
-                                  : _ItemsList(
-                                      items: _filteredItemRecords,
-                                      onTap: (item) {
-                                        showDialog(
-                                          context: context,
-                                          barrierDismissible: false,
-                                          builder: (_) => _ItemDetailsModal(
-                                            item: item,
-                                            rootContext: context,
-                                            onChanged: _refreshAfterItemChange,
+                                  : Column(
+                                      children: [
+                                        Expanded(
+                                          child: _ItemsList(
+                                            items: pagedItems,
+                                            onTap: (item) {
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (_) => _ItemDetailsModal(
+                                                  item: item,
+                                                  rootContext: context,
+                                                  onChanged: _refreshAfterItemChange,
+                                                ),
+                                              );
+                                            },
                                           ),
-                                        );
-                                      },
+                                        ),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                                          ),
+                                          child: _PaginationFooter(
+                                            start: itemsStart,
+                                            end: itemsEnd,
+                                            total: itemsTotal,
+                                            label: 'items',
+                                            canGoBack: itemsPage > 0,
+                                            canGoForward: itemsEnd < itemsTotal,
+                                            onBack: () => setState(() => _itemsPage = itemsPage - 1),
+                                            onForward: () => setState(() => _itemsPage = itemsPage + 1),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                           // Suppliers Tab
                           _loadingSuppliers
@@ -647,7 +745,28 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                         ],
                                       ),
                                     )
-                                  : _SuppliersList(suppliers: _filteredSuppliers, onChanged: _loadSuppliers),
+                                  : Column(
+                                      children: [
+                                        Expanded(
+                                          child: _SuppliersList(suppliers: pagedSuppliers, onChanged: _loadSuppliers),
+                                        ),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                                          ),
+                                          child: _PaginationFooter(
+                                            start: suppliersStart,
+                                            end: suppliersEnd,
+                                            total: suppliersTotal,
+                                            label: 'suppliers',
+                                            canGoBack: suppliersPage > 0,
+                                            canGoForward: suppliersEnd < suppliersTotal,
+                                            onBack: () => setState(() => _suppliersPage = suppliersPage - 1),
+                                            onForward: () => setState(() => _suppliersPage = suppliersPage + 1),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                         ],
                       ),
                     ),
@@ -659,6 +778,87 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
         ),
       ),
       bottomNavigationBar: AppBottomNavBar(currentIndex: 3, email: widget.email),
+    );
+  }
+}
+
+/// Pagination footer — "start–end out of total <label>" alongside prev/next
+/// controls. Shared by the Inventory, Items, and Suppliers tabs. Styled to
+/// match budget_tracking_screen's flat, borderless footer (no background
+/// fill/shadow of its own — callers wrap it with a top divider instead).
+class _PaginationFooter extends StatelessWidget {
+  final int start;
+  final int end;
+  final int total;
+  final String label;
+  final bool canGoBack;
+  final bool canGoForward;
+  final VoidCallback onBack;
+  final VoidCallback onForward;
+
+  const _PaginationFooter({
+    required this.start,
+    required this.end,
+    required this.total,
+    required this.label,
+    required this.canGoBack,
+    required this.canGoForward,
+    required this.onBack,
+    required this.onForward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (total == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "${start + 1}-$end out of $total $label",
+            style: TextStyle(fontSize: 11.5, color: Colors.grey[600], fontWeight: FontWeight.w500),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: canGoBack ? onBack : null,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Icon(Icons.chevron_left, size: 18,
+                      color: canGoBack ? Colors.black87 : Colors.grey[350]),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: canGoForward ? onForward : null,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Icon(Icons.chevron_right, size: 18,
+                      color: canGoForward ? Colors.black87 : Colors.grey[350]),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -686,7 +886,7 @@ class _StatsGrid extends StatelessWidget {
     final isCompact = MediaQuery.of(context).size.width < 380;
     final spacing = isCompact ? 6.0 : 10.0;
     final padding = isCompact ? 8.0 : 12.0;
-    
+
     return Column(
       children: [
         Row(
@@ -768,7 +968,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompact = MediaQuery.of(context).size.width < 380;
-    
+
     final card = Container(
       padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
@@ -867,11 +1067,9 @@ class _InventoryList extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.card,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: const [
-                BoxShadow(color: Color(0x0F000000), blurRadius: 6, offset: Offset(0, 2)),
-              ],
+              border: Border.all(color: Colors.grey[200]!),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -880,7 +1078,7 @@ class _InventoryList extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.dark)),
+                      Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark)),
                       const SizedBox(height: 2),
                       Text('${item.category} · ${item.unit}', style: const TextStyle(fontSize: 11.5, color: Colors.black54)),
                       if (!isIn && (item.projectName ?? '').isNotEmpty && item.projectName != '-')
@@ -961,15 +1159,9 @@ class _SuppliersList extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.card,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0F000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: Colors.grey[200]!),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -981,7 +1173,7 @@ class _SuppliersList extends StatelessWidget {
                       Text(
                         supplier.name,
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppColors.dark,
                         ),
@@ -1049,11 +1241,9 @@ class _ItemsList extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.card,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: const [
-                BoxShadow(color: Color(0x0F000000), blurRadius: 6, offset: Offset(0, 2)),
-              ],
+              border: Border.all(color: Colors.grey[200]!),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1062,7 +1252,7 @@ class _ItemsList extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.dark)),
+                      Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.dark)),
                       const SizedBox(height: 2),
                       Text('${item.categoryName} · ${item.unitName}', style: const TextStyle(fontSize: 11.5, color: Colors.black54)),
                       const SizedBox(height: 2),
@@ -1585,7 +1775,10 @@ class _FilterChip extends StatelessWidget {
 
 // Searchable dropdown field — tapping opens a bottom sheet with a search
 // box so long lists of items/categories/units/suppliers/projects are easy
-// to filter instead of scrolling a plain dropdown menu.
+// to filter instead of scrolling a plain dropdown menu. The sheet itself
+// caps the visible option list to roughly five rows (see
+// _SearchPickerSheet) so it never balloons to fill the screen — beyond
+// that it scrolls, with a visible scrollbar as a clear affordance.
 class _SearchableDropdownField extends StatelessWidget {
   final int? value;
   final String hint;
@@ -1680,6 +1873,11 @@ class _SearchPickerSheetState extends State<_SearchPickerSheet> {
   final _controller = TextEditingController();
   String _query = '';
 
+  // Roughly five rows tall (~56dp each including the divider) before the
+  // list scrolls — keeps the sheet compact and predictable regardless of
+  // how many options the list holds.
+  static const double _listMaxHeight = 280;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -1704,7 +1902,7 @@ class _SearchPickerSheetState extends State<_SearchPickerSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
-        constraints: BoxConstraints(maxHeight: screenHeight * 0.75),
+        constraints: BoxConstraints(maxHeight: screenHeight * 0.65),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1760,33 +1958,38 @@ class _SearchPickerSheetState extends State<_SearchPickerSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            Flexible(
-              child: filtered.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Text(
-                        _query.isEmpty ? 'No options available.' : 'No matches for "${_query.trim()}"',
-                        style: const TextStyle(color: Colors.black45),
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.only(bottom: 8),
-                      itemCount: filtered.length,
-                      separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade200),
-                      itemBuilder: (context, index) {
-                        final item = filtered[index];
-                        final subtitle = widget.subtitleKey != null
-                            ? item[widget.subtitleKey!] as String?
-                            : null;
-                        return ListTile(
-                          title: Text(item[widget.nameKey] as String? ?? ''),
-                          subtitle: (subtitle != null && subtitle.isNotEmpty) ? Text(subtitle) : null,
-                          onTap: () => Navigator.pop(context, item),
-                        );
-                      },
-                    ),
-            ),
+            if (filtered.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Text(
+                  _query.isEmpty ? 'No options available.' : 'No matches for "${_query.trim()}"',
+                  style: const TextStyle(color: Colors.black45),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: _listMaxHeight),
+                child: Scrollbar(
+                  thumbVisibility: filtered.length > 5,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 8),
+                    itemCount: filtered.length,
+                    separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade200),
+                    itemBuilder: (context, index) {
+                      final item = filtered[index];
+                      final subtitle = widget.subtitleKey != null
+                          ? item[widget.subtitleKey!] as String?
+                          : null;
+                      return ListTile(
+                        title: Text(item[widget.nameKey] as String? ?? ''),
+                        subtitle: (subtitle != null && subtitle.isNotEmpty) ? Text(subtitle) : null,
+                        onTap: () => Navigator.pop(context, item),
+                      );
+                    },
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
           ],
         ),
@@ -1806,7 +2009,7 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompact = MediaQuery.of(context).size.width < 380;
-    
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 10, vertical: isCompact ? 3 : 5),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(20)),

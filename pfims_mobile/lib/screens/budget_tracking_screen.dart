@@ -5,9 +5,6 @@ import '../services/finance_service.dart';
 import '../services/inventory_service.dart';
 import 'package:flutter/services.dart';
 
-// ---------------------------------------------------------------------
-// COLOR TOKENS — same palette as before; theme itself untouched.
-// ---------------------------------------------------------------------
 const Color kDarkPill = Color(0xFF14161F);
 const Color kAmberStrong = Color(0xFFF0B94A);
 const Color kUnderGreen = Color(0xFF1F9254);
@@ -98,10 +95,6 @@ class _NonNegativeAmountFormatter extends TextInputFormatter {
   }
 }
 
-// ---------------------------------------------------------------------
-// SAMPLE REFERENCE DATA — replace with real project/category sources
-// once wired to the backend (e.g. ProjectsService.getProjects()).
-// ---------------------------------------------------------------------
 const List<String> kProjects = [
   'Downtown Tower',
   'Riverside Villas',
@@ -111,9 +104,7 @@ const List<String> kProjects = [
 
 const List<String> kExpenseCategories = ['Labor', 'Material', 'Equipment', 'Other'];
 
-/// ---------------------------------------------------------------------
-/// Model for a single logged expense line item.
-/// ---------------------------------------------------------------------
+
 class _ExpenseEntry {
   final int id;
   final int projectId;
@@ -311,7 +302,8 @@ class BudgetTrackingScreen extends StatefulWidget {
   State<BudgetTrackingScreen> createState() => _BudgetTrackingScreenState();
 }
 
-class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
+class _BudgetTrackingScreenState extends State<BudgetTrackingScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _budgetSearchController = TextEditingController();
 
@@ -323,6 +315,14 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
 
   // 0 = Expenses tab, 1 = Budgets tab
   int _selectedTab = 0;
+  late final TabController _tabController;
+
+  // Pagination — kept simple and local to this screen; resets whenever the
+  // underlying filtered list could have changed shape (search, project
+  // filter, or a refresh).
+  static const int _pageSize = 10;
+  int _expensePage = 0;
+  int _budgetPage = 0;
 
   late Future<({List<_ExpenseEntry> expenses, List<_StockInTxn> stockIns})> _feedFuture;
   late Future<List<_BudgetEntry>> _budgetsFuture;
@@ -339,12 +339,19 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
     _feedFuture = _loadFeed();
     _budgetsFuture = _loadBudgets();
     _refreshBudgets();
-    _searchController.addListener(() => setState(() {}));
-    _budgetSearchController.addListener(() => setState(() {}));
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() => _selectedTab = _tabController.index);
+      }
+    });
+    _searchController.addListener(() => setState(() => _expensePage = 0));
+    _budgetSearchController.addListener(() => setState(() => _budgetPage = 0));
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     _budgetSearchController.dispose();
     super.dispose();
@@ -391,6 +398,7 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
     final future = _loadFeed();
     setState(() {
       _feedFuture = future;
+      _expensePage = 0;
     });
     await future;
   }
@@ -406,6 +414,7 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
   setState(() {
     _budgetEntries = budgets;
     _budgetsFuture = Future.value(budgets);
+    _budgetPage = 0;
   });
 }
   List<_ExpenseEntry> _byProject(List<_ExpenseEntry> all) {
@@ -572,29 +581,6 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
     }
   }
 
-  Widget _tabButton(String label, int index) {
-    final selected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
-      child: Container(
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? kDarkPill : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : Colors.grey[600],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildBudgetsSection() {
     return FutureBuilder<List<_BudgetEntry>>(
       future: _budgetsFuture,
@@ -638,30 +624,23 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
           );
         }
 
+        final totalCount = budgets.length;
+        final maxPage = totalCount == 0 ? 0 : (totalCount - 1) ~/ _pageSize;
+        final page = _budgetPage.clamp(0, maxPage);
+        final start = page * _pageSize;
+        final end = (start + _pageSize) > totalCount ? totalCount : (start + _pageSize);
+        final pageBudgets = budgets.sublist(start, end);
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: TextField(
-                controller: _budgetSearchController,
-                style: const TextStyle(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: "Search budgets by project...",
-                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.5),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
+            _SearchField(
+              controller: _budgetSearchController,
+              hint: "Search budgets by project...",
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Text(
-              "${budgets.length} BUDGETS",
+              "$totalCount BUDGETS",
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -682,17 +661,63 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
                   ),
                 ),
               )
-            else
-              ...budgets.map((b) => Padding(
+            else ...[
+              ...pageBudgets.map((b) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _BudgetCard(
                       entry: b,
                       onTap: () => _openBudgetDetails(b),
                     ),
                   )),
+              _PaginationFooter(
+                start: start,
+                end: end,
+                total: totalCount,
+                label: 'budgets',
+                canGoBack: page > 0,
+                canGoForward: end < totalCount,
+                onBack: () => setState(() => _budgetPage = page - 1),
+                onForward: () => setState(() => _budgetPage = page + 1),
+              ),
+            ],
           ],
         );
       },
+    );
+  }
+
+  Widget _addButton({
+    required bool filled,
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    if (filled) {
+      return ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: kDarkPill,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+        icon: Icon(icon, size: 14),
+        label: Text(label),
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: kDarkPill,
+        side: BorderSide(color: Colors.grey.shade300, width: 1.2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+      ),
+      icon: Icon(icon, size: 14),
+      label: Text(label),
     );
   }
 
@@ -721,98 +746,92 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
                 ? _filterStockIns(allStockIns)
                 : const <_StockInTxn>[];
 
-            final netVariance = 0.0;
-
             final feedItems = <_FeedItem>[
               ...filteredExpenses.map((e) => _ExpenseFeedItem(e)),
               ...filteredStockIns.map((s) => _StockInFeedItem(s)),
             ]..sort((a, b) => b.sortDate.compareTo(a.sortDate));
 
+            final totalFeedCount = feedItems.length;
+            final maxFeedPage = totalFeedCount == 0 ? 0 : (totalFeedCount - 1) ~/ _pageSize;
+            final feedPage = _expensePage.clamp(0, maxFeedPage);
+            final feedStart = feedPage * _pageSize;
+            final feedEnd = (feedStart + _pageSize) > totalFeedCount
+                ? totalFeedCount
+                : (feedStart + _pageSize);
+            final pageFeedItems = feedItems.sublist(feedStart, feedEnd);
+
             return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
-                // ---- Title + Add Expense / Add Budget ---- (unchanged)
+                // ---- Title + Add Expense / Add Budget ---- (compact pill
+                // buttons + tab bar, matching the inventory screen)
                Column(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
-    const Text(
-      "BUDGET & FINANCE",
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        letterSpacing: .2,
-        color: Colors.black87,
-      ),
-    ),
-    const SizedBox(height: 4),
-    Text(
-      "Track spending and budgets across all projects",
-      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-    ),
-    const SizedBox(height: 16),
     Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _openAddExpense,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kDarkPill,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "BUDGET & FINANCE",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                ),
               ),
-            ),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text(
-              "Add Expense",
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
+              SizedBox(height: 2),
+              Text(
+                "Track spending and budgets across all projects",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _openAddBudget,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: kDarkPill,
-              side: BorderSide(color: Colors.grey.shade300, width: 1.2),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _addButton(
+              filled: false,
+              icon: Icons.add,
+              label: "Add Budget",
+              onPressed: _openAddBudget,
             ),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text(
-              "Add Budget",
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            _addButton(
+              filled: true,
+              icon: Icons.add,
+              label: "Add Expense",
+              onPressed: _openAddExpense,
             ),
-          ),
+          ],
         ),
       ],
     ),
-    const SizedBox(height: 20),
-    Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _tabButton("Expenses", 0)),
-          Expanded(child: _tabButton("Budgets", 1)),
-        ],
-      ),
+    const SizedBox(height: 10),
+    TabBar(
+      controller: _tabController,
+      labelColor: kDarkPill,
+      unselectedLabelColor: Colors.grey[600],
+      indicatorColor: kDarkPill,
+      indicatorSize: TabBarIndicatorSize.label,
+      labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+      tabs: const [
+        Tab(text: "Expenses"),
+        Tab(text: "Budgets"),
+      ],
     ),
   ],
 ),
-const SizedBox(height: 16),
+const SizedBox(height: 12),
 
                 // ---- Stat tiles ----
-
-              const SizedBox(height: 16),
 
 // Calculate everything from fresh state
 Builder(
@@ -860,7 +879,7 @@ Builder(
     );
   },
 ),
-const SizedBox(height: 16),
+const SizedBox(height: 12),
                 if (_selectedTab == 0) ...[
                   // ---- Period filter tabs ---- (unchanged)
                   Row(
@@ -895,69 +914,56 @@ const SizedBox(height: 16),
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
 
                   // ---- Search + project filter ---- (unchanged)
                   Row(
                     children: [
                       Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey[200]!),
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            style: const TextStyle(fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: "Search expenses or remarks...",
-                              hintStyle:
-                                  TextStyle(color: Colors.grey[400], fontSize: 13.5),
-                              prefixIcon:
-                                  Icon(Icons.search, color: Colors.grey[400], size: 20),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                          ),
+                        child: _SearchField(
+                          controller: _searchController,
+                          hint: "Search expenses or remarks...",
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Container(
-                        height: 48,
-                        constraints: const BoxConstraints(minWidth: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.grey[200]!),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String?>(
-                            value: _selectedProjectFilter,
-                            isDense: true,
-                            icon: Icon(Icons.tune, color: Colors.grey[700], size: 18),
-                            hint: const Text("All Projects",
-                                style: TextStyle(fontSize: 13, color: Colors.black87)),
-                            items: [
-                              const DropdownMenuItem<String?>(
-                                value: null,
-                                child: Text("All Projects", style: TextStyle(fontSize: 13)),
-                              ),
-                              ...kProjects.map(
-                                (p) => DropdownMenuItem<String?>(
-                                  value: p,
-                                  child: Text(p, style: const TextStyle(fontSize: 13)),
-                                ),
-                              ),
-                            ],
-                            onChanged: (v) => setState(() => _selectedProjectFilter = v),
-                          ),
-                        ),
-                      ),
+                      // const SizedBox(width: 10),
+                      // Container(
+                      //   height: 44,
+                      //   constraints: const BoxConstraints(minWidth: 150),
+                      //   padding: const EdgeInsets.symmetric(horizontal: 12),
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.white,
+                      //     borderRadius: BorderRadius.circular(12),
+                      //   ),
+                      //   child: DropdownButtonHideUnderline(
+                      //     child: DropdownButton<String?>(
+                      //       value: _selectedProjectFilter,
+                      //       isDense: true,
+                      //       icon: Icon(Icons.tune, color: Colors.grey[700], size: 18),
+                      //       hint: const Text("All Projects",
+                      //           style: TextStyle(fontSize: 13, color: Colors.black87)),
+                      //       items: [
+                      //         const DropdownMenuItem<String?>(
+                      //           value: null,
+                      //           child: Text("All Projects", style: TextStyle(fontSize: 13)),
+                      //         ),
+                      //         ...kProjects.map(
+                      //           (p) => DropdownMenuItem<String?>(
+                      //             value: p,
+                      //             child: Text(p, style: const TextStyle(fontSize: 13)),
+                      //           ),
+                      //         ),
+                      //       ],
+                      //       onChanged: (v) => setState(() {
+                      //         _selectedProjectFilter = v;
+                      //         _expensePage = 0;
+                      //         _budgetPage = 0;
+                      //       }),
+                      //     ),
+                      //   ),
+                      // ),
                     ],
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 10),
 
                   Text(
                     isLoading
@@ -1009,8 +1015,8 @@ const SizedBox(height: 16),
                         ),
                       ),
                     )
-                  else
-                    ...feedItems.map((item) {
+                  else ...[
+                    ...pageFeedItems.map((item) {
                       if (item is _ExpenseFeedItem) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -1029,6 +1035,17 @@ const SizedBox(height: 16),
                         ),
                       );
                     }),
+                    _PaginationFooter(
+                      start: feedStart,
+                      end: feedEnd,
+                      total: totalFeedCount,
+                      label: 'expenses',
+                      canGoBack: feedPage > 0,
+                      canGoForward: feedEnd < totalFeedCount,
+                      onBack: () => setState(() => _expensePage = feedPage - 1),
+                      onForward: () => setState(() => _expensePage = feedPage + 1),
+                    ),
+                  ],
                 ] else ...[
                   // ---- Budgets tab content ----
                   _buildBudgetsSection(),
@@ -1065,7 +1082,9 @@ class _StatTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1097,6 +1116,126 @@ class _StatTile extends StatelessWidget {
                 fontSize: 10.5, fontWeight: FontWeight.w600, color: footerColor),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Search field — filled/borderless style matching the inventory screen's
+/// _SearchField, used for both the Expenses and Budgets search boxes.
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+
+  const _SearchField({required this.controller, required this.hint});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        return TextField(
+          controller: controller,
+          style: const TextStyle(fontSize: 13.5),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+            prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey[400]),
+            suffixIcon: controller.text.isNotEmpty
+                ? InkWell(
+                    onTap: () => controller.clear(),
+                    child: const Icon(Icons.close, size: 18),
+                  )
+                : null,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Pagination footer — shows "start–end of total <label>" alongside
+/// prev/next controls. Used under both the expenses feed and the budgets
+/// list.
+class _PaginationFooter extends StatelessWidget {
+  final int start;
+  final int end;
+  final int total;
+  final String label;
+  final bool canGoBack;
+  final bool canGoForward;
+  final VoidCallback onBack;
+  final VoidCallback onForward;
+
+  const _PaginationFooter({
+    required this.start,
+    required this.end,
+    required this.total,
+    required this.label,
+    required this.canGoBack,
+    required this.canGoForward,
+    required this.onBack,
+    required this.onForward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (total == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "${start + 1}-$end out of $total $label",
+            style: TextStyle(fontSize: 11.5, color: Colors.grey[600], fontWeight: FontWeight.w500),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: canGoBack ? onBack : null,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Icon(Icons.chevron_left, size: 18,
+                      color: canGoBack ? Colors.black87 : Colors.grey[350]),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: canGoForward ? onForward : null,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Icon(Icons.chevron_right, size: 18,
+                      color: canGoForward ? Colors.black87 : Colors.grey[350]),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -2921,8 +3060,11 @@ class _EditBudgetModalState extends State<_EditBudgetModal> {
 /// upserts budgets by project, so this isn't a hard block, just a
 /// heads-up before they overwrite something that already exists.
 ///
-/// The project field itself is now a searchable Autocomplete instead of
-/// a plain dropdown, so it stays usable as the project list grows.
+/// The project field is a tap-to-open search picker (bottom sheet, like
+/// the inventory screen's item/category/unit pickers) rather than an
+/// inline dropdown or Autocomplete overlay — this keeps the option list
+/// reliably scrollable no matter how many projects there are, and avoids
+/// the list ever overflowing the dialog.
 /// ---------------------------------------------------------------------
 class _AddBudgetModal extends StatefulWidget {
   final List<_BudgetEntry> existingBudgets;
@@ -2983,6 +3125,22 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
     final matches =
         widget.existingBudgets.where((b) => b.projectName == _project!.name);
     return matches.isNotEmpty ? matches.first : null;
+  }
+
+  Future<void> _pickProject(List<_DropdownOption> projects) async {
+    final hasBudget = <int, bool>{
+      for (final p in projects)
+        p.id: widget.existingBudgets.any((b) => b.projectName == p.name),
+    };
+    final result = await showModalBottomSheet<_DropdownOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ProjectPickerSheet(projects: projects, hasBudget: hasBudget),
+    );
+    if (result != null) {
+      setState(() => _project = result);
+    }
   }
 
   Future<void> _submit() async {
@@ -3156,74 +3314,39 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
         if (projects.isEmpty) {
           return _loadingField("No projects available");
         }
-        return Autocomplete<_DropdownOption>(
-          displayStringForOption: (o) => o.name,
-          optionsBuilder: (textEditingValue) {
-            final query = textEditingValue.text.trim().toLowerCase();
-            if (query.isEmpty) return projects;
-            return projects.where((p) => p.name.toLowerCase().contains(query));
-          },
-          onSelected: (option) {
-            setState(() => _project = option);
-          },
-          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-            return TextField(
-              controller: controller,
-              focusNode: focusNode,
-              onChanged: (text) {
-                // If the field no longer matches the selected project
-                // (user is typing a fresh search), clear the selection so
-                // the existing-budget notice and submit state stay honest.
-                if (_project != null && text != _project!.name) {
-                  setState(() => _project = null);
-                }
-              },
-              decoration: InputDecoration(
-                hintText: "Search project...",
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-              ),
-            );
-          },
-          optionsViewBuilder: (context, onSelected, options) {
-            return Align(
-              alignment: Alignment.topLeft,
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(10),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 220, maxWidth: 404),
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    itemBuilder: (context, index) {
-                      final option = options.elementAt(index);
-                      final hasBudget = widget.existingBudgets
-                          .any((b) => b.projectName == option.name);
-                      return ListTile(
-                        dense: true,
-                        title: Text(option.name, style: const TextStyle(fontSize: 13.5)),
-                        trailing: hasBudget
-                            ? const Icon(Icons.info_outline, size: 16, color: kAmberStrong)
-                            : null,
-                        onTap: () => onSelected(option),
-                      );
-                    },
+        final hasBudget = _project != null &&
+            widget.existingBudgets.any((b) => b.projectName == _project!.name);
+        return InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => _pickProject(projects),
+          child: Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _project?.name ?? "Search project...",
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _project != null ? Colors.black87 : Colors.grey.shade400,
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+                if (hasBudget)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 6),
+                    child: Icon(Icons.info_outline, size: 16, color: kAmberStrong),
+                  ),
+                Icon(Icons.search, size: 18, color: Colors.grey.shade500),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -3268,6 +3391,135 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
             child: const Text("Retry"),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bottom-sheet project picker for _AddBudgetModal — same interaction
+/// pattern as the inventory screen's item/category/unit/supplier pickers:
+/// a search box up top and an always-scrollable list below, capped to a
+/// fraction of the screen height so it never overflows regardless of how
+/// many projects exist. Projects that already have a budget are flagged
+/// with a small info icon, mirroring the inline notice shown once picked.
+class _ProjectPickerSheet extends StatefulWidget {
+  final List<_DropdownOption> projects;
+  final Map<int, bool> hasBudget;
+
+  const _ProjectPickerSheet({required this.projects, required this.hasBudget});
+
+  @override
+  State<_ProjectPickerSheet> createState() => _ProjectPickerSheetState();
+}
+
+class _ProjectPickerSheetState extends State<_ProjectPickerSheet> {
+  final _controller = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _query.trim().toLowerCase();
+    final filtered = query.isEmpty
+        ? widget.projects
+        : widget.projects.where((p) => p.name.toLowerCase().contains(query)).toList();
+
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        constraints: BoxConstraints(maxHeight: screenHeight * 0.7),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      "Choose Project...",
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.close)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: 'Search projects...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _query.isNotEmpty
+                      ? InkWell(
+                          onTap: () {
+                            _controller.clear();
+                            setState(() => _query = '');
+                          },
+                          child: const Icon(Icons.close, size: 18),
+                        )
+                      : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Text(
+                        _query.isEmpty ? 'No projects available.' : 'No matches for "${_query.trim()}"',
+                        style: const TextStyle(color: Colors.black45),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.only(bottom: 8),
+                      itemCount: filtered.length,
+                      separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade200),
+                      itemBuilder: (context, index) {
+                        final project = filtered[index];
+                        final flagged = widget.hasBudget[project.id] ?? false;
+                        return ListTile(
+                          title: Text(project.name),
+                          trailing: flagged
+                              ? const Icon(Icons.info_outline, size: 16, color: kAmberStrong)
+                              : null,
+                          onTap: () => Navigator.pop(context, project),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }
