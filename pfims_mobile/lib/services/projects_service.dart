@@ -35,7 +35,7 @@ class ProjectsService {
           "project_manager": projectManager,
           "start_date": _formatDate(startDate),
           "estimated_end_date": _formatDate(estimatedEndDate),
-          if (workerCount != null) "worker_count": workerCount,
+          "worker_count": ?workerCount,
         }),
       );
     } catch (e) {

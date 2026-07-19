@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/user_session.dart';
 import 'dart:typed_data';
 import 'dart:convert';
+import 'security_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String email;
@@ -465,6 +466,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         );
                                       },
                                     ),
+                                    _ActionRow(
+                                    icon: Icons.shield_outlined,
+                                    title: 'Privacy & Security',
+                                    subtitle: 'Password',
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const SecuritySettingsScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                     _ActionRow(
                                       icon: Icons.help_outline,
                                       title: 'Help & Support',

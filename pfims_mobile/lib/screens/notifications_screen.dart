@@ -480,7 +480,7 @@ class _NotificationTile extends StatelessWidget {
               Container(
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(color: style.color.withOpacity(0.12), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: style.color.withValues(alpha: 0.12), shape: BoxShape.circle),
                 child: Icon(style.icon, color: style.color, size: 19),
               ),
               const SizedBox(width: 12),

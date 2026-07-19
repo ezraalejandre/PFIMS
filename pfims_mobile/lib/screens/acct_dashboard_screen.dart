@@ -77,7 +77,7 @@ class AcctDashboardScreen extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _statCards.length,
-              separatorBuilder: (_, __) =>
+              separatorBuilder: (_, _) =>
                   const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 return SizedBox(
