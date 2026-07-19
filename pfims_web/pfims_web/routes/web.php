@@ -13,6 +13,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MLController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\ReportController;
 
 // Landing page (login)
 Route::get('/', function () {
@@ -100,10 +101,31 @@ Route::get('/projects', function () {
     return view('projtracking');
 })->middleware('auth');
 
+Route::delete('/api/projects/{id}', function ($id) {
+    $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Project not found'], 404);
+    }
+
+    DB::table('project_tbl')->where('project_id', $id)->delete();
+    return response()->json(['message' => 'Project deleted successfully']);
+});
+
 // Finance page
 Route::get('/finance', function () {
     return view('finance');
 })->middleware('auth');
+
+// Budget page
+Route::delete('/api/budgets/{id}', function ($id) {
+    $exists = DB::table('budgets_tbl')->where('budget_id', $id)->exists();
+    if (!$exists) {
+        return response()->json(['message' => 'Budget not found'], 404);
+    }
+
+    DB::table('budgets_tbl')->where('budget_id', $id)->delete();
+    return response()->json(['message' => 'Budget deleted successfully']);
+});
 
 // Inventory page
 Route::get('/inventory', function () {
@@ -330,4 +352,36 @@ Route::get('/ml-debug', function () {
             'trace' => $e->getTraceAsString()
         ]);
     }
+});
+
+// Report routes - Using web.php with JSON responses
+Route::middleware(['auth'])->group(function () {
+    // Page routes
+    Route::get('/reports', function () {
+        return view('reports');
+    })->name('reports');
+    
+    Route::get('/areports', function () {
+        return view('areports');
+    })->name('accounting.reports');
+    
+    Route::get('/oreports', function () {
+        return view('oreports');
+    })->name('operations.reports');
+    
+    // API routes for reports (keep in web.php but return JSON)
+    Route::get('/api/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::post('/api/reports/upload', [ReportController::class, 'upload'])->name('reports.upload');
+    Route::get('/api/reports/download/{id}', [ReportController::class, 'download'])->name('reports.download');
+    Route::delete('/api/reports/{id}', [ReportController::class, 'destroy'])->name('reports.destroy');
+});
+
+// Notification routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/api/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::get('/api/notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount']);
+    Route::put('/api/notifications/{id}/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead']);
+    Route::put('/api/notifications/all/read', [App\Http\Controllers\Api\NotificationController::class, 'markAllRead']);
+    Route::delete('/api/notifications/{id}', [App\Http\Controllers\Api\NotificationController::class, 'destroy']);
+    Route::delete('/api/notifications/all', [App\Http\Controllers\Api\NotificationController::class, 'destroyAll']);
 });

@@ -3,17 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Operations Notifications - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Onotifications.css') }}">
     <style>
         .error-notification { z-index: 9999 !important; }
         .success-notification { z-index: 9999 !important; }
         #confirmModal { z-index: 9999 !important; }
+        
+        /* Notification icon colors */
+        .notif-icon.green { background: #e8f5e9; color: #2e7d32; }
+        .notif-icon.orange { background: #fff3e0; color: #e65100; }
+        .notif-icon.red { background: #ffebee; color: #c62828; }
+        .notif-icon.blue { background: #e3f2fd; color: #0d47a1; }
+        .notif-icon.wrench { background: #f5f5f5; color: #616161; }
+        
+        .notif-item.unread {
+            background: #f0f7ff;
+            border-left: 4px solid #1a237e;
+        }
+        
+        .notif-item.read {
+            opacity: 0.7;
+        }
+        
+        .notif-item .notif-time {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: 4px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #aaa;
+        }
+        
+        .empty-state .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .notif-actions {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <!-- ─── ERROR NOTIFICATION ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
             <span class="error-icon">⚠</span>
@@ -22,7 +61,7 @@
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -31,7 +70,7 @@
         </div>
     </div>
 
-    <!-- ─── CONFIRM MODAL (for Clear All) ─── -->
+    <!-- ─── CONFIRM MODAL ─── -->
     <div id="confirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -53,7 +92,7 @@
         </div>
     </div>
 
-    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <!-- ─── FULL-WIDTH HEADER ─── -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -66,7 +105,7 @@
             <a href="{{ url('/onotifications') }}" style="opacity: 1; position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span style="font-weight: 600;">Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+                <span class="notif-badge" id="notifBadge">0</span>
             </a>
             <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
@@ -110,7 +149,6 @@
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
 
-        <!-- Page Header -->
         <div class="page-header">
             <div>
                 <h1>NOTIFICATIONS</h1>
@@ -131,81 +169,17 @@
 
         <!-- ─── NOTIFICATIONS LIST ─── -->
         <div id="notifList">
-
-            <div class="notif-section" id="alertsSection">
-                <div class="section-title">TODAY</div>
-
-                <div class="notif-item" data-type="alert">
-                    <div class="notif-icon orange">
-                        <img src="{{ asset('images/orange.jpg') }}" alt="Alert" style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">Budget Threshold Reached</div>
-                        <div class="notif-desc">Northgate Tower Phase 2 has consumed 88% of its allocated budget.</div>
-                    </div>
-                </div>
-
-                <div class="notif-item" data-type="alert">
-                    <div class="notif-icon red">
-                        <img src="{{ asset('images/red.jpg') }}" alt="Alert" style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">Overdue Task</div>
-                        <div class="notif-desc">Steel reinforcement inspection for Block C was due 2 days ago.</div>
-                    </div>
-                </div>
-
-                <div class="notif-item" data-type="alert">
-                    <div class="notif-icon green">
-                        <img src="{{ asset('images/green.jpg') }}" alt="Alert" style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">Milestone Completed</div>
-                        <div class="notif-desc">Foundation works for Harbor View Residences signed off by QA.</div>
-                    </div>
-                </div>
-
-                <div class="notif-item" data-type="alert">
-                    <div class="notif-icon blue">
-                        <img src="{{ asset('images/blue.jpg') }}" alt="Alert" style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">New Comment</div>
-                        <div class="notif-desc">Ringo Santos left a note on Project #EVC-08t: 'Rebar delivery rescheduled to Friday.'</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="notif-section" id="systemSection">
-                <div class="section-title">THIS WEEK</div>
-
-                <div class="notif-item" data-type="system">
-                    <div class="notif-icon wrench">
-                        <img src="{{ asset('images/wrench.jpg') }}" alt="System" style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">Equipment Maintenance Due</div>
-                        <div class="notif-desc">Tower crane TC-04 is scheduled for its 500-hour service check.</div>
-                    </div>
-                </div>
-
-                <div class="notif-item" data-type="system">
-                    <div class="notif-icon wrench">
-                        <img src="{{ asset('images/wrench.jpg') }}" alt="System" style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">System Update Applied</div>
-                        <div class="notif-desc">EVC-DCS was updated to v2.4.1. See release notes.</div>
-                    </div>
-                </div>
-            </div>
-
+            <div style="text-align: center; padding: 40px; color: #888;">Loading notifications...</div>
         </div>
 
     </main>
 
     <script>
-        // ─── HIDE NOTIFICATION BADGE ───
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        var allNotifications = [];
+        var currentTab = 'all';
+
+        // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -213,7 +187,6 @@
             }
         }
 
-        // ─── ERROR NOTIFICATION ───
         function showError(message) {
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
@@ -235,7 +208,6 @@
             }
         }
 
-        // ─── SUCCESS NOTIFICATION ───
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
@@ -263,12 +235,25 @@
         function openClearAllModal() {
             document.getElementById('confirmMessage').textContent = 'Are you sure you want to clear all notifications?';
             confirmCallback = function() {
-                var list = document.getElementById('notifList');
-                list.innerHTML = '<div style="text-align: center; padding: 40px; color: #888; font-size: 1rem;">No notifications to display.</div>';
-                var badge = document.getElementById('notifBadge');
-                badge.textContent = '0';
-                badge.style.display = 'none';
-                showSuccess('All notifications cleared successfully!');
+                fetch('/api/notifications/all', {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        loadNotifications();
+                        showSuccess('All notifications cleared successfully!');
+                    } else {
+                        showError('Failed to clear notifications.');
+                    }
+                })
+                .catch(function(error) {
+                    showError('Failed to clear notifications.');
+                });
             };
             document.getElementById('confirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -300,33 +285,200 @@
                 tab.classList.remove('active');
             });
             el.classList.add('active');
+            currentTab = type;
+            renderNotifications();
+        }
 
-            var alertsSection = document.getElementById('alertsSection');
-            var systemSection = document.getElementById('systemSection');
+        // ─── LOAD NOTIFICATIONS ───
+        function loadNotifications() {
+            var list = document.getElementById('notifList');
+            list.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;">Loading notifications...</div>';
 
-            if (type === 'all') {
-                alertsSection.style.display = 'block';
-                systemSection.style.display = 'block';
-            } else if (type === 'alerts') {
-                alertsSection.style.display = 'block';
-                systemSection.style.display = 'none';
-            } else if (type === 'system') {
-                alertsSection.style.display = 'none';
-                systemSection.style.display = 'block';
+            fetch('/api/notifications', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load notifications');
+                return response.json();
+            })
+            .then(function(data) {
+                allNotifications = data.notifications || [];
+                updateBadgeCount();
+                renderNotifications();
+            })
+            .catch(function(error) {
+                console.error('Error loading notifications:', error);
+                list.innerHTML = '<div style="text-align: center; padding: 40px; color: #d32f2f;">Failed to load notifications. Please refresh.</div>';
+            });
+        }
+
+        // ─── UPDATE BADGE COUNT ───
+        function updateBadgeCount() {
+            var unread = allNotifications.filter(function(n) { return !n.is_read; }).length;
+            var badge = document.getElementById('notifBadge');
+            if (unread > 0) {
+                badge.textContent = unread;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
             }
+        }
+
+        // ─── RENDER NOTIFICATIONS ───
+        function renderNotifications() {
+            var list = document.getElementById('notifList');
+            var filtered = allNotifications;
+
+            // Filter by tab
+            if (currentTab === 'alerts') {
+                filtered = filtered.filter(function(n) { return n.filter === 'alerts' || n.kind === 'alert'; });
+            } else if (currentTab === 'system') {
+                filtered = filtered.filter(function(n) { return n.filter === 'system' || n.kind === 'system'; });
+            }
+
+            // Sort by date (newest first)
+            filtered.sort(function(a, b) {
+                return new Date(b.created_at) - new Date(a.created_at);
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔔</div>
+                        <div style="font-size: 1.1rem; color: #666;">No notifications</div>
+                        <div style="font-size: 0.85rem; color: #aaa; margin-top: 5px;">You're all caught up!</div>
+                    </div>
+                `;
+                return;
+            }
+
+            var html = '';
+            var currentDate = '';
+
+            filtered.forEach(function(notification) {
+                var date = new Date(notification.created_at);
+                var dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                var timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                var isToday = new Date().toDateString() === date.toDateString();
+                var isYesterday = new Date(Date.now() - 86400000).toDateString() === date.toDateString();
+
+                var sectionTitle = isToday ? 'TODAY' : (isYesterday ? 'YESTERDAY' : dateStr);
+
+                if (sectionTitle !== currentDate) {
+                    if (currentDate !== '') {
+                        html += '</div>';
+                    }
+                    html += `<div class="notif-section"><div class="section-title">${sectionTitle}</div>`;
+                    currentDate = sectionTitle;
+                }
+
+                // Determine icon based on notification kind
+                var iconClass = 'blue';
+                var iconText = '📌';
+                if (notification.kind === 'alert' || notification.filter === 'alerts') {
+                    if (notification.title.toLowerCase().includes('delayed') || notification.title.toLowerCase().includes('risk')) {
+                        iconClass = 'red';
+                        iconText = '⚠️';
+                    } else if (notification.title.toLowerCase().includes('budget')) {
+                        iconClass = 'orange';
+                        iconText = '💰';
+                    } else {
+                        iconClass = 'orange';
+                        iconText = '🔔';
+                    }
+                } else if (notification.kind === 'system' || notification.filter === 'system') {
+                    if (notification.title.includes('Completed')) {
+                        iconClass = 'green';
+                        iconText = '✅';
+                    } else if (notification.title.includes('Update')) {
+                        iconClass = 'wrench';
+                        iconText = '🔧';
+                    } else {
+                        iconClass = 'blue';
+                        iconText = 'ℹ️';
+                    }
+                }
+
+                var readClass = notification.is_read ? 'read' : 'unread';
+
+                html += `
+                    <div class="notif-item ${readClass}" data-id="${notification.notification_id}" onclick="markAsRead(this)">
+                        <div class="notif-icon ${iconClass}">${iconText}</div>
+                        <div class="notif-content">
+                            <div class="notif-title">${notification.title}</div>
+                            <div class="notif-desc">${notification.message}</div>
+                            <div class="notif-time">${isToday ? 'Today' : isYesterday ? 'Yesterday' : dateStr} at ${timeStr}</div>
+                        </div>
+                        ${!notification.is_read ? '<div style="width: 8px; height: 8px; background: #1a237e; border-radius: 50%; flex-shrink: 0;"></div>' : ''}
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            list.innerHTML = html;
+        }
+
+        // ─── MARK AS READ ───
+        function markAsRead(element) {
+            var id = element.dataset.id;
+            if (!id) return;
+
+            // Don't mark if already read
+            if (element.classList.contains('read')) return;
+
+            fetch('/api/notifications/' + id + '/read', {
+                method: 'PUT',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    element.classList.remove('unread');
+                    element.classList.add('read');
+                    var badge = element.querySelector('.notif-icon + div + div');
+                    if (badge) badge.remove();
+                    // Update local data
+                    var notif = allNotifications.find(function(n) { return n.notification_id == id; });
+                    if (notif) notif.is_read = true;
+                    updateBadgeCount();
+                }
+            })
+            .catch(function(error) {
+                console.error('Error marking notification as read:', error);
+            });
         }
 
         // ─── MARK ALL READ ───
         function markAllRead() {
-            var items = document.querySelectorAll('.notif-item');
-            items.forEach(function(item) {
-                item.style.opacity = '0.6';
-                item.style.background = '#f9f9f9';
+            fetch('/api/notifications/all/read', {
+                method: 'PUT',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    allNotifications.forEach(function(n) { n.is_read = true; });
+                    renderNotifications();
+                    updateBadgeCount();
+                    showSuccess('All notifications marked as read!');
+                } else {
+                    showError('Failed to mark all as read.');
+                }
+            })
+            .catch(function(error) {
+                showError('Failed to mark all as read.');
             });
-            var badge = document.getElementById('notifBadge');
-            badge.textContent = '0';
-            badge.style.display = 'none';
-            showSuccess('All notifications marked as read!');
         }
 
         document.addEventListener('click', function(e) {
@@ -336,6 +488,15 @@
             if (document.getElementById('successNotification').style.display === 'block') {
                 if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
+        });
+
+        // ─── INIT ───
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotifications();
+            // Auto-refresh every 30 seconds
+            setInterval(function() {
+                loadNotifications();
+            }, 30000);
         });
     </script>
 

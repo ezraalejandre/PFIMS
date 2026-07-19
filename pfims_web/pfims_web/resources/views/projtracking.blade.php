@@ -149,6 +149,18 @@
             </div>
         </div>
 
+        <!-- ─── SEARCH BAR ─── -->
+        <div class="search-bar-wrapper">
+            <div class="search-bar">
+                <input type="text" 
+                    id="projectSearch" 
+                    class="search-input" 
+                    placeholder="Search project..." 
+                    oninput="filterProjects()">
+                <button class="btn-clear-search" onclick="clearProjectSearch()">✕ Clear</button>
+            </div>
+        </div>
+
         <!-- Table with Progress Bar -->
         <div class="table-wrapper">
             <table>
@@ -156,7 +168,6 @@
                     <tr>
                         <th>Project Name</th>
                         <th>Client Name</th>
-                        <th>Budget</th>
                         <th>Start Date</th>
                         <th>Est. End Date</th>
                         <th>Actual End Date</th>
@@ -354,15 +365,26 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="editProjectOriginalName">
-                <div class="form-group">
-                    <label>Phase</label>
-                    <select id="editPhase">
-                        <option value="Planning">Planning</option>
-                        <option value="Foundation">Foundation</option>
-                        <option value="Structure">Structure</option>
-                        <option value="Finishing">Finishing</option>
-                        <option value="Complete">Complete</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phase</label>
+                        <select id="editPhase">
+                            <option value="Planning">Planning</option>
+                            <option value="Foundation">Foundation</option>
+                            <option value="Structure">Structure</option>
+                            <option value="Finishing">Finishing</option>
+                            <option value="Complete">Complete</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="editStatus">
+                            <option value="On Track">On Track</option>
+                            <option value="At Risk">At Risk</option>
+                            <option value="Delayed">Delayed</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -379,6 +401,10 @@
                         <label>Actual End Date</label>
                         <input type="date" id="editActualEndDate">
                     </div>
+                    <div class="form-group">
+                        <label>Completion Percentage</label>
+                        <input type="number" id="editCompletionPercentage" min="0" max="100" placeholder="0-100">
+                    </div>
                 </div>
             </div>
             <div class="modal-footer" style="justify-content: flex-end;">
@@ -394,6 +420,7 @@
         var currentProjectRow = null;
         var deleteCallback = null;
         var allProjects = [];
+        var projectSearchTerm = '';
 
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
@@ -680,44 +707,94 @@
             renderProjectPage(1);
         }
 
-        // ─── UPDATE STATS (modified) ───
-        function updateStats(projects) {
-            allProjects = projects;
-            
-            var activeProjects = projects.filter(function(p) {
-                return p.status !== 'Completed';
+        function filterProjects() {
+        var searchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
+        projectSearchTerm = searchTerm;
+        
+        if (!searchTerm) {
+            projectFilteredData = allProjects;
+        } else {
+            projectFilteredData = allProjects.filter(function(project) {
+                var name = (project.name || '').toLowerCase();
+                var client = (project.client || '').toLowerCase();
+                var manager = (project.manager || '').toLowerCase();
+                var phase = (project.phase || '').toLowerCase();
+                var status = (project.status || '').toLowerCase();
+                
+                return name.includes(searchTerm) || 
+                    client.includes(searchTerm) || 
+                    manager.includes(searchTerm) || 
+                    phase.includes(searchTerm) || 
+                    status.includes(searchTerm);
             });
-            
-            var onSchedule = projects.filter(function(p) {
-                return p.status === 'On Track';
-            });
-            
-            var delayed = projects.filter(function(p) {
-                return p.status === 'Delayed' || p.status === 'At Risk';
-            });
-            
-            var totalProgress = 0;
-            projects.forEach(function(p) {
-                totalProgress += parseFloat(p.progress) || 0;
-            });
-            var avgProgress = projects.length > 0 ? Math.round(totalProgress / projects.length) : 0;
-            
-            document.getElementById('activeProjectsCount').textContent = activeProjects.length;
-            document.getElementById('activeProjectsSub').textContent = activeProjects.length + ' active projects';
-            
-            document.getElementById('onScheduleCount').textContent = onSchedule.length;
-            var onSchedulePercent = activeProjects.length > 0 ? Math.round((onSchedule.length / activeProjects.length) * 100) : 0;
-            document.getElementById('onScheduleSub').textContent = onSchedulePercent + '% of active';
-            
-            document.getElementById('delayedCount').textContent = delayed.length;
-            document.getElementById('delayedSub').textContent = delayed.length > 0 ? 'Needs attention' : 'All projects on track';
-            
-            document.getElementById('avgCompletion').textContent = avgProgress + '%';
-            document.getElementById('avgCompletionSub').textContent = 'Across ' + projects.length + ' projects';
-            
-            projectFilteredData = projects;
-            renderProjectPage(1);
         }
+        
+        renderProjectPage(1);
+    }
+
+    function clearProjectSearch() {
+        document.getElementById('projectSearch').value = '';
+        projectSearchTerm = '';
+        projectFilteredData = allProjects;
+        renderProjectPage(1);
+    }
+
+    // ─── UPDATE STATS (modified to handle search) ───
+    function updateStats(projects) {
+        allProjects = projects;
+        
+        // Apply current search filter if any
+        if (projectSearchTerm) {
+            projectFilteredData = allProjects.filter(function(project) {
+                var name = (project.name || '').toLowerCase();
+                var client = (project.client || '').toLowerCase();
+                var manager = (project.manager || '').toLowerCase();
+                var phase = (project.phase || '').toLowerCase();
+                var status = (project.status || '').toLowerCase();
+                
+                return name.includes(projectSearchTerm) || 
+                    client.includes(projectSearchTerm) || 
+                    manager.includes(projectSearchTerm) || 
+                    phase.includes(projectSearchTerm) || 
+                    status.includes(projectSearchTerm);
+            });
+        } else {
+            projectFilteredData = projects;
+        }
+        
+        var activeProjects = projects.filter(function(p) {
+            return p.status !== 'Completed';
+        });
+        
+        var onSchedule = projects.filter(function(p) {
+            return p.status === 'On Track';
+        });
+        
+        var delayed = projects.filter(function(p) {
+            return p.status === 'Delayed' || p.status === 'At Risk';
+        });
+        
+        var totalProgress = 0;
+        projects.forEach(function(p) {
+            totalProgress += parseFloat(p.progress) || 0;
+        });
+        var avgProgress = projects.length > 0 ? Math.round(totalProgress / projects.length) : 0;
+        
+        document.getElementById('activeProjectsCount').textContent = activeProjects.length;
+        document.getElementById('activeProjectsSub').textContent = activeProjects.length + ' active projects';
+        
+        document.getElementById('onScheduleCount').textContent = onSchedule.length;
+        var onSchedulePercent = activeProjects.length > 0 ? Math.round((onSchedule.length / activeProjects.length) * 100) : 0;
+        document.getElementById('onScheduleSub').textContent = onSchedulePercent + '% of active';
+        
+        document.getElementById('delayedCount').textContent = delayed.length;
+        document.getElementById('delayedSub').textContent = delayed.length > 0 ? 'Needs attention' : 'All projects on track';
+        
+        document.getElementById('avgCompletion').textContent = avgProgress + '%';
+        document.getElementById('avgCompletionSub').textContent = 'Across ' + projects.length + ' projects';
+        
+        renderProjectPage(1);
+    }
 
         // ─── FETCH PROJECTS (modified) ───
         function fetchProjects() {
@@ -781,7 +858,6 @@
             row.innerHTML = '' +
                 '<td><strong>' + project.name + '</strong></td>' +
                 '<td>' + project.client + '</td>' +
-                '<td>' + (project.budget ? formatCurrency(project.budget) : '—') + '</td>' +
                 '<td>' + project.startDateDisplay + '</td>' +
                 '<td>' + project.estEndDateDisplay + '</td>' +
                 '<td>' + (project.actualEndDateDisplay || '—') + '</td>' +
@@ -933,7 +1009,6 @@
             openDeleteModal('Are you sure you want to permanently delete this project?', function() {
                 if (!projectId) {
                     currentProjectRow.remove();
-                    // Update stats
                     allProjects = allProjects.filter(function(p) {
                         return p.id !== currentEditData.id;
                     });
@@ -953,15 +1028,20 @@
                 })
                 .then(function(response) {
                     if (!response.ok) {
-                        return response.json().then(function(err) {
-                            throw new Error(err.message || 'Failed to delete project');
+                        // Try to parse error message
+                        return response.text().then(function(text) {
+                            try {
+                                var data = JSON.parse(text);
+                                throw new Error(data.message || 'Failed to delete project');
+                            } catch (e) {
+                                throw new Error('Failed to delete project. Server error.');
+                            }
                         });
                     }
                     return response.json();
                 })
                 .then(function() {
                     currentProjectRow.remove();
-                    // Update stats
                     allProjects = allProjects.filter(function(p) {
                         return p.id !== currentEditData.id;
                     });
@@ -985,9 +1065,11 @@
             }
             document.getElementById('editProjectOriginalName').value = currentEditData.name;
             document.getElementById('editPhase').value = currentEditData.phase || 'Planning';
+            document.getElementById('editStatus').value = currentEditData.status || 'On Track';
             document.getElementById('editStartDate').value = currentEditData.startDate || '';
             document.getElementById('editEstEndDate').value = currentEditData.endDate || '';
             document.getElementById('editActualEndDate').value = currentEditData.actualEndDate || '';
+            document.getElementById('editCompletionPercentage').value = currentEditData.progress || 0;
 
             closeUpdateModal();
             document.getElementById('editProjectModal').classList.add('active');
@@ -1006,9 +1088,11 @@
             }
 
             var phase = document.getElementById('editPhase').value;
+            var status = document.getElementById('editStatus').value;
             var start = document.getElementById('editStartDate').value;
             var estEnd = document.getElementById('editEstEndDate').value;
             var actualEnd = document.getElementById('editActualEndDate').value;
+            var completion = document.getElementById('editCompletionPercentage').value;
 
             if (!start || !estEnd) {
                 showError('Please fill in all required fields (Start Date, Estimated End Date).');
@@ -1017,9 +1101,11 @@
 
             var payload = {
                 phase: phase,
+                status: status,
                 start_date: start,
                 estimated_end_date: estEnd,
-                actual_end_date: actualEnd || null
+                actual_end_date: actualEnd || null,
+                completion_percentage: parseFloat(completion) || 0
             };
 
             fetch('/api/projects/' + currentEditData.id, {
@@ -1041,9 +1127,11 @@
             })
             .then(function(updatedProject) {
                 currentEditData.phase = phase;
+                currentEditData.status = status;
                 currentEditData.startDate = start;
                 currentEditData.endDate = estEnd;
                 currentEditData.actualEndDate = actualEnd || '';
+                currentEditData.progress = parseFloat(completion) || 0;
                 currentEditData.startDateDisplay = formatDate(start);
                 currentEditData.estEndDateDisplay = formatDate(estEnd);
                 currentEditData.actualEndDateDisplay = actualEnd ? formatDate(actualEnd) : '—';
