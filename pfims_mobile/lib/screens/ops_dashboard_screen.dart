@@ -44,17 +44,6 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
     await next;
   }
 
-  void _pageStats(int direction, int cardCount) {
-    final next = (_statsController.page ?? 0) + direction;
-    _statsController.animateTo(
-      next.clamp(0, cardCount - 1) *
-          (_statsController.position.viewportDimension *
-              _statsController.viewportFraction),
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,38 +101,6 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
                     },
                   ),
                 ),
-                const SizedBox(height: 10),
-                if (opsStats.length > 1)
-                  Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: kDarkNavy,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => _pageStats(-1, opsStats.length),
-                          child: const Icon(Icons.chevron_left, color: Colors.white70, size: 18),
-                        ),
-                        Expanded(
-                          child: Container(
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _pageStats(1, opsStats.length),
-                          child: const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
-                        ),
-                      ],
-                    ),
-                  ),
                 const SizedBox(height: 20),
                 _SectionCard(
                   title: 'PROJECT COMPLETION TREND',
