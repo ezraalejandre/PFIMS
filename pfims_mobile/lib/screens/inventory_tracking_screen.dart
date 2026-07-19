@@ -151,6 +151,17 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
   bool _loadingSuppliers = true;
   String? _suppliersError;
 
+  final TextEditingController _inventorySearchController = TextEditingController();
+  final TextEditingController _itemsSearchController = TextEditingController();
+  final TextEditingController _suppliersSearchController = TextEditingController();
+
+  String _inventoryQuery = '';
+  String _itemsQuery = '';
+  String _suppliersQuery = '';
+
+  // null = All
+  StockStatus? _inventoryStatusFilter;
+
   @override
   void initState() {
     super.initState();
@@ -176,6 +187,9 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _inventorySearchController.dispose();
+    _itemsSearchController.dispose();
+    _suppliersSearchController.dispose();
     super.dispose();
   }
 
@@ -188,11 +202,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
       final data = await InventoryService.fetchTransactions();
       if (mounted) {
         final parsed = data.map((json) => InventoryItem.fromJson(json)).toList();
-        parsed.sort((a, b) {
-          final dateCompare = b.date.compareTo(a.date);
-          if (dateCompare != 0) return dateCompare;
-          return (b.transactionId ?? 0).compareTo(a.transactionId ?? 0);
-        });
+        parsed.sort((a, b) => (b.transactionId ?? 0).compareTo(a.transactionId ?? 0));
         setState(() {
           _items = parsed;
           _loadingItems = false;
@@ -309,6 +319,41 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
 
   int get _totalSuppliersCount => _suppliers.length;
 
+  List<InventoryItem> get _filteredInventoryItems {
+    final query = _inventoryQuery.trim().toLowerCase();
+    return _items.where((item) {
+      if (_inventoryStatusFilter != null && item.status != _inventoryStatusFilter) {
+        return false;
+      }
+      if (query.isEmpty) return true;
+      return item.name.toLowerCase().contains(query) ||
+          item.category.toLowerCase().contains(query) ||
+          item.unit.toLowerCase().contains(query) ||
+          (item.projectName ?? '').toLowerCase().contains(query);
+    }).toList();
+  }
+
+  List<ItemRecord> get _filteredItemRecords {
+    final query = _itemsQuery.trim().toLowerCase();
+    if (query.isEmpty) return _itemRecords;
+    return _itemRecords.where((item) {
+      return item.name.toLowerCase().contains(query) ||
+          item.categoryName.toLowerCase().contains(query) ||
+          item.unitName.toLowerCase().contains(query) ||
+          item.supplierName.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  List<Supplier> get _filteredSuppliers {
+    final query = _suppliersQuery.trim().toLowerCase();
+    if (query.isEmpty) return _suppliers;
+    return _suppliers.where((supplier) {
+      return supplier.name.toLowerCase().contains(query) ||
+          supplier.phone.toLowerCase().contains(query) ||
+          supplier.address.toLowerCase().contains(query);
+    }).toList();
+  }
+
   int get _movementsInThisMonth {
     final now = DateTime.now();
     return _items
@@ -339,6 +384,58 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
+  }
+
+  Widget _buildSearchAndFilterBar(bool isCompact) {
+    switch (_currentTab) {
+      case 0:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SearchField(
+              controller: _inventorySearchController,
+              hint: 'Search by item, category, or project...',
+              onChanged: (v) => setState(() => _inventoryQuery = v),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _FilterChip(
+                  label: 'All',
+                  selected: _inventoryStatusFilter == null,
+                  onTap: () => setState(() => _inventoryStatusFilter = null),
+                ),
+                _FilterChip(
+                  label: 'Stock In',
+                  selected: _inventoryStatusFilter == StockStatus.stockIn,
+                  onTap: () => setState(() => _inventoryStatusFilter = StockStatus.stockIn),
+                ),
+                _FilterChip(
+                  label: 'Stock Out',
+                  selected: _inventoryStatusFilter == StockStatus.stockOut,
+                  onTap: () => setState(() => _inventoryStatusFilter = StockStatus.stockOut),
+                ),
+              ],
+            ),
+          ],
+        );
+      case 1:
+        return _SearchField(
+          controller: _itemsSearchController,
+          hint: 'Search by item, category, or supplier...',
+          onChanged: (v) => setState(() => _itemsQuery = v),
+        );
+      case 2:
+        return _SearchField(
+          controller: _suppliersSearchController,
+          hint: 'Search by supplier, phone, or address...',
+          onChanged: (v) => setState(() => _suppliersQuery = v),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   @override
@@ -469,6 +566,8 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                               Tab(text: 'Suppliers'),
                             ],
                           ),
+                          const SizedBox(height: 10),
+                          _buildSearchAndFilterBar(isCompact),
                         ],
                       ),
                     ),
@@ -492,7 +591,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                       ),
                                     )
                                   : _InventoryList(
-                                      items: _items,
+                                      items: _filteredInventoryItems,
                                       formatDate: _formatDate,
                                       onTap: (item) {
                                         showDialog(
@@ -521,7 +620,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                       ),
                                     )
                                   : _ItemsList(
-                                      items: _itemRecords,
+                                      items: _filteredItemRecords,
                                       onTap: (item) {
                                         showDialog(
                                           context: context,
@@ -548,7 +647,7 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                                         ],
                                       ),
                                     )
-                                  : _SuppliersList(suppliers: _suppliers, onChanged: _loadSuppliers),
+                                  : _SuppliersList(suppliers: _filteredSuppliers, onChanged: _loadSuppliers),
                         ],
                       ),
                     ),
@@ -1312,7 +1411,7 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
         const SizedBox(height: 16),
         _field(
           "Item Category",
-          _dbDropdown(
+          _SearchableDropdownField(
             value: selectedCategoryId,
             hint: "Choose Category...",
             items: _categories,
@@ -1324,7 +1423,7 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
         const SizedBox(height: 16),
         _field(
           "Item Unit",
-          _dbDropdown(
+          _SearchableDropdownField(
             value: selectedUnitId,
             hint: "Choose Unit...",
             items: _units,
@@ -1336,7 +1435,7 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
         const SizedBox(height: 16),
         _field(
           "Item Supplier",
-          _dbDropdown(
+          _SearchableDropdownField(
             value: selectedSupplierId,
             hint: "Choose Supplier...",
             items: _suppliers,
@@ -1382,38 +1481,6 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
     );
   }
 
-  Widget _dbDropdown({
-    required int? value,
-    required String hint,
-    required List<Map<String, dynamic>> items,
-    required String idKey,
-    required String nameKey,
-    required void Function(int id, String name) onChanged,
-  }) {
-    final validValue = items.any((i) => i[idKey] == value) ? value : null;
-
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10)),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          isExpanded: true,
-          value: validValue,
-          hint: Text(hint, style: TextStyle(color: Colors.grey.shade400)),
-          items: items.map((item) {
-            return DropdownMenuItem<int>(value: item[idKey] as int, child: Text(item[nameKey] as String? ?? ""));
-          }).toList(),
-          onChanged: (id) {
-            if (id == null) return;
-            final match = items.firstWhere((i) => i[idKey] == id);
-            onChanged(id, match[nameKey] as String? ?? "");
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _field(String title, Widget child) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1432,6 +1499,298 @@ class _EditItemFullModalState extends State<_EditItemFullModal> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    );
+  }
+}
+
+// Search Field (used for the Inventory / Items / Suppliers list filters)
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  const _SearchField({
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+        prefixIcon: const Icon(Icons.search, size: 20),
+        suffixIcon: controller.text.isNotEmpty
+            ? InkWell(
+                onTap: () {
+                  controller.clear();
+                  onChanged('');
+                },
+                child: const Icon(Icons.close, size: 18),
+              )
+            : null,
+        filled: true,
+        fillColor: AppColors.card,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      style: const TextStyle(fontSize: 13.5),
+    );
+  }
+}
+
+// Filter Chip (All / Stock In / Stock Out)
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? kDarkPill : AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? kDarkPill : Colors.grey.shade300),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : Colors.black54,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Searchable dropdown field — tapping opens a bottom sheet with a search
+// box so long lists of items/categories/units/suppliers/projects are easy
+// to filter instead of scrolling a plain dropdown menu.
+class _SearchableDropdownField extends StatelessWidget {
+  final int? value;
+  final String hint;
+  final List<Map<String, dynamic>> items;
+  final String idKey;
+  final String nameKey;
+  final String? subtitleKey;
+  final void Function(int id, String name) onChanged;
+
+  const _SearchableDropdownField({
+    required this.value,
+    required this.hint,
+    required this.items,
+    required this.idKey,
+    required this.nameKey,
+    required this.onChanged,
+    this.subtitleKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = items.where((i) => i[idKey] == value);
+    final selectedName = matches.isNotEmpty ? (matches.first[nameKey] as String? ?? '') : null;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () async {
+        final result = await showModalBottomSheet<Map<String, dynamic>>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _SearchPickerSheet(
+            items: items,
+            nameKey: nameKey,
+            subtitleKey: subtitleKey,
+            title: hint,
+          ),
+        );
+        if (result != null) {
+          final rawId = result[idKey];
+          final resolvedId = rawId is int ? rawId : int.tryParse('$rawId');
+          if (resolvedId != null) {
+            onChanged(resolvedId, result[nameKey] as String? ?? '');
+          }
+        }
+      },
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                selectedName?.isNotEmpty == true ? selectedName! : hint,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: (selectedName?.isNotEmpty == true) ? Colors.black87 : Colors.grey.shade400,
+                ),
+              ),
+            ),
+            Icon(Icons.search, size: 18, color: Colors.grey.shade500),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchPickerSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> items;
+  final String nameKey;
+  final String? subtitleKey;
+  final String title;
+
+  const _SearchPickerSheet({
+    required this.items,
+    required this.nameKey,
+    required this.title,
+    this.subtitleKey,
+  });
+
+  @override
+  State<_SearchPickerSheet> createState() => _SearchPickerSheetState();
+}
+
+class _SearchPickerSheetState extends State<_SearchPickerSheet> {
+  final _controller = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _query.trim().toLowerCase();
+    final filtered = query.isEmpty
+        ? widget.items
+        : widget.items.where((item) {
+            final name = (item[widget.nameKey] as String? ?? '').toLowerCase();
+            final subtitle = widget.subtitleKey != null
+                ? (item[widget.subtitleKey!] as String? ?? '').toLowerCase()
+                : '';
+            return name.contains(query) || subtitle.contains(query);
+          }).toList();
+
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        constraints: BoxConstraints(maxHeight: screenHeight * 0.75),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  InkWell(onTap: () => Navigator.pop(context), child: const Icon(Icons.close)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _query.isNotEmpty
+                      ? InkWell(
+                          onTap: () {
+                            _controller.clear();
+                            setState(() => _query = '');
+                          },
+                          child: const Icon(Icons.close, size: 18),
+                        )
+                      : null,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Text(
+                        _query.isEmpty ? 'No options available.' : 'No matches for "${_query.trim()}"',
+                        style: const TextStyle(color: Colors.black45),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.only(bottom: 8),
+                      itemCount: filtered.length,
+                      separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade200),
+                      itemBuilder: (context, index) {
+                        final item = filtered[index];
+                        final subtitle = widget.subtitleKey != null
+                            ? item[widget.subtitleKey!] as String?
+                            : null;
+                        return ListTile(
+                          title: Text(item[widget.nameKey] as String? ?? ''),
+                          subtitle: (subtitle != null && subtitle.isNotEmpty) ? Text(subtitle) : null,
+                          onTap: () => Navigator.pop(context, item),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1655,7 +2014,7 @@ class _AddItemModalState extends State<_AddItemModal> {
         const SizedBox(height: 16),
         _field(
           "Item Category",
-          _dbDropdown(
+          _SearchableDropdownField(
             value: selectedCategoryId,
             hint: "Choose Category...",
             items: _categories,
@@ -1672,7 +2031,7 @@ class _AddItemModalState extends State<_AddItemModal> {
         const SizedBox(height: 16),
         _field(
           "Item Unit",
-          _dbDropdown(
+          _SearchableDropdownField(
             value: selectedUnitId,
             hint: "Choose Unit...",
             items: _units,
@@ -1689,7 +2048,7 @@ class _AddItemModalState extends State<_AddItemModal> {
         const SizedBox(height: 16),
         _field(
           "Item Supplier",
-          _dbDropdown(
+          _SearchableDropdownField(
             value: selectedSupplierId,
             hint: "Choose Supplier...",
             items: _suppliers,
@@ -1744,41 +2103,6 @@ class _AddItemModalState extends State<_AddItemModal> {
     );
   }
 
-  Widget _dbDropdown({
-    required int? value,
-    required String hint,
-    required List<Map<String, dynamic>> items,
-    required String idKey,
-    required String nameKey,
-    required void Function(int id, String name) onChanged,
-  }) {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          isExpanded: true,
-          value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
-          items: items.map((item) {
-            return DropdownMenuItem<int>(
-              value: item[idKey] as int,
-              child: Text(item[nameKey] as String? ?? ""),
-            );
-          }).toList(),
-          onChanged: (id) {
-            if (id == null) return;
-            final match = items.firstWhere((i) => i[idKey] == id);
-            onChanged(id, match[nameKey] as String? ?? "");
-          },
-        ),
-      ),
-    );
-  }
 
   Widget _field(String title, Widget child) {
     return Column(
@@ -2058,7 +2382,7 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
         if (transactionType == "OUT") ...[
           _field(
             "Project",
-            _dbDropdown(
+            _SearchableDropdownField(
               value: selectedProjectId,
               hint: "Choose Project...",
               items: _projects,
@@ -2076,12 +2400,13 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
         ],
         _field(
           "Item Name",
-          _dbDropdown(
+          _SearchableDropdownField(
             value: selectedItemId,
             hint: "Choose Item...",
             items: _items,
             idKey: "item_id",
             nameKey: "item_name",
+            subtitleKey: "unit_name",
             onChanged: (id, name) {
               final match = _items.firstWhere((i) => i["item_id"] == id);
               final rawStock = match["current_stock"];
@@ -2228,42 +2553,6 @@ class _AddTransactionModalState extends State<_AddTransactionModal> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _dbDropdown({
-    required int? value,
-    required String hint,
-    required List<Map<String, dynamic>> items,
-    required String idKey,
-    required String nameKey,
-    required void Function(int id, String name) onChanged,
-  }) {
-    return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          isExpanded: true,
-          value: value,
-          hint: Text(hint, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
-          items: items.map((item) {
-            return DropdownMenuItem<int>(
-              value: item[idKey] as int,
-              child: Text(item[nameKey] as String? ?? ""),
-            );
-          }).toList(),
-          onChanged: (id) {
-            if (id == null) return;
-            final match = items.firstWhere((i) => i[idKey] == id);
-            onChanged(id, match[nameKey] as String? ?? "");
-          },
-        ),
-      ),
     );
   }
 
