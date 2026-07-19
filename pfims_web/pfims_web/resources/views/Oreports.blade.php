@@ -19,7 +19,7 @@
             </div>
         </div>
         <div class="right">
-            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+            <a href="{{ url('/onotifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span>Notifications</span>
                 <span class="notif-badge" id="notifBadge">6</span>
