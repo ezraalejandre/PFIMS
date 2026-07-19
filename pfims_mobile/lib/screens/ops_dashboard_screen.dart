@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // for SystemNavigator
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pfims_mobile/screens/notifications_screen.dart'
     show NotificationsScreen;
@@ -93,159 +94,188 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kPageBg,
-      appBar: _OpsHeader(email: widget.email),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: [
-          const _PageHeader(
-            title: "DASHBOARD",
-            subtitle: "operations overview",
-          ),
-          const SizedBox(height: 14),
-          // Stat card carousel (Active Projects + Equipment only)
-          SizedBox(
-            height: 104,
-            child: PageView.builder(
-              controller: _statsController,
-              itemCount: _statCards.length,
-              padEnds: false,
-              itemBuilder: (context, i) => Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: _StatCard(data: _statCards[i]),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+  if (didPop) return;
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Exit app?"),
+            content: const Text("Are you sure you want to exit?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text("Cancel"),
               ),
-            ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text("Exit"),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: kDarkNavy,
-              borderRadius: BorderRadius.circular(16),
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: kPageBg,
+        appBar: _OpsHeader(email: widget.email),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          children: [
+            const _PageHeader(
+              title: "DASHBOARD",
+              subtitle: "operations overview",
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => _pageStats(-1),
-                  child: const Icon(Icons.chevron_left,
-                      color: Colors.white70, size: 18),
-                ),
-                Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => _pageStats(1),
-                  child: const Icon(Icons.chevron_right,
-                      color: Colors.white70, size: 18),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Project Completion Trend
-          _SectionCard(
-            title: "PROJECT COMPLETION TREND",
-            child: SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  maxY: 12,
-                  alignment: BarChartAlignment.spaceAround,
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 3,
-                    getDrawingHorizontalLine: (_) =>
-                        FlLine(color: Colors.grey[200], strokeWidth: 1),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 3,
-                        reservedSize: 26,
-                        getTitlesWidget: (v, meta) => Text(
-                          v.toInt().toString(),
-                          style:
-                              TextStyle(fontSize: 11, color: Colors.grey[500]),
-                        ),
-                      ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 24,
-                        getTitlesWidget: (v, meta) {
-                          final index = v.toInt();
-                          if (index < 0 || index >= _months.length) {
-                            return const SizedBox();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              _months[index],
-                              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  barGroups: List.generate(
-                    _completionTrend.length,
-                    (i) => BarChartGroupData(
-                      x: i,
-                      barRods: [
-                        BarChartRodData(
-                          toY: _completionTrend[i],
-                          color: kDarkNavy,
-                          width: 22,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ],
-                    ),
-                  ),
+            const SizedBox(height: 14),
+            // Stat card carousel (Active Projects + Equipment only)
+            SizedBox(
+              height: 104,
+              child: PageView.builder(
+                controller: _statsController,
+                itemCount: _statCards.length,
+                padEnds: false,
+                itemBuilder: (context, i) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _StatCard(data: _statCards[i]),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 10),
+            Container(
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: kDarkNavy,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => _pageStats(-1),
+                    child: const Icon(Icons.chevron_left,
+                        color: Colors.white70, size: 18),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _pageStats(1),
+                    child: const Icon(Icons.chevron_right,
+                        color: Colors.white70, size: 18),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
 
-          // Active Projects list
-          const Text(
-            "ACTIVE PROJECTS",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              letterSpacing: .3,
-              color: Colors.black87,
+            // Project Completion Trend
+            _SectionCard(
+              title: "PROJECT COMPLETION TREND",
+              child: SizedBox(
+                height: 200,
+                child: BarChart(
+                  BarChartData(
+                    maxY: 12,
+                    alignment: BarChartAlignment.spaceAround,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: 3,
+                      getDrawingHorizontalLine: (_) =>
+                          FlLine(color: Colors.grey[200], strokeWidth: 1),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 3,
+                          reservedSize: 26,
+                          getTitlesWidget: (v, meta) => Text(
+                            v.toInt().toString(),
+                            style:
+                                TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          ),
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 24,
+                          getTitlesWidget: (v, meta) {
+                            final index = v.toInt();
+                            if (index < 0 || index >= _months.length) {
+                              return const SizedBox();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                _months[index],
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.grey[500]),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    barGroups: List.generate(
+                      _completionTrend.length,
+                      (i) => BarChartGroupData(
+                        x: i,
+                        barRods: [
+                          BarChartRodData(
+                            toY: _completionTrend[i],
+                            color: kDarkNavy,
+                            width: 22,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          ..._activeProjects.map(
-            (p) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _ActiveProjectCard(data: p),
+            const SizedBox(height: 20),
+
+            // Active Projects list
+            const Text(
+              "ACTIVE PROJECTS",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: .3,
+                color: Colors.black87,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            ..._activeProjects.map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ActiveProjectCard(data: p),
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar:
+            OpsBottomNavBar(currentIndex: 0, email: widget.email),
       ),
-      bottomNavigationBar: OpsBottomNavBar(currentIndex: 0, email: widget.email),
     );
   }
 }

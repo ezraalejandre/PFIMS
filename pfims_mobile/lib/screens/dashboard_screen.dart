@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // for SystemNavigator
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pfims_mobile/screens/notifications_screen.dart' show NotificationsScreen;
 import '../widgets/app_bottom_nav_bar.dart';
@@ -7,7 +8,6 @@ import '../services/dashboard_service.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../widgets/app_header.dart' show AppHeader;
-
 const Color kBrandOrange = Color(0xFFF2811D);
 const Color kDarkNavy = Color(0xFF1A1F36);
 const Color kPositiveGreen = Color(0xFF27AE60);
@@ -68,16 +68,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kPageBg,
-      appBar: AppHeader(email: widget.email), 
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: FutureBuilder<DashboardData>(
-          future: _dashboardFuture,
-          builder: (context, snapshot) {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+  if (didPop) return;
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Exit app?"),
+            content: const Text("Are you sure you want to exit?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text("Exit"),
+              ),
+            ],
+          ),
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: kPageBg,
+        appBar: AppHeader(email: widget.email),
+        body: RefreshIndicator(
+          onRefresh: _refresh,
+          child: FutureBuilder<DashboardData>(
+            future: _dashboardFuture,
+            builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -200,6 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       bottomNavigationBar: AppBottomNavBar(currentIndex: 0, email: widget.email),
+      )
     );
   }
 }
