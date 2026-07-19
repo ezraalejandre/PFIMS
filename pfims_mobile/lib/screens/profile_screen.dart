@@ -456,16 +456,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
                                       ),
                                     ),
-                                    _ActionRow(
-                                      icon: Icons.notifications_none_rounded,
-                                      title: 'Notifications',
-                                      subtitle: 'Manage alerts & reminders',
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                                        );
-                                      },
-                                    ),
+                                    // _ActionRow(
+                                    //   icon: Icons.notifications_none_rounded,
+                                    //   title: 'Notifications',
+                                    //   subtitle: 'Manage alerts & reminders',
+                                    //   onTap: () {
+                                    //     Navigator.of(context).push(
+                                    //       MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                                    //     );
+                                    //   },
+                                    // ),
                                     _ActionRow(
                                     icon: Icons.shield_outlined,
                                     title: 'Privacy & Security',
@@ -478,13 +478,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       );
                                     },
                                   ),
-                                    _ActionRow(
-                                      icon: Icons.help_outline,
-                                      title: 'Help & Support',
-                                      subtitle: 'FAQs, contact us',
-                                      isLast: true,
-                                      onTap: () => _showPlaceholder('Help & Support'),
-                                    ),
+                                    // _ActionRow(
+                                    //   icon: Icons.help_outline,
+                                    //   title: 'Help & Support',
+                                    //   subtitle: 'FAQs, contact us',
+                                    //   isLast: true,
+                                    //   onTap: () => _showPlaceholder('Help & Support'),
+                                    // ),
                                   ],
                                 ),
                               ),

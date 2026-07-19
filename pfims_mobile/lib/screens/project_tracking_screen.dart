@@ -257,11 +257,18 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
   final TextEditingController _searchController = TextEditingController();
   late Future<List<_ProjectData>> _projectsFuture;
 
+  // Pagination — 10 projects per page, shown with a "X-Y out of Z
+  // projects" label next to prev/next controls at the bottom of the list.
+  int _currentPage = 0;
+  static const int _itemsPerPage = 10;
+
   @override
   void initState() {
     super.initState();
     _projectsFuture = _loadProjects();
-    _searchController.addListener(() => setState(() {}));
+    _searchController.addListener(() {
+      setState(() => _currentPage = 0);
+    });
   }
 
   @override
@@ -367,20 +374,45 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
             return p.estimatedEndDate!.isBefore(todayDateOnly);
           }).length;
 
+            // ---- Pagination math ----
+            final totalFiltered = projects.length;
+            final totalPages =
+                totalFiltered == 0 ? 1 : ((totalFiltered - 1) ~/ _itemsPerPage) + 1;
+            final safePage = _currentPage >= totalPages ? totalPages - 1 : _currentPage;
+            final startIndex = safePage * _itemsPerPage;
+            final endIndex = (startIndex + _itemsPerPage) > totalFiltered
+                ? totalFiltered
+                : startIndex + _itemsPerPage;
+            final pageItems =
+                totalFiltered == 0 ? const <_ProjectData>[] : projects.sublist(startIndex, endIndex);
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
                 // ---- Title + New Project button ----
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "PROJECT TRACKING",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: .2,
-                        color: Colors.black87,
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "PROJECTS",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black87,
+                              letterSpacing: .2,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            "construction operation overview",
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
                       ),
                     ),
                     ElevatedButton.icon(
@@ -407,8 +439,9 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 10),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(20),
                         ),
+                        textStyle: const TextStyle(fontSize: 13),
                       ),
                       icon: const Icon(Icons.add, size: 16),
                       label: const Text(
@@ -418,57 +451,59 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+
+                // ---- Stat tiles: 2x2 grid, matching inventory's sizing ----
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatTile(
+                            label: "ACTIVE PROJECTS",
+                            value: isLoading ? "—" : "$activeProjects",
+                            footer: isLoading ? "" : "$totalProjects total",
+                            footerColor: Colors.grey[600]!,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _StatTile(
+                            label: "AVG. PROGRESS",
+                            value: isLoading ? "—" : "$avgProgress%",
+                            footer: "Across active projects",
+                            footerColor: Colors.grey[600]!,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatTile(
+                            label: "NEEDS ATTENTION",
+                            value: isLoading ? "—" : "$needsAttention",
+                            footer: needsAttention > 0 ? "At risk or delayed" : "All clear",
+                            footerColor: needsAttention > 0 ? kDelayedRed : Colors.grey[600]!,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _StatTile(
+                            label: "OVERDUE",
+                            value: isLoading ? "—" : "$overdue",
+                            footer: overdue > 0 ? "Past deadline" : "On schedule",
+                            footerColor: overdue > 0 ? kDelayedRed : Colors.grey[600]!,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
 
-                // ---- Stat tiles ----
-                SizedBox(
-                  height: 104, // match roughly what the tiles already render at
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "ACTIVE PROJECTS",
-                          value: isLoading ? "—" : "$activeProjects",
-                          footer: isLoading ? "" : "$totalProjects total",
-                          footerColor: Colors.grey[600]!,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "AVG. PROGRESS",
-                          value: isLoading ? "—" : "$avgProgress%",
-                          footer: "Across active projects",
-                          footerColor: Colors.grey[600]!,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "NEEDS ATTENTION",
-                          value: isLoading ? "—" : "$needsAttention",
-                          footer: needsAttention > 0 ? "At risk or delayed" : "All clear",
-                          footerColor: needsAttention > 0 ? kDelayedRed : Colors.grey[600]!,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "OVERDUE",
-                          value: isLoading ? "—" : "$overdue",
-                          footer: overdue > 0 ? "Past deadline" : "On schedule",
-                          footerColor: overdue > 0 ? kDelayedRed : Colors.grey[600]!,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                                // ---- Search + filter ----
+                // ---- Search + filter ----
                 Row(
                   children: [
                     Expanded(
@@ -560,8 +595,8 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                       ),
                     ),
                   )
-                else
-                  ...projects.map(
+                else ...[
+                  ...pageItems.map(
                     (p) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _ProjectCard(
@@ -570,6 +605,42 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "${startIndex + 1}-$endIndex out of $totalFiltered projects",
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: safePage > 0
+                                ? () => setState(() => _currentPage = safePage - 1)
+                                : null,
+                            icon: const Icon(Icons.chevron_left),
+                            iconSize: 20,
+                            splashRadius: 18,
+                          ),
+                          Text(
+                            "${safePage + 1} / $totalPages",
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          ),
+                          IconButton(
+                            onPressed: safePage < totalPages - 1
+                                ? () => setState(() => _currentPage = safePage + 1)
+                                : null,
+                            icon: const Icon(Icons.chevron_right),
+                            iconSize: 20,
+                            splashRadius: 18,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ],
             );
           },
@@ -596,11 +667,13 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,28 +681,32 @@ class _StatTile extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w600,
-              letterSpacing: .2,
-              color: Colors.grey[500],
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .3,
+              color: Colors.black45,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87,
+              ),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             footer,
             style: TextStyle(
-                fontSize: 10.5, fontWeight: FontWeight.w600, color: footerColor),
+                fontSize: 10, fontWeight: FontWeight.w600, color: footerColor),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -661,7 +738,7 @@ class _ProjectCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: .04),
+              color: Colors.black.withValues(alpha: .03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -698,7 +775,8 @@ class _ProjectCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: data.tagBg,
+                    // Reduced-opacity tag background for a less saturated card look.
+                    color: data.tagBg.withValues(alpha: .55),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -983,13 +1061,14 @@ Widget build(BuildContext context) {
               child: _buildStepper(),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Divider(height: 1, color: Colors.grey[200]),
 
-            // BODY
+            // BODY — extra top padding so there's clear breathing room
+            // between the header/stepper and the first field group.
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 4),
                 child: IndexedStack(
                   index: _currentStep,
                   children: [
@@ -1646,6 +1725,7 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                     _input(controller: _clientController, hint: "Client name"),
                     const SizedBox(height: 16),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: _field(
@@ -1735,6 +1815,7 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                     ),
                     const SizedBox(height: 16),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: _field(
@@ -1860,25 +1941,24 @@ class _EditProjectModalState extends State<_EditProjectModal> {
     return Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500));
   }
 
+  // Fixed: this previously wrapped the label in a fixed-height 40px
+  // SizedBox, which clipped/overlapped the field below whenever a label
+  // (e.g. "Estimated end date *") wrapped to two lines at narrower
+  // widths. Now the label sizes naturally and the field is always pushed
+  // below it correctly.
   Widget _field({required String label, required Widget child}) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SizedBox(
-        height: 40, // reserves space for up to 2 lines, keeps inputs aligned
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 15, color: Colors.black87),
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
         ),
-      ),
-      const SizedBox(height: 8),
-      child,
-    ],
-  );
-}
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
 
   Widget _input({
     required TextEditingController controller,

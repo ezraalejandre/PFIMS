@@ -74,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       canPop: false,
       onPopInvoked: (didPop) async {
   if (didPop) return;
-        if (didPop) return;
+       
         final shouldExit = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -139,46 +139,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   subtitle: 'construction operation overview',
                 ),
                 const SizedBox(height: 14),
-                SizedBox(
+               SizedBox(
                   height: 140,
-                  child: PageView.builder(
-                    controller: _statsController,
-                    itemCount: dashboardStats.length,
-                    padEnds: false,
-                    itemBuilder: (context, i) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: _StatCard(data: dashboardStats[i]),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                if (dashboardStats.length > 1)
-                  Container(
-                    height: 32,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(color: kDarkNavy, borderRadius: BorderRadius.circular(16)),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => _pageStats(-1, dashboardStats.length),
-                          child: const Icon(Icons.chevron_left, color: Colors.white70, size: 18),
-                        ),
-                        Expanded(
-                          child: Container(
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _pageStats(1, dashboardStats.length),
-                          child: const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
-                        ),
-                      ],
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      scrollbars: false,
+                      overscroll: false,
+                    ),
+                    child: PageView.builder(
+                      controller: _statsController,
+                      itemCount: dashboardStats.length,
+                      padEnds: false,
+                      itemBuilder: (context, i) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: _StatCard(data: dashboardStats[i]),
+                        );
+                      },
                     ),
                   ),
+                ),
+                // const SizedBox(height: 10),
+                // if (dashboardStats.length > 1)
+                //   Container(
+                //     height: 32,
+                //     padding: const EdgeInsets.symmetric(horizontal: 10),
+                //     decoration: BoxDecoration(color: kDarkNavy, borderRadius: BorderRadius.circular(16)),
+                //     child: Row(
+                //       children: [
+                //         GestureDetector(
+                //           onTap: () => _pageStats(-1, dashboardStats.length),
+                //           child: const Icon(Icons.chevron_left, color: Colors.white70, size: 18),
+                //         ),
+                //         Expanded(
+                //           child: Container(
+                //             height: 4,
+                //             margin: const EdgeInsets.symmetric(horizontal: 8),
+                //             decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                //           ),
+                //         ),
+                //         GestureDetector(
+                //           onTap: () => _pageStats(1, dashboardStats.length),
+                //           child: const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
                 const SizedBox(height: 20),
                 _SectionCard(
                   title: "PROJECT COMPLETION TREND",
