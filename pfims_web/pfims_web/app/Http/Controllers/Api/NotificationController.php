@@ -4,11 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
+use App\Services\NotificationService;
 
 class NotificationController extends Controller
 {
+    public function __construct(private NotificationService $notifications)
+    {
+    }
+
     public function index()
     {
+        $this->notifications->syncSystemAlerts();
+
         $notifications = AppNotification::orderByDesc('created_at')->get();
 
         return response()->json([
@@ -26,6 +33,8 @@ class NotificationController extends Controller
 
     public function unreadCount()
     {
+        $this->notifications->syncSystemAlerts();
+
         return response()->json([
             'unread_count' => AppNotification::where('is_read', false)->count(),
         ]);

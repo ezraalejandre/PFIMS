@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pfims_mobile/screens/notifications_screen.dart'
     show NotificationsScreen;
+import 'package:pfims_mobile/widgets/app_header.dart' show NotificationBell;
 import '../widgets/ops_bottom_nav_bar.dart';
 
 const Color kBrandOrange = Color(0xFFF2811D);
@@ -239,8 +240,6 @@ class _OpsHeader extends StatelessWidget implements PreferredSizeWidget {
 
   final String email;
 
-  static const int _unreadCount = 4;
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -295,7 +294,11 @@ class _OpsHeader extends StatelessWidget implements PreferredSizeWidget {
                       letterSpacing: .4)),
             ),
             const SizedBox(width: 6),
-            _NotificationBell(unreadCount: _unreadCount),
+            NotificationBell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
+            ),
             const SizedBox(width: 6),
             Material(
               color: Colors.transparent,
@@ -323,55 +326,6 @@ class _OpsHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(64);
-}
-
-class _NotificationBell extends StatelessWidget {
-  final int unreadCount;
-  const _NotificationBell({required this.unreadCount});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(Icons.notifications_none_rounded,
-                  color: kBrandOrange, size: 26),
-              if (unreadCount > 0)
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    constraints:
-                        const BoxConstraints(minWidth: 16, minHeight: 16),
-                    decoration: const BoxDecoration(
-                        color: Color(0xFFE53935), shape: BoxShape.circle),
-                    child: Text(
-                      unreadCount > 9 ? '9+' : '$unreadCount',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          height: 1),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _SectionCard extends StatelessWidget {

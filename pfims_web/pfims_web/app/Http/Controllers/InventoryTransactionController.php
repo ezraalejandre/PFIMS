@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InventoryTransactionController extends Controller
 {
+    public function __construct(private NotificationService $notifications)
+    {
+    }
+
     public function store(Request $request)
     {
 
@@ -60,12 +65,48 @@ class InventoryTransactionController extends Controller
                 return [
                     'inventory_transaction_id' => $id,
                     'current_stock'            => $newStock,
+                    'item_id'                  => (int) $item->item_id,
+                    'item_name'                => $item->item_name,
+                    'old_stock'                => (float) $item->current_stock,
+                    'reorder_level'            => (float) ($item->reorder_level ?? 0),
                 ];
             });
         } catch (\Throwable $e) {
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
             $message = $e->getMessage() ?: 'Failed to save transaction.';
             return response()->json(['message' => $message], $status ?: 500);
+        }
+
+        $quantity = rtrim(rtrim(number_format((float) $request->quantity, 2), '0'), '.');
+
+        if ($request->transaction_type === 'IN') {
+            $this->notifications->notify(
+                title: 'New Stock-In Expense',
+                message: "{$quantity} unit(s) of \"{$result['item_name']}\" were added to inventory.",
+                type: 'stock_in_expense',
+                kind: 'info',
+                filter: 'alerts',
+                referenceType: 'inventory_transaction',
+                referenceId: (int) $result['inventory_transaction_id'],
+            );
+        }
+
+        if (
+            $result['current_stock'] <= $result['reorder_level'] &&
+            !$this->notifications->alreadyNotified('item_low_stock', 'item', $result['item_id'])
+        ) {
+            $stock = rtrim(rtrim(number_format((float) $result['current_stock'], 2), '0'), '.');
+            $threshold = rtrim(rtrim(number_format((float) $result['reorder_level'], 2), '0'), '.');
+
+            $this->notifications->notify(
+                title: 'Low Stock Warning',
+                message: "\"{$result['item_name']}\" is low on stock ({$stock} left, threshold {$threshold}).",
+                type: 'item_low_stock',
+                kind: 'warning',
+                filter: 'alerts',
+                referenceType: 'item',
+                referenceId: $result['item_id'],
+            );
         }
 
         return response()->json([
