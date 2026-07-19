@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../widgets/app_bottom_nav_bar.dart';
+import '../widgets/ops_bottom_nav_bar.dart';
 import '../widgets/app_header.dart';
 import '../services/projects_service.dart';
 
@@ -40,6 +41,28 @@ DateTime? _parseDate(dynamic value) {
   final str = value.toString();
   if (str.isEmpty) return null;
   return DateTime.tryParse(str);
+}
+
+/// Maps a project phase to its corresponding completion percentage.
+/// Planning -> 20%, Foundation -> 40%, Structure -> 60%, Finishing -> 80%,
+/// Complete -> 100%. This replaces manual slider input: completion is
+/// always derived from phase so the two values can never disagree.
+int phaseToPercent(String phase) {
+  switch (phase.trim().toLowerCase()) {
+    case 'planning':
+      return 20;
+    case 'foundation':
+      return 40;
+    case 'structure':
+      return 60;
+    case 'finishing':
+      return 80;
+    case 'complete':
+    case 'completed':
+      return 100;
+    default:
+      return 0;
+  }
 }
 
 Color _tagBgForPhase(String phase) {
@@ -184,7 +207,7 @@ class _ProjectData {
           : int.tryParse(json['worker_count']?.toString() ?? '') ?? 0,
       phase: (json['phase'] ?? 'Planning').toString(),
       status: (json['status'] ?? 'Pending').toString(),
-      percent: (percentValue / 100).clamp(0.0, 1.0),
+      percent: (percentValue / 100).clamp(0.0, 1.0).toDouble(),
       startDate: _parseDate(json['start_date']),
       estimatedEndDate: _parseDate(json['estimated_end_date']),
       actualEndDate: _parseDate(json['actual_end_date']),
@@ -196,14 +219,24 @@ class _ProjectData {
   Color get statusColor => _colorForStatus(status);
   Color get progressColor => statusColor;
 
+  bool get _isCompleted => status.trim().toLowerCase() == 'completed';
+
+  /// The end date shown on the card and used for duration math. Once a
+  /// project is marked Completed and has an actual end date recorded, that
+  /// actual date takes over from the original estimate everywhere in the
+  /// UI — the estimate becomes historical only.
+  DateTime? get displayEndDate =>
+      (_isCompleted && actualEndDate != null) ? actualEndDate : estimatedEndDate;
+
   String get startDateLabel => _formatDate(startDate);
-  String get endDateLabel => _formatDate(estimatedEndDate);
+  String get endDateLabel => _formatDate(displayEndDate);
   String get actualEndDateLabel =>
       actualEndDate == null ? 'Not yet completed' : _formatDate(actualEndDate);
 
   String get durationLabel {
-    if (startDate == null || estimatedEndDate == null) return 'Duration: —';
-    final days = estimatedEndDate!.difference(startDate!).inDays;
+    final end = displayEndDate;
+    if (startDate == null || end == null) return 'Duration: —';
+    final days = end.difference(startDate!).inDays;
     if (days <= 0) return 'Duration: —';
     final months = days / 30.44;
     return 'Duration: ${months.toStringAsFixed(1)} mo';
@@ -214,8 +247,13 @@ class _ProjectData {
 
 class ProjectTrackingScreen extends StatefulWidget {
   final String email;
+  final bool operationsMode;
 
-  const ProjectTrackingScreen({super.key, this.email = ''});
+  const ProjectTrackingScreen({
+    super.key,
+    this.email = '',
+    this.operationsMode = false,
+  });
 
   @override
   State<ProjectTrackingScreen> createState() => _ProjectTrackingScreenState();
@@ -225,11 +263,18 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
   final TextEditingController _searchController = TextEditingController();
   late Future<List<_ProjectData>> _projectsFuture;
 
+  // Pagination — 10 projects per page, shown with a "X-Y out of Z
+  // projects" label next to prev/next controls at the bottom of the list.
+  int _currentPage = 0;
+  static const int _itemsPerPage = 10;
+
   @override
   void initState() {
     super.initState();
     _projectsFuture = _loadProjects();
-    _searchController.addListener(() => setState(() {}));
+    _searchController.addListener(() {
+      setState(() => _currentPage = 0);
+    });
   }
 
   @override
@@ -326,6 +371,10 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
             return s == 'at risk' || s == 'delayed';
           }).length;
 
+          final onSchedule = allProjects
+              .where((p) => p.status.toLowerCase() == 'on track')
+              .length;
+
           final today = DateTime.now();
           final todayDateOnly = DateTime(today.year, today.month, today.day);
           final overdue = allProjects.where((p) {
@@ -335,20 +384,45 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
             return p.estimatedEndDate!.isBefore(todayDateOnly);
           }).length;
 
+            // ---- Pagination math ----
+            final totalFiltered = projects.length;
+            final totalPages =
+                totalFiltered == 0 ? 1 : ((totalFiltered - 1) ~/ _itemsPerPage) + 1;
+            final safePage = _currentPage >= totalPages ? totalPages - 1 : _currentPage;
+            final startIndex = safePage * _itemsPerPage;
+            final endIndex = (startIndex + _itemsPerPage) > totalFiltered
+                ? totalFiltered
+                : startIndex + _itemsPerPage;
+            final pageItems =
+                totalFiltered == 0 ? const <_ProjectData>[] : projects.sublist(startIndex, endIndex);
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
                 // ---- Title + New Project button ----
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "PROJECT TRACKING",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: .2,
-                        color: Colors.black87,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.operationsMode ? "PROJECT TRACKING" : "PROJECTS",
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black87,
+                              letterSpacing: .2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            "construction operation overview",
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
                       ),
                     ),
                     ElevatedButton.icon(
@@ -375,8 +449,9 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 10),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(20),
                         ),
+                        textStyle: const TextStyle(fontSize: 13),
                       ),
                       icon: const Icon(Icons.add, size: 16),
                       label: const Text(
@@ -386,57 +461,69 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+
+                // ---- Stat tiles: 2x2 grid, matching inventory's sizing ----
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatTile(
+                            label: "ACTIVE PROJECTS",
+                            value: isLoading ? "—" : "$activeProjects",
+                            footer: widget.operationsMode
+                                ? "$activeProjects active projects"
+                                : (isLoading ? "" : "$totalProjects total"),
+                            footerColor: Colors.grey[600]!,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _StatTile(
+                            label: widget.operationsMode ? "ON SCHEDULE" : "AVG. PROGRESS",
+                            value: isLoading ? "-" : (widget.operationsMode ? "$onSchedule" : "$avgProgress%"),
+                            footer: widget.operationsMode
+                                ? "${activeProjects == 0 ? 0 : ((onSchedule / activeProjects) * 100).round()}% of active"
+                                : "Across active projects",
+                            footerColor: Colors.grey[600]!,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatTile(
+                            label: widget.operationsMode ? "DELAYED" : "NEEDS ATTENTION",
+                            value: isLoading ? "—" : "$needsAttention",
+                            footer: needsAttention > 0
+                                ? "Needs attention"
+                                : (widget.operationsMode ? "All projects on track" : "All clear"),
+                            footerColor: needsAttention > 0 ? kDelayedRed : Colors.grey[600]!,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _StatTile(
+                            label: widget.operationsMode ? "AVG COMPLETION" : "OVERDUE",
+                            value: isLoading ? "-" : (widget.operationsMode ? "$avgProgress%" : "$overdue"),
+                            footer: widget.operationsMode
+                                ? "Across $totalProjects projects"
+                                : (overdue > 0 ? "Past deadline" : "On schedule"),
+                            footerColor: !widget.operationsMode && overdue > 0
+                                ? kDelayedRed
+                                : Colors.grey[600]!,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
 
-                // ---- Stat tiles ----
-                SizedBox(
-                  height: 104, // match roughly what the tiles already render at
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "ACTIVE PROJECTS",
-                          value: isLoading ? "—" : "$activeProjects",
-                          footer: isLoading ? "" : "$totalProjects total",
-                          footerColor: Colors.grey[600]!,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "AVG. PROGRESS",
-                          value: isLoading ? "—" : "$avgProgress%",
-                          footer: "Across active projects",
-                          footerColor: Colors.grey[600]!,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "NEEDS ATTENTION",
-                          value: isLoading ? "—" : "$needsAttention",
-                          footer: needsAttention > 0 ? "At risk or delayed" : "All clear",
-                          footerColor: needsAttention > 0 ? kDelayedRed : Colors.grey[600]!,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 150,
-                        child: _StatTile(
-                          label: "OVERDUE",
-                          value: isLoading ? "—" : "$overdue",
-                          footer: overdue > 0 ? "Past deadline" : "On schedule",
-                          footerColor: overdue > 0 ? kDelayedRed : Colors.grey[600]!,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                                // ---- Search + filter ----
+                // ---- Search + filter ----
                 Row(
                   children: [
                     Expanded(
@@ -528,8 +615,8 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                       ),
                     ),
                   )
-                else
-                  ...projects.map(
+                else ...[
+                  ...pageItems.map(
                     (p) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _ProjectCard(
@@ -538,12 +625,50 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "${startIndex + 1}-$endIndex out of $totalFiltered projects",
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: safePage > 0
+                                ? () => setState(() => _currentPage = safePage - 1)
+                                : null,
+                            icon: const Icon(Icons.chevron_left),
+                            iconSize: 20,
+                            splashRadius: 18,
+                          ),
+                          Text(
+                            "${safePage + 1} / $totalPages",
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          ),
+                          IconButton(
+                            onPressed: safePage < totalPages - 1
+                                ? () => setState(() => _currentPage = safePage + 1)
+                                : null,
+                            icon: const Icon(Icons.chevron_right),
+                            iconSize: 20,
+                            splashRadius: 18,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ],
             );
           },
         ),
       ),
-      bottomNavigationBar: AppBottomNavBar(currentIndex: 1, email: widget.email),
+      bottomNavigationBar: widget.operationsMode
+          ? OpsBottomNavBar(currentIndex: 1, email: widget.email)
+          : AppBottomNavBar(currentIndex: 1, email: widget.email),
     );
   }
 }
@@ -564,11 +689,13 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,28 +703,32 @@ class _StatTile extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w600,
-              letterSpacing: .2,
-              color: Colors.grey[500],
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .3,
+              color: Colors.black45,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87,
+              ),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             footer,
             style: TextStyle(
-                fontSize: 10.5, fontWeight: FontWeight.w600, color: footerColor),
+                fontSize: 10, fontWeight: FontWeight.w600, color: footerColor),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -629,7 +760,7 @@ class _ProjectCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: .04),
+              color: Colors.black.withValues(alpha: .03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -666,7 +797,8 @@ class _ProjectCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: data.tagBg,
+                    // Reduced-opacity tag background for a less saturated card look.
+                    color: data.tagBg.withValues(alpha: .55),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -951,13 +1083,14 @@ Widget build(BuildContext context) {
               child: _buildStepper(),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Divider(height: 1, color: Colors.grey[200]),
 
-            // BODY
+            // BODY — extra top padding so there's clear breathing room
+            // between the header/stepper and the first field group.
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 4),
                 child: IndexedStack(
                   index: _currentStep,
                   children: [
@@ -1375,8 +1508,12 @@ Widget _summaryRow(String label, String value, {bool isLast = false}) {
 /// ---------------------------------------------------------------------
 /// Edit project modal — pre-filled from the tapped card's data. Single
 /// scrollable form (no wizard) since every field is already known and
-/// just needs adjusting, including phase/status dropdowns and completion%
-/// which aren't part of the New Project flow.
+/// just needs adjusting, including phase/status dropdowns.
+///
+/// Completion percentage is no longer entered manually — it's derived
+/// directly from the selected Phase (Planning=20%, Foundation=40%,
+/// Structure=60%, Finishing=80%, Complete=100%) so the two values can
+/// never disagree.
 /// ---------------------------------------------------------------------
 class _EditProjectModal extends StatefulWidget {
   final _ProjectData project;
@@ -1392,7 +1529,6 @@ class _EditProjectModalState extends State<_EditProjectModal> {
   late final TextEditingController _clientController;
   late final TextEditingController _managerController;
   late final TextEditingController _workersController;
-  late double _percent;
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -1402,6 +1538,9 @@ class _EditProjectModalState extends State<_EditProjectModal> {
 
   bool _isSaving = false;
 
+  /// Completion percentage is always derived from the current phase.
+  int get _percent => phaseToPercent(_phase);
+
   @override
   void initState() {
     super.initState();
@@ -1410,7 +1549,6 @@ class _EditProjectModalState extends State<_EditProjectModal> {
     _clientController = TextEditingController(text: p.client);
     _managerController = TextEditingController(text: p.manager);
     _workersController = TextEditingController(text: '${p.workerCount}');
-    _percent = (p.percent * 100).clamp(0.0, 100.0);
     _startDate = p.startDate;
     _endDate = p.estimatedEndDate;
     _actualEndDate = p.actualEndDate;
@@ -1433,6 +1571,15 @@ class _EditProjectModalState extends State<_EditProjectModal> {
     final n = int.tryParse(text);
     if (n == null || n < 0) return "Enter a whole number ≥ 0";
     return null;
+  }
+
+  bool get _isCompletedStatus => _status.trim().toLowerCase() == 'completed';
+
+  bool get _startEqualsEnd {
+    if (_startDate == null || _endDate == null) return false;
+    return _startDate!.year == _endDate!.year &&
+        _startDate!.month == _endDate!.month &&
+        _startDate!.day == _endDate!.day;
   }
 
   bool get _isValid =>
@@ -1472,10 +1619,16 @@ class _EditProjectModalState extends State<_EditProjectModal> {
         _endDate!.isBefore(_startDate!)) {
       errors.add("Estimated end date cannot be before the start date.");
     }
+    if (_startEqualsEnd) {
+      errors.add("Start date and estimated end date cannot be the same.");
+    }
     if (_actualEndDate != null &&
         _startDate != null &&
         _actualEndDate!.isBefore(_startDate!)) {
       errors.add("Actual end date cannot be before the start date.");
+    }
+    if (_isCompletedStatus && _actualEndDate == null) {
+      errors.add("Actual end date is required when status is Completed.");
     }
     return errors;
   }
@@ -1535,7 +1688,7 @@ class _EditProjectModalState extends State<_EditProjectModal> {
         workerCount: int.parse(_workersController.text.trim()),
         phase: _phase,
         status: _status,
-        completionPercentage: _percent,
+        completionPercentage: _percent.toDouble(),
       );
 
       if (!mounted) return;
@@ -1594,6 +1747,7 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                     _input(controller: _clientController, hint: "Client name"),
                     const SizedBox(height: 16),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: _field(
@@ -1644,27 +1798,46 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    // Completion is derived from Phase — read-only display,
+                    // no manual slider input anymore.
                     _field(
-                      label: "Completion: ${_percent.round()}%",
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: kDarkPill,
-                          thumbColor: kDarkPill,
-                          overlayColor: kDarkPill.withValues(alpha: .12),
-                          inactiveTrackColor: Colors.grey[200],
+                      label: "Completion (from phase)",
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          border: Border.all(color: Colors.grey[200]!),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Slider(
-                          value: _percent,
-                          min: 0,
-                          max: 100,
-                          divisions: 100,
-                          label: "${_percent.round()}%",
-                          onChanged: (v) => setState(() => _percent = v),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: _percent / 100,
+                                  minHeight: 8,
+                                  backgroundColor: Colors.grey[200],
+                                  valueColor: const AlwaysStoppedAnimation<Color>(kDarkPill),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              "$_percent%",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: _field(
@@ -1695,10 +1868,16 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                         "Estimated end date cannot be before the start date.",
                         style: TextStyle(color: kDelayedRed, fontSize: 12.5),
                       ),
+                    ] else if (_startEqualsEnd) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "Start date and estimated end date cannot be the same.",
+                        style: TextStyle(color: kDelayedRed, fontSize: 12.5),
+                      ),
                     ],
                     const SizedBox(height: 16),
                     _field(
-                      label: "Actual end date",
+                      label: _isCompletedStatus ? "Actual end date *" : "Actual end date",
                       child: Row(
                         children: [
                           Expanded(
@@ -1718,6 +1897,13 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                         ],
                       ),
                     ),
+                    if (_isCompletedStatus && _actualEndDate == null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "Actual end date is required when status is Completed.",
+                        style: TextStyle(color: kDelayedRed, fontSize: 12.5),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1777,25 +1963,24 @@ class _EditProjectModalState extends State<_EditProjectModal> {
     return Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500));
   }
 
+  // Fixed: this previously wrapped the label in a fixed-height 40px
+  // SizedBox, which clipped/overlapped the field below whenever a label
+  // (e.g. "Estimated end date *") wrapped to two lines at narrower
+  // widths. Now the label sizes naturally and the field is always pushed
+  // below it correctly.
   Widget _field({required String label, required Widget child}) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SizedBox(
-        height: 40, // reserves space for up to 2 lines, keeps inputs aligned
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 15, color: Colors.black87),
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
         ),
-      ),
-      const SizedBox(height: 8),
-      child,
-    ],
-  );
-}
+        const SizedBox(height: 8),
+        child,
+      ],
+    );
+  }
 
   Widget _input({
     required TextEditingController controller,
@@ -2132,3 +2317,4 @@ class _ProjectDetailsModalState extends State<_ProjectDetailsModal> {
     );
   }
 }
+

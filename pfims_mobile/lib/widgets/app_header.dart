@@ -1,7 +1,8 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+
 import '../screens/notifications_screen.dart';
 import '../services/notification_service.dart';
 import '../services/user_session.dart';
@@ -28,58 +29,31 @@ class AppHeader extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
-  int _unreadCount = 0;
-  Timer? _pollTimer;
-
-  // How often to re-check the unread count while the app is in the
-  // foreground and this header is on screen. Adjust to taste — lower is
-  // more "live" but hits the API more often.
-  static const _pollInterval = Duration(seconds: 20);
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadUnreadCount();
-    _startPolling();
+    NotificationService.startUnreadCountPolling();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _pollTimer?.cancel();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Polling pauses in the background anyway (no point hitting the API
-    // while the user can't see it), so re-check immediately and restart
-    // the timer whenever the app comes back to the foreground.
     if (state == AppLifecycleState.resumed) {
-      _loadUnreadCount();
-      _startPolling();
+      NotificationService.startUnreadCountPolling();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
-      _pollTimer?.cancel();
+      NotificationService.stopUnreadCountPolling();
     }
   }
 
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(_pollInterval, (_) => _loadUnreadCount());
-  }
-
-  Future<void> _loadUnreadCount() async {
-    try {
-      final count = await NotificationService.fetchUnreadCount();
-      if (mounted) setState(() => _unreadCount = count);
-    } catch (_) {
-      // Badge just stays as-is if this fails — not worth surfacing an error for.
-    }
-  }
-
-  String get _resolvedEmail => widget.email.isNotEmpty ? widget.email : UserSession.email;
+  String get _resolvedEmail =>
+      widget.email.isNotEmpty ? widget.email : UserSession.email;
 
   Uint8List? _decodePhoto() {
     final uri = widget.photoDataUri ?? UserSession.photoDataUri;
@@ -97,9 +71,7 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const NotificationsScreen()),
     );
-    // Coming back from the notifications screen — re-check the count since
-    // the user may have read/dismissed/cleared things while there.
-    _loadUnreadCount();
+    NotificationService.refreshUnreadCount();
   }
 
   @override
@@ -111,7 +83,11 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: SafeArea(
@@ -129,7 +105,7 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
               const SizedBox(width: 8),
             ],
             Image.asset(
-              "assets/images/logo.jpg",
+              'assets/images/logo.jpg',
               width: 36,
               height: 36,
               fit: BoxFit.contain,
@@ -141,7 +117,7 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    "E.V. CATAPANG",
+                    'E.V. CATAPANG',
                     style: TextStyle(
                       color: kBrandOrange,
                       fontWeight: FontWeight.bold,
@@ -150,7 +126,7 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
                     ),
                   ),
                   Text(
-                    "DESIGN-CONSTRUCTION & SUPPLY",
+                    'DESIGN-CONSTRUCTION & SUPPLY',
                     style: TextStyle(
                       color: Colors.black54,
                       fontSize: 9.5,
@@ -161,7 +137,7 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
                 ],
               ),
             ),
-            _NotificationBell(unreadCount: _unreadCount, onTap: _openNotifications),
+            NotificationBell(onTap: _openNotifications),
             const SizedBox(width: 6),
             Material(
               color: Colors.transparent,
@@ -169,7 +145,8 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () {
-                  Navigator.of(context).pushNamed('/profile', arguments: _resolvedEmail);
+                  Navigator.of(context)
+                      .pushNamed('/profile', arguments: _resolvedEmail);
                 },
                 customBorder: const CircleBorder(),
                 child: Padding(
@@ -177,7 +154,8 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
                   child: CircleAvatar(
                     radius: 18,
                     backgroundColor: kBrandOrange,
-                    backgroundImage: photoBytes != null ? MemoryImage(photoBytes) : null,
+                    backgroundImage:
+                        photoBytes != null ? MemoryImage(photoBytes) : null,
                     child: photoBytes == null
                         ? const Icon(Icons.person, color: Colors.white, size: 20)
                         : null,
@@ -192,53 +170,62 @@ class _AppHeaderState extends State<AppHeader> with WidgetsBindingObserver {
   }
 }
 
-class _NotificationBell extends StatelessWidget {
-  final int unreadCount;
-  final VoidCallback onTap;
+class NotificationBell extends StatelessWidget {
+  const NotificationBell({super.key, required this.onTap});
 
-  const _NotificationBell({required this.unreadCount, required this.onTap});
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(Icons.notifications_none_rounded, color: kBrandOrange, size: 26),
-              if (unreadCount > 0)
-                Positioned(
-                  top: -4,
-                  right: -4,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE53935),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      unreadCount > 9 ? '9+' : '$unreadCount',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
+    return ValueListenableBuilder<int>(
+      valueListenable: NotificationService.unreadCount,
+      builder: (context, unreadCount, _) {
+        return Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(
+                    Icons.notifications_none_rounded,
+                    color: kBrandOrange,
+                    size: 26,
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        constraints:
+                            const BoxConstraints(minWidth: 16, minHeight: 16),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFE53935),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : '$unreadCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

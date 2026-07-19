@@ -2,6 +2,7 @@ import '../services/api_service.dart';
 import '../services/user_session.dart';
 import 'forgot_password_screen.dart';
 import 'package:flutter/material.dart';
+import '../services/user_session.dart'; 
 
 // Brand color pulled from the orange in the E.V. Catapang logo / button.
 const Color kBrandOrange = Color(0xFFC1791F);
@@ -17,6 +18,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
   final _emailController = TextEditingController();
 
   @override
@@ -174,6 +176,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 8),
                               // Forgot password link
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: Checkbox(
+                                      value: _rememberMe,
+                                      activeColor: kBrandOrange,
+                                      onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    "Remember me",
+                                    style: TextStyle(fontSize: 13, color: Colors.black87),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
@@ -194,6 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     );
                                   },
+                                  
                                   child: const Text(
                                     "Forgot Password?",
                                     style: TextStyle(
@@ -263,6 +285,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                             }
 
                                             UserSession.email = loggedInEmail;
+                                            await UserSession.persistLogin(
+                                              email: loggedInEmail,
+                                              role: role,
+                                              rememberMe: _rememberMe,
+                                            );
 
                                             // Best-effort: fetch the full profile (name,
                                             // phone, location, photo) so AppHeader's

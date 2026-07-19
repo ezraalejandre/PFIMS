@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/user_session.dart';
 import 'dart:typed_data';
 import 'dart:convert';
+import 'security_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String email;
@@ -455,23 +456,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: .4),
                                       ),
                                     ),
+                                    // _ActionRow(
+                                    //   icon: Icons.notifications_none_rounded,
+                                    //   title: 'Notifications',
+                                    //   subtitle: 'Manage alerts & reminders',
+                                    //   onTap: () {
+                                    //     Navigator.of(context).push(
+                                    //       MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                                    //     );
+                                    //   },
+                                    // ),
                                     _ActionRow(
-                                      icon: Icons.notifications_none_rounded,
-                                      title: 'Notifications',
-                                      subtitle: 'Manage alerts & reminders',
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                                        );
-                                      },
-                                    ),
-                                    _ActionRow(
-                                      icon: Icons.help_outline,
-                                      title: 'Help & Support',
-                                      subtitle: 'FAQs, contact us',
-                                      isLast: true,
-                                      onTap: () => _showPlaceholder('Help & Support'),
-                                    ),
+                                    icon: Icons.shield_outlined,
+                                    title: 'Privacy & Security',
+                                    subtitle: 'Password',
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const SecuritySettingsScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                    // _ActionRow(
+                                    //   icon: Icons.help_outline,
+                                    //   title: 'Help & Support',
+                                    //   subtitle: 'FAQs, contact us',
+                                    //   isLast: true,
+                                    //   onTap: () => _showPlaceholder('Help & Support'),
+                                    // ),
                                   ],
                                 ),
                               ),

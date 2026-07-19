@@ -94,6 +94,80 @@ class FinanceService {
     return body;
   }
 
+  /// Updates an existing budget's amount via PUT /api/budgets/{id}.
+  /// Used by the Budgets tab's edit flow (opened from a budget card).
+  static Future<Map<String, dynamic>> updateBudget({
+    required int budgetId,
+    required double amount,
+  }) async {
+    final url = Uri.parse("$baseUrl/budgets/$budgetId");
+
+    http.Response response;
+    try {
+      response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "budget_amount": amount,
+        }),
+      );
+    } catch (e) {
+      throw Exception("No internet connection or server unreachable");
+    }
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception(
+        "Server returned an unexpected response (${response.statusCode}). Check the API route.",
+      );
+    }
+
+    if (response.statusCode == 422) {
+      final errors = body['errors'] as Map<String, dynamic>?;
+      final firstError = (errors != null && errors.isNotEmpty)
+          ? (errors.values.first as List).first.toString()
+          : (body['message']?.toString() ?? "Invalid budget details");
+      throw Exception(firstError);
+    }
+
+    if (response.statusCode == 404) {
+      throw Exception(body['message']?.toString() ?? "Budget not found");
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception(body['message']?.toString() ?? "Unable to update budget");
+    }
+
+    return body;
+  }
+
+  /// Deletes a budget via DELETE /api/budgets/{id}. Used by the Budgets
+  /// tab's delete flow (opened from a budget card's details modal).
+  static Future<void> deleteBudget(int budgetId) async {
+    final url = Uri.parse("$baseUrl/budgets/$budgetId");
+
+    http.Response response;
+    try {
+      response = await http.delete(url);
+    } catch (e) {
+      throw Exception("No internet connection or server unreachable");
+    }
+
+    if (response.statusCode == 404) {
+      throw Exception("Budget not found");
+    }
+
+    if (response.statusCode != 200) {
+      Map<String, dynamic>? body;
+      try {
+        body = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {}
+      throw Exception(body?['message']?.toString() ?? "Unable to delete budget");
+    }
+  }
+
   /// Creates a new expense row in `expense_tbl` via POST /api/expenses.
   /// The backend decides which amount column (labor/material/equipment/
   /// other) to fill based on the category, so the client just sends a
@@ -264,18 +338,18 @@ class FinanceService {
   }
 
   /// Fetches all budgets (joined with project_name), via GET /api/budgets.
-static Future<List<Map<String, dynamic>>> getBudgets() async {
-  final url = Uri.parse("$baseUrl/budgets");
-  http.Response response;
-  try {
-    response = await http.get(url);
-  } catch (e) {
-    throw Exception("No internet connection or server unreachable");
+  static Future<List<Map<String, dynamic>>> getBudgets() async {
+    final url = Uri.parse("$baseUrl/budgets");
+    http.Response response;
+    try {
+      response = await http.get(url);
+    } catch (e) {
+      throw Exception("No internet connection or server unreachable");
+    }
+    if (response.statusCode != 200) {
+      throw Exception("Unable to load budgets (${response.statusCode})");
+    }
+    final List<dynamic> list = jsonDecode(response.body) as List<dynamic>;
+    return list.cast<Map<String, dynamic>>();
   }
-  if (response.statusCode != 200) {
-    throw Exception("Unable to load budgets (${response.statusCode})");
-  }
-  final List<dynamic> list = jsonDecode(response.body) as List<dynamic>;
-  return list.cast<Map<String, dynamic>>();
-}
 }

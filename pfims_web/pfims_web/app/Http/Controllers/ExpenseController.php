@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 use App\Models\Budget;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class ExpenseController extends Controller
 {
+    public function __construct(private NotificationService $notifications)
+    {
+    }
+
     private function amountColumnFor(string $categoryName): string
     {
         return match (strtolower(trim($categoryName))) {
@@ -67,6 +72,16 @@ class ExpenseController extends Controller
         }
 
         $expense->load(['project:project_id,project_name', 'category:expense_category_id,category_name']);
+        $this->notifications->notify(
+            title: 'New Expense Recorded',
+            message: $this->expenseNotificationMessage($expense, (float) $request->amount),
+            type: 'new_expense',
+            kind: 'info',
+            filter: 'alerts',
+            referenceType: 'expense',
+            referenceId: (int) $expense->expense_id,
+        );
+
         return response()->json($this->present($expense), 201);
     }
 
@@ -155,5 +170,14 @@ class ExpenseController extends Controller
             'expense_date'        => $e->expense_date,
             'remarks'             => $e->remarks,
         ];
+    }
+
+    private function expenseNotificationMessage(Expense $expense, float $amount): string
+    {
+        $category = $expense->category?->category_name ?? 'Expense';
+        $project = $expense->project?->project_name ? " for {$expense->project->project_name}" : '';
+        $formatted = 'PHP ' . number_format($amount, 2);
+
+        return "{$category}{$project}: {$expense->expense_description} ({$formatted}).";
     }
 }

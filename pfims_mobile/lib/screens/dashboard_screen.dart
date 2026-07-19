@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // for SystemNavigator
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pfims_mobile/screens/notifications_screen.dart' show NotificationsScreen;
 import '../widgets/app_bottom_nav_bar.dart';
@@ -7,7 +8,6 @@ import '../services/dashboard_service.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import '../widgets/app_header.dart' show AppHeader;
-
 const Color kBrandOrange = Color(0xFFF2811D);
 const Color kDarkNavy = Color(0xFF1A1F36);
 const Color kPositiveGreen = Color(0xFF27AE60);
@@ -68,16 +68,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kPageBg,
-      appBar: AppHeader(email: widget.email), 
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: FutureBuilder<DashboardData>(
-          future: _dashboardFuture,
-          builder: (context, snapshot) {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+  if (didPop) return;
+       
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Exit app?"),
+            content: const Text("Are you sure you want to exit?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text("Exit"),
+              ),
+            ],
+          ),
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: kPageBg,
+        appBar: AppHeader(email: widget.email),
+        body: RefreshIndicator(
+          onRefresh: _refresh,
+          child: FutureBuilder<DashboardData>(
+            future: _dashboardFuture,
+            builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -99,46 +125,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
 
             final data = snapshot.data!;
+            final dashboardStats = data.statCards
+                .where((card) =>
+                    card.label == 'Active Projects' ||
+                    card.label == 'Total Budget')
+                .toList();
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
-                SizedBox(
+                const _PageHeader(
+                  title: 'DASHBOARD',
+                  subtitle: 'construction operation overview',
+                ),
+                const SizedBox(height: 14),
+               SizedBox(
                   height: 140,
-                  child: PageView.builder(
-                    controller: _statsController,
-                    itemCount: data.statCards.length,
-                    padEnds: false,
-                    itemBuilder: (context, i) => Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _StatCard(data: data.statCards[i]),
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      scrollbars: false,
+                      overscroll: false,
+                    ),
+                    child: PageView.builder(
+                      controller: _statsController,
+                      itemCount: dashboardStats.length,
+                      padEnds: false,
+                      itemBuilder: (context, i) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: _StatCard(data: dashboardStats[i]),
+                        );
+                      },
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(color: kDarkNavy, borderRadius: BorderRadius.circular(16)),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => _pageStats(-1, data.statCards.length),
-                        child: const Icon(Icons.chevron_left, color: Colors.white70, size: 18),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 4,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => _pageStats(1, data.statCards.length),
-                        child: const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
-                      ),
-                    ],
-                  ),
-                ),
+                // const SizedBox(height: 10),
+                // if (dashboardStats.length > 1)
+                //   Container(
+                //     height: 32,
+                //     padding: const EdgeInsets.symmetric(horizontal: 10),
+                //     decoration: BoxDecoration(color: kDarkNavy, borderRadius: BorderRadius.circular(16)),
+                //     child: Row(
+                //       children: [
+                //         GestureDetector(
+                //           onTap: () => _pageStats(-1, dashboardStats.length),
+                //           child: const Icon(Icons.chevron_left, color: Colors.white70, size: 18),
+                //         ),
+                //         Expanded(
+                //           child: Container(
+                //             height: 4,
+                //             margin: const EdgeInsets.symmetric(horizontal: 8),
+                //             decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                //           ),
+                //         ),
+                //         GestureDetector(
+                //           onTap: () => _pageStats(1, dashboardStats.length),
+                //           child: const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
                 const SizedBox(height: 20),
                 _SectionCard(
                   title: "PROJECT COMPLETION TREND",
@@ -146,17 +192,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 _SectionCard(
-                  title: "BUDGET ALLOCATION VS SPENDING",
+                  title: "ALLOCATED BUDGET VS EXPENSES",
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 200, child: _BudgetVsSpendingChart(data: data.budgetVsSpending)),
+                      SizedBox(height: 220, child: _BudgetVsExpenseChart(data: data.budgetVsExpense)),
                       const SizedBox(height: 10),
                       Row(
                         children: const [
-                          _LegendDot(color: kDarkNavy, label: 'Budget allocated'),
+                          _LegendDot(color: kDarkNavy, label: 'Allocated budget'),
                           SizedBox(width: 16),
-                          _LegendDot(color: kBrandOrange, label: 'Spending'),
+                          _LegendDot(color: kBrandOrange, label: 'Expenses (right scale)'),
                         ],
                       ),
                     ],
@@ -186,6 +232,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       bottomNavigationBar: AppBottomNavBar(currentIndex: 0, email: widget.email),
+      )
+    );
+  }
+}
+
+class _PageHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _PageHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+            letterSpacing: .3,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -214,12 +295,11 @@ class _CompletionBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ensure all values are double
-    final List<double> values = trend.values.map((v) => (v ?? 0).toDouble()).toList();
+    final values = trend.values.map((v) => v.clamp(0, 100).toDouble()).toList();
 
-    final maxVal = values.isEmpty ? 1.0 : values.reduce((a, b) => a > b ? a : b);
-    final maxY = maxVal <= 0 ? 4.0 : (maxVal * 1.4).ceilToDouble();
-    final interval = (maxY / 4).clamp(1.0, double.infinity);
+    final maxVal = values.isEmpty ? 100.0 : values.reduce((a, b) => a > b ? a : b);
+    final maxY = maxVal <= 0 ? 100.0 : (maxVal * 1.2).clamp(20.0, 100.0).ceilToDouble();
+    final interval = (maxY / 4).clamp(5.0, double.infinity);
 
     return BarChart(
       BarChartData(
@@ -283,18 +363,25 @@ class _CompletionBarChart extends StatelessWidget {
   }
 }
 
-class _BudgetVsSpendingChart extends StatelessWidget {
-  final BudgetVsSpendingData data;
-  const _BudgetVsSpendingChart({required this.data});
+class _BudgetVsExpenseChart extends StatelessWidget {
+  final BudgetVsExpenseData data;
+  const _BudgetVsExpenseChart({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final List<double> budget = data.budget.map((v) => (v ?? 0).toDouble()).toList();
-    final List<double> spending = data.spending.map((v) => (v ?? 0).toDouble()).toList();
+    final budget = data.allocatedBudget.map((v) => v.toDouble()).toList();
+    final expenses = data.expenses.map((v) => v.toDouble()).toList();
+    final pointCount = data.months.isEmpty || budget.isEmpty || expenses.isEmpty
+        ? 0
+        : [data.months.length, budget.length, expenses.length]
+            .reduce((min, length) => length < min ? length : min);
 
-    final allValues = [...budget, ...spending];
-    final maxVal = allValues.isEmpty ? 1.0 : allValues.reduce((a, b) => a > b ? a : b);
-    final maxY = maxVal <= 0 ? 100.0 : (maxVal * 1.2).ceilToDouble();
+    // Budgets and expenses can differ by several orders of magnitude.  The
+    // expense series uses the right-hand scale so small real expenses remain visible.
+    final maxBudget = budget.isEmpty ? 0.0 : budget.reduce((a, b) => a > b ? a : b);
+    final maxExpense = expenses.isEmpty ? 0.0 : expenses.reduce((a, b) => a > b ? a : b);
+    final maxY = maxBudget <= 0 ? 100.0 : (maxBudget * 1.2).ceilToDouble();
+    final expenseScaleMax = maxExpense <= 0 ? 1.0 : (maxExpense * 1.2).ceilToDouble();
     final double interval = (maxY / 4).clamp(1.0, double.infinity);
 
     return LineChart(
@@ -310,14 +397,27 @@ class _BudgetVsSpendingChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: interval,
+              reservedSize: 74,
+              getTitlesWidget: (v, meta) => Text(
+                _compactPeso(v / maxY * expenseScaleMax),
+                style: TextStyle(fontSize: 10, color: kBrandOrange.withValues(alpha: .85)),
+              ),
+            ),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               interval: interval,
-              reservedSize: 34,
-              getTitlesWidget: (v, meta) =>
-                  Text(v.toInt().toString(), style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              reservedSize: 74,
+              getTitlesWidget: (v, meta) => Text(
+                _compactPeso(v),
+                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                textAlign: TextAlign.right,
+              ),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -326,7 +426,7 @@ class _BudgetVsSpendingChart extends StatelessWidget {
               reservedSize: 24,
               getTitlesWidget: (v, meta) {
                 final i = v.toInt();
-                if (i < 0 || i >= data.months.length) return const SizedBox();
+                if (i < 0 || i >= pointCount) return const SizedBox();
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(data.months[i], style: TextStyle(fontSize: 11, color: Colors.grey[500])),
@@ -337,24 +437,48 @@ class _BudgetVsSpendingChart extends StatelessWidget {
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: List.generate(data.budget.length, (i) => FlSpot(i.toDouble(), data.budget[i])),
-            isCurved: true,
+            spots: List.generate(pointCount, (i) => FlSpot(i.toDouble(), budget[i])),
+            isCurved: false,
             color: kDarkNavy,
             barWidth: 3,
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(show: false),
           ),
           LineChartBarData(
-            spots: List.generate(data.spending.length, (i) => FlSpot(i.toDouble(), data.spending[i])),
-            isCurved: true,
+            spots: List.generate(
+              pointCount,
+              (i) => FlSpot(i.toDouble(), expenses[i] / expenseScaleMax * maxY),
+            ),
+            isCurved: false,
             color: kBrandOrange,
             barWidth: 3,
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(show: false),
           ),
         ],
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
+              final isBudget = spot.barIndex == 0;
+              final label = isBudget ? 'Allocated Budget' : 'Expenses';
+              final actualValue = isBudget ? spot.y : spot.y / maxY * expenseScaleMax;
+              return LineTooltipItem('$label\n${_fullPeso(actualValue)}', const TextStyle(color: Colors.white, fontSize: 12));
+            }).toList(),
+          ),
+        ),
       ),
     );
+  }
+
+  String _compactPeso(double value) {
+    if (value >= 1000000) return '₱${(value / 1000000).toStringAsFixed(1)}M';
+    if (value >= 1000) return '₱${(value / 1000).toStringAsFixed(0)}K';
+    return '₱${value.toStringAsFixed(0)}';
+  }
+
+  String _fullPeso(double value) {
+    final digits = value.toStringAsFixed(0);
+    return '₱${digits.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
   }
 }
 
@@ -572,6 +696,19 @@ class _ActiveProjectCard extends StatelessWidget {
   final ActiveProject data;
   const _ActiveProjectCard({required this.data});
 
+  Color get _statusColor {
+    switch (data.status.toLowerCase()) {
+      case 'delayed':
+        return kNegativeRed;
+      case 'at risk':
+        return kWarningAmber;
+      case 'completed':
+        return kPositiveGreen;
+      default:
+        return kDarkNavy;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -590,7 +727,22 @@ class _ActiveProjectCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(data.name, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Colors.black87)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.name,
+                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      data.clientName,
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey[500]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -619,8 +771,73 @@ class _ActiveProjectCard extends StatelessWidget {
               Text("${(data.percent * 100).round()}%", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
           ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _ProjectPill(label: data.phase, color: kDarkNavy),
+              _ProjectPill(label: data.status, color: _statusColor),
+              _ProjectPill(label: 'Est. end ${data.estimatedEndDate}', color: Colors.grey.shade700),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _ProjectDate(label: 'Start', value: data.startDate)),
+              Expanded(child: _ProjectDate(label: 'Actual End', value: data.actualEndDate)),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _ProjectPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _ProjectPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectDate extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ProjectDate({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 10.5, color: Colors.grey[500])),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

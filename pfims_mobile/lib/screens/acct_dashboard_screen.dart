@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // for SystemNavigator
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pfims_mobile/screens/notifications_screen.dart'
     show NotificationsScreen;
+import 'package:pfims_mobile/widgets/app_header.dart' show NotificationBell;
 import '../widgets/acct_bottom_nav_bar.dart';
 
 const Color kBrandOrange = Color(0xFFF2811D);
@@ -23,18 +25,13 @@ class _StatCardData {
 const List<_StatCardData> _statCards = [
   _StatCardData(
     label: 'Total Budget',
-    value: '₱18.6M',
-    subtitle: '₱2.1M remaining',
+    value: 'PHP 67,000,000',
+    subtitle: 'PHP 2.1M remaining',
   ),
   _StatCardData(
-    label: 'Total Expenses',
-    value: '₱16.5M',
-    subtitle: 'Current spending',
-  ),
-  _StatCardData(
-    label: 'Budget Utilization',
-    value: '88%',
-    subtitle: 'Across all projects',
+    label: 'Net Variance',
+    value: '-PHP 440',
+    subtitle: 'vs. planned budget',
   ),
 ];
 
@@ -66,155 +63,224 @@ class AcctDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kPageBg,
-      appBar: _DashboardHeader(email: email),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: [
-          SizedBox(
-            height: 120,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _statCards.length,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                return SizedBox(
-                  width: 220,
-                  child: _StatCard(
-                    data: _statCards[index],
-                  ),
-                );
-              },
-            ),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+  if (didPop) return;
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Exit app?"),
+            content: const Text("Are you sure you want to exit?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text("Exit"),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 20),
-
-          _SectionCard(
-            title: 'TOTAL BUDGET',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  '₱18,600,000',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: kBrandOrange,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Overall allocated budget across all projects.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: kPageBg,
+        appBar: _DashboardHeader(email: email),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          children: [
+            const _PageHeader(
+              title: 'DASHBOARD',
+              subtitle: 'financial overview',
             ),
-          ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _statCards.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  return SizedBox(
+                    width: 220,
+                    child: _StatCard(
+                      data: _statCards[index],
+                    ),
+                  );
+                },
+              ),
+            ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-          _SectionCard(
-            title: 'BUDGET ALLOCATION VS SPENDING',
-            child: SizedBox(
-              height: 220,
-              child: LineChart(
-                LineChartData(
-                  minY: 0,
-                  maxY: 600,
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 150,
-                    getDrawingHorizontalLine: (_) => FlLine(
-                      color: Colors.grey.shade200,
-                      strokeWidth: 1,
+            _SectionCard(
+              title: 'TOTAL BUDGET',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'PHP 67,000,000',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: kBrandOrange,
                     ),
                   ),
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: false,
+                  SizedBox(height: 8),
+                  Text(
+                    'Overall allocated budget across all projects.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            _SectionCard(
+              title: 'BUDGET ALLOCATION VS SPENDING',
+              child: SizedBox(
+                height: 220,
+                child: LineChart(
+                  LineChartData(
+                    minY: 0,
+                    maxY: 600,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: 150,
+                      getDrawingHorizontalLine: (_) => FlLine(
+                        color: Colors.grey.shade200,
+                        strokeWidth: 1,
                       ),
                     ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: false,
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: false,
+                        ),
                       ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 150,
-                        reservedSize: 34,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade500,
-                            ),
-                          );
-                        },
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: false,
+                        ),
                       ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 24,
-                        getTitlesWidget: (value, meta) {
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              top: 6,
-                            ),
-                            child: Text(
-                              _months[value.toInt()],
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 150,
+                          reservedSize: 34,
+                          getTitlesWidget: (value, meta) {
+                            return Text(
+                              value.toInt().toString(),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey.shade500,
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: List.generate(
-                        _budgetVsSpending.length,
-                        (i) => FlSpot(
-                          i.toDouble(),
-                          _budgetVsSpending[i],
+                            );
+                          },
                         ),
                       ),
-                      isCurved: true,
-                      color: kBrandOrange,
-                      barWidth: 3,
-                      dotData: const FlDotData(
-                        show: true,
-                      ),
-                      belowBarData: BarAreaData(
-                        show: false,
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 24,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index >= _months.length) {
+                              return const SizedBox();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                top: 6,
+                              ),
+                              child: Text(
+                                _months[index],
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ],
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: List.generate(
+                          _budgetVsSpending.length,
+                          (i) => FlSpot(
+                            i.toDouble(),
+                            _budgetVsSpending[i],
+                          ),
+                        ),
+                        isCurved: true,
+                        color: kBrandOrange,
+                        barWidth: 3,
+                        dotData: const FlDotData(
+                          show: true,
+                        ),
+                        belowBarData: BarAreaData(
+                          show: false,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
+          ],
+        ),
+        bottomNavigationBar: AcctBottomNavBar(
+          currentIndex: 0,
+          email: email,
+        ),
+      ),
+    );
+  }
+}
+
+class _PageHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _PageHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+            letterSpacing: .3,
           ),
-        ],
-      ),
-      bottomNavigationBar: AcctBottomNavBar(
-        currentIndex: 0,
-        email: email,
-      ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -224,8 +290,6 @@ class _DashboardHeader extends StatelessWidget
   const _DashboardHeader({required this.email});
 
   final String email;
-
-  static const int _unreadCount = 4;
 
   @override
   Widget build(BuildContext context) {
@@ -257,8 +321,7 @@ class _DashboardHeader extends StatelessWidget
             const SizedBox(width: 10),
             const Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
@@ -280,8 +343,14 @@ class _DashboardHeader extends StatelessWidget
                 ],
               ),
             ),
-            _DashboardNotificationBell(
-              unreadCount: _unreadCount,
+            NotificationBell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 6),
             Material(
@@ -312,41 +381,7 @@ class _DashboardHeader extends StatelessWidget
   }
 
   @override
-  Size get preferredSize =>
-      const Size.fromHeight(64);
-}
-
-class _DashboardNotificationBell extends StatelessWidget {
-  final int unreadCount;
-
-  const _DashboardNotificationBell({
-    required this.unreadCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  const NotificationsScreen(),
-            ),
-          );
-        },
-        child: const Padding(
-          padding: EdgeInsets.all(6),
-          child: Icon(
-            Icons.notifications_none_rounded,
-            color: kBrandOrange,
-            size: 26,
-          ),
-        ),
-      ),
-    );
-  }
+  Size get preferredSize => const Size.fromHeight(64);
 }
 
 class _SectionCard extends StatelessWidget {
@@ -367,8 +402,7 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
@@ -401,8 +435,7 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             data.label,
