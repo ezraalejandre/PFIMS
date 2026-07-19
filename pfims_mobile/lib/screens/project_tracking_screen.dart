@@ -42,6 +42,28 @@ DateTime? _parseDate(dynamic value) {
   return DateTime.tryParse(str);
 }
 
+/// Maps a project phase to its corresponding completion percentage.
+/// Planning -> 20%, Foundation -> 40%, Structure -> 60%, Finishing -> 80%,
+/// Complete -> 100%. This replaces manual slider input: completion is
+/// always derived from phase so the two values can never disagree.
+int phaseToPercent(String phase) {
+  switch (phase.trim().toLowerCase()) {
+    case 'planning':
+      return 20;
+    case 'foundation':
+      return 40;
+    case 'structure':
+      return 60;
+    case 'finishing':
+      return 80;
+    case 'complete':
+    case 'completed':
+      return 100;
+    default:
+      return 0;
+  }
+}
+
 Color _tagBgForPhase(String phase) {
   switch (phase.trim().toLowerCase()) {
     case 'planning':
@@ -196,14 +218,24 @@ class _ProjectData {
   Color get statusColor => _colorForStatus(status);
   Color get progressColor => statusColor;
 
+  bool get _isCompleted => status.trim().toLowerCase() == 'completed';
+
+  /// The end date shown on the card and used for duration math. Once a
+  /// project is marked Completed and has an actual end date recorded, that
+  /// actual date takes over from the original estimate everywhere in the
+  /// UI — the estimate becomes historical only.
+  DateTime? get displayEndDate =>
+      (_isCompleted && actualEndDate != null) ? actualEndDate : estimatedEndDate;
+
   String get startDateLabel => _formatDate(startDate);
-  String get endDateLabel => _formatDate(estimatedEndDate);
+  String get endDateLabel => _formatDate(displayEndDate);
   String get actualEndDateLabel =>
       actualEndDate == null ? 'Not yet completed' : _formatDate(actualEndDate);
 
   String get durationLabel {
-    if (startDate == null || estimatedEndDate == null) return 'Duration: —';
-    final days = estimatedEndDate!.difference(startDate!).inDays;
+    final end = displayEndDate;
+    if (startDate == null || end == null) return 'Duration: —';
+    final days = end.difference(startDate!).inDays;
     if (days <= 0) return 'Duration: —';
     final months = days / 30.44;
     return 'Duration: ${months.toStringAsFixed(1)} mo';
@@ -1375,8 +1407,12 @@ Widget _summaryRow(String label, String value, {bool isLast = false}) {
 /// ---------------------------------------------------------------------
 /// Edit project modal — pre-filled from the tapped card's data. Single
 /// scrollable form (no wizard) since every field is already known and
-/// just needs adjusting, including phase/status dropdowns and completion%
-/// which aren't part of the New Project flow.
+/// just needs adjusting, including phase/status dropdowns.
+///
+/// Completion percentage is no longer entered manually — it's derived
+/// directly from the selected Phase (Planning=20%, Foundation=40%,
+/// Structure=60%, Finishing=80%, Complete=100%) so the two values can
+/// never disagree.
 /// ---------------------------------------------------------------------
 class _EditProjectModal extends StatefulWidget {
   final _ProjectData project;
@@ -1392,7 +1428,6 @@ class _EditProjectModalState extends State<_EditProjectModal> {
   late final TextEditingController _clientController;
   late final TextEditingController _managerController;
   late final TextEditingController _workersController;
-  late double _percent;
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -1402,6 +1437,9 @@ class _EditProjectModalState extends State<_EditProjectModal> {
 
   bool _isSaving = false;
 
+  /// Completion percentage is always derived from the current phase.
+  int get _percent => phaseToPercent(_phase);
+
   @override
   void initState() {
     super.initState();
@@ -1410,7 +1448,6 @@ class _EditProjectModalState extends State<_EditProjectModal> {
     _clientController = TextEditingController(text: p.client);
     _managerController = TextEditingController(text: p.manager);
     _workersController = TextEditingController(text: '${p.workerCount}');
-    _percent = (p.percent * 100).clamp(0.0, 100.0);
     _startDate = p.startDate;
     _endDate = p.estimatedEndDate;
     _actualEndDate = p.actualEndDate;
@@ -1433,6 +1470,15 @@ class _EditProjectModalState extends State<_EditProjectModal> {
     final n = int.tryParse(text);
     if (n == null || n < 0) return "Enter a whole number ≥ 0";
     return null;
+  }
+
+  bool get _isCompletedStatus => _status.trim().toLowerCase() == 'completed';
+
+  bool get _startEqualsEnd {
+    if (_startDate == null || _endDate == null) return false;
+    return _startDate!.year == _endDate!.year &&
+        _startDate!.month == _endDate!.month &&
+        _startDate!.day == _endDate!.day;
   }
 
   bool get _isValid =>
@@ -1472,10 +1518,16 @@ class _EditProjectModalState extends State<_EditProjectModal> {
         _endDate!.isBefore(_startDate!)) {
       errors.add("Estimated end date cannot be before the start date.");
     }
+    if (_startEqualsEnd) {
+      errors.add("Start date and estimated end date cannot be the same.");
+    }
     if (_actualEndDate != null &&
         _startDate != null &&
         _actualEndDate!.isBefore(_startDate!)) {
       errors.add("Actual end date cannot be before the start date.");
+    }
+    if (_isCompletedStatus && _actualEndDate == null) {
+      errors.add("Actual end date is required when status is Completed.");
     }
     return errors;
   }
@@ -1535,7 +1587,7 @@ class _EditProjectModalState extends State<_EditProjectModal> {
         workerCount: int.parse(_workersController.text.trim()),
         phase: _phase,
         status: _status,
-        completionPercentage: _percent,
+        completionPercentage: _percent.toDouble(),
       );
 
       if (!mounted) return;
@@ -1644,22 +1696,40 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    // Completion is derived from Phase — read-only display,
+                    // no manual slider input anymore.
                     _field(
-                      label: "Completion: ${_percent.round()}%",
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: kDarkPill,
-                          thumbColor: kDarkPill,
-                          overlayColor: kDarkPill.withValues(alpha: .12),
-                          inactiveTrackColor: Colors.grey[200],
+                      label: "Completion (from phase)",
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          border: Border.all(color: Colors.grey[200]!),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Slider(
-                          value: _percent,
-                          min: 0,
-                          max: 100,
-                          divisions: 100,
-                          label: "${_percent.round()}%",
-                          onChanged: (v) => setState(() => _percent = v),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: _percent / 100,
+                                  minHeight: 8,
+                                  backgroundColor: Colors.grey[200],
+                                  valueColor: const AlwaysStoppedAnimation<Color>(kDarkPill),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              "$_percent%",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1695,10 +1765,16 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                         "Estimated end date cannot be before the start date.",
                         style: TextStyle(color: kDelayedRed, fontSize: 12.5),
                       ),
+                    ] else if (_startEqualsEnd) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "Start date and estimated end date cannot be the same.",
+                        style: TextStyle(color: kDelayedRed, fontSize: 12.5),
+                      ),
                     ],
                     const SizedBox(height: 16),
                     _field(
-                      label: "Actual end date",
+                      label: _isCompletedStatus ? "Actual end date *" : "Actual end date",
                       child: Row(
                         children: [
                           Expanded(
@@ -1718,6 +1794,13 @@ class _EditProjectModalState extends State<_EditProjectModal> {
                         ],
                       ),
                     ),
+                    if (_isCompletedStatus && _actualEndDate == null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "Actual end date is required when status is Completed.",
+                        style: TextStyle(color: kDelayedRed, fontSize: 12.5),
+                      ),
+                    ],
                   ],
                 ),
               ),
