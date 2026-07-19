@@ -32,9 +32,14 @@ const List<_StatCardData> _statCards = [
     badge: "12%",
   ),
   _StatCardData(
-    label: "Equipment",
+    label: "Equipment Units",
     value: "156",
     subtitle: "12 under maintenance",
+  ),
+  _StatCardData(
+    label: "Workforce",
+    value: "342",
+    subtitle: "28 new hires this month",
   ),
 ];
 
@@ -94,6 +99,11 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
+          const _PageHeader(
+            title: "DASHBOARD",
+            subtitle: "operations overview",
+          ),
+          const SizedBox(height: 14),
           // Stat card carousel (Active Projects + Equipment only)
           SizedBox(
             height: 104,
@@ -180,14 +190,19 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 24,
-                        getTitlesWidget: (v, meta) => Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            _months[v.toInt()],
-                            style:
-                                TextStyle(fontSize: 11, color: Colors.grey[500]),
-                          ),
-                        ),
+                        getTitlesWidget: (v, meta) {
+                          final index = v.toInt();
+                          if (index < 0 || index >= _months.length) {
+                            return const SizedBox();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              _months[index],
+                              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -231,6 +246,40 @@ class _OpsDashboardScreenState extends State<OpsDashboardScreen> {
         ],
       ),
       bottomNavigationBar: OpsBottomNavBar(currentIndex: 0, email: widget.email),
+    );
+  }
+}
+
+class _PageHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _PageHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+            letterSpacing: .3,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

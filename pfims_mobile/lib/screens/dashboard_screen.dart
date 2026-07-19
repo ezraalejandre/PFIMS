@@ -99,46 +99,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
 
             final data = snapshot.data!;
+            final dashboardStats = data.statCards
+                .where((card) =>
+                    card.label == 'Active Projects' ||
+                    card.label == 'Total Budget')
+                .toList();
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
+                const _PageHeader(
+                  title: 'DASHBOARD',
+                  subtitle: 'construction operation overview',
+                ),
+                const SizedBox(height: 14),
                 SizedBox(
                   height: 140,
                   child: PageView.builder(
                     controller: _statsController,
-                    itemCount: data.statCards.length,
+                    itemCount: dashboardStats.length,
                     padEnds: false,
-                    itemBuilder: (context, i) => Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _StatCard(data: data.statCards[i]),
-                    ),
+                    itemBuilder: (context, i) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: _StatCard(data: dashboardStats[i]),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 10),
-                Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(color: kDarkNavy, borderRadius: BorderRadius.circular(16)),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => _pageStats(-1, data.statCards.length),
-                        child: const Icon(Icons.chevron_left, color: Colors.white70, size: 18),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 4,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                if (dashboardStats.length > 1)
+                  Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(color: kDarkNavy, borderRadius: BorderRadius.circular(16)),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => _pageStats(-1, dashboardStats.length),
+                          child: const Icon(Icons.chevron_left, color: Colors.white70, size: 18),
                         ),
-                      ),
-                      GestureDetector(
-                        onTap: () => _pageStats(1, data.statCards.length),
-                        child: const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
-                      ),
-                    ],
+                        Expanded(
+                          child: Container(
+                            height: 4,
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _pageStats(1, dashboardStats.length),
+                          child: const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 20),
                 _SectionCard(
                   title: "PROJECT COMPLETION TREND",
@@ -190,6 +204,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+class _PageHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _PageHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+            letterSpacing: .3,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _LegendDot extends StatelessWidget {
   final Color color;
   final String label;
@@ -214,12 +262,11 @@ class _CompletionBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ensure all values are double
-    final List<double> values = trend.values.map((v) => (v ?? 0).toDouble()).toList();
+    final values = trend.values.map((v) => v.clamp(0, 100).toDouble()).toList();
 
-    final maxVal = values.isEmpty ? 1.0 : values.reduce((a, b) => a > b ? a : b);
-    final maxY = maxVal <= 0 ? 4.0 : (maxVal * 1.4).ceilToDouble();
-    final interval = (maxY / 4).clamp(1.0, double.infinity);
+    final maxVal = values.isEmpty ? 100.0 : values.reduce((a, b) => a > b ? a : b);
+    final maxY = maxVal <= 0 ? 100.0 : (maxVal * 1.2).clamp(20.0, 100.0).ceilToDouble();
+    final interval = (maxY / 4).clamp(5.0, double.infinity);
 
     return BarChart(
       BarChartData(
@@ -289,8 +336,12 @@ class _BudgetVsSpendingChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<double> budget = data.budget.map((v) => (v ?? 0).toDouble()).toList();
-    final List<double> spending = data.spending.map((v) => (v ?? 0).toDouble()).toList();
+    final budget = data.budget.map((v) => v.toDouble()).toList();
+    final spending = data.spending.map((v) => v.toDouble()).toList();
+    final pointCount = data.months.isEmpty || budget.isEmpty || spending.isEmpty
+        ? 0
+        : [data.months.length, budget.length, spending.length]
+            .reduce((min, length) => length < min ? length : min);
 
     final allValues = [...budget, ...spending];
     final maxVal = allValues.isEmpty ? 1.0 : allValues.reduce((a, b) => a > b ? a : b);
@@ -326,7 +377,7 @@ class _BudgetVsSpendingChart extends StatelessWidget {
               reservedSize: 24,
               getTitlesWidget: (v, meta) {
                 final i = v.toInt();
-                if (i < 0 || i >= data.months.length) return const SizedBox();
+                if (i < 0 || i >= pointCount) return const SizedBox();
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(data.months[i], style: TextStyle(fontSize: 11, color: Colors.grey[500])),
@@ -337,7 +388,7 @@ class _BudgetVsSpendingChart extends StatelessWidget {
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: List.generate(data.budget.length, (i) => FlSpot(i.toDouble(), data.budget[i])),
+            spots: List.generate(pointCount, (i) => FlSpot(i.toDouble(), budget[i])),
             isCurved: true,
             color: kDarkNavy,
             barWidth: 3,
@@ -345,7 +396,7 @@ class _BudgetVsSpendingChart extends StatelessWidget {
             belowBarData: BarAreaData(show: false),
           ),
           LineChartBarData(
-            spots: List.generate(data.spending.length, (i) => FlSpot(i.toDouble(), data.spending[i])),
+            spots: List.generate(pointCount, (i) => FlSpot(i.toDouble(), spending[i])),
             isCurved: true,
             color: kBrandOrange,
             barWidth: 3,
@@ -572,6 +623,19 @@ class _ActiveProjectCard extends StatelessWidget {
   final ActiveProject data;
   const _ActiveProjectCard({required this.data});
 
+  Color get _statusColor {
+    switch (data.status.toLowerCase()) {
+      case 'delayed':
+        return kNegativeRed;
+      case 'at risk':
+        return kWarningAmber;
+      case 'completed':
+        return kPositiveGreen;
+      default:
+        return kDarkNavy;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -590,7 +654,22 @@ class _ActiveProjectCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(data.name, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Colors.black87)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.name,
+                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      data.clientName,
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey[500]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -619,8 +698,73 @@ class _ActiveProjectCard extends StatelessWidget {
               Text("${(data.percent * 100).round()}%", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
           ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _ProjectPill(label: data.phase, color: kDarkNavy),
+              _ProjectPill(label: data.status, color: _statusColor),
+              _ProjectPill(label: 'Est. end ${data.estimatedEndDate}', color: Colors.grey.shade700),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _ProjectDate(label: 'Start', value: data.startDate)),
+              Expanded(child: _ProjectDate(label: 'Actual End', value: data.actualEndDate)),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _ProjectPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _ProjectPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectDate extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ProjectDate({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 10.5, color: Colors.grey[500])),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

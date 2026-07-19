@@ -24,18 +24,13 @@ class _StatCardData {
 const List<_StatCardData> _statCards = [
   _StatCardData(
     label: 'Total Budget',
-    value: '₱18.6M',
-    subtitle: '₱2.1M remaining',
+    value: 'PHP 67,000,000',
+    subtitle: 'PHP 2.1M remaining',
   ),
   _StatCardData(
-    label: 'Total Expenses',
-    value: '₱16.5M',
-    subtitle: 'Current spending',
-  ),
-  _StatCardData(
-    label: 'Budget Utilization',
-    value: '88%',
-    subtitle: 'Across all projects',
+    label: 'Net Variance',
+    value: '-PHP 440',
+    subtitle: 'vs. planned budget',
   ),
 ];
 
@@ -73,6 +68,11 @@ class AcctDashboardScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
+          const _PageHeader(
+            title: 'DASHBOARD',
+            subtitle: 'financial overview',
+          ),
+          const SizedBox(height: 14),
           SizedBox(
             height: 120,
             child: ListView.separated(
@@ -99,7 +99,7 @@ class AcctDashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  '₱18,600,000',
+                  'PHP 67,000,000',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -170,12 +170,16 @@ class AcctDashboardScreen extends StatelessWidget {
                         showTitles: true,
                         reservedSize: 24,
                         getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= _months.length) {
+                            return const SizedBox();
+                          }
                           return Padding(
                             padding: const EdgeInsets.only(
                               top: 6,
                             ),
                             child: Text(
-                              _months[value.toInt()],
+                              _months[index],
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey.shade500,
@@ -216,6 +220,40 @@ class AcctDashboardScreen extends StatelessWidget {
         currentIndex: 0,
         email: email,
       ),
+    );
+  }
+}
+
+class _PageHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _PageHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+            letterSpacing: .3,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -403,3 +441,5 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
+

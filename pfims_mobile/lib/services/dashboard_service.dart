@@ -1,7 +1,9 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-import 'user_session.dart';
+
 import '../config/api_config.dart';
+import 'user_session.dart';
 
 class DashboardStat {
   final String label;
@@ -36,7 +38,7 @@ class TrendData {
   factory TrendData.fromJson(Map<String, dynamic> json) => TrendData(
         months: List<String>.from((json['months'] as List?) ?? []),
         values: (json['values'] as List?)
-                ?.map((v) => (v as num?)?.toDouble() ?? 0.0)
+                ?.map((v) => double.tryParse(v.toString()) ?? 0.0)
                 .toList() ??
             [],
       );
@@ -53,14 +55,15 @@ class BudgetVsSpendingData {
     required this.spending,
   });
 
-  factory BudgetVsSpendingData.fromJson(Map<String, dynamic> json) => BudgetVsSpendingData(
+  factory BudgetVsSpendingData.fromJson(Map<String, dynamic> json) =>
+      BudgetVsSpendingData(
         months: List<String>.from((json['months'] as List?) ?? []),
         budget: (json['budget'] as List?)
-                ?.map((v) => (v as num?)?.toDouble() ?? 0.0)
+                ?.map((v) => double.tryParse(v.toString()) ?? 0.0)
                 .toList() ??
             [],
         spending: (json['spending'] as List?)
-                ?.map((v) => (v as num?)?.toDouble() ?? 0.0)
+                ?.map((v) => double.tryParse(v.toString()) ?? 0.0)
                 .toList() ??
             [],
       );
@@ -68,28 +71,80 @@ class BudgetVsSpendingData {
 
 class ActiveProject {
   final String name;
+  final String clientName;
   final String budget;
+  final String startDate;
+  final String estimatedEndDate;
+  final String actualEndDate;
+  final String phase;
+  final String status;
   final double percent;
 
   ActiveProject({
     required this.name,
+    required this.clientName,
     required this.budget,
+    required this.startDate,
+    required this.estimatedEndDate,
+    required this.actualEndDate,
+    required this.phase,
+    required this.status,
     required this.percent,
   });
 
   factory ActiveProject.fromJson(Map<String, dynamic> json) {
-    final completion = (json['completion_percentage'] ?? json['percent'] ?? 0).toDouble();
+    final rawCompletion =
+        double.tryParse((json['completion_percentage'] ?? json['percent'] ?? 0).toString()) ?? 0;
+    final normalizedCompletion =
+        rawCompletion > 1 ? rawCompletion / 100 : rawCompletion;
+
     return ActiveProject(
       name: (json['project_name'] ?? json['name'] ?? 'Unnamed Project').toString(),
+      clientName: (json['client_name'] ?? 'No client').toString(),
       budget: _formatBudget(json['budget'] ?? json['estimated_budget']),
-      percent: (completion / 100).clamp(0.0, 1.0),
+      startDate: _formatDate(json['start_date']),
+      estimatedEndDate: _formatDate(json['estimated_end_date']),
+      actualEndDate: _formatDate(json['actual_end_date']),
+      phase: (json['phase'] ?? 'No phase').toString(),
+      status: (json['status'] ?? 'No status').toString(),
+      percent: normalizedCompletion.clamp(0.0, 1.0),
     );
   }
 
   static String _formatBudget(dynamic value) {
-    if (value == null) return '₱0';
-    final num = double.tryParse(value.toString()) ?? 0;
-    return '₱${num.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}';
+    if (value == null) return 'PHP 0';
+    final text = value.toString();
+    if (text.contains('PHP')) {
+      return text;
+    }
+    final amount = double.tryParse(text) ?? 0;
+    if (double.tryParse(text) == null) return text;
+    final formatted = amount.toStringAsFixed(0).replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (match) => '${match[1]},',
+        );
+    return 'PHP $formatted';
+  }
+
+  static String _formatDate(dynamic value) {
+    if (value == null || value.toString().isEmpty) return '-';
+    final parsed = DateTime.tryParse(value.toString());
+    if (parsed == null) return value.toString();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[parsed.month - 1]} ${parsed.day}, ${parsed.year}';
   }
 }
 
@@ -111,8 +166,11 @@ class DashboardData {
                 ?.map((e) => DashboardStat.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
-        completionTrend: TrendData.fromJson(json['completion_trend'] as Map<String, dynamic>? ?? {}),
-        budgetVsSpending: BudgetVsSpendingData.fromJson(json['budget_vs_spending'] as Map<String, dynamic>? ?? {}),
+        completionTrend:
+            TrendData.fromJson(json['completion_trend'] as Map<String, dynamic>? ?? {}),
+        budgetVsSpending: BudgetVsSpendingData.fromJson(
+          json['budget_vs_spending'] as Map<String, dynamic>? ?? {},
+        ),
         activeProjects: (json['active_projects'] as List?)
                 ?.map((e) => ActiveProject.fromJson(e as Map<String, dynamic>))
                 .toList() ??
@@ -146,3 +204,4 @@ class DashboardService {
     return DashboardData.fromJson(body);
   }
 }
+
