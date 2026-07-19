@@ -23,6 +23,7 @@ class NotificationController extends Controller
                 'notification_id' => $n->notification_id,
                 'title' => $n->title,
                 'message' => $n->message,
+                'type' => $n->type,
                 'kind' => $n->kind,
                 'filter' => $n->filter,
                 'is_read' => (bool) $n->is_read,

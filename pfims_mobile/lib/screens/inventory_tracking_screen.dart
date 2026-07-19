@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav_bar.dart';
+import '../widgets/ops_bottom_nav_bar.dart';
 import '../widgets/app_header.dart';
 import '../services/inventory_service.dart';
 
@@ -126,8 +127,13 @@ class Supplier {
 
 class InventoryTrackingScreen extends StatefulWidget {
   final String email;
+  final bool operationsMode;
 
-  const InventoryTrackingScreen({super.key, this.email = ''});
+  const InventoryTrackingScreen({
+    super.key,
+    this.email = '',
+    this.operationsMode = false,
+  });
 
   @override
   State<InventoryTrackingScreen> createState() => _InventoryTrackingScreenState();
@@ -520,20 +526,20 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'INVENTORY',
-                                      style: TextStyle(
+                                      widget.operationsMode ? 'INVENTORY RECORDS' : 'INVENTORY',
+                                      style: const TextStyle(
                                         fontSize: 27,
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.dark,
                                       ),
                                     ),
-                                    SizedBox(height: 2),
-                                    Text(
+                                    const SizedBox(height: 2),
+                                    const Text(
                                       'construction operation overview',
                                       style: TextStyle(fontSize: 14, color: Colors.grey),
                                     ),
@@ -777,7 +783,9 @@ class _InventoryTrackingScreenState extends State<InventoryTrackingScreen>
           ],
         ),
       ),
-      bottomNavigationBar: AppBottomNavBar(currentIndex: 3, email: widget.email),
+      bottomNavigationBar: widget.operationsMode
+          ? OpsBottomNavBar(currentIndex: 2, email: widget.email)
+          : AppBottomNavBar(currentIndex: 3, email: widget.email),
     );
   }
 }

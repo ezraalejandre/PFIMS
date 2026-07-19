@@ -10,6 +10,7 @@ class AppNotification {
   final int id;
   final String title;
   final String message;
+  final String type;
   final DateTime createdAt;
   final NotificationKind kind;
   final NotificationFilter filter;
@@ -19,6 +20,7 @@ class AppNotification {
     required this.id,
     required this.title,
     required this.message,
+    required this.type,
     required this.createdAt,
     required this.kind,
     required this.filter,
@@ -32,6 +34,7 @@ class AppNotification {
           : int.tryParse('${json['notification_id']}') ?? 0,
       title: json['title'] as String? ?? '',
       message: json['message'] as String? ?? '',
+      type: json['type'] as String? ?? '',
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
       kind: _kindFromString(json['kind'] as String? ?? 'info'),
       filter: (json['filter'] as String? ?? 'alerts') == 'system'

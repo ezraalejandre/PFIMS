@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart'; // adjust path to wherever ApiConfig actually lives
+import 'user_session.dart';
 
 class NotificationService {
   static final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
@@ -38,16 +39,55 @@ class NotificationService {
     if (response.statusCode != 200) {
       throw Exception('Failed to load notifications');
     }
-    return json.decode(response.body) as Map<String, dynamic>;
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    final notifications = (data['notifications'] as List<dynamic>? ?? [])
+        .where((notification) => !_hideForCurrentRole(notification))
+        .toList();
+    return {
+      ...data,
+      'notifications': notifications,
+    };
   }
 
   static Future<int> fetchUnreadCount() async {
+    if (_isOperationsRole) {
+      final data = await fetchNotifications();
+      final notifications = data['notifications'] as List<dynamic>? ?? [];
+      return notifications.where((notification) {
+        if (notification is! Map<String, dynamic>) return false;
+        final isRead = notification['is_read'];
+        return !(isRead == true || isRead == 1 || isRead == '1');
+      }).length;
+    }
+
     final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/notifications/unread-count'));
     if (response.statusCode != 200) return 0;
     final data = json.decode(response.body) as Map<String, dynamic>;
     final count = data['unread_count'];
     if (count is int) return count;
     return int.tryParse('$count') ?? 0;
+  }
+
+  static bool get _isOperationsRole {
+    final role = UserSession.role.trim().toLowerCase();
+    return role == 'operations' || role == 'operation' || role == 'ops';
+  }
+
+  static bool _hideForCurrentRole(dynamic notification) {
+    if (!_isOperationsRole || notification is! Map<String, dynamic>) {
+      return false;
+    }
+
+    final type = '${notification['type'] ?? ''}'.toLowerCase();
+    final title = '${notification['title'] ?? ''}'.toLowerCase();
+    final message = '${notification['message'] ?? ''}'.toLowerCase();
+
+    return type.contains('expense') ||
+        type.contains('budget') ||
+        title.contains('expense') ||
+        title.contains('budget') ||
+        message.contains('expense') ||
+        message.contains('budget');
   }
 
   static Future<bool> markRead(int id) async {

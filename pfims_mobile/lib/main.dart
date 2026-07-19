@@ -139,7 +139,8 @@ class PFIMSMobile extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => ProjectTrackingScreen(email: email));
 
           case '/ops-projects':
-            return MaterialPageRoute(builder: (_) => const OpsProjectTrackingScreen());
+            final email = settings.arguments as String? ?? '';
+            return MaterialPageRoute(builder: (_) => OpsProjectTrackingScreen(email: email));
 
           case '/budget':
             final email = settings.arguments as String? ?? '';
@@ -153,7 +154,8 @@ class PFIMSMobile extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => InventoryTrackingScreen(email: email));
 
           case '/ops-inventory':
-            return MaterialPageRoute(builder: (_) => const OpsInventoryTrackingScreen());
+            final email = settings.arguments as String? ?? '';
+            return MaterialPageRoute(builder: (_) => OpsInventoryTrackingScreen(email: email));
 
           case '/notifications':
             return MaterialPageRoute(builder: (_) => const NotificationsScreen());

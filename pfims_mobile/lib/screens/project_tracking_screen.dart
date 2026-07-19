@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../widgets/app_bottom_nav_bar.dart';
+import '../widgets/ops_bottom_nav_bar.dart';
 import '../widgets/app_header.dart';
 import '../services/projects_service.dart';
 
@@ -206,7 +207,7 @@ class _ProjectData {
           : int.tryParse(json['worker_count']?.toString() ?? '') ?? 0,
       phase: (json['phase'] ?? 'Planning').toString(),
       status: (json['status'] ?? 'Pending').toString(),
-      percent: (percentValue / 100).clamp(0.0, 1.0),
+      percent: (percentValue / 100).clamp(0.0, 1.0).toDouble(),
       startDate: _parseDate(json['start_date']),
       estimatedEndDate: _parseDate(json['estimated_end_date']),
       actualEndDate: _parseDate(json['actual_end_date']),
@@ -246,8 +247,13 @@ class _ProjectData {
 
 class ProjectTrackingScreen extends StatefulWidget {
   final String email;
+  final bool operationsMode;
 
-  const ProjectTrackingScreen({super.key, this.email = ''});
+  const ProjectTrackingScreen({
+    super.key,
+    this.email = '',
+    this.operationsMode = false,
+  });
 
   @override
   State<ProjectTrackingScreen> createState() => _ProjectTrackingScreenState();
@@ -365,6 +371,10 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
             return s == 'at risk' || s == 'delayed';
           }).length;
 
+          final onSchedule = allProjects
+              .where((p) => p.status.toLowerCase() == 'on track')
+              .length;
+
           final today = DateTime.now();
           final todayDateOnly = DateTime(today.year, today.month, today.day);
           final overdue = allProjects.where((p) {
@@ -394,21 +404,21 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "PROJECTS",
-                            style: TextStyle(
+                            widget.operationsMode ? "PROJECT TRACKING" : "PROJECTS",
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                               color: Colors.black87,
                               letterSpacing: .2,
                             ),
                           ),
-                          SizedBox(height: 2),
-                          Text(
+                          const SizedBox(height: 2),
+                          const Text(
                             "construction operation overview",
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
@@ -462,16 +472,20 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                           child: _StatTile(
                             label: "ACTIVE PROJECTS",
                             value: isLoading ? "—" : "$activeProjects",
-                            footer: isLoading ? "" : "$totalProjects total",
+                            footer: widget.operationsMode
+                                ? "$activeProjects active projects"
+                                : (isLoading ? "" : "$totalProjects total"),
                             footerColor: Colors.grey[600]!,
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: _StatTile(
-                            label: "AVG. PROGRESS",
-                            value: isLoading ? "—" : "$avgProgress%",
-                            footer: "Across active projects",
+                            label: widget.operationsMode ? "ON SCHEDULE" : "AVG. PROGRESS",
+                            value: isLoading ? "-" : (widget.operationsMode ? "$onSchedule" : "$avgProgress%"),
+                            footer: widget.operationsMode
+                                ? "${activeProjects == 0 ? 0 : ((onSchedule / activeProjects) * 100).round()}% of active"
+                                : "Across active projects",
                             footerColor: Colors.grey[600]!,
                           ),
                         ),
@@ -482,19 +496,25 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
                       children: [
                         Expanded(
                           child: _StatTile(
-                            label: "NEEDS ATTENTION",
+                            label: widget.operationsMode ? "DELAYED" : "NEEDS ATTENTION",
                             value: isLoading ? "—" : "$needsAttention",
-                            footer: needsAttention > 0 ? "At risk or delayed" : "All clear",
+                            footer: needsAttention > 0
+                                ? "Needs attention"
+                                : (widget.operationsMode ? "All projects on track" : "All clear"),
                             footerColor: needsAttention > 0 ? kDelayedRed : Colors.grey[600]!,
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: _StatTile(
-                            label: "OVERDUE",
-                            value: isLoading ? "—" : "$overdue",
-                            footer: overdue > 0 ? "Past deadline" : "On schedule",
-                            footerColor: overdue > 0 ? kDelayedRed : Colors.grey[600]!,
+                            label: widget.operationsMode ? "AVG COMPLETION" : "OVERDUE",
+                            value: isLoading ? "-" : (widget.operationsMode ? "$avgProgress%" : "$overdue"),
+                            footer: widget.operationsMode
+                                ? "Across $totalProjects projects"
+                                : (overdue > 0 ? "Past deadline" : "On schedule"),
+                            footerColor: !widget.operationsMode && overdue > 0
+                                ? kDelayedRed
+                                : Colors.grey[600]!,
                           ),
                         ),
                       ],
@@ -646,7 +666,9 @@ class _ProjectTrackingScreenState extends State<ProjectTrackingScreen> {
           },
         ),
       ),
-      bottomNavigationBar: AppBottomNavBar(currentIndex: 1, email: widget.email),
+      bottomNavigationBar: widget.operationsMode
+          ? OpsBottomNavBar(currentIndex: 1, email: widget.email)
+          : AppBottomNavBar(currentIndex: 1, email: widget.email),
     );
   }
 }
@@ -2295,3 +2317,4 @@ class _ProjectDetailsModalState extends State<_ProjectDetailsModal> {
     );
   }
 }
+

@@ -107,7 +107,7 @@ class ActiveProject {
       actualEndDate: _formatDate(json['actual_end_date']),
       phase: (json['phase'] ?? 'No phase').toString(),
       status: (json['status'] ?? 'No status').toString(),
-      percent: normalizedCompletion.clamp(0.0, 1.0),
+      percent: normalizedCompletion.clamp(0.0, 1.0).toDouble(),
     );
   }
 
