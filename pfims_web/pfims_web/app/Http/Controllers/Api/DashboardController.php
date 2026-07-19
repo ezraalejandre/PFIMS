@@ -19,7 +19,7 @@ class DashboardController extends Controller
         return response()->json([
             'stat_cards'         => $this->statCards(),
             'completion_trend'   => $this->completionTrend(),
-            'budget_vs_spending' => $this->budgetVsSpending(),
+            'budget_vs_expense'  => $this->budgetVsExpense(),
             'active_projects'    => $this->activeProjects(),
         ]);
     }
@@ -40,7 +40,7 @@ class DashboardController extends Controller
             ->count();
 
         $totalBudget = (float) Budget::sum('budget_amount');
-        $totalSpent  = (float) Budget::sum('actual_amount');
+        $totalSpent  = $this->totalExpenses();
         $remaining   = $totalBudget - $totalSpent;
         $utilization = $totalBudget > 0 ? (int) round(($totalSpent / $totalBudget) * 100) : 0;
 
@@ -109,27 +109,44 @@ class DashboardController extends Controller
         return ['months' => $months, 'values' => $values];
     }
 
-    private function budgetVsSpending(): array
+    private function budgetVsExpense(): array
     {
-        $months   = [];
-        $budget   = [];
-        $spending = [];
+        $months          = [];
+        $allocatedBudget = [];
+        $expenses        = [];
 
         for ($i = 5; $i >= 0; $i--) {
             $month    = Carbon::now()->subMonths($i);
             $monthEnd = $month->copy()->endOfMonth();
             $months[] = $month->format('M');
 
-            $budget[] = (float) Project::where('project_tbl.start_date', '<=', $monthEnd)
+            // A project budget becomes allocated when the project starts.
+            // Expense totals are based on the actual recorded expense date.
+            $allocatedBudget[] = (float) Project::whereDate('project_tbl.start_date', '<=', $monthEnd->toDateString())
                 ->join('budgets_tbl', 'project_tbl.project_id', '=', 'budgets_tbl.project_id')
                 ->sum('budgets_tbl.budget_amount');
 
-            $spending[] = (float) (Expense::where('expense_date', '<=', $monthEnd)
-                ->selectRaw('COALESCE(SUM(COALESCE(labor_amount,0) + COALESCE(material_amount,0) + COALESCE(equipment_amount,0) + COALESCE(other_amount,0)), 0) as total')
-                ->value('total') ?? 0);
+            $expenses[] = $this->totalExpenses($monthEnd->toDateString());
         }
 
-        return ['months' => $months, 'budget' => $budget, 'spending' => $spending];
+        return [
+            'months'           => $months,
+            'allocated_budget' => $allocatedBudget,
+            'expenses'         => $expenses,
+        ];
+    }
+
+    private function totalExpenses(?string $throughDate = null): float
+    {
+        $query = Expense::query();
+
+        if ($throughDate !== null) {
+            $query->whereDate('expense_date', '<=', $throughDate);
+        }
+
+        return (float) $query
+            ->selectRaw('COALESCE(SUM(COALESCE(labor_amount, 0) + COALESCE(material_amount, 0) + COALESCE(equipment_amount, 0) + COALESCE(other_amount, 0)), 0) AS total')
+            ->value('total');
     }
 
     private function activeProjects(): array
@@ -161,12 +178,12 @@ class DashboardController extends Controller
     private function formatCurrency(float $amount): string
     {
         if ($amount >= 1_000_000) {
-            return 'PHP ' . rtrim(rtrim(number_format($amount / 1_000_000, 1), '0'), '.') . 'M';
+            return '₱' . rtrim(rtrim(number_format($amount / 1_000_000, 1), '0'), '.') . 'M';
         }
         if ($amount >= 1_000) {
-            return 'PHP ' . rtrim(rtrim(number_format($amount / 1_000, 1), '0'), '.') . 'K';
+            return '₱' . rtrim(rtrim(number_format($amount / 1_000, 1), '0'), '.') . 'K';
         }
-        return 'PHP ' . number_format($amount);
+        return '₱' . number_format($amount);
     }
 
     private function formatDate(mixed $date): ?string
@@ -178,4 +195,3 @@ class DashboardController extends Controller
         return Carbon::parse($date)->toDateString();
     }
 }
-

@@ -192,17 +192,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 _SectionCard(
-                  title: "BUDGET ALLOCATION VS SPENDING",
+                  title: "ALLOCATED BUDGET VS EXPENSES",
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 200, child: _BudgetVsSpendingChart(data: data.budgetVsSpending)),
+                      SizedBox(height: 220, child: _BudgetVsExpenseChart(data: data.budgetVsExpense)),
                       const SizedBox(height: 10),
                       Row(
                         children: const [
-                          _LegendDot(color: kDarkNavy, label: 'Budget allocated'),
+                          _LegendDot(color: kDarkNavy, label: 'Allocated budget'),
                           SizedBox(width: 16),
-                          _LegendDot(color: kBrandOrange, label: 'Spending'),
+                          _LegendDot(color: kBrandOrange, label: 'Expenses (right scale)'),
                         ],
                       ),
                     ],
@@ -363,22 +363,25 @@ class _CompletionBarChart extends StatelessWidget {
   }
 }
 
-class _BudgetVsSpendingChart extends StatelessWidget {
-  final BudgetVsSpendingData data;
-  const _BudgetVsSpendingChart({required this.data});
+class _BudgetVsExpenseChart extends StatelessWidget {
+  final BudgetVsExpenseData data;
+  const _BudgetVsExpenseChart({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final budget = data.budget.map((v) => v.toDouble()).toList();
-    final spending = data.spending.map((v) => v.toDouble()).toList();
-    final pointCount = data.months.isEmpty || budget.isEmpty || spending.isEmpty
+    final budget = data.allocatedBudget.map((v) => v.toDouble()).toList();
+    final expenses = data.expenses.map((v) => v.toDouble()).toList();
+    final pointCount = data.months.isEmpty || budget.isEmpty || expenses.isEmpty
         ? 0
-        : [data.months.length, budget.length, spending.length]
+        : [data.months.length, budget.length, expenses.length]
             .reduce((min, length) => length < min ? length : min);
 
-    final allValues = [...budget, ...spending];
-    final maxVal = allValues.isEmpty ? 1.0 : allValues.reduce((a, b) => a > b ? a : b);
-    final maxY = maxVal <= 0 ? 100.0 : (maxVal * 1.2).ceilToDouble();
+    // Budgets and expenses can differ by several orders of magnitude.  The
+    // expense series uses the right-hand scale so small real expenses remain visible.
+    final maxBudget = budget.isEmpty ? 0.0 : budget.reduce((a, b) => a > b ? a : b);
+    final maxExpense = expenses.isEmpty ? 0.0 : expenses.reduce((a, b) => a > b ? a : b);
+    final maxY = maxBudget <= 0 ? 100.0 : (maxBudget * 1.2).ceilToDouble();
+    final expenseScaleMax = maxExpense <= 0 ? 1.0 : (maxExpense * 1.2).ceilToDouble();
     final double interval = (maxY / 4).clamp(1.0, double.infinity);
 
     return LineChart(
@@ -394,14 +397,27 @@ class _BudgetVsSpendingChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: interval,
+              reservedSize: 74,
+              getTitlesWidget: (v, meta) => Text(
+                _compactPeso(v / maxY * expenseScaleMax),
+                style: TextStyle(fontSize: 10, color: kBrandOrange.withValues(alpha: .85)),
+              ),
+            ),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               interval: interval,
-              reservedSize: 34,
-              getTitlesWidget: (v, meta) =>
-                  Text(v.toInt().toString(), style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              reservedSize: 74,
+              getTitlesWidget: (v, meta) => Text(
+                _compactPeso(v),
+                style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                textAlign: TextAlign.right,
+              ),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -422,23 +438,47 @@ class _BudgetVsSpendingChart extends StatelessWidget {
         lineBarsData: [
           LineChartBarData(
             spots: List.generate(pointCount, (i) => FlSpot(i.toDouble(), budget[i])),
-            isCurved: true,
+            isCurved: false,
             color: kDarkNavy,
             barWidth: 3,
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(show: false),
           ),
           LineChartBarData(
-            spots: List.generate(pointCount, (i) => FlSpot(i.toDouble(), spending[i])),
-            isCurved: true,
+            spots: List.generate(
+              pointCount,
+              (i) => FlSpot(i.toDouble(), expenses[i] / expenseScaleMax * maxY),
+            ),
+            isCurved: false,
             color: kBrandOrange,
             barWidth: 3,
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(show: false),
           ),
         ],
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
+              final isBudget = spot.barIndex == 0;
+              final label = isBudget ? 'Allocated Budget' : 'Expenses';
+              final actualValue = isBudget ? spot.y : spot.y / maxY * expenseScaleMax;
+              return LineTooltipItem('$label\n${_fullPeso(actualValue)}', const TextStyle(color: Colors.white, fontSize: 12));
+            }).toList(),
+          ),
+        ),
       ),
     );
+  }
+
+  String _compactPeso(double value) {
+    if (value >= 1000000) return '₱${(value / 1000000).toStringAsFixed(1)}M';
+    if (value >= 1000) return '₱${(value / 1000).toStringAsFixed(0)}K';
+    return '₱${value.toStringAsFixed(0)}';
+  }
+
+  String _fullPeso(double value) {
+    final digits = value.toStringAsFixed(0);
+    return '₱${digits.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
   }
 }
 

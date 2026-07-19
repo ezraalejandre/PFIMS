@@ -44,25 +44,25 @@ class TrendData {
       );
 }
 
-class BudgetVsSpendingData {
+class BudgetVsExpenseData {
   final List<String> months;
-  final List<double> budget;
-  final List<double> spending;
+  final List<double> allocatedBudget;
+  final List<double> expenses;
 
-  BudgetVsSpendingData({
+  BudgetVsExpenseData({
     required this.months,
-    required this.budget,
-    required this.spending,
+    required this.allocatedBudget,
+    required this.expenses,
   });
 
-  factory BudgetVsSpendingData.fromJson(Map<String, dynamic> json) =>
-      BudgetVsSpendingData(
+  factory BudgetVsExpenseData.fromJson(Map<String, dynamic> json) =>
+      BudgetVsExpenseData(
         months: List<String>.from((json['months'] as List?) ?? []),
-        budget: (json['budget'] as List?)
+        allocatedBudget: (json['allocated_budget'] as List?)
                 ?.map((v) => double.tryParse(v.toString()) ?? 0.0)
                 .toList() ??
             [],
-        spending: (json['spending'] as List?)
+        expenses: (json['expenses'] as List?)
                 ?.map((v) => double.tryParse(v.toString()) ?? 0.0)
                 .toList() ??
             [],
@@ -151,13 +151,13 @@ class ActiveProject {
 class DashboardData {
   final List<DashboardStat> statCards;
   final TrendData completionTrend;
-  final BudgetVsSpendingData budgetVsSpending;
+  final BudgetVsExpenseData budgetVsExpense;
   final List<ActiveProject> activeProjects;
 
   DashboardData({
     required this.statCards,
     required this.completionTrend,
-    required this.budgetVsSpending,
+    required this.budgetVsExpense,
     required this.activeProjects,
   });
 
@@ -168,8 +168,8 @@ class DashboardData {
             [],
         completionTrend:
             TrendData.fromJson(json['completion_trend'] as Map<String, dynamic>? ?? {}),
-        budgetVsSpending: BudgetVsSpendingData.fromJson(
-          json['budget_vs_spending'] as Map<String, dynamic>? ?? {},
+        budgetVsExpense: BudgetVsExpenseData.fromJson(
+          json['budget_vs_expense'] as Map<String, dynamic>? ?? {},
         ),
         activeProjects: (json['active_projects'] as List?)
                 ?.map((e) => ActiveProject.fromJson(e as Map<String, dynamic>))
