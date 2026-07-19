@@ -313,6 +313,7 @@ class BudgetTrackingScreen extends StatefulWidget {
 
 class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _budgetSearchController = TextEditingController();
 
   String _selectedPeriod = "Monthly";
   static const List<String> _periods = ["Daily", "Weekly", "Monthly", "Yearly"];
@@ -339,11 +340,13 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
     _budgetsFuture = _loadBudgets();
     _refreshBudgets();
     _searchController.addListener(() => setState(() {}));
+    _budgetSearchController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _budgetSearchController.dispose();
     super.dispose();
   }
 
@@ -490,7 +493,7 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
     final result = await showDialog<MapEntry<String, double>>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const _AddBudgetModal(),
+      builder: (context) => _AddBudgetModal(existingBudgets: _budgetEntries),
     );
     if (result != null && mounted) {
       setState(() {
@@ -533,6 +536,42 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
     }
   }
 
+  // Mirrors _openExpenseDetails: opens a read-only details modal for the
+  // tapped budget card, then routes into edit or handles a delete based
+  // on how that modal was popped.
+  Future<void> _openBudgetDetails(_BudgetEntry budget) async {
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _BudgetDetailsModal(budget: budget),
+    );
+
+    if (!mounted) return;
+
+    if (result == 'edit') {
+      final updated = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _EditBudgetModal(budget: budget),
+      );
+      if (updated == true && mounted) {
+        await _refreshBudgets();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Budget updated successfully.')),
+          );
+        }
+      }
+    } else if (result == 'deleted') {
+      await _refreshBudgets();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Budget deleted.')),
+        );
+      }
+    }
+  }
+
   Widget _tabButton(String label, int index) {
     final selected = _selectedTab == index;
     return GestureDetector(
@@ -564,9 +603,14 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
         final hasError = snapshot.hasError;
         final allBudgets = snapshot.data ?? const <_BudgetEntry>[];
 
-        final budgets = _selectedProjectFilter == null
-            ? allBudgets
-            : allBudgets.where((b) => b.projectName == _selectedProjectFilter).toList();
+        final query = _budgetSearchController.text.trim().toLowerCase();
+        final budgets = allBudgets.where((b) {
+          final matchesProject = _selectedProjectFilter == null ||
+              b.projectName == _selectedProjectFilter;
+          final matchesQuery =
+              query.isEmpty || b.projectName.toLowerCase().contains(query);
+          return matchesProject && matchesQuery;
+        }).toList();
 
         if (isLoading) {
           return const Padding(
@@ -593,21 +637,29 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
             ),
           );
         }
-        if (budgets.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: Center(
-              child: Text(
-                "No budgets yet. Tap \"Add Budget\" to add one.",
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ),
-          );
-        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: TextField(
+                controller: _budgetSearchController,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: "Search budgets by project...",
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.5),
+                  prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
             Text(
               "${budgets.length} BUDGETS",
               style: TextStyle(
@@ -618,10 +670,26 @@ class _BudgetTrackingScreenState extends State<BudgetTrackingScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            ...budgets.map((b) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _BudgetCard(entry: b),
-                )),
+            if (budgets.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Center(
+                  child: Text(
+                    allBudgets.isEmpty
+                        ? "No budgets yet. Tap \"Add Budget\" to add one."
+                        : "Nothing matches your search.",
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ),
+              )
+            else
+              ...budgets.map((b) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _BudgetCard(
+                      entry: b,
+                      onTap: () => _openBudgetDetails(b),
+                    ),
+                  )),
           ],
         );
       },
@@ -1264,85 +1332,90 @@ class _StockInExpenseCard extends StatelessWidget {
 }
 
 /// A single row from budgets_tbl: project name, budget vs. actual,
-/// variance, and a simple usage bar. Read-only for now — editing an
-/// existing budget can be wired up the same way _EditExpenseModal was.
+/// variance, and a simple usage bar. Tapping the card opens
+/// _BudgetDetailsModal, which routes into view/edit/delete.
 class _BudgetCard extends StatelessWidget {
   final _BudgetEntry entry;
+  final VoidCallback? onTap;
 
-  const _BudgetCard({required this.entry});
+  const _BudgetCard({required this.entry, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final over = entry.variance < 0;
     final barColor = over ? kOverRed : kUnderGreen;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  entry.projectName.isEmpty ? "Unknown Project" : entry.projectName,
-                  style: const TextStyle(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    entry.projectName.isEmpty ? "Unknown Project" : entry.projectName,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: over
-                      ? kOverRed.withValues(alpha: .12)
-                      : kUnderGreen.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  over ? "Over budget" : "Under budget",
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: barColor,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: over
+                        ? kOverRed.withValues(alpha: .12)
+                        : kUnderGreen.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    over ? "Over budget" : "Under budget",
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: barColor,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _budgetStat("BUDGET", _peso(entry.budgetAmount)),
-              _budgetStat("ACTUAL", _peso(entry.actualAmount)),
-              _budgetStat(
-                "VARIANCE",
-                "${over ? '-' : ''}${_peso(entry.variance.abs())}",
-                color: barColor,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: entry.percentUsed > 1 ? 1 : entry.percentUsed,
-              minHeight: 6,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation(barColor),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _budgetStat("BUDGET", _peso(entry.budgetAmount)),
+                _budgetStat("ACTUAL", _peso(entry.actualAmount)),
+                _budgetStat(
+                  "VARIANCE",
+                  "${over ? '-' : ''}${_peso(entry.variance.abs())}",
+                  color: barColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: entry.percentUsed > 1 ? 1 : entry.percentUsed,
+                minHeight: 6,
+                backgroundColor: Colors.grey[200],
+                valueColor: AlwaysStoppedAnimation(barColor),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1375,6 +1448,12 @@ class _BudgetCard extends StatelessWidget {
 /// stock-in row, `stockInTransactionId` is threaded through and silently
 /// embedded into the submitted remarks so that transaction can be
 /// recognized as "already logged" afterward.
+///
+/// "Material" is deliberately hidden from the category dropdown when this
+/// modal is opened as a plain Add Expense (no `stockInTransactionId`) —
+/// material spend is meant to be logged through the stock-in flow so it
+/// stays tied to its inventory transaction. When opened *from* a stock-in
+/// row, the full category list (including Material) is left untouched.
 /// ---------------------------------------------------------------------
 class _AddExpenseModal extends StatefulWidget {
   final String? initialDescription;
@@ -1421,7 +1500,7 @@ class _AddExpenseModalState extends State<_AddExpenseModal> {
   Future<List<_DropdownOption>> _loadCategories() async {
     final raw = await FinanceService.getExpenseCategories();
 
-    final categories = raw
+    var categories = raw
         .map((e) => _DropdownOption(
               id: e['expense_category_id'] is int
                   ? e['expense_category_id'] as int
@@ -1429,6 +1508,15 @@ class _AddExpenseModalState extends State<_AddExpenseModal> {
               name: (e['category_name'] ?? '').toString(),
             ))
         .toList();
+
+    // Plain "Add Expense" (not opened from a stock-in row): hide Material.
+    // The stock-in flow (widget.stockInTransactionId != null) is left
+    // completely untouched and still gets the full category list.
+    if (widget.stockInTransactionId == null) {
+      categories = categories
+          .where((c) => c.name.trim().toLowerCase() != 'material')
+          .toList();
+    }
 
     // Auto-select the category matching initialCategoryName (e.g. "Material"
     // when opened from a stock-in transaction), if it exists among the
@@ -1816,7 +1904,9 @@ class _ExpenseDetailsModal extends StatefulWidget {
 /// ---------------------------------------------------------------------
 /// Edit expense modal — pre-filled from the tapped card's data. No
 /// project selection anymore — expenses aren't tied to a project. Same
-/// dropdown-loading pattern as _AddExpenseModal.
+/// dropdown-loading pattern as _AddExpenseModal. (Not affected by the
+/// Add-Expense Material filter — editing an existing Material expense
+/// still lets you keep it as Material.)
 /// ---------------------------------------------------------------------
 class _EditExpenseModal extends StatefulWidget {
   final _ExpenseEntry expense;
@@ -2415,11 +2505,429 @@ class _ExpenseDetailsModalState extends State<_ExpenseDetailsModal> {
 }
 
 /// ---------------------------------------------------------------------
-/// Add Budget modal — same chrome as _AddExpenseModal, simpler form.
-/// Budgets are still per-project, so this modal is unchanged.
+/// Budget details modal — shown when a budget card is tapped. Same
+/// chrome/behavior contract as _ExpenseDetailsModal. Pops with:
+///   'edit'    -> the caller should open _EditBudgetModal
+///   'deleted' -> the caller should refresh the budgets list
+///   null      -> nothing changed (closed / cancelled)
+/// ---------------------------------------------------------------------
+class _BudgetDetailsModal extends StatefulWidget {
+  final _BudgetEntry budget;
+
+  const _BudgetDetailsModal({required this.budget});
+
+  @override
+  State<_BudgetDetailsModal> createState() => _BudgetDetailsModalState();
+}
+
+class _BudgetDetailsModalState extends State<_BudgetDetailsModal> {
+  bool _isDeleting = false;
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete budget?"),
+        content: Text(
+          "This will permanently delete the budget for \"${widget.budget.projectName.isEmpty ? 'Unknown Project' : widget.budget.projectName}\". This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: kOverRed),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      await FinanceService.deleteBudget(widget.budget.id);
+      if (!mounted) return;
+      Navigator.of(context).pop('deleted');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final budget = widget.budget;
+    final over = budget.variance < 0;
+    final barColor = over ? kOverRed : kUnderGreen;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // HEADER
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        budget.projectName.isEmpty ? "Unknown Project" : budget.projectName,
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: over
+                              ? kOverRed.withValues(alpha: .12)
+                              : kUnderGreen.withValues(alpha: .12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          over ? "Over budget" : "Under budget",
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: barColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, size: 26),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 22),
+
+            // DETAILS
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                border: Border.all(color: Colors.grey[200]!),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _detailRow("Budget", _peso(budget.budgetAmount)),
+                  _detailRow("Actual", _peso(budget.actualAmount)),
+                  _detailRow(
+                    "Variance",
+                    "${over ? '-' : ''}${_peso(budget.variance.abs())}",
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: budget.percentUsed > 1 ? 1 : budget.percentUsed,
+                minHeight: 6,
+                backgroundColor: Colors.grey[200],
+                valueColor: AlwaysStoppedAnimation(barColor),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ACTIONS
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isDeleting ? null : _confirmDelete,
+                    icon: _isDeleting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(kOverRed),
+                            ),
+                          )
+                        : const Icon(Icons.delete_outline, size: 18, color: kOverRed),
+                    label: Text(
+                      _isDeleting ? "Deleting..." : "Delete",
+                      style: const TextStyle(color: kOverRed),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: kOverRed),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isDeleting ? null : () => Navigator.pop(context, 'edit'),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text("Edit"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kDarkPill,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------
+/// Edit budget modal — pre-filled with the tapped budget's amount. The
+/// project itself is shown read-only (a budget row is always tied to the
+/// project it was created for; changing that project is effectively
+/// creating a different budget, which the Add Budget flow already covers
+/// via its upsert-by-project behavior).
+/// ---------------------------------------------------------------------
+class _EditBudgetModal extends StatefulWidget {
+  final _BudgetEntry budget;
+
+  const _EditBudgetModal({required this.budget});
+
+  @override
+  State<_EditBudgetModal> createState() => _EditBudgetModalState();
+}
+
+class _EditBudgetModalState extends State<_EditBudgetModal> {
+  late final TextEditingController _amountController;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController =
+        TextEditingController(text: widget.budget.budgetAmount.toStringAsFixed(2));
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  bool get _isValid {
+    final amount = double.tryParse(_amountController.text.trim());
+    return amount != null && amount > 0;
+  }
+
+  Future<void> _save() async {
+    if (!_isValid || _isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      await FinanceService.updateBudget(
+        budgetId: widget.budget.id,
+        amount: double.parse(_amountController.text.trim()),
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 460),
+        padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Edit Budget",
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                ),
+                InkWell(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const Icon(Icons.close, size: 26),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "Project",
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Text(
+                widget.budget.projectName.isEmpty
+                    ? "Unknown Project"
+                    : widget.budget.projectName,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text("Budget Amount *",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _amountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [_NonNegativeAmountFormatter()],
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: "0.00",
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("Cancel",
+                      style: TextStyle(fontSize: 16, color: Colors.black54)),
+                ),
+                ElevatedButton(
+                  onPressed: (_isValid && !_isSaving) ? _save : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kDarkPill,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
+                      : const Text("Save changes", style: TextStyle(fontSize: 16)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------
+/// Add Budget modal — same chrome as _AddExpenseModal. Budgets are still
+/// per-project.
+///
+/// `existingBudgets` (passed in from the Budgets tab's current state) is
+/// used to power a validation notice: if the searched/selected project
+/// already has a budget, an inline banner tells the user the existing
+/// amount and that submitting will update it in place — the backend
+/// upserts budgets by project, so this isn't a hard block, just a
+/// heads-up before they overwrite something that already exists.
+///
+/// The project field itself is now a searchable Autocomplete instead of
+/// a plain dropdown, so it stays usable as the project list grows.
 /// ---------------------------------------------------------------------
 class _AddBudgetModal extends StatefulWidget {
-  const _AddBudgetModal();
+  final List<_BudgetEntry> existingBudgets;
+
+  const _AddBudgetModal({this.existingBudgets = const []});
 
   @override
   State<_AddBudgetModal> createState() => _AddBudgetModalState();
@@ -2467,6 +2975,16 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
     return _project != null && amount != null && amount > 0;
   }
 
+  // The existing budget row (if any) for the currently-selected project —
+  // drives the "this will update an existing budget" notice below the
+  // project field.
+  _BudgetEntry? get _existingBudgetForSelected {
+    if (_project == null) return null;
+    final matches =
+        widget.existingBudgets.where((b) => b.projectName == _project!.name);
+    return matches.isNotEmpty ? matches.first : null;
+  }
+
   Future<void> _submit() async {
     if (!_isValid || _isSaving) return;
 
@@ -2496,6 +3014,8 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
 
   @override
   Widget build(BuildContext context) {
+    final existing = _existingBudgetForSelected;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28),
@@ -2528,6 +3048,31 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             _projectField(),
+            if (existing != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: kAmberStrong.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: kAmberStrong.withValues(alpha: .5)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline, size: 16, color: kAmberStrong),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "This project already has a budget of ${_peso(existing.budgetAmount)}. Submitting will update it instead of creating a new one.",
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             const Text("Budget Amount *",
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
@@ -2586,7 +3131,8 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
                             valueColor: AlwaysStoppedAnimation(Colors.black87),
                           ),
                         )
-                      : const Text("Add Budget", style: TextStyle(fontSize: 16)),
+                      : Text(existing != null ? "Update Budget" : "Add Budget",
+                          style: const TextStyle(fontSize: 16)),
                 ),
               ],
             ),
@@ -2607,28 +3153,77 @@ class _AddBudgetModalState extends State<_AddBudgetModal> {
           return _errorField("Couldn't load projects");
         }
         final projects = snapshot.data!;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<_DropdownOption>(
-              value: _project,
-              isExpanded: true,
-              hint: Text(
-                projects.isEmpty ? "No projects available" : "Select Project...",
-                style: TextStyle(color: Colors.grey[400]),
+        if (projects.isEmpty) {
+          return _loadingField("No projects available");
+        }
+        return Autocomplete<_DropdownOption>(
+          displayStringForOption: (o) => o.name,
+          optionsBuilder: (textEditingValue) {
+            final query = textEditingValue.text.trim().toLowerCase();
+            if (query.isEmpty) return projects;
+            return projects.where((p) => p.name.toLowerCase().contains(query));
+          },
+          onSelected: (option) {
+            setState(() => _project = option);
+          },
+          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+            return TextField(
+              controller: controller,
+              focusNode: focusNode,
+              onChanged: (text) {
+                // If the field no longer matches the selected project
+                // (user is typing a fresh search), clear the selection so
+                // the existing-budget notice and submit state stay honest.
+                if (_project != null && text != _project!.name) {
+                  setState(() => _project = null);
+                }
+              },
+              decoration: InputDecoration(
+                hintText: "Search project...",
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
               ),
-              items: projects
-                  .map((p) => DropdownMenuItem(value: p, child: Text(p.name)))
-                  .toList(),
-              onChanged: projects.isEmpty
-                  ? null
-                  : (v) => setState(() => _project = v),
-            ),
-          ),
+            );
+          },
+          optionsViewBuilder: (context, onSelected, options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(10),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220, maxWidth: 404),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final option = options.elementAt(index);
+                      final hasBudget = widget.existingBudgets
+                          .any((b) => b.projectName == option.name);
+                      return ListTile(
+                        dense: true,
+                        title: Text(option.name, style: const TextStyle(fontSize: 13.5)),
+                        trailing: hasBudget
+                            ? const Icon(Icons.info_outline, size: 16, color: kAmberStrong)
+                            : null,
+                        onTap: () => onSelected(option),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
