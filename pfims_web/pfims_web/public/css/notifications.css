@@ -352,7 +352,6 @@ body {
     overflow: hidden;
 }
 
-/* FIX: Images are now fully visible (not cropped) */
 .notif-item .notif-icon img {
     width: 100%;
     height: 100%;
@@ -365,7 +364,6 @@ body {
 .notif-item .notif-icon.blue { background: #e3f0ff; }
 .notif-item .notif-icon.wrench { background: #f0f0f0; }
 
-/* Text content */
 .notif-item .notif-content {
     flex: 1;
 }
@@ -382,6 +380,226 @@ body {
     color: #555;
     line-height: 1.5;
     margin-bottom: 6px;
+}
+
+/* ─── ERROR NOTIFICATION ─── */
+.error-notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999 !important;
+    background: #d32f2f;
+    color: #fff;
+    padding: 14px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    min-width: 350px;
+    max-width: 90%;
+    animation: slideDown 0.4s ease;
+}
+
+.error-notification .error-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.error-notification .error-icon {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.error-notification .error-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.8;
+    padding: 0 8px;
+}
+
+.error-notification .error-close:hover {
+    opacity: 1;
+}
+
+/* ─── SUCCESS NOTIFICATION ─── */
+.success-notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999 !important;
+    background: #2e7d32;
+    color: #fff;
+    padding: 14px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    min-width: 350px;
+    max-width: 90%;
+    animation: slideDown 0.4s ease;
+}
+
+.success-notification .success-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.success-notification .success-icon {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.success-notification .success-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.8;
+    padding: 0 8px;
+}
+
+.success-notification .success-close:hover {
+    opacity: 1;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateX(-50%) translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ─── MODAL OVERLAY ─── */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1500;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-container {
+    background: #fff;
+    width: 500px;
+    max-width: 95%;
+    max-height: 90vh;
+    border-radius: 16px;
+    padding: 30px 35px;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: fadeInScale 0.25s ease;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #1a2b3c;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #888;
+    transition: 0.2s;
+    padding: 0 8px;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 0 2px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.modal-footer button {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.3s;
+    border: none;
+}
+
+.btn-cancel {
+    background: transparent;
+    color: #888;
+}
+
+.btn-cancel:hover {
+    color: #333;
+    background: #f5f5f5;
+}
+
+.btn-delete {
+    background: #d32f2f;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-delete:hover {
+    background: #b71c1c;
+    transform: translateY(-2px);
 }
 
 /* ─── RESPONSIVE ─── */
@@ -481,5 +699,29 @@ body {
     }
     .page-header h1 {
         font-size: 1.4rem;
+    }
+
+    .modal-container {
+        padding: 20px;
+        width: 95%;
+    }
+    .modal-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .modal-footer button {
+        width: 100%;
+        text-align: center;
+    }
+    .error-notification,
+    .success-notification {
+        min-width: auto;
+        width: 90%;
+        top: 75px;
+        padding: 12px 18px;
+    }
+    .error-notification .error-content,
+    .success-notification .success-content {
+        font-size: 0.9rem;
     }
 }
