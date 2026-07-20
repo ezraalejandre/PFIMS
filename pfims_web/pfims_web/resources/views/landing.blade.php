@@ -6,6 +6,85 @@
     <title>Landing Page</title>
 
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
+
+    <style>
+        .otp-links {
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-link {
+            background: #c9a96e;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-link:hover {
+            background: #b8975a;
+            transform: translateY(-1px);
+        }
+        .btn-link:disabled {
+            background: #ddd;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .otp-divider {
+            color: #ccc;
+            font-size: 0.8rem;
+        }
+
+        /* ─── PASSWORD VISIBILITY TOGGLE ─── */
+        .password-field {
+            position: relative;
+        }
+        .password-field input {
+            width: 100%;
+            padding-right: 42px; /* room for the icon */
+            box-sizing: border-box;
+        }
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 4px;
+            margin: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            line-height: 0;
+        }
+        .password-toggle:hover {
+            color: #555;
+        }
+        .password-toggle svg {
+            width: 20px;
+            height: 20px;
+            display: block;
+        }
+        .password-toggle .icon-eye-off {
+            display: none;
+        }
+        .password-toggle.is-visible .icon-eye {
+            display: none;
+        }
+        .password-toggle.is-visible .icon-eye-off {
+            display: block;
+        }
+    </style>
 </head>
 <body>
 
@@ -55,11 +134,12 @@
                         <label>6-Digit Code</label>
                         <input type="text" id="otpInput" maxlength="6" inputmode="numeric" placeholder="000000" style="letter-spacing:6px; text-align:center; font-size:1.2rem;">
                     </div>
-                    <p style="margin-top:12px;">
-                        <a href="#" onclick="event.preventDefault(); sendResetLink(true);" style="font-size:0.85rem;">Resend code</a>
-                        &nbsp;·&nbsp;
-                        <a href="#" onclick="event.preventDefault(); goToStep(1);" style="font-size:0.85rem;">Change email</a>
-                    </p>
+
+                    <div class="otp-links">
+                        <button type="button" class="btn-link" id="resendOtpBtn" onclick="sendResetLink(true)">Resend code</button>
+                        <span class="otp-divider">·</span>
+                        <button type="button" class="btn-link" onclick="goToStep(1)">Change email</button>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn-cancel" onclick="closeForgotModal()">Cancel</button>
@@ -77,11 +157,23 @@
                     <p style="color: #888; margin-bottom: 20px; font-size: 0.95rem;">Code verified. Choose your new password.</p>
                     <div class="form-group">
                         <label>New Password</label>
-                        <input type="password" id="newPassword" placeholder="Enter new password">
+                        <div class="password-field">
+                            <input type="password" id="newPassword" placeholder="Enter new password">
+                            <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility('newPassword', this)">
+                                <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-3.22 4.44M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Confirm Password</label>
-                        <input type="password" id="confirmPassword" placeholder="Re-enter new password">
+                        <div class="password-field">
+                            <input type="password" id="confirmPassword" placeholder="Re-enter new password">
+                            <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility('confirmPassword', this)">
+                                <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-3.22 4.44M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -139,7 +231,13 @@
 
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" name="password" placeholder="Enter Password">
+                    <div class="password-field">
+                        <input type="password" name="password" id="loginPassword" placeholder="Enter Password">
+                        <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility('loginPassword', this)">
+                            <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-3.22 4.44M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-signin">Sign In</button>
@@ -162,6 +260,15 @@
             email: '',
             resetToken: ''
         };
+
+        // ─── PASSWORD VISIBILITY TOGGLE ───
+        function togglePasswordVisibility(inputId, btnEl) {
+            var input = document.getElementById(inputId);
+            var isVisible = input.type === 'text';
+            input.type = isVisible ? 'password' : 'text';
+            btnEl.classList.toggle('is-visible', !isVisible);
+            btnEl.setAttribute('aria-label', isVisible ? 'Show password' : 'Hide password');
+        }
 
         // ─── NOTIFICATION ───
         function showError(message, isSuccess) {
@@ -222,7 +329,9 @@
                 return;
             }
 
-            setButtonLoading('sendOtpBtn', true, 'Send Code');
+            var loadingBtnId = isResend ? 'resendOtpBtn' : 'sendOtpBtn';
+            var defaultLabel = isResend ? 'Resend code' : 'Send Code';
+            setButtonLoading(loadingBtnId, true, defaultLabel);
 
             try {
                 const res = await fetch("{{ route('password.send-otp') }}", {
@@ -250,7 +359,7 @@
             } catch (err) {
                 showError('Network error. Please try again.');
             } finally {
-                setButtonLoading('sendOtpBtn', false, 'Send Code');
+                setButtonLoading(loadingBtnId, false, defaultLabel);
             }
         }
 
@@ -349,6 +458,12 @@
                 if (!e.target.closest('.error-notification')) closeError();
             }
         });
+
+        @if ($errors->any())
+            document.addEventListener('DOMContentLoaded', function() {
+                showError(@json($errors->first()));
+            });
+        @endif
     </script>
 
 </body>
