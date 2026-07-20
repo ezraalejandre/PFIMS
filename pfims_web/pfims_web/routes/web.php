@@ -403,16 +403,6 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/api/reports/{id}', [ReportController::class, 'destroy'])->name('reports.destroy');
 });
 
-// Notification routes
-Route::middleware(['auth'])->group(function () {
-    Route::get('/api/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index']);
-    Route::get('/api/notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount']);
-    Route::put('/api/notifications/{id}/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead']);
-    Route::put('/api/notifications/all/read', [App\Http\Controllers\Api\NotificationController::class, 'markAllRead']);
-    Route::delete('/api/notifications/{id}', [App\Http\Controllers\Api\NotificationController::class, 'destroy']);
-    Route::delete('/api/notifications/all', [App\Http\Controllers\Api\NotificationController::class, 'destroyAll']);
-});
-
 Route::post('/forgot-password/send-otp', [ForgotPasswordControllerWeb::class, 'sendOtp'])
     ->middleware('throttle:5,1') // max 5 requests per minute per IP
     ->name('password.send-otp');
