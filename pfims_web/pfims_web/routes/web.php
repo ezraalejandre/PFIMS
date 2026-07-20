@@ -15,6 +15,7 @@ use App\Http\Controllers\MLController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Auth\ForgotPasswordControllerWeb;
 
 // Landing page (login)
 Route::get('/', function () {
@@ -386,3 +387,15 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/api/notifications/{id}', [App\Http\Controllers\Api\NotificationController::class, 'destroy']);
     Route::delete('/api/notifications/all', [App\Http\Controllers\Api\NotificationController::class, 'destroyAll']);
 });
+
+Route::post('/forgot-password/send-otp', [ForgotPasswordControllerWeb::class, 'sendOtp'])
+    ->middleware('throttle:5,1') // max 5 requests per minute per IP
+    ->name('password.send-otp');
+ 
+Route::post('/forgot-password/verify-otp', [ForgotPasswordControllerWeb::class, 'verifyOtp'])
+    ->middleware('throttle:10,1')
+    ->name('password.verify-otp');
+ 
+Route::post('/forgot-password/reset', [ForgotPasswordControllerWeb::class, 'resetPassword'])
+    ->middleware('throttle:10,1')
+    ->name('password.reset');
