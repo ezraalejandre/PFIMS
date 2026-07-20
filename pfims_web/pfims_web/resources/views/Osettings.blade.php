@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Operations Settings - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Osettings.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
 <body>
 
@@ -219,15 +220,24 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label>Current Password <span class="required">*</span></label>
-                    <input type="password" id="currentPassword" placeholder="Enter current password">
+                    <div class="password-control">
+                        <input type="password" id="currentPassword" placeholder="Enter current password">
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('currentPassword', this)"></button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>New Password <span class="required">*</span></label>
-                    <input type="password" id="newPassword" placeholder="Enter new password">
+                    <div class="password-control">
+                        <input type="password" id="newPassword" placeholder="Enter new password">
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('newPassword', this)"></button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Confirm New Password <span class="required">*</span></label>
-                    <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                    <div class="password-control">
+                        <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('confirmPassword', this)"></button>
+                    </div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef;">
                     <button class="btn-cancel" onclick="closeChangePasswordModal()">Cancel</button>
@@ -373,11 +383,45 @@
             document.getElementById('currentPassword').value = '';
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
+            resetPasswordToggleButtons();
         }
 
         function closeChangePasswordModal() {
             document.getElementById('changePasswordModal').style.display = 'none';
             document.body.style.overflow = '';
+        }
+
+        function passwordIcon(isVisible) {
+            return isVisible
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-3.22 4.44M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
+        }
+
+        function setPasswordToggleIcon(button, isVisible) {
+            if (!button) return;
+            button.innerHTML = passwordIcon(isVisible);
+            button.classList.toggle('is-visible', isVisible);
+            button.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+        }
+
+        function resetPasswordToggleButtons() {
+            document.querySelectorAll('[data-password-toggle]').forEach(function(button) {
+                setPasswordToggleIcon(button, false);
+            });
+            ['currentPassword', 'newPassword', 'confirmPassword'].forEach(function(id) {
+                var input = document.getElementById(id);
+                if (input) input.type = 'password';
+            });
+        }
+
+        function togglePasswordVisibility(inputId, button) {
+            if (window.event) window.event.preventDefault();
+            var input = document.getElementById(inputId);
+            if (!input) return;
+            var isVisible = input.type === 'password';
+            input.type = isVisible ? 'text' : 'password';
+            setPasswordToggleIcon(button, isVisible);
+            input.focus({ preventScroll: true });
         }
 
         function savePassword() {
@@ -428,6 +472,8 @@
                 if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
         });
+
+        document.addEventListener('DOMContentLoaded', resetPasswordToggleButtons);
     </script>
 
 </body>

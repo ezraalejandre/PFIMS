@@ -10,6 +10,7 @@
         .error-notification { z-index: 9999 !important; }
         .success-notification { z-index: 9999 !important; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
 <body>
 

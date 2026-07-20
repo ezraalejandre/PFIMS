@@ -110,6 +110,7 @@
         .total-notif-item.card-green { border-left-color: #2e7d32; }
         .total-notif-item.card-blue { border-left-color: #1565c0; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
 <body>
 

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accounting Settings - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Asettings.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
 <body>
 
@@ -215,26 +216,26 @@
                 <form id="changePasswordForm" onsubmit="submitChangePassword(event)">
                     <div class="form-group" style="margin-bottom: 18px;">
                         <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">Current Password <span style="color: #d32f2f;">*</span></label>
-                        <div style="position: relative;">
-                            <input type="password" id="currentPassword" placeholder="Enter your current password" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required>
-                            <button type="button" onclick="togglePasswordVisibility('currentPassword', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem;"></button>
+                        <div class="password-control" style="position: relative;">
+                            <input type="password" id="currentPassword" placeholder="Enter your current password" style="width: 100%; padding: 10px 44px 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required>
+                            <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('currentPassword', this)"></button>
                         </div>
                         <div id="currentPasswordError" style="color: #d32f2f; font-size: 0.8rem; margin-top: 4px; display: none;"></div>
                     </div>
                     <div class="form-group" style="margin-bottom: 18px;">
                         <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">New Password <span style="color: #d32f2f;">*</span></label>
-                        <div style="position: relative;">
-                            <input type="password" id="newPassword" placeholder="Enter new password (min 8 characters)" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required minlength="8">
-                            <button type="button" onclick="togglePasswordVisibility('newPassword', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem;"></button>
+                        <div class="password-control" style="position: relative;">
+                            <input type="password" id="newPassword" placeholder="Enter new password (min 8 characters)" style="width: 100%; padding: 10px 44px 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required minlength="8">
+                            <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('newPassword', this)"></button>
                         </div>
                         <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">Password must be at least 8 characters long</div>
                         <div id="newPasswordError" style="color: #d32f2f; font-size: 0.8rem; margin-top: 4px; display: none;"></div>
                     </div>
                     <div class="form-group" style="margin-bottom: 18px;">
                         <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">Confirm New Password <span style="color: #d32f2f;">*</span></label>
-                        <div style="position: relative;">
-                            <input type="password" id="confirmPassword" placeholder="Re-enter new password" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required>
-                            <button type="button" onclick="togglePasswordVisibility('confirmPassword', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 0.9rem;"></button>
+                        <div class="password-control" style="position: relative;">
+                            <input type="password" id="confirmPassword" placeholder="Re-enter new password" style="width: 100%; padding: 10px 44px 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; transition: 0.3s;" required>
+                            <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('confirmPassword', this)"></button>
                         </div>
                         <div id="confirmPasswordError" style="color: #d32f2f; font-size: 0.8rem; margin-top: 4px; display: none;"></div>
                     </div>
@@ -384,6 +385,7 @@
             document.getElementById('currentPasswordError').style.display = 'none';
             document.getElementById('newPasswordError').style.display = 'none';
             document.getElementById('confirmPasswordError').style.display = 'none';
+            resetPasswordToggleButtons();
             
             // Show modal
             document.getElementById('changePasswordModal').style.display = 'flex';
@@ -404,6 +406,39 @@
                 input.type = 'password';
                 button.textContent = '👁';
             }
+        }
+
+        function passwordIcon(isVisible) {
+            return isVisible
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-3.22 4.44M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
+        }
+
+        function setPasswordToggleIcon(button, isVisible) {
+            if (!button) return;
+            button.innerHTML = passwordIcon(isVisible);
+            button.classList.toggle('is-visible', isVisible);
+            button.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+        }
+
+        function resetPasswordToggleButtons() {
+            document.querySelectorAll('[data-password-toggle]').forEach(function(button) {
+                setPasswordToggleIcon(button, false);
+            });
+            ['currentPassword', 'newPassword', 'confirmPassword'].forEach(function(id) {
+                var input = document.getElementById(id);
+                if (input) input.type = 'password';
+            });
+        }
+
+        function togglePasswordVisibility(inputId, button) {
+            if (window.event) window.event.preventDefault();
+            var input = document.getElementById(inputId);
+            if (!input) return;
+            var isVisible = input.type === 'password';
+            input.type = isVisible ? 'text' : 'password';
+            setPasswordToggleIcon(button, isVisible);
+            input.focus({ preventScroll: true });
         }
 
         function submitChangePassword(event) {
@@ -537,6 +572,8 @@
             
             return strength;
         }
+
+        document.addEventListener('DOMContentLoaded', resetPasswordToggleButtons);
 
         // ─── TWO FACTOR AUTHENTICATION ───
         function open2FAModal() {

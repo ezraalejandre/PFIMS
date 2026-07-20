@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Operations Reports - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Oreports.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
 <body>
 

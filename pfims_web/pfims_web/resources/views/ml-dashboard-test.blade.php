@@ -601,6 +601,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
 <body>
 

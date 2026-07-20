@@ -10,6 +10,7 @@
         /* Override: Delete modal must be above everything */
         #deleteConfirmModal { z-index: 9999 !important; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
 <body>
 

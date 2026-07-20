@@ -42,6 +42,76 @@
             font-size: 0.8rem;
         }
 
+        /* ─── TOAST NOTIFICATION (base look + success state) ─── */
+        .error-notification {
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+        .error-notification .error-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #errorNotification.error-notification.success,
+        #errorNotification.success {
+            background: #eafaf0 !important;
+            border: 1px solid #9fdcb6 !important;
+            color: #1e6b41 !important;
+        }
+        #errorNotification.success .error-icon {
+            color: #1e8449 !important;
+            font-weight: 700;
+        }
+        #errorNotification.success #errorMessage {
+            color: #1e6b41 !important;
+        }
+        #errorNotification.success .error-close {
+            color: #1e6b41 !important;
+        }
+
+        /* ─── SIGN-IN FAILURE ALERT ─── */
+        .login-alert {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            color: #7a1f1f;
+            background: linear-gradient(180deg, #fff5f5 0%, #fff0f0 100%);
+            border: 1px solid #f2b9b9;
+            border-left: 4px solid #d64545;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            box-shadow: 0 2px 8px rgba(214, 69, 69, 0.08);
+        }
+
+        .login-alert .alert-icon {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #d64545;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-top: 1px;
+        }
+
+        .login-alert strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #5c1414;
+            font-size: 0.95rem;
+        }
+
+        .login-alert[hidden] {
+            display: none;
+        }
+
         /* ─── PASSWORD VISIBILITY TOGGLE ─── */
         .password-field {
             position: relative;
@@ -66,9 +136,13 @@
             justify-content: center;
             color: #999;
             line-height: 0;
+            min-width: 30px;
+            min-height: 30px;
+            border-radius: 999px;
         }
         .password-toggle:hover {
             color: #555;
+            background: #f6efe4;
         }
         .password-toggle svg {
             width: 20px;
@@ -85,14 +159,15 @@
             display: block;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
 </head>
-<body>
+<body class="landing-page">
 
     <!-- ─── ERROR / SUCCESS NOTIFICATION ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
             <span class="error-icon" id="errorIcon">⚠</span>
-            <span id="errorMessage">Invalid credentials. Please try again.</span>
+            <span id="errorMessage">We couldn't sign you in — please check your details and try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
@@ -221,18 +296,35 @@
             <h2>Sign In</h2>
             <p class="form-subtitle">Please enter your credentials below</p>
 
-            <form action="/login" method="POST">
+            @if ($errors->any())
+                <div class="login-alert" role="alert">
+                    <span class="alert-icon">!</span>
+                    <div>
+                        <strong>We couldn't sign you in</strong>
+                        {{ $errors->first() }}
+                    </div>
+                </div>
+            @endif
+            <div id="loginInlineAlert" class="login-alert" role="alert" hidden>
+                <span class="alert-icon">!</span>
+                <div>
+                    <strong>We couldn't sign you in</strong>
+                    <span id="loginInlineMessage">That email or password doesn't look right. Please try again.</span>
+                </div>
+            </div>
+
+            <form action="/login" method="POST" id="loginForm">
                 @csrf
 
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" name="email" value="{{ old('email') }}" placeholder="Enter email">
+                    <input type="email" name="email" value="{{ old('email') }}" placeholder="Enter email" autocomplete="email">
                 </div>
 
                 <div class="form-group">
                     <label>Password</label>
                     <div class="password-field">
-                        <input type="password" name="password" id="loginPassword" placeholder="Enter Password">
+                        <input type="password" name="password" id="loginPassword" placeholder="Enter Password" autocomplete="current-password">
                         <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePasswordVisibility('loginPassword', this)">
                             <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
                             <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-3.22 4.44M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -263,11 +355,14 @@
 
         // ─── PASSWORD VISIBILITY TOGGLE ───
         function togglePasswordVisibility(inputId, btnEl) {
+            if (window.event) window.event.preventDefault();
             var input = document.getElementById(inputId);
+            if (!input || !btnEl) return;
             var isVisible = input.type === 'text';
             input.type = isVisible ? 'password' : 'text';
             btnEl.classList.toggle('is-visible', !isVisible);
             btnEl.setAttribute('aria-label', isVisible ? 'Show password' : 'Hide password');
+            input.focus({ preventScroll: true });
         }
 
         // ─── NOTIFICATION ───
@@ -284,6 +379,67 @@
 
         function closeError() {
             document.getElementById('errorNotification').style.display = 'none';
+        }
+
+        function showLoginInlineError(message) {
+            var alert = document.getElementById('loginInlineAlert');
+            var messageEl = document.getElementById('loginInlineMessage');
+            if (messageEl) messageEl.textContent = message || "That email or password doesn't look right. Please try again.";
+            if (alert) alert.hidden = false;
+        }
+
+        function hideLoginInlineError() {
+            var alert = document.getElementById('loginInlineAlert');
+            if (alert) alert.hidden = true;
+        }
+
+        function firstValidationMessage(errors, fallback) {
+            if (!errors) return fallback;
+            for (var key in errors) {
+                if (Object.prototype.hasOwnProperty.call(errors, key) && errors[key] && errors[key][0]) {
+                    return errors[key][0];
+                }
+            }
+            return fallback;
+        }
+
+        async function submitLogin(event) {
+            event.preventDefault();
+            hideLoginInlineError();
+
+            var form = event.currentTarget;
+            var submitBtn = form.querySelector('.btn-signin');
+            var defaultText = submitBtn ? submitBtn.textContent : 'Sign In';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Signing in...';
+            }
+
+            try {
+                var res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: new FormData(form)
+                });
+                var data = await res.json();
+
+                if (res.ok && data.success && data.redirect) {
+                    window.location.assign(data.redirect);
+                    return;
+                }
+
+                showLoginInlineError(firstValidationMessage(data.errors, data.message || "That email or password doesn't look right. Please try again."));
+            } catch (err) {
+                showLoginInlineError('Unable to sign in right now. Please try again.');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = defaultText;
+                }
+            }
         }
 
         // ─── STEP NAVIGATION ───
@@ -353,7 +509,7 @@
                 resetState.email = email;
                 document.getElementById('otpEmailDisplay').textContent = email;
                 document.getElementById('otpInput').value = '';
-                showError(data.message, true);
+                showError(data.message || 'Code sent! Check your inbox.', true);
                 goToStep(2);
 
             } catch (err) {
@@ -392,7 +548,7 @@
                 }
 
                 resetState.resetToken = data.reset_token;
-                showError(data.message, true);
+                showError(data.message || 'Code verified!', true);
                 goToStep(3);
 
             } catch (err) {
@@ -458,6 +614,8 @@
                 if (!e.target.closest('.error-notification')) closeError();
             }
         });
+
+        document.getElementById('loginForm').addEventListener('submit', submitLogin);
 
         @if ($errors->any())
             document.addEventListener('DOMContentLoaded', function() {

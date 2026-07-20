@@ -268,31 +268,56 @@ Route::post('/login', function (Request $request) {
         'password' => ['required'],
     ]);
 
+    $wantsJson = $request->expectsJson() || $request->ajax();
+
+    $dashboardPath = function ($role) {
+        $role = strtolower($role ?? '');
+        if ($role === 'accounting') {
+            return '/adashboard';
+        }
+        if ($role === 'operations') {
+            return '/odashboard';
+        }
+        return '/dashboard';
+    };
+
     if (Auth::attempt($credentials)) {
         $user = Auth::user();
         if ($user->status !== 'Active') {
             Auth::logout();
+            if ($wantsJson) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account has been deactivated.',
+                ], 403);
+            }
             return back()->withErrors([
                 'email' => 'Your account has been deactivated.',
             ]);
         }
         $request->session()->regenerate();
 
-        $role = strtolower($user->role ?? '');
+        $redirectPath = $dashboardPath($user->role ?? '');
 
-        if ($role === 'admin') {
-            return redirect('/dashboard');
-        } elseif ($role === 'accounting') {
-            return redirect('adashboard');
-        } elseif ($role === 'operations') {
-            return redirect('/odashboard');
+        if ($wantsJson) {
+            return response()->json([
+                'success' => true,
+                'redirect' => url($redirectPath),
+            ]);
         }
 
-        return redirect('/dashboard');
+        return redirect($redirectPath);
+    }
+
+    if ($wantsJson) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid email or password.',
+        ], 422);
     }
 
     return back()->withErrors([
-        'email' => 'Invalid credentials.',
+        'email' => 'Invalid email or password.',
     ]);
 });
 
