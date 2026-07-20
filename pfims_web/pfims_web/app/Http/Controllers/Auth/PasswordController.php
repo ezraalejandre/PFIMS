@@ -18,6 +18,7 @@ class PasswordController extends Controller
             'new_password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
+        /** @var \App\Models\User $user */
         $user = Auth::user();
         $user->password = Hash::make($request->new_password);
         $user->save();
