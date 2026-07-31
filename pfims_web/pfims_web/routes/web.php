@@ -103,31 +103,31 @@ Route::get('/projects', function () {
     return view('projtracking');
 })->middleware('auth');
 
-Route::delete('/api/projects/{id}', function ($id) {
-    $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
-    if (!$exists) {
-        return response()->json(['message' => 'Project not found'], 404);
-    }
+// Route::delete('/api/projects/{id}', function ($id) {
+//     $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
+//     if (!$exists) {
+//         return response()->json(['message' => 'Project not found'], 404);
+//     }
 
-    DB::table('project_tbl')->where('project_id', $id)->delete();
-    return response()->json(['message' => 'Project deleted successfully']);
-});
+//     DB::table('project_tbl')->where('project_id', $id)->delete();
+//     return response()->json(['message' => 'Project deleted successfully']);
+// });
 
 // Finance page
 Route::get('/finance', function () {
     return view('finance');
 })->middleware('auth');
 
-// Budget page
-Route::delete('/api/budgets/{id}', function ($id) {
-    $exists = DB::table('budgets_tbl')->where('budget_id', $id)->exists();
-    if (!$exists) {
-        return response()->json(['message' => 'Budget not found'], 404);
-    }
+// // Budget page
+// Route::delete('/api/budgets/{id}', function ($id) {
+//     $exists = DB::table('budgets_tbl')->where('budget_id', $id)->exists();
+//     if (!$exists) {
+//         return response()->json(['message' => 'Budget not found'], 404);
+//     }
 
-    DB::table('budgets_tbl')->where('budget_id', $id)->delete();
-    return response()->json(['message' => 'Budget deleted successfully']);
-});
+//     DB::table('budgets_tbl')->where('budget_id', $id)->delete();
+//     return response()->json(['message' => 'Budget deleted successfully']);
+// });
 
 // Inventory page
 Route::get('/inventory', function () {

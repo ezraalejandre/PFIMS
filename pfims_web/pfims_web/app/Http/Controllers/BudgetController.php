@@ -46,4 +46,44 @@ class BudgetController extends Controller
             'actual_amount' => $budget->actual_amount,
         ], 201);
     }
+
+    // PUT /api/budgets/{id}
+public function update(Request $request, int $id)
+{
+    $budget = Budget::find($id);
+    if (!$budget) {
+        return response()->json(['message' => 'Budget not found'], 404);
+    }
+
+    $validator = Validator::make($request->all(), [
+        'budget_amount' => 'required|numeric|min:0',
+    ]);
+    if ($validator->fails()) {
+        return response()->json(['errors' => $validator->errors()], 422);
+    }
+
+    $budget->update(['budget_amount' => $request->budget_amount]);
+    $budget->load('project:project_id,project_name');
+
+    return response()->json([
+        'budget_id'     => $budget->budget_id,
+        'project_id'    => $budget->project_id,
+        'project_name'  => $budget->project?->project_name,
+        'budget_amount' => $budget->budget_amount,
+        'actual_amount' => $budget->actual_amount,
+    ]);
+}
+
+// DELETE /api/budgets/{id}
+public function destroy(int $id)
+{
+    $budget = Budget::find($id);
+    if (!$budget) {
+        return response()->json(['message' => 'Budget not found'], 404);
+    }
+
+    $budget->delete();
+
+    return response()->json(['message' => 'Budget deleted']);
+}
 }

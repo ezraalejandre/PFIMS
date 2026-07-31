@@ -393,10 +393,10 @@ class _SecurityAppBar extends StatelessWidget implements PreferredSizeWidget {
               padding: const EdgeInsets.only(left: 48),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'password & account protection',
-                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
-                ),
+                // child: Text(
+                //   'password & account protection',
+                //   style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                // ),
               ),
             ),
           ],

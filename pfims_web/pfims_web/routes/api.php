@@ -257,7 +257,44 @@ Route::delete('/projects/{id}', function ($id) {
         return response()->json(['message' => 'Project not found'], 404);
     }
 
-    DB::table('project_tbl')->where('project_id', $id)->delete();
+    // Some newly created projects have zero-value placeholder rows. Those do
+    // not represent an allocation or an expense and must not prevent deletion.
+    $hasBudgetAllocation = DB::table('budgets_tbl')
+        ->where('project_id', $id)
+        ->where('budget_amount', '>', 0)
+        ->exists();
+    $hasExpenses = DB::table('expense_tbl')
+        ->where('project_id', $id)
+        ->whereRaw('COALESCE(labor_amount, 0) + COALESCE(material_amount, 0) + COALESCE(equipment_amount, 0) + COALESCE(other_amount, 0) > 0')
+        ->exists();
+
+    if ($hasBudgetAllocation || $hasExpenses) {
+        $relatedRecords = match (true) {
+            $hasBudgetAllocation && $hasExpenses => 'budget allocation and expense records',
+            $hasBudgetAllocation => 'a budget allocation',
+            default => 'expense records',
+        };
+
+        return response()->json([
+            'message' => "Project cannot be deleted because it has {$relatedRecords}. Remove the related records first.",
+        ], 409);
+    }
+
+    DB::transaction(function () use ($id) {
+        // Remove empty child placeholders first so foreign-key constraints do
+        // not block deletion of a project that has no financial activity.
+        DB::table('expense_tbl')
+            ->where('project_id', $id)
+            ->whereRaw('COALESCE(labor_amount, 0) + COALESCE(material_amount, 0) + COALESCE(equipment_amount, 0) + COALESCE(other_amount, 0) = 0')
+            ->delete();
+        DB::table('budgets_tbl')
+            ->where('project_id', $id)
+            ->where(function ($query) {
+                $query->whereNull('budget_amount')->orWhere('budget_amount', '<=', 0);
+            })
+            ->delete();
+        DB::table('project_tbl')->where('project_id', $id)->delete();
+    });
 
     return response()->json(['message' => 'Project deleted'], 200);
 });
@@ -740,3 +777,6 @@ Route::get('/test-notify', function () {
     );
     return 'ok';
 });
+Route::post('/profile/update', [AuthController::class,'updateField']); 
+Route::put('/budgets/{id}', [BudgetController::class, 'update']);     
+Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']); 

@@ -101,6 +101,61 @@ public function profile(Request $request)
     ]);
 }
 
+public function updateField(Request $request)
+{
+    $validated = $request->validate([
+        'email' => ['required', 'email'],
+        'field' => ['required', 'string', 'in:name,email,phone,location'],
+        'value' => ['required', 'string', 'max:255'],
+    ]);
+
+    $user = User::where('email', $validated['email'])->first();
+
+    if (!$user) {
+        return response()->json([
+            "success" => false,
+            "message" => "User not found",
+        ], 404);
+    }
+
+    // Extra validation when the field being changed is email itself —
+    // must be a valid email and not already taken by another account.
+    if ($validated['field'] === 'email') {
+        $emailValidator = \Illuminate\Support\Facades\Validator::make(
+            ['value' => $validated['value']],
+            ['value' => [
+                'required',
+                'email',
+                \Illuminate\Validation\Rule::unique('users', 'email')->ignore($user->id),
+            ]]
+        );
+
+        if ($emailValidator->fails()) {
+            return response()->json([
+                "success" => false,
+                "message" => $emailValidator->errors()->first('value'),
+            ], 422);
+        }
+    }
+
+    $user->{$validated['field']} = $validated['value'];
+    $user->save();
+
+    return response()->json([
+        "success" => true,
+        "message" => ucfirst($validated['field']) . " updated",
+        "user" => [
+            "id" => $user->id,
+            "name" => $user->name,
+            "email" => $user->email,
+            "phone" => $user->phone,
+            "location" => $user->location,
+            "role" => $user->role,
+            "profile_photo" => $this->photoDataUri($user),
+        ],
+    ]);
+}
+
 public function uploadProfilePhoto(Request $request)
 {
     $request->validate([
