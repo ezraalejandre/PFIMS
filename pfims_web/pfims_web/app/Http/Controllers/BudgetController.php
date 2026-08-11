@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Budget;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class BudgetController extends Controller
 {
@@ -16,6 +17,8 @@ class BudgetController extends Controller
             'project_name'  => $b->project?->project_name,
             'budget_amount' => $b->budget_amount,
             'actual_amount' => $b->actual_amount,
+            'proof_file_path' => $b->proof_file_path,
+            'proof_file_name' => $b->proof_file_name,
         ]);
 
         return response()->json($budgets);
@@ -27,15 +30,35 @@ class BudgetController extends Controller
         $validator = Validator::make($request->all(), [
             'project_id'    => 'required|exists:project_tbl,project_id',
             'budget_amount' => 'required|numeric|min:0',
+            'proof_file'    => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        $data = ['budget_amount' => $request->budget_amount];
+
+        $existingBudget = Budget::where('project_id', $request->project_id)->first();
+
+        if ($request->hasFile('proof_file')) {
+            if ($existingBudget && $existingBudget->proof_file_path) {
+                Storage::disk('public')->delete($existingBudget->proof_file_path);
+            }
+            $data['proof_file_path'] = $request->file('proof_file')->store('proofs', 'public');
+            $data['proof_file_name'] = $request->file('proof_file')->getClientOriginalName();
+        } elseif ($request->boolean('remove_proof_file')) {
+            if ($existingBudget && $existingBudget->proof_file_path) {
+                Storage::disk('public')->delete($existingBudget->proof_file_path);
+            }
+            $data['proof_file_path'] = null;
+            $data['proof_file_name'] = null;
+        }
+
         $budget = Budget::updateOrCreate(
             ['project_id' => $request->project_id],
-            ['budget_amount' => $request->budget_amount]
+            $data
         );
+
         $budget->load('project:project_id,project_name');
 
         return response()->json([
@@ -44,6 +67,8 @@ class BudgetController extends Controller
             'project_name'  => $budget->project?->project_name,
             'budget_amount' => $budget->budget_amount,
             'actual_amount' => $budget->actual_amount,
+            'proof_file_path' => $budget->proof_file_path,
+            'proof_file_name' => $budget->proof_file_name,
         ], 201);
     }
 
@@ -71,6 +96,8 @@ public function update(Request $request, int $id)
         'project_name'  => $budget->project?->project_name,
         'budget_amount' => $budget->budget_amount,
         'actual_amount' => $budget->actual_amount,
+        'proof_file_path' => $budget->proof_file_path,
+        'proof_file_name' => $budget->proof_file_name,
     ]);
 }
 

@@ -28,7 +28,7 @@ return new class extends Migration
             FROM fin_expense_tbl fe
             JOIN fin_expense_category_tbl fc ON fc.fin_category_id = fe.fin_category_id
             LEFT JOIN project_tbl p ON p.project_id = fe.project_id
-            GROUP BY fe.project_id, period_month, fc.category_code, fc.classification
+            GROUP BY fe.project_id, p.project_name, period_month, fc.category_code, fc.classification
         ");
 
         // EXP DIRECT / DIRECT EXP — direct-only categories, per project per month
@@ -93,7 +93,7 @@ return new class extends Migration
             FROM fin_equipment_expense_tbl ee
             JOIN company_asset_tbl a ON a.asset_id = ee.asset_id
             WHERE a.asset_type IN ('vehicle','tool')
-            GROUP BY a.asset_id, period_month
+            GROUP BY a.asset_id, a.asset_name, a.asset_type, period_month
         ");
 
         // BACKHOE expense summary — Gas/Diesel + Payroll + Repair + Other + Delivery + Transpo per asset per month
@@ -106,7 +106,7 @@ return new class extends Migration
             FROM fin_equipment_expense_tbl ee
             JOIN company_asset_tbl a ON a.asset_id = ee.asset_id
             WHERE a.asset_type = 'heavy_equipment'
-            GROUP BY a.asset_id, period_month
+            GROUP BY a.asset_id, a.asset_name, period_month
         ");
 
         // BACKHOE rental income vs expense (profitability check)

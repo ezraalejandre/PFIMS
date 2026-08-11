@@ -1079,6 +1079,140 @@ body {
     }
 }
 
+/* ─── FINANCE FILE UPLOAD ─── */
+
+.file-upload-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.file-upload-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    background: #f5f7fa;
+    border: 1px solid #d8dee6;
+    border-radius: 8px;
+    color: #1a2b3c;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+    white-space: nowrap;
+}
+
+.file-upload-button:hover {
+    background: #e9edf2;
+}
+
+.file-upload-name {
+    color: #666;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+}
+
+.file-upload-hint {
+    display: block;
+    margin-top: 6px;
+    color: #888;
+    font-size: 0.8rem;
+}
+
+.file-input-hidden {
+    display: none;
+}
+
+/* ─── EXPENSE FILE DISPLAY ─── */
+
+.expense-file-section {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid #e9ecef;
+}
+
+.expense-file-section > label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #1a2b3c;
+}
+
+.expense-file-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #f8f9fb;
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+}
+
+.expense-file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.expense-file-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.expense-file-name {
+    color: #333;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.expense-file-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-view-file,
+.btn-change-file {
+    padding: 8px 13px;
+    border-radius: 7px;
+    border: 1px solid #d8dee6;
+    background: #fff;
+    color: #1a2b3c;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-view-file:hover,
+.btn-change-file:hover {
+    background: #f0f3f6;
+}
+
+.file-preview-container {
+    margin-top: 12px;
+    display: none;
+    text-align: center;
+}
+
+.file-preview-container img {
+    max-width: 100%;
+    max-height: 250px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    object-fit: contain;
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 900px) {
     .sidebar {
@@ -1211,4 +1345,72 @@ body {
         gap: 12px;
         padding: 15px;
     }
+}
+
+/* ─── BUDGET DETAIL MODAL ─── */
+.budget-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 30px;
+    padding: 20px;
+    background: #faf8f5;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.budget-detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.budget-detail-item label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.budget-detail-value {
+    display: block;
+    padding: 6px 0;
+    color: #333;
+    font-weight: 500;
+}
+
+.budget-detail-edit {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fafafa;
+}
+
+.budget-detail-edit:focus {
+    outline: none;
+    border-color: #c9a96e;
+    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+    background: #fff;
+}
+
+.detail-grid .expense-file-section,
+.budget-detail-grid .expense-file-section {
+    grid-column: 1 / -1;
+}
+
+.btn-delete-file {
+    padding: 8px 13px;
+    border-radius: 7px;
+    border: 1px solid #f3c6c6;
+    background: #fff;
+    color: #d32f2f;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-delete-file:hover {
+    background: #fdeceb;
 }

@@ -913,6 +913,156 @@ body {
     }
 }
 
+/* ─── BUDGET PROOF FILE UPLOAD ─── */
+.file-upload-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.file-upload-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    background: #f5f7fa;
+    border: 1px solid #d8dee6;
+    border-radius: 8px;
+    color: #1a2b3c;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+    white-space: nowrap;
+}
+
+.file-upload-button:hover {
+    background: #e9edf2;
+}
+
+.file-upload-name {
+    color: #666;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 250px;
+}
+
+.file-upload-hint {
+    display: block;
+    margin-top: 6px;
+    color: #888;
+    font-size: 0.8rem;
+}
+
+/* ─── PROOF FILE DISPLAY ─── */
+
+.proof-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.proof-section-title {
+    display: block;
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.proof-display {
+    width: 100%;
+    min-height: 90px;
+    padding: 15px;
+    border: 1px solid #d8dee6;
+    border-radius: 8px;
+    background: #f8f9fb;
+    box-sizing: border-box;
+}
+
+.proof-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.proof-file {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.proof-file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.proof-file-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.proof-file-name {
+    color: #333;
+    font-size: 0.9rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.proof-file-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.proof-view-btn,
+.proof-replace-btn {
+    padding: 8px 14px;
+    border-radius: 7px;
+    border: 1px solid #d8dee6;
+    background: #fff;
+    color: #1a2b3c;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.proof-view-btn:hover,
+.proof-replace-btn:hover {
+    background: #f0f3f6;
+}
+
+.proof-preview {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    background: #fff;
+}
+
+.proof-preview-container {
+    text-align: center;
+}
+
+.proof-file-type {
+    color: #888;
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 900px) {
     .sidebar {
@@ -1290,4 +1440,114 @@ body {
         gap: 12px;
         padding: 15px;
     }
+}
+
+/* ─── DETAIL FILE SECTION (Expense & Budget) ─── */
+
+.file-input-hidden {
+    display: none;
+}
+
+.expense-file-section {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid #e9ecef;
+}
+
+.detail-grid .expense-file-section,
+.budget-detail-grid .expense-file-section {
+    grid-column: 1 / -1;
+}
+
+.expense-file-section > label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #1a2b3c;
+}
+
+.expense-file-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #f8f9fb;
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+}
+
+.expense-file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.expense-file-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.expense-file-name {
+    color: #333;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.expense-file-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-view-file,
+.btn-change-file {
+    padding: 8px 13px;
+    border-radius: 7px;
+    border: 1px solid #d8dee6;
+    background: #fff;
+    color: #1a2b3c;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-view-file:hover,
+.btn-change-file:hover {
+    background: #f0f3f6;
+}
+
+.btn-delete-file {
+    padding: 8px 13px;
+    border-radius: 7px;
+    border: 1px solid #f3c6c6;
+    background: #fff;
+    color: #d32f2f;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-delete-file:hover {
+    background: #fdeceb;
+}
+
+.file-preview-container {
+    margin-top: 12px;
+    display: none;
+    text-align: center;
+}
+
+.file-preview-container img {
+    max-width: 100%;
+    max-height: 250px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    object-fit: contain;
 }

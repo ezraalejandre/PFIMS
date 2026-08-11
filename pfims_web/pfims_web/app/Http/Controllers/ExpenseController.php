@@ -7,6 +7,7 @@ use App\Models\ExpenseCategory;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class ExpenseController extends Controller
@@ -48,6 +49,7 @@ class ExpenseController extends Controller
             'project_id'               => 'nullable|exists:project_tbl,project_id',
             'inventory_transaction_id' => 'nullable|integer', // adjust exists:table,col to your real inventory_transaction_tbl PK
             'unit_id'                  => 'nullable|integer', // adjust exists:table,col to your real unit table
+            'proof_file'               => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -56,7 +58,7 @@ class ExpenseController extends Controller
         $category = ExpenseCategory::findOrFail($request->expense_category_id);
         $column = $this->amountColumnFor($category->category_name);
 
-        $expense = Expense::create([
+        $data = [
             'project_id'               => $request->project_id,
             'expense_category_id'      => $request->expense_category_id,
             'inventory_transaction_id' => $request->inventory_transaction_id,
@@ -65,7 +67,14 @@ class ExpenseController extends Controller
             $column                    => $request->amount,
             'expense_date'             => $request->expense_date,
             'remarks'                  => $request->remarks,
-        ]);
+        ];
+
+        if ($request->hasFile('proof_file')) {
+            $data['proof_file_path'] = $request->file('proof_file')->store('proofs', 'public');
+            $data['proof_file_name'] = $request->file('proof_file')->getClientOriginalName();
+        }
+
+        $expense = Expense::create($data);
 
         if ($expense->project_id) {
             $this->recalcBudgetActual($expense->project_id);
@@ -100,6 +109,7 @@ class ExpenseController extends Controller
             'expense_date'         => 'required|date',
             'remarks'              => 'nullable|string',
             'project_id'           => 'nullable|exists:project_tbl,project_id',
+            'proof_file'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -109,7 +119,7 @@ class ExpenseController extends Controller
         $category = ExpenseCategory::findOrFail($request->expense_category_id);
         $column = $this->amountColumnFor($category->category_name);
 
-        $expense->fill([
+        $fillData = [
             'labor_amount' => null, 'material_amount' => null,
             'equipment_amount' => null, 'other_amount' => null,
             $column                => $request->amount,
@@ -118,7 +128,23 @@ class ExpenseController extends Controller
             'expense_date'         => $request->expense_date,
             'remarks'              => $request->remarks,
             'project_id'           => $request->project_id ?? $expense->project_id,
-        ]);
+        ];
+
+        if ($request->hasFile('proof_file')) {
+            if ($expense->proof_file_path) {
+                Storage::disk('public')->delete($expense->proof_file_path);
+            }
+            $fillData['proof_file_path'] = $request->file('proof_file')->store('proofs', 'public');
+            $fillData['proof_file_name'] = $request->file('proof_file')->getClientOriginalName();
+        } elseif ($request->boolean('remove_proof_file')) {
+            if ($expense->proof_file_path) {
+                Storage::disk('public')->delete($expense->proof_file_path);
+            }
+            $fillData['proof_file_path'] = null;
+            $fillData['proof_file_name'] = null;
+        }
+
+        $expense->fill($fillData);
         $expense->save();
 
         foreach (array_filter(array_unique([$oldProjectId, $expense->project_id])) as $pid) {
@@ -135,6 +161,10 @@ class ExpenseController extends Controller
         $expense = Expense::find($id);
         if (!$expense) {
             return response()->json(['message' => 'Expense not found'], 404);
+        }
+
+        if ($expense->proof_file_path) {
+            Storage::disk('public')->delete($expense->proof_file_path);
         }
 
         $projectId = $expense->project_id;
@@ -169,6 +199,8 @@ class ExpenseController extends Controller
             'actual_amount'       => $e->labor_amount ?? $e->material_amount ?? $e->equipment_amount ?? $e->other_amount ?? 0,
             'expense_date'        => $e->expense_date,
             'remarks'             => $e->remarks,
+            'proof_file_path'     => $e->proof_file_path,
+            'proof_file_name'     => $e->proof_file_name,
         ];
     }
 
