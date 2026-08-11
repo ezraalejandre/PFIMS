@@ -12,11 +12,21 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Services\NotificationService;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\Api\FinExpenseCategoryController;
+use App\Http\Controllers\Api\FinExpenseController;
+use App\Http\Controllers\Api\FinReportController;
+use App\Http\Controllers\Api\FinProjectContractController;
+use App\Http\Controllers\Api\FinReceivablePayableController;
+use App\Http\Controllers\Api\FinConstructionBondController;
+use App\Http\Controllers\Api\FinCashPositionController;
+use App\Http\Controllers\Api\FinEquipmentExpenseController;
+use App\Http\Controllers\Api\FinEquipmentRentalIncomeController;
+use App\Http\Controllers\Api\CompanyAssetController;
 
 
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:sanctum');
+})->middleware('auth');
 
 Route::get('/test', function () {
     return response()->json([
@@ -779,4 +789,109 @@ Route::get('/test-notify', function () {
 });
 Route::post('/profile/update', [AuthController::class,'updateField']); 
 Route::put('/budgets/{id}', [BudgetController::class, 'update']);     
-Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']); 
+Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']);
+
+// =====================================================================
+// FINANCE MODULE ROUTES (NEW - Using fin_* tables)
+// =====================================================================
+// CHANGE: Use just 'auth' (no guard specified) since 'web' is the default
+Route::prefix('finance')->group(function () {
+    
+    // Test endpoint to verify routing works
+    Route::get('/test', function () {
+        return response()->json([
+            'success' => true,
+            'message' => 'Finance API is working!',
+            'user' => auth()->user() ? auth()->user()->name : 'Not logged in',
+            'user_id' => auth()->id()
+        ]);
+    });
+    
+    // 1. Categories (for dropdowns in UI)
+    Route::get('/expense-categories', [FinExpenseCategoryController::class, 'index']);
+    
+    // 2. Core Expense CRUD (Uses fin_expense_tbl)
+    Route::get('/expenses', [FinExpenseController::class, 'index']);
+    Route::post('/expenses', [FinExpenseController::class, 'store']);
+    Route::put('/expenses/{id}', [FinExpenseController::class, 'update']);
+    Route::delete('/expenses/{id}', [FinExpenseController::class, 'destroy']);
+    
+    // 3. Project Contracts (for PRFTDIRECT and PROFIT sheets)
+    Route::get('/project-contracts', [FinProjectContractController::class, 'index']);
+    Route::post('/project-contracts', [FinProjectContractController::class, 'store']);
+    Route::put('/project-contracts/{id}', [FinProjectContractController::class, 'update']);
+    Route::delete('/project-contracts/{id}', [FinProjectContractController::class, 'destroy']);
+    
+    // 4. Receivables/Payables
+    Route::get('/receivables-payables', [FinReceivablePayableController::class, 'index']);
+    Route::post('/receivables-payables', [FinReceivablePayableController::class, 'store']);
+    Route::put('/receivables-payables/{id}', [FinReceivablePayableController::class, 'update']);
+    Route::delete('/receivables-payables/{id}', [FinReceivablePayableController::class, 'destroy']);
+    
+    // 5. Construction Bonds
+    Route::get('/construction-bonds', [FinConstructionBondController::class, 'index']);
+    Route::post('/construction-bonds', [FinConstructionBondController::class, 'store']);
+    Route::put('/construction-bonds/{id}', [FinConstructionBondController::class, 'update']);
+    Route::delete('/construction-bonds/{id}', [FinConstructionBondController::class, 'destroy']);
+    
+    // 6. Cash Position
+    Route::get('/cash-positions', [FinCashPositionController::class, 'index']);
+    Route::post('/cash-positions', [FinCashPositionController::class, 'store']);
+    Route::put('/cash-positions/{id}', [FinCashPositionController::class, 'update']);
+    Route::delete('/cash-positions/{id}', [FinCashPositionController::class, 'destroy']);
+    
+    // 7. Equipment Expenses & Rental Income
+    Route::get('/equipment-expenses', [FinEquipmentExpenseController::class, 'index']);
+    Route::post('/equipment-expenses', [FinEquipmentExpenseController::class, 'store']);
+    Route::put('/equipment-expenses/{id}', [FinEquipmentExpenseController::class, 'update']);
+    Route::delete('/equipment-expenses/{id}', [FinEquipmentExpenseController::class, 'destroy']);
+    
+    Route::get('/equipment-rental-income', [FinEquipmentRentalIncomeController::class, 'index']);
+    Route::post('/equipment-rental-income', [FinEquipmentRentalIncomeController::class, 'store']);
+    Route::put('/equipment-rental-income/{id}', [FinEquipmentRentalIncomeController::class, 'update']);
+    Route::delete('/equipment-rental-income/{id}', [FinEquipmentRentalIncomeController::class, 'destroy']);
+    
+    // 8. Reports (SQL Views)
+    Route::get('/reports/expovrall', [FinReportController::class, 'getExpovrall']);
+    Route::get('/reports/admin-expense', [FinReportController::class, 'getAdminExpense']);
+    Route::get('/reports/profit-direct', [FinReportController::class, 'getProfitDirect']);
+    Route::get('/reports/profit-overall', [FinReportController::class, 'getProfitOverall']);
+    Route::get('/reports/cash-asset', [FinReportController::class, 'getCashAsset']);
+    Route::get('/reports/backhoe-profitability', [FinReportController::class, 'getBackhoeProfitability']);
+    Route::get('/reports/receivable-payable', [FinReportController::class, 'getReceivablePayable']);
+    Route::get('/reports/construction-bond', [FinReportController::class, 'getConstructionBond']);
+    Route::get('/reports/repair-total', [FinReportController::class, 'getRepairTotal']);
+    Route::get('/reports/summary-expenses', [FinReportController::class, 'getSummaryExpenses']);
+});
+
+// ─── COMPANY ASSETS (No auth middleware - session handles it) ──────────
+Route::get('/company-assets', function () {
+    try {
+        $assets = DB::table('company_asset_tbl')
+            ->select('asset_id', 'asset_name', 'asset_type', 'asset_code', 'acquisition_cost', 'status')
+            ->where('status', 'active')
+            ->orderBy('asset_name')
+            ->get();
+        
+        return response()->json($assets);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+Route::get('/company-assets/type/{type}', function ($type) {
+    try {
+        $assets = DB::table('company_asset_tbl')
+            ->select('asset_id', 'asset_name', 'asset_type', 'asset_code', 'acquisition_cost', 'status')
+            ->where('status', 'active')
+            ->where('asset_type', $type)
+            ->orderBy('asset_name')
+            ->get();
+        
+        return response()->json($assets);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
