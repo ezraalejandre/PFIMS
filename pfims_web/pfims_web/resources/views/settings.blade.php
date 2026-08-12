@@ -136,15 +136,6 @@
 
                     <div class="preference-item">
                         <div class="left">
-                            <div class="label">Dark Mode</div>
-                            <div class="desc">Toggle dark mode for the entire system</div>
-                        </div>
-                        <div class="toggle" onclick="toggleSwitch(this)">
-                            <div class="toggle-slider"></div>
-                        </div>
-                    </div>
-                    <div class="preference-item">
-                        <div class="left">
                             <div class="label">Email Notifications</div>
                             <div class="desc">Receive email notifications for system updates</div>
                         </div>
@@ -152,28 +143,7 @@
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
-                    <div class="preference-item">
-                        <div class="left">
-                            <div class="label">Language</div>
-                            <div class="desc">Choose your preferred language</div>
-                        </div>
-                        <select style="padding: 6px 14px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; font-size: 0.9rem; cursor: pointer;" onchange="alert('Language changed to: ' + this.value)">
-                            <option value="en">English</option>
-                            <option value="tl">Tagalog</option>
-                            <option value="es">Spanish</option>
-                        </select>
-                    </div>
-                    <div class="preference-item">
-                        <div class="left">
-                            <div class="label">Timezone</div>
-                            <div class="desc">Set your system timezone</div>
-                        </div>
-                        <select style="padding: 6px 14px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; font-size: 0.9rem; cursor: pointer;" onchange="alert('Timezone changed to: ' + this.value)">
-                            <option value="Asia/Manila">Asia/Manila (UTC+8)</option>
-                            <option value="UTC">UTC</option>
-                            <option value="America/New_York">America/New_York (UTC-4)</option>
-                        </select>
-                    </div>
+                
                 </div>
 
                 <!-- ─── CONFIGURATIONS (Dropdown Management) ─── -->
@@ -223,7 +193,7 @@
                             <div class="label">Project Updates</div>
                             <div class="desc">Receive notifications for project milestones and changes</div>
                         </div>
-                        <div class="toggle active" onclick="toggleSwitch(this)">
+                        <div class="toggle active" data-notif-category="project_updates" onclick="toggleNotifCategory(this)">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
@@ -232,19 +202,11 @@
                             <div class="label">Budget Alerts</div>
                             <div class="desc">Get notified when projects exceed budget thresholds</div>
                         </div>
-                        <div class="toggle active" onclick="toggleSwitch(this)">
+                        <div class="toggle active" data-notif-category="budget_alerts" onclick="toggleNotifCategory(this)">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
-                    <div class="preference-item">
-                        <div class="left">
-                            <div class="label">Email Digests</div>
-                            <div class="desc">Receive daily/weekly email summaries of activities</div>
-                        </div>
-                        <div class="toggle" onclick="toggleSwitch(this)">
-                            <div class="toggle-slider"></div>
-                        </div>
-                    </div>
+                    
                 </div>
 
                 <!-- ─── USER MANAGEMENT ─── -->
@@ -499,6 +461,25 @@
             var status = el.classList.contains('active') ? 'Enabled' : 'Disabled';
             console.log('Switch toggled: ' + status);
         }
+
+        // ─── NOTIFICATION CATEGORY TOGGLES (persisted via localStorage) ───
+        function toggleNotifCategory(el) {
+            var category = el.getAttribute('data-notif-category');
+            el.classList.toggle('active');
+            var isEnabled = el.classList.contains('active');
+            localStorage.setItem('notif_mute_' + category, isEnabled ? 'false' : 'true');
+            console.log('Notification category "' + category + '": ' + (isEnabled ? 'Enabled' : 'Muted'));
+        }
+
+        function initNotifCategoryToggles() {
+            document.querySelectorAll('[data-notif-category]').forEach(function(el) {
+                var category = el.getAttribute('data-notif-category');
+                var muted = localStorage.getItem('notif_mute_' + category) === 'true';
+                el.classList.toggle('active', !muted);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initNotifCategoryToggles);
 
         // ─── USER CONFIG (CRUD) ───
         var csrfToken = '{{ csrf_token() }}';

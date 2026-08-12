@@ -991,6 +991,15 @@
                 <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="expenseAmount"></div>
                 <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="expenseDate" value="{{ date('Y-m-d') }}"></div>
                 <div class="form-group"><label>Remarks</label><input type="text" placeholder="Additional notes..." id="expenseRemarks"></div>
+                <div class="form-group">
+                    <label>Expense Proof</label>
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="expenseProofFile" accept=".jpg,.jpeg,.png,.pdf" style="display: none;">
+                        <label for="expenseProofFile" class="file-upload-button">Choose File</label>
+                        <span id="expenseProofFileName" class="file-upload-name">No file chosen</span>
+                    </div>
+                    <span class="file-upload-hint">PDF, JPG, or PNG • Maximum 5MB</span>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddExpenseModal()">Cancel</button>
@@ -1006,6 +1015,15 @@
             <div class="modal-body">
                 <div class="form-group"><label>Project <span class="required">*</span></label><select id="budgetProject"><option value="">Select Project...</option></select></div>
                 <div class="form-group"><label>Budget Amount <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="budgetAmount"></div>
+                <div class="form-group">
+                    <label>Budget Proof</label>
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="budgetProofFile" accept=".jpg,.jpeg,.png,.pdf" style="display: none;">
+                        <label for="budgetProofFile" class="file-upload-button">Choose File</label>
+                        <span id="budgetProofFileName" class="file-upload-name">No file chosen</span>
+                    </div>
+                    <span class="file-upload-hint">PDF, JPG, or PNG • Maximum 5MB</span>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddBudgetModal()">Cancel</button>
@@ -1237,6 +1255,24 @@
                 <div class="detail-item"><label>Amount</label><span id="detailAmountDisplay" class="detail-value">—</span><input type="number" step="0.01" id="detailAmountEdit" class="detail-edit" style="display:none;"></div>
                 <div class="detail-item"><label>Date</label><span id="detailDateDisplay" class="detail-value">—</span><input type="date" id="detailDateEdit" class="detail-edit" style="display:none;"></div>
                 <div class="detail-item"><label>Remarks</label><span id="detailRemarksDisplay" class="detail-value">—</span><input type="text" id="detailRemarksEdit" class="detail-edit" style="display:none;"></div>
+                <div class="expense-file-section">
+                    <label>Supporting File</label>
+                    <div id="expenseFileDisplay" class="expense-file-display">
+                        <div class="expense-file-info">
+                            <span id="expenseFileIcon" class="expense-file-icon">📎</span>
+                            <span id="expenseFileNameDisplay" class="expense-file-name">No file attached</span>
+                        </div>
+                        <div class="expense-file-actions">
+                            <button type="button" id="viewExpenseFileBtn" class="btn-view-file" style="display: none;" onclick="viewExpenseFile()">View File</button>
+                            <label for="detailExpenseFile" id="changeExpenseFileBtn" class="btn-change-file" style="display: none;">Change File</label>
+                            <button type="button" id="deleteExpenseFileBtn" class="btn-delete-file" style="display: none;" onclick="deleteExpenseFile()">Delete File</button>
+                        </div>
+                    </div>
+                    <input type="file" id="detailExpenseFile" class="file-input-hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="handleDetailFileSelect(this)">
+                    <div id="filePreviewContainer" class="file-preview-container">
+                        <img id="filePreviewImage" src="" alt="File Preview">
+                    </div>
+                </div>
             </div>
             <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
                 <button class="btn-cancel" onclick="closeExpenseDetailModal()">Close</button>
@@ -1256,6 +1292,24 @@
                 <div class="budget-detail-item"><label>Budget Amount</label><span id="budgetDetailAmountDisplay" class="budget-detail-value">—</span><input type="number" step="0.01" id="budgetDetailAmountEdit" class="budget-detail-edit" style="display:none;"></div>
                 <div class="budget-detail-item"><label>Actual Spend</label><span id="budgetDetailActualDisplay" class="budget-detail-value">—</span></div>
                 <div class="budget-detail-item"><label>Remaining</label><span id="budgetDetailRemainingDisplay" class="budget-detail-value">—</span></div>
+                <div class="expense-file-section">
+                    <label>Supporting File</label>
+                    <div id="budgetFileDisplay" class="expense-file-display">
+                        <div class="expense-file-info">
+                            <span id="budgetFileIcon" class="expense-file-icon">📎</span>
+                            <span id="budgetFileNameDisplay" class="expense-file-name">No file attached</span>
+                        </div>
+                        <div class="expense-file-actions">
+                            <button type="button" id="viewBudgetFileBtn" class="btn-view-file" style="display: none;" onclick="viewBudgetFile()">View File</button>
+                            <label for="detailBudgetFile" id="changeBudgetFileBtn" class="btn-change-file" style="display: none;">Change File</label>
+                            <button type="button" id="deleteBudgetFileBtn" class="btn-delete-file" style="display: none;" onclick="deleteBudgetFile()">Delete File</button>
+                        </div>
+                    </div>
+                    <input type="file" id="detailBudgetFile" class="file-input-hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="handleBudgetDetailFileSelect(this)">
+                    <div id="budgetFilePreviewContainer" class="file-preview-container">
+                        <img id="budgetFilePreviewImage" src="" alt="File Preview">
+                    </div>
+                </div>
             </div>
             <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
                 <button class="btn-cancel" onclick="closeBudgetDetailModal()">Close</button>
@@ -1300,6 +1354,14 @@
         var API_BASE = '/api/finance';
         var assets = [];
 
+        // ─── FILE UPLOAD UI STATE ─────────────────────────────────────
+        var selectedDetailFile = null;
+        var currentExpenseFileUrl = null;
+        var expenseFileMarkedForRemoval = false;
+        var selectedBudgetDetailFile = null;
+        var currentBudgetFileUrl = null;
+        var budgetFileMarkedForRemoval = false;
+
         // ─── CATEGORY MAPPINGS ─────────────────────────────────────────
         var EXPOVRALL_CATEGORIES = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'SSS_PHILHEALTH', 'OTHERS'];
         var EXP_DIRECT_CATEGORIES = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'OTHERS'];
@@ -1339,6 +1401,173 @@
         function formatCurrency(value) {
             var amount = parseFloat(value) || 0;
             return '₱' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function handleDetailFileSelect(input) {
+            var fileNameDisplay = document.getElementById('expenseFileNameDisplay');
+            var fileIcon = document.getElementById('expenseFileIcon');
+            var viewButton = document.getElementById('viewExpenseFileBtn');
+            var deleteButton = document.getElementById('deleteExpenseFileBtn');
+            var previewContainer = document.getElementById('filePreviewContainer');
+            var previewImage = document.getElementById('filePreviewImage');
+
+            if (!input.files || !input.files.length) {
+                selectedDetailFile = null;
+                fileNameDisplay.textContent = 'No file attached';
+                fileIcon.textContent = '📎';
+                viewButton.style.display = 'none';
+                deleteButton.style.display = 'none';
+                previewContainer.style.display = 'none';
+                return;
+            }
+
+            selectedDetailFile = input.files[0];
+            expenseFileMarkedForRemoval = false;
+            fileNameDisplay.textContent = selectedDetailFile.name;
+
+            var fileType = selectedDetailFile.type || '';
+            if (fileType.startsWith('image/')) {
+                fileIcon.textContent = '🖼️';
+                if (currentExpenseFileUrl) { URL.revokeObjectURL(currentExpenseFileUrl); }
+                currentExpenseFileUrl = URL.createObjectURL(selectedDetailFile);
+                previewImage.src = currentExpenseFileUrl;
+                previewContainer.style.display = 'block';
+            } else if (fileType === 'application/pdf') {
+                fileIcon.textContent = '📄';
+                previewContainer.style.display = 'none';
+            } else {
+                fileIcon.textContent = '📎';
+                previewContainer.style.display = 'none';
+            }
+
+            viewButton.style.display = 'inline-block';
+            deleteButton.style.display = 'inline-block';
+        }
+
+        function viewExpenseFile() {
+            if (selectedDetailFile) {
+                var fileUrl = URL.createObjectURL(selectedDetailFile);
+                window.open(fileUrl, '_blank');
+                setTimeout(function() { URL.revokeObjectURL(fileUrl); }, 60000);
+                return;
+            }
+            var viewButton = document.getElementById('viewExpenseFileBtn');
+            var savedUrl = viewButton ? viewButton.getAttribute('data-file-url') : null;
+            if (savedUrl) { window.open(savedUrl, '_blank'); return; }
+            showError('No file is currently attached.');
+        }
+
+        function deleteExpenseFile() {
+            selectedDetailFile = null;
+            expenseFileMarkedForRemoval = true;
+            var detailFileInput = document.getElementById('detailExpenseFile');
+            if (detailFileInput) detailFileInput.value = '';
+
+            var fileNameDisplay = document.getElementById('expenseFileNameDisplay');
+            var fileIcon = document.getElementById('expenseFileIcon');
+            var viewButton = document.getElementById('viewExpenseFileBtn');
+            var deleteButton = document.getElementById('deleteExpenseFileBtn');
+            var previewContainer = document.getElementById('filePreviewContainer');
+
+            if (fileNameDisplay) fileNameDisplay.textContent = 'No file attached';
+            if (fileIcon) fileIcon.textContent = '📎';
+            if (viewButton) viewButton.style.display = 'none';
+            if (deleteButton) deleteButton.style.display = 'none';
+            if (previewContainer) previewContainer.style.display = 'none';
+
+            if (currentExpenseFileUrl) { URL.revokeObjectURL(currentExpenseFileUrl); currentExpenseFileUrl = null; }
+        }
+
+        function handleBudgetDetailFileSelect(input) {
+            var fileNameDisplay = document.getElementById('budgetFileNameDisplay');
+            var fileIcon = document.getElementById('budgetFileIcon');
+            var viewButton = document.getElementById('viewBudgetFileBtn');
+            var deleteButton = document.getElementById('deleteBudgetFileBtn');
+            var previewContainer = document.getElementById('budgetFilePreviewContainer');
+            var previewImage = document.getElementById('budgetFilePreviewImage');
+
+            if (!input.files || !input.files.length) {
+                selectedBudgetDetailFile = null;
+                fileNameDisplay.textContent = 'No file attached';
+                fileIcon.textContent = '📎';
+                viewButton.style.display = 'none';
+                deleteButton.style.display = 'none';
+                previewContainer.style.display = 'none';
+                return;
+            }
+
+            selectedBudgetDetailFile = input.files[0];
+            budgetFileMarkedForRemoval = false;
+            fileNameDisplay.textContent = selectedBudgetDetailFile.name;
+
+            var fileType = selectedBudgetDetailFile.type || '';
+            if (fileType.startsWith('image/')) {
+                fileIcon.textContent = '🖼️';
+                if (currentBudgetFileUrl) { URL.revokeObjectURL(currentBudgetFileUrl); }
+                currentBudgetFileUrl = URL.createObjectURL(selectedBudgetDetailFile);
+                previewImage.src = currentBudgetFileUrl;
+                previewContainer.style.display = 'block';
+            } else if (fileType === 'application/pdf') {
+                fileIcon.textContent = '📄';
+                previewContainer.style.display = 'none';
+            } else {
+                fileIcon.textContent = '📎';
+                previewContainer.style.display = 'none';
+            }
+
+            viewButton.style.display = 'inline-block';
+            deleteButton.style.display = 'inline-block';
+        }
+
+        function viewBudgetFile() {
+            if (selectedBudgetDetailFile) {
+                var fileUrl = URL.createObjectURL(selectedBudgetDetailFile);
+                window.open(fileUrl, '_blank');
+                setTimeout(function() { URL.revokeObjectURL(fileUrl); }, 60000);
+                return;
+            }
+            var viewButton = document.getElementById('viewBudgetFileBtn');
+            var savedUrl = viewButton ? viewButton.getAttribute('data-file-url') : null;
+            if (savedUrl) { window.open(savedUrl, '_blank'); return; }
+            showError('No file is currently attached.');
+        }
+
+        function deleteBudgetFile() {
+            selectedBudgetDetailFile = null;
+            budgetFileMarkedForRemoval = true;
+            var detailFileInput = document.getElementById('detailBudgetFile');
+            if (detailFileInput) detailFileInput.value = '';
+
+            var fileNameDisplay = document.getElementById('budgetFileNameDisplay');
+            var fileIcon = document.getElementById('budgetFileIcon');
+            var viewButton = document.getElementById('viewBudgetFileBtn');
+            var deleteButton = document.getElementById('deleteBudgetFileBtn');
+            var previewContainer = document.getElementById('budgetFilePreviewContainer');
+
+            if (fileNameDisplay) fileNameDisplay.textContent = 'No file attached';
+            if (fileIcon) fileIcon.textContent = '📎';
+            if (viewButton) viewButton.style.display = 'none';
+            if (deleteButton) deleteButton.style.display = 'none';
+            if (previewContainer) previewContainer.style.display = 'none';
+
+            if (currentBudgetFileUrl) { URL.revokeObjectURL(currentBudgetFileUrl); currentBudgetFileUrl = null; }
+        }
+
+        function initializeProofFileUpload() {
+            var expenseProofFile = document.getElementById('expenseProofFile');
+            var expenseProofFileName = document.getElementById('expenseProofFileName');
+            if (expenseProofFile) {
+                expenseProofFile.addEventListener('change', function() {
+                    expenseProofFileName.textContent = (this.files && this.files.length > 0) ? this.files[0].name : 'No file chosen';
+                });
+            }
+            var budgetProofFile = document.getElementById('budgetProofFile');
+            var budgetProofFileName = document.getElementById('budgetProofFileName');
+            if (budgetProofFile) {
+                budgetProofFile.addEventListener('change', function() {
+                    budgetProofFileName.textContent = (this.files && this.files.length > 0) ? this.files[0].name : 'No file chosen';
+                });
+            }
         }
 
         function apiFetch(endpoint, options) {
@@ -1690,6 +1919,8 @@
                             actual_amount: actualSpend,
                             remaining: remaining,
                             budget_id: b.budget_id || b.expense_id,
+                            proof_file_path: b.proof_file_path || '',
+                            proof_file_name: b.proof_file_name || '',
                             status: budgetAmount === 0 ? 'No Budget' : (actualSpend > budgetAmount ? 'Over Budget' : (actualSpend > budgetAmount * 0.9 ? 'Near Limit' : 'On Track'))
                         };
                     });
@@ -1707,6 +1938,8 @@
                                     actual_amount: actualSpend,
                                     remaining: -actualSpend,
                                     budget_id: null,
+                                    proof_file_path: '',
+                                    proof_file_name: '',
                                     status: 'No Budget'
                                 });
                             }
@@ -1869,6 +2102,8 @@
                 row.setAttribute('data-amount', expense.amount || '0');
                 row.setAttribute('data-date', expense.expense_date || '');
                 row.setAttribute('data-remarks', expense.remarks || '');
+                row.setAttribute('data-proof-file-path', expense.proof_file_path || '');
+                row.setAttribute('data-proof-file-name', expense.proof_file_name || '');
                 row.onclick = function() { openExpenseModal(this); };
 
                 var categoryName = expense.category_name || '';
@@ -1959,6 +2194,8 @@
                 row.setAttribute('data-budget-amount', budgetAmount);
                 row.setAttribute('data-actual-amount', actualAmount);
                 row.setAttribute('data-remaining', remaining);
+                row.setAttribute('data-proof-file-path', budget.proof_file_path || '');
+                row.setAttribute('data-proof-file-name', budget.proof_file_name || '');
                 row.onclick = function() { openBudgetModal(this); };
 
                 var statusBadge = '';
@@ -2069,6 +2306,33 @@
             document.getElementById('budgetDetailProjectDisplay').setAttribute('data-project-id', row.dataset.projectId);
             document.getElementById('budgetDetailAmountEdit').value = row.dataset.budgetAmount;
 
+            selectedBudgetDetailFile = null;
+            budgetFileMarkedForRemoval = false;
+            var budgetDetailFileInput = document.getElementById('detailBudgetFile');
+            if (budgetDetailFileInput) budgetDetailFileInput.value = '';
+            var budFileNameDisplay = document.getElementById('budgetFileNameDisplay');
+            var budFileIcon = document.getElementById('budgetFileIcon');
+            var budViewButton = document.getElementById('viewBudgetFileBtn');
+            var budDeleteButton = document.getElementById('deleteBudgetFileBtn');
+            var budPreviewContainer = document.getElementById('budgetFilePreviewContainer');
+            if (budPreviewContainer) budPreviewContainer.style.display = 'none';
+            if (budDeleteButton) budDeleteButton.style.display = 'none';
+
+            var existingBudgetProofPath = row.getAttribute('data-proof-file-path');
+            var existingBudgetProofName = row.getAttribute('data-proof-file-name');
+            if (existingBudgetProofPath) {
+                if (budFileNameDisplay) budFileNameDisplay.textContent = existingBudgetProofName || existingBudgetProofPath;
+                if (budFileIcon) budFileIcon.textContent = existingBudgetProofPath.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️';
+                if (budViewButton) {
+                    budViewButton.style.display = 'inline-block';
+                    budViewButton.setAttribute('data-file-url', '/storage/' + existingBudgetProofPath);
+                }
+            } else {
+                if (budFileNameDisplay) budFileNameDisplay.textContent = 'No file attached';
+                if (budFileIcon) budFileIcon.textContent = '📎';
+                if (budViewButton) budViewButton.style.display = 'none';
+            }
+
             if (isBudgetEditMode) toggleBudgetDetailEdit();
             isBudgetEditMode = false;
             document.getElementById('budgetDetailEditBtn').style.display = 'inline-block';
@@ -2094,17 +2358,25 @@
             var editBtn = document.getElementById('budgetDetailEditBtn');
             var deleteBtn = document.getElementById('budgetDetailDeleteBtn');
             var saveBtn = document.getElementById('budgetDetailSaveBtn');
+            var changeFileBtn = document.getElementById('changeBudgetFileBtn');
+            var deleteFileBtn = document.getElementById('deleteBudgetFileBtn');
+            var fileNameDisplay = document.getElementById('budgetFileNameDisplay');
 
             if (isBudgetEditMode) {
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'inline-block';
+                if (changeFileBtn) changeFileBtn.style.display = 'inline-block';
                 displayEls.forEach(function(el) { el.style.display = 'none'; });
                 editEls.forEach(function(el) { el.style.display = ''; });
+                var hasFile = selectedBudgetDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
+                if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'none';
+                if (changeFileBtn) changeFileBtn.style.display = 'none';
+                if (deleteFileBtn) deleteFileBtn.style.display = 'none';
                 displayEls.forEach(function(el) { el.style.display = ''; });
                 editEls.forEach(function(el) { el.style.display = 'none'; });
             }
@@ -2118,19 +2390,33 @@
             if (!projectId) { showError('Project information is missing.'); return; }
             if (budgetAmount <= 0) { showError('Budget amount must be greater than 0.'); return; }
 
-            // Update budget via the budget endpoint
-            var payload = {
-                project_id: parseInt(projectId),
-                budget_amount: budgetAmount
-            };
+            var budgetDetailFormData = new FormData();
+            budgetDetailFormData.append('project_id', projectId);
+            budgetDetailFormData.append('budget_amount', budgetAmount);
+            if (selectedBudgetDetailFile) {
+                budgetDetailFormData.append('proof_file', selectedBudgetDetailFile);
+            } else if (budgetFileMarkedForRemoval) {
+                budgetDetailFormData.append('remove_proof_file', '1');
+            }
 
-            apiFetch('/project-contracts', { method: 'POST', body: JSON.stringify(payload) })
-                .then(function() {
-                    closeBudgetDetailModal();
-                    showSuccess('Budget updated successfully!');
-                    fetchBudgetData();
-                })
-                .catch(function(error) { showError(error.message); });
+            fetch('/api/budgets', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: budgetDetailFormData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(data) { throw new Error(data.message || 'Unable to update budget.'); });
+                }
+                return response.json();
+            })
+            .then(function() {
+                closeBudgetDetailModal();
+                showSuccess('Budget updated successfully!');
+                fetchBudgetData();
+            })
+            .catch(function(error) { showError(error.message); });
         }
 
         function deleteBudget() {
@@ -2193,6 +2479,33 @@
             document.getElementById('detailDateEdit').value = row.dataset.date;
             document.getElementById('detailRemarksEdit').value = row.dataset.remarks || '';
 
+            selectedDetailFile = null;
+            expenseFileMarkedForRemoval = false;
+            var detailFileInput = document.getElementById('detailExpenseFile');
+            if (detailFileInput) detailFileInput.value = '';
+            var expFileNameDisplay = document.getElementById('expenseFileNameDisplay');
+            var expFileIcon = document.getElementById('expenseFileIcon');
+            var expViewButton = document.getElementById('viewExpenseFileBtn');
+            var expDeleteButton = document.getElementById('deleteExpenseFileBtn');
+            var expPreviewContainer = document.getElementById('filePreviewContainer');
+            if (expPreviewContainer) expPreviewContainer.style.display = 'none';
+            if (expDeleteButton) expDeleteButton.style.display = 'none';
+
+            var existingExpenseProofPath = row.getAttribute('data-proof-file-path');
+            var existingExpenseProofName = row.getAttribute('data-proof-file-name');
+            if (existingExpenseProofPath) {
+                if (expFileNameDisplay) expFileNameDisplay.textContent = existingExpenseProofName || existingExpenseProofPath;
+                if (expFileIcon) expFileIcon.textContent = existingExpenseProofPath.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️';
+                if (expViewButton) {
+                    expViewButton.style.display = 'inline-block';
+                    expViewButton.setAttribute('data-file-url', '/storage/' + existingExpenseProofPath);
+                }
+            } else {
+                if (expFileNameDisplay) expFileNameDisplay.textContent = 'No file attached';
+                if (expFileIcon) expFileIcon.textContent = '📎';
+                if (expViewButton) expViewButton.style.display = 'none';
+            }
+
             if (isEditMode) toggleDetailEdit();
             isEditMode = false;
             document.getElementById('detailEditBtn').style.display = 'inline-block';
@@ -2218,17 +2531,25 @@
             var editBtn = document.getElementById('detailEditBtn');
             var deleteBtn = document.getElementById('detailDeleteBtn');
             var saveBtn = document.getElementById('detailSaveBtn');
+            var changeFileBtn = document.getElementById('changeExpenseFileBtn');
+            var deleteFileBtn = document.getElementById('deleteExpenseFileBtn');
+            var fileNameDisplay = document.getElementById('expenseFileNameDisplay');
 
             if (isEditMode) {
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'inline-block';
+                if (changeFileBtn) changeFileBtn.style.display = 'inline-block';
                 displayEls.forEach(function(el) { el.style.display = 'none'; });
                 editEls.forEach(function(el) { el.style.display = ''; });
+                var hasFile = selectedDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
+                if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'none';
+                if (changeFileBtn) changeFileBtn.style.display = 'none';
+                if (deleteFileBtn) deleteFileBtn.style.display = 'none';
                 displayEls.forEach(function(el) { el.style.display = ''; });
                 editEls.forEach(function(el) { el.style.display = 'none'; });
             }
@@ -2250,26 +2571,39 @@
             if (amount <= 0) { showError('Amount must be greater than 0.'); return; }
 
             var expenseId = currentDetailRow.getAttribute('data-expense-id');
-            var payload = {
-                project_id: parseInt(projectId),
-                fin_category_id: parseInt(categoryId),
-                expense_description: desc,
-                amount: amount,
-                expense_date: date,
-                remarks: remarks || null
-            };
 
-            apiFetch('/expenses/' + expenseId, { method: 'PUT', body: JSON.stringify(payload) })
-                .then(function(expense) {
-                    var index = financeExpenses.findIndex(function(item) {
-                        return String(item.fin_expense_id || item.expense_id) === String(expense.fin_expense_id || expense.expense_id);
-                    });
-                    if (index !== -1) financeExpenses[index] = expense;
-                    applyFilters();
-                    closeExpenseDetailModal();
-                    showSuccess('Expense updated successfully!');
-                })
-                .catch(function(error) { showError('Error updating expense: ' + error.message); });
+            var detailFormData = new FormData();
+            detailFormData.append('_method', 'PUT');
+            detailFormData.append('project_id', projectId);
+            detailFormData.append('fin_category_id', categoryId);
+            detailFormData.append('expense_description', desc);
+            detailFormData.append('amount', amount);
+            detailFormData.append('expense_date', date);
+            if (remarks) detailFormData.append('remarks', remarks);
+            if (selectedDetailFile) {
+                detailFormData.append('proof_file', selectedDetailFile);
+            } else if (expenseFileMarkedForRemoval) {
+                detailFormData.append('remove_proof_file', '1');
+            }
+
+            fetch(API_BASE + '/expenses/' + expenseId, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: detailFormData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(data) { throw new Error(data.message || 'Unable to update expense.'); });
+                }
+                return response.json();
+            })
+            .then(function() {
+                closeExpenseDetailModal();
+                showSuccess('Expense updated successfully!');
+                fetchExpenses();
+            })
+            .catch(function(error) { showError('Error updating expense: ' + error.message); });
         }
 
         function deleteExpense() {
@@ -2300,6 +2634,11 @@
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expenseDate').value = '{{ date("Y-m-d") }}';
             document.getElementById('expenseRemarks').value = '';
+
+            var expenseProofFileInput = document.getElementById('expenseProofFile');
+            var expenseProofFileNameEl = document.getElementById('expenseProofFileName');
+            if (expenseProofFileInput) expenseProofFileInput.value = '';
+            if (expenseProofFileNameEl) expenseProofFileNameEl.textContent = 'No file chosen';
         }
 
         function closeAddExpenseModal() {
@@ -2321,23 +2660,36 @@
             }
             if (amount <= 0) { showError('Amount must be greater than 0.'); return; }
 
-            var payload = {
-                project_id: parseInt(projectId),
-                fin_category_id: parseInt(categoryId),
-                expense_description: desc,
-                amount: amount,
-                expense_date: date,
-                remarks: remarks || null
-            };
+            var expenseFormData = new FormData();
+            expenseFormData.append('project_id', projectId);
+            expenseFormData.append('fin_category_id', categoryId);
+            expenseFormData.append('expense_description', desc);
+            expenseFormData.append('amount', amount);
+            expenseFormData.append('expense_date', date);
+            if (remarks) expenseFormData.append('remarks', remarks);
+            var expenseProofFileInput = document.getElementById('expenseProofFile');
+            if (expenseProofFileInput && expenseProofFileInput.files && expenseProofFileInput.files.length > 0) {
+                expenseFormData.append('proof_file', expenseProofFileInput.files[0]);
+            }
 
-            apiFetch('/expenses', { method: 'POST', body: JSON.stringify(payload) })
-                .then(function(expense) {
-                    financeExpenses.push(expense);
-                    applyFilters();
-                    closeAddExpenseModal();
-                    showSuccess('Expense added successfully!');
-                })
-                .catch(function(error) { showError(error.message); });
+            fetch(API_BASE + '/expenses', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: expenseFormData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(data) { throw new Error(data.message || 'Unable to save expense.'); });
+                }
+                return response.json();
+            })
+            .then(function() {
+                closeAddExpenseModal();
+                showSuccess('Expense added successfully!');
+                fetchExpenses();
+            })
+            .catch(function(error) { showError(error.message); });
         }
 
         // ─── ADD BUDGET ───────────────────────────────────────────────
@@ -2346,6 +2698,11 @@
             document.body.style.overflow = 'hidden';
             document.getElementById('budgetProject').value = '';
             document.getElementById('budgetAmount').value = '';
+
+            var budgetProofFileInput = document.getElementById('budgetProofFile');
+            var budgetProofFileNameEl = document.getElementById('budgetProofFileName');
+            if (budgetProofFileInput) budgetProofFileInput.value = '';
+            if (budgetProofFileNameEl) budgetProofFileNameEl.textContent = 'No file chosen';
         }
 
         function closeAddBudgetModal() {
@@ -2362,19 +2719,32 @@
                 return;
             }
 
-            var payload = {
-                project_id: parseInt(projectId),
-                budget_amount: parseFloat(amount)
-            };
+            var budgetFormData = new FormData();
+            budgetFormData.append('project_id', projectId);
+            budgetFormData.append('budget_amount', amount);
+            var budgetProofFileInput = document.getElementById('budgetProofFile');
+            if (budgetProofFileInput && budgetProofFileInput.files && budgetProofFileInput.files.length > 0) {
+                budgetFormData.append('proof_file', budgetProofFileInput.files[0]);
+            }
 
-            // Try to save via budgets endpoint
-            apiFetch('/project-contracts', { method: 'POST', body: JSON.stringify(payload) })
-                .then(function() {
-                    closeAddBudgetModal();
-                    showSuccess('Budget added successfully!');
-                    fetchBudgetData();
-                })
-                .catch(function(error) { showError(error.message); });
+            fetch('/api/budgets', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: budgetFormData,
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(data) { throw new Error(data.message || 'Unable to save budget.'); });
+                }
+                return response.json();
+            })
+            .then(function() {
+                closeAddBudgetModal();
+                showSuccess('Budget added successfully!');
+                fetchBudgetData();
+            })
+            .catch(function(error) { showError(error.message); });
         }
 
         // ─── ADD ADMIN EXPENSE ────────────────────────────────────────
@@ -3633,6 +4003,7 @@
                         fetchBudgetData();
                     }
                 });
+            initializeProofFileUpload();
         });
     </script>
 

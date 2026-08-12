@@ -309,43 +309,6 @@ Route::delete('/projects/{id}', function ($id) {
     return response()->json(['message' => 'Project deleted'], 200);
 });
 
-Route::post('/budgets', function (Request $request) {
-    $validated = $request->validate([
-        'project_id'    => ['required', 'integer', 'exists:project_tbl,project_id'],
-        'budget_amount' => ['required', 'numeric', 'min:0.01'],
-    ]);
-
-    // A "budget" row is an expense_tbl row that only carries budget_amount
-    // for a project — no category, no actual spend recorded yet. Treat it
-    // as one row per project: setting a new budget updates that row
-    // instead of inserting a duplicate every time.
-    $existing = DB::table('expense_tbl')
-        ->where('project_id', $validated['project_id'])
-        ->whereNull('expense_category_id')
-        ->whereNull('actual_amount')
-        ->first();
-
-    if ($existing) {
-        DB::table('expense_tbl')
-            ->where('expense_id', $existing->expense_id)
-            ->update(['budget_amount' => $validated['budget_amount']]);
-        $id = $existing->expense_id;
-    } else {
-        $id = DB::table('expense_tbl')->insertGetId([
-            'project_id'    => $validated['project_id'],
-            'budget_amount' => $validated['budget_amount'],
-            'expense_date'  => now()->toDateString(),
-        ]);
-    }
-
-    $budget = DB::table('expense_tbl as e')
-        ->join('project_tbl as p', 'e.project_id', '=', 'p.project_id')
-        ->select('e.expense_id', 'e.project_id', 'p.project_name', 'e.budget_amount')
-        ->where('e.expense_id', $id)
-        ->first();
-
-    return response()->json($budget, 201);
-});
 
 Route::post('/expenses', function (Request $request) {
     $validated = $request->validate([

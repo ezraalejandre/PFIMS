@@ -138,15 +138,7 @@
                 <div id="section-preferences" class="settings-section" style="display: none;">
                     <div class="section-title">System Preferences</div>
                     <div class="section-desc">Customize your system experience and preferences.</div>
-                    <div class="preference-item">
-                        <div class="left">
-                            <div class="label">Dark Mode</div>
-                            <div class="desc">Toggle dark mode for the entire system</div>
-                        </div>
-                        <div class="toggle" onclick="toggleSwitch(this)">
-                            <div class="toggle-slider"></div>
-                        </div>
-                    </div>
+                    
                     <div class="preference-item">
                         <div class="left">
                             <div class="label">Email Notifications</div>
@@ -176,7 +168,7 @@
                             <div class="label">Project Updates</div>
                             <div class="desc">Receive notifications for project milestones and changes</div>
                         </div>
-                        <div class="toggle active" onclick="toggleSwitch(this)">
+                        <div class="toggle active" data-notif-category="project_updates" onclick="toggleNotifCategory(this)">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
@@ -185,19 +177,11 @@
                             <div class="label">Budget Alerts</div>
                             <div class="desc">Get notified when projects exceed budget thresholds</div>
                         </div>
-                        <div class="toggle active" onclick="toggleSwitch(this)">
+                        <div class="toggle active" data-notif-category="budget_alerts" onclick="toggleNotifCategory(this)">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
-                    <div class="preference-item">
-                        <div class="left">
-                            <div class="label">Email Digests</div>
-                            <div class="desc">Receive daily/weekly email summaries of activities</div>
-                        </div>
-                        <div class="toggle" onclick="toggleSwitch(this)">
-                            <div class="toggle-slider"></div>
-                        </div>
-                    </div>
+                    
                 </div>
 
             </div>
@@ -324,6 +308,25 @@
             var status = el.classList.contains('active') ? 'Enabled' : 'Disabled';
             console.log('Switch toggled: ' + status);
         }
+
+        // ─── NOTIFICATION CATEGORY TOGGLES (persisted via localStorage) ───
+        function toggleNotifCategory(el) {
+            var category = el.getAttribute('data-notif-category');
+            el.classList.toggle('active');
+            var isEnabled = el.classList.contains('active');
+            localStorage.setItem('notif_mute_' + category, isEnabled ? 'false' : 'true');
+            console.log('Notification category "' + category + '": ' + (isEnabled ? 'Enabled' : 'Muted'));
+        }
+
+        function initNotifCategoryToggles() {
+            document.querySelectorAll('[data-notif-category]').forEach(function(el) {
+                var category = el.getAttribute('data-notif-category');
+                var muted = localStorage.getItem('notif_mute_' + category) === 'true';
+                el.classList.toggle('active', !muted);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initNotifCategoryToggles);
 
         // ─── ERROR NOTIFICATION (POP-UP) ───
         function showError(message) {

@@ -246,6 +246,31 @@
         var currentTab = 'all';
         var showOnlyTotals = false;
 
+        // ─── NOTIFICATION CATEGORY MUTING (mirrors settings toggles) ───
+        var MUTABLE_TYPES = {
+            project_updates: ['project_delayed', 'project_at_risk', 'project_delayed_total', 'project_at_risk_total', 'project_past_deadline_total'],
+            budget_alerts: ['budget_expense_overrun_total', 'new_expense', 'new_budget', 'budget_updated'],
+            inventory_alerts: ['item_low_stock', 'item_low_stock_total', 'item_out_of_stock', 'stock_in_expense']
+        };
+
+        function getMutedTypes() {
+            var muted = [];
+            Object.keys(MUTABLE_TYPES).forEach(function(category) {
+                if (localStorage.getItem('notif_mute_' + category) === 'true') {
+                    muted = muted.concat(MUTABLE_TYPES[category]);
+                }
+            });
+            return muted;
+        }
+
+        function filterMutedNotifications(list) {
+            var mutedTypes = getMutedTypes();
+            if (!mutedTypes.length) return list;
+            return list.filter(function(n) {
+                return mutedTypes.indexOf(n.type) === -1;
+            });
+        }
+
         // ─── HIDE NOTIFICATION BADGE ───
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
@@ -399,7 +424,7 @@
                 return response.json();
             })
             .then(function(data) {
-                allNotifications = data.notifications || [];
+                allNotifications = filterMutedNotifications(data.notifications || []);
                 updateBadgeCount();
                 renderNotifications();
             })
@@ -464,6 +489,7 @@
                     created_at: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString()
                 }
             ];
+            allNotifications = filterMutedNotifications(allNotifications);
             updateBadgeCount();
             renderNotifications();
         }

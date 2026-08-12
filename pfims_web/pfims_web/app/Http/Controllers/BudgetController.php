@@ -5,9 +5,13 @@ use App\Models\Budget;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use App\Services\NotificationService;
 
 class BudgetController extends Controller
 {
+    public function __construct(private NotificationService $notifications)
+    {
+    }
     // GET /api/budgets
     public function index()
     {
@@ -60,6 +64,18 @@ class BudgetController extends Controller
         );
 
         $budget->load('project:project_id,project_name');
+
+        $this->notifications->notify(
+            title: $existingBudget ? 'Budget Updated' : 'New Budget Allocated',
+            message: $existingBudget
+                ? "Budget for \"{$budget->project?->project_name}\" updated to PHP " . number_format((float) $budget->budget_amount, 2) . '.'
+                : 'Budget of PHP ' . number_format((float) $budget->budget_amount, 2) . " allocated for \"{$budget->project?->project_name}\".",
+            type: $existingBudget ? 'budget_updated' : 'new_budget',
+            kind: 'info',
+            filter: 'alerts',
+            referenceType: 'budget',
+            referenceId: (int) $budget->budget_id,
+        );
 
         return response()->json([
             'budget_id'     => $budget->budget_id,
