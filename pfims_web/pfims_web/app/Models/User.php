@@ -35,6 +35,9 @@ class User extends Authenticatable
         'location',
         'status',
         'profile_photo',
+        'first_login_verification_required',
+        'first_login_otp',
+        'first_login_otp_expires_at',
     ];
 
     /**
@@ -45,6 +48,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'first_login_otp',
     ];
 
     /**
@@ -56,6 +60,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'first_login_verification_required' => 'boolean',
+            'first_login_otp_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

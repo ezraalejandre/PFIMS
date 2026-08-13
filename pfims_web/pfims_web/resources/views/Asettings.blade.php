@@ -6,8 +6,9 @@
     <title>Accounting Settings - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Asettings.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="settings-page">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -67,10 +68,13 @@
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/alanding') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
-                        Log out
-                    </a>
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>
@@ -110,7 +114,7 @@
                             <div class="name">Elito V. Catapang</div>
                             <div class="role">Accounting Manager</div>
                         </div>
-                        <button class="btn-go-profile" onclick="window.location.href='{{ url('/aprofile') }}'">Go to Profile</button>
+                        <button class="btn-go-profile" data-url="{{ url('/aprofile') }}" onclick="window.location.href=this.dataset.url">Go to Profile</button>
                     </div>
                 </div>
 
@@ -138,13 +142,12 @@
                 <div id="section-preferences" class="settings-section" style="display: none;">
                     <div class="section-title">System Preferences</div>
                     <div class="section-desc">Customize your system experience and preferences.</div>
-                    
                     <div class="preference-item">
                         <div class="left">
-                            <div class="label">Email Notifications</div>
-                            <div class="desc">Receive email notifications for system updates</div>
+                            <div class="label">Dark Mode</div>
+                            <div class="desc">Toggle dark mode for the entire system</div>
                         </div>
-                        <div class="toggle active" onclick="toggleSwitch(this)">
+                        <div class="toggle" data-theme-toggle role="switch" aria-label="Dark mode" aria-checked="false" onclick="toggleDarkMode()">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
@@ -181,7 +184,6 @@
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
-                    
                 </div>
 
             </div>
@@ -309,19 +311,15 @@
             console.log('Switch toggled: ' + status);
         }
 
-        // ─── NOTIFICATION CATEGORY TOGGLES (persisted via localStorage) ───
         function toggleNotifCategory(el) {
             var category = el.getAttribute('data-notif-category');
             el.classList.toggle('active');
-            var isEnabled = el.classList.contains('active');
-            localStorage.setItem('notif_mute_' + category, isEnabled ? 'false' : 'true');
-            console.log('Notification category "' + category + '": ' + (isEnabled ? 'Enabled' : 'Muted'));
+            localStorage.setItem('notif_mute_' + category, el.classList.contains('active') ? 'false' : 'true');
         }
 
         function initNotifCategoryToggles() {
             document.querySelectorAll('[data-notif-category]').forEach(function(el) {
-                var category = el.getAttribute('data-notif-category');
-                var muted = localStorage.getItem('notif_mute_' + category) === 'true';
+                var muted = localStorage.getItem('notif_mute_' + el.getAttribute('data-notif-category')) === 'true';
                 el.classList.toggle('active', !muted);
             });
         }
@@ -456,12 +454,32 @@
             var newPassword = document.getElementById('newPassword').value;
             var confirmPassword = document.getElementById('confirmPassword').value;
             
-            // Basic validation
+            // Match the password validation used by the admin settings page.
+            var hasError = false;
+
+            if (!currentPassword) {
+                document.getElementById('currentPasswordError').textContent = 'Current password is required';
+                document.getElementById('currentPasswordError').style.display = 'block';
+                hasError = true;
+            }
+
+            if (newPassword.length < 8) {
+                document.getElementById('newPasswordError').textContent = 'Password must be at least 8 characters long';
+                document.getElementById('newPasswordError').style.display = 'block';
+                hasError = true;
+            } else if (newPassword === currentPassword) {
+                document.getElementById('newPasswordError').textContent = 'The new password must be different from your current password.';
+                document.getElementById('newPasswordError').style.display = 'block';
+                hasError = true;
+            }
+
             if (newPassword !== confirmPassword) {
                 document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
                 document.getElementById('confirmPasswordError').style.display = 'block';
-                return;
+                hasError = true;
             }
+
+            if (hasError) return;
             
             // Send request to server
             var payload = {
@@ -502,6 +520,10 @@
                         if (data.errors.new_password) {
                             document.getElementById('newPasswordError').textContent = data.errors.new_password[0];
                             document.getElementById('newPasswordError').style.display = 'block';
+                        }
+                        if (data.errors.new_password_confirmation) {
+                            document.getElementById('confirmPasswordError').textContent = data.errors.new_password_confirmation[0];
+                            document.getElementById('confirmPasswordError').style.display = 'block';
                         }
                     } else {
                         alert(data.message || 'Failed to update password. Please try again.');
@@ -576,7 +598,14 @@
             return strength;
         }
 
-        document.addEventListener('DOMContentLoaded', resetPasswordToggleButtons);
+        document.addEventListener('DOMContentLoaded', function() {
+            resetPasswordToggleButtons();
+            if (new URLSearchParams(window.location.search).get('change_password') === '1') {
+                var securityTab = document.querySelector(".settings-nav li[onclick*='security']");
+                if (securityTab) switchSettings(securityTab, 'security');
+                openChangePasswordModal();
+            }
+        });
 
         // ─── TWO FACTOR AUTHENTICATION ───
         function open2FAModal() {

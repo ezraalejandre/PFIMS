@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Models\AppNotification;
+use Illuminate\Validation\ValidationException;
 
 class PasswordController extends Controller
 {
@@ -20,8 +22,19 @@ class PasswordController extends Controller
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
+
+        if (Hash::check($request->new_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'new_password' => ['The new password must be different from your current password.'],
+            ]);
+        }
+
         $user->password = Hash::make($request->new_password);
         $user->save();
+
+        AppNotification::where('user_id', $user->id)
+            ->where('type', 'password_change_reminder')
+            ->delete();
 
         return response()->json([
             'success' => true,

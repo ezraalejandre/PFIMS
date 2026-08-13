@@ -122,8 +122,9 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="dashboard-page">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">

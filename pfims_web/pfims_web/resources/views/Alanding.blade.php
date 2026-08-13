@@ -6,6 +6,7 @@
     <title>Accounting Login - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Alanding.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
 <body>
 

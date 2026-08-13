@@ -19,10 +19,15 @@ class AppNotification extends Model
         'filter',
         'reference_type',
         'reference_id',
+        'user_id',
+        'requires_acknowledgement',
+        'acknowledged_at',
         'is_read',
     ];
 
     protected $casts = [
         'is_read' => 'boolean',
+        'requires_acknowledgement' => 'boolean',
+        'acknowledged_at' => 'datetime',
     ];
 }

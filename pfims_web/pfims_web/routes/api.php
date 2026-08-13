@@ -28,6 +28,12 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth');
 
+// Sanctum-authenticated equivalent retained from Eapi.php without changing
+// the session-authenticated endpoint above.
+Route::get('/sanctum/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
 Route::get('/test', function () {
     return response()->json([
         "message" => "Laravel API connected"
@@ -729,18 +735,53 @@ Route::get('/inventory-transactions', [InventoryTransactionController::class, 'i
 Route::get('/budgets', [BudgetController::class, 'index']);
 Route::post('/budgets', [BudgetController::class, 'store']);
 
+// Budget-only expense upsert retained from Eapi.php on a non-conflicting URL.
+Route::post('/budgets/upsert-expense', function (Request $request) {
+    $validated = $request->validate([
+        'project_id'    => ['required', 'integer', 'exists:project_tbl,project_id'],
+        'budget_amount' => ['required', 'numeric', 'min:0.01'],
+    ]);
+
+    $existing = DB::table('expense_tbl')
+        ->where('project_id', $validated['project_id'])
+        ->whereNull('expense_category_id')
+        ->whereNull('actual_amount')
+        ->first();
+
+    if ($existing) {
+        DB::table('expense_tbl')->where('expense_id', $existing->expense_id)
+            ->update(['budget_amount' => $validated['budget_amount']]);
+        $id = $existing->expense_id;
+    } else {
+        $id = DB::table('expense_tbl')->insertGetId([
+            'project_id'    => $validated['project_id'],
+            'budget_amount' => $validated['budget_amount'],
+            'expense_date'  => now()->toDateString(),
+        ]);
+    }
+
+    $budget = DB::table('expense_tbl as e')
+        ->join('project_tbl as p', 'e.project_id', '=', 'p.project_id')
+        ->select('e.expense_id', 'e.project_id', 'p.project_name', 'e.budget_amount')
+        ->where('e.expense_id', $id)->first();
+
+    return response()->json($budget, 201);
+});
+
 Route::get('/expenses', [ExpenseController::class, 'index']);
 Route::post('/expenses', [ExpenseController::class, 'store']);
 Route::put('/expenses/{id}', [ExpenseController::class, 'update']);
 Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
 
 Route::get('/dashboard', [DashboardController::class, 'index']);
-Route::get('/notifications', [NotificationController::class, 'index']);
-Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
-Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
-Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
-Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::match(['post', 'put'], '/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
+    Route::match(['post', 'put'], '/notifications/{id}/read', [NotificationController::class, 'markRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
+});
 Route::get('/test-notify', function () {
     app(App\Services\NotificationService::class)->notify(
         title: 'Test',
@@ -761,12 +802,15 @@ Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']);
 Route::prefix('finance')->group(function () {
     
     // Test endpoint to verify routing works
-    Route::get('/test', function () {
+    Route::get('/test', function (Request $request) {
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+
         return response()->json([
             'success' => true,
             'message' => 'Finance API is working!',
-            'user' => auth()->user() ? auth()->user()->name : 'Not logged in',
-            'user_id' => auth()->id()
+            'user' => $user?->name ?? 'Not logged in',
+            'user_id' => $user?->id,
         ]);
     });
     

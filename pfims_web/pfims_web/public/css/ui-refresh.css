@@ -52,7 +52,7 @@ body.landing-page::before {
 .top-header {
     height: 72px !important;
     padding: 12px 28px !important;
-    background: rgba(255, 255, 255, 0.90) !important;
+    background: #ffffff !important;
     border-bottom: 1px solid rgba(226, 232, 240, 0.92);
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07) !important;
 }
@@ -114,10 +114,39 @@ body.landing-page::before {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 22px;
     box-shadow: 0 16px 35px rgba(15, 23, 42, 0.24);
+    transition: width 0.24s ease, padding 0.24s ease;
+}
+
+.sidebar-collapse-toggle {
+    position: absolute;
+    top: 14px;
+    right: 12px;
+    z-index: 2;
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.24s ease;
+}
+
+.sidebar-collapse-toggle:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.sidebar-collapse-toggle span {
+    font-size: 1.65rem;
+    line-height: 1;
 }
 
 .sidebar nav {
-    margin-top: 4px !important;
+    margin-top: 42px !important;
 }
 
 .sidebar nav ul li,
@@ -156,6 +185,58 @@ body.landing-page::before {
 .main-content {
     margin-left: 288px !important;
     padding: 34px 34px 48px !important;
+    transition: margin-left 0.24s ease, max-width 0.24s ease;
+}
+
+html.sidebar-collapsed .sidebar {
+    width: 76px !important;
+    padding-inline: 10px !important;
+}
+
+html.sidebar-collapsed .sidebar-collapse-toggle {
+    right: 20px;
+    transform: rotate(180deg);
+}
+
+html.sidebar-collapsed .sidebar nav ul li,
+html.sidebar-collapsed .sidebar .bottom-nav ul li {
+    overflow: hidden;
+}
+
+html.sidebar-collapsed .sidebar nav a {
+    justify-content: center;
+    gap: 0 !important;
+    font-size: 0 !important;
+}
+
+html.sidebar-collapsed .sidebar nav a::before {
+    content: attr(data-nav-short);
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: inherit;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+html.sidebar-collapsed .sidebar .bottom-nav :where(a, button) {
+    justify-content: center;
+    gap: 0 !important;
+    color: transparent !important;
+    font-size: 0 !important;
+}
+
+html.sidebar-collapsed .sidebar .bottom-nav .nav-icon {
+    flex: 0 0 auto;
+    margin: 0 !important;
+}
+
+html.sidebar-collapsed .main-content {
+    margin-left: 116px !important;
+    max-width: calc(100vw - 116px);
 }
 
 .main-content h1,
@@ -406,5 +487,1696 @@ button,
     .main-content {
         margin-left: 0 !important;
         padding: 24px 18px 36px !important;
+    }
+}
+
+/* Persistent application dark theme (controlled by public/js/theme.js). */
+html[data-theme="dark"] {
+    --ui-bg: #0b1220;
+    --ui-surface: rgba(17, 24, 39, 0.94);
+    --ui-surface-solid: #111827;
+    --ui-border: #2c3749;
+    --ui-border-strong: #3b475b;
+    --ui-text: #edf2f7;
+    --ui-muted: #aeb8c7;
+    --ui-accent-soft: #3a2615;
+    --ui-shadow: 0 12px 28px rgba(0, 0, 0, 0.36);
+    --ui-shadow-soft: 0 6px 18px rgba(0, 0, 0, 0.28);
+    background: var(--ui-bg);
+}
+
+html[data-theme="dark"] body:not(.landing-page) {
+    background: radial-gradient(circle at top left, rgba(240, 138, 26, 0.10), transparent 34rem),
+        linear-gradient(135deg, #0b1220 0%, #111827 100%) !important;
+    color: var(--ui-text) !important;
+}
+
+html[data-theme="dark"] .top-header,
+html[data-theme="dark"] .settings-wrapper,
+html[data-theme="dark"] .settings-content,
+html[data-theme="dark"] .settings-sidebar,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .dashboard-card,
+html[data-theme="dark"] .content-card,
+html[data-theme="dark"] .table-container,
+html[data-theme="dark"] .modal-container,
+html[data-theme="dark"] .profile-preview,
+html[data-theme="dark"] .security-item,
+html[data-theme="dark"] .preference-item {
+    background: var(--ui-surface-solid) !important;
+    color: var(--ui-text) !important;
+    border-color: var(--ui-border) !important;
+}
+
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] label,
+html[data-theme="dark"] .label,
+html[data-theme="dark"] .section-title,
+html[data-theme="dark"] .name,
+html[data-theme="dark"] td {
+    color: var(--ui-text) !important;
+}
+
+html[data-theme="dark"] .desc,
+html[data-theme="dark"] .section-desc,
+html[data-theme="dark"] .role,
+html[data-theme="dark"] .subtitle,
+html[data-theme="dark"] .text-muted {
+    color: var(--ui-muted) !important;
+}
+
+html[data-theme="dark"] table,
+html[data-theme="dark"] th,
+html[data-theme="dark"] td {
+    background-color: var(--ui-surface-solid) !important;
+    border-color: var(--ui-border) !important;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+    background: #0b1220 !important;
+    color: var(--ui-text) !important;
+    border-color: var(--ui-border-strong) !important;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-track { background: #111827; }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #465369; border-color: #111827; }
+
+/* Complete dark-mode contrast coverage for legacy and role-specific screens. */
+html[data-theme="dark"] {
+    --ui-surface-raised: #182235;
+    --ui-surface-inset: #080f1c;
+    --ui-hover: #223047;
+    --ui-text-strong: #f8fafc;
+    --ui-text-soft: #c2cddd;
+    --ui-focus: #f6a94f;
+}
+
+html[data-theme="dark"] body:not(.landing-page) :where(p, li, dd, dt, strong, b, small),
+html[data-theme="dark"] body:not(.landing-page) :where(.title, .name, .value, .amount, .count, .card-title, .modal-title, .form-title) {
+    color: inherit;
+}
+
+html[data-theme="dark"] :where(
+    .stat-card, .kpi-card, .chart-card, .summary-card, .profile-card,
+    .notification-card, .notifications-list, .total-notif-item,
+    .table-wrapper, .budget-table-wrapper, .items-table-wrapper, .form-wrapper,
+    .finance-card, .inventory-card, .project-card, .supplier-card, .report-card,
+    .info-card, .metric-card, .overview-card, .detail-card, .form-card,
+    .filters, .filter-section, .filter-bar, .search-section, .toolbar,
+    .config-tabs, .profile-info, .profile-details, .password-section,
+    .modal-content, .modal-body, .dropdown-menu
+) {
+    background-color: var(--ui-surface-solid) !important;
+    color: var(--ui-text) !important;
+    border-color: var(--ui-border) !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] :where(.chart-container, .chart-wrapper, .graph-container, .graph-wrapper, .canvas-container) {
+    background: var(--ui-surface-raised) !important;
+    color: var(--ui-text) !important;
+    border-color: var(--ui-border) !important;
+}
+
+html[data-theme="dark"] :where(h1, h2, h3, h4, h5, h6, legend, caption, .page-title, .card-title, .modal-title) {
+    color: var(--ui-text-strong) !important;
+}
+
+html[data-theme="dark"] :where(.description, .helper-text, .hint, .meta, .date, .time, .empty-message, .no-data, .subtext) {
+    color: var(--ui-text-soft) !important;
+}
+
+html[data-theme="dark"] :where(a:not(.sidebar a), .link, .view-all) {
+    color: #8fc5ff !important;
+}
+
+html[data-theme="dark"] :where(input, select, textarea) {
+    background-color: var(--ui-surface-inset) !important;
+    color: var(--ui-text-strong) !important;
+    border-color: var(--ui-border-strong) !important;
+    caret-color: var(--ui-text-strong);
+}
+
+html[data-theme="dark"] :where(input, textarea)::placeholder {
+    color: #8794a8 !important;
+    opacity: 1;
+}
+
+html[data-theme="dark"] :where(input, select, textarea):focus {
+    background-color: #0c1627 !important;
+    border-color: var(--ui-focus) !important;
+    box-shadow: 0 0 0 4px rgba(246, 169, 79, 0.20) !important;
+}
+
+html[data-theme="dark"] :where(input, select, textarea):disabled,
+html[data-theme="dark"] :where(input, select, textarea)[readonly] {
+    background-color: #202b3d !important;
+    color: #aeb9ca !important;
+    opacity: 1;
+}
+
+html[data-theme="dark"] select option {
+    background: var(--ui-surface-inset);
+    color: var(--ui-text-strong);
+}
+
+html[data-theme="dark"] table {
+    background: var(--ui-surface-solid) !important;
+    color: var(--ui-text) !important;
+}
+
+html[data-theme="dark"] :where(thead, thead tr, thead th) {
+    background: #202c40 !important;
+    color: #eef4fc !important;
+    border-color: var(--ui-border-strong) !important;
+}
+
+html[data-theme="dark"] :where(tbody, tbody tr, tbody td) {
+    background: var(--ui-surface-solid) !important;
+    color: var(--ui-text) !important;
+    border-color: var(--ui-border) !important;
+}
+
+html[data-theme="dark"] :where(tbody tr:nth-child(even), .list-item:nth-child(even)) {
+    background: #151f30 !important;
+}
+
+html[data-theme="dark"] :where(tbody tr:hover, .list-item:hover, .notification-item:hover) {
+    background: var(--ui-hover) !important;
+}
+
+html[data-theme="dark"] :where(button, [role="button"], .btn) {
+    color: var(--ui-text-strong);
+    border-color: var(--ui-border-strong);
+}
+
+html[data-theme="dark"] :where(.btn-cancel, .btn-back, .btn-cancel-config, .btn-secondary, .btn-action, .btn-action-icon, .modal-close) {
+    background: #263349 !important;
+    color: #f1f5f9 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] :where(.btn-cancel, .btn-back, .btn-cancel-config, .btn-secondary, .btn-action, .btn-action-icon, .modal-close):hover {
+    background: #34435b !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] :where(
+    .btn-save, .btn-filter, .btn-signin, .btn-new-project, .btn-add-item,
+    .btn-add-transaction, .btn-add-supplier, .btn-add-user, .btn-change,
+    .btn-go-profile, .btn-save-config, .btn-continue, .btn-primary
+) {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] :where(.btn-delete, .btn-delete-user, .btn-danger, .delete-btn) {
+    background: #b4232d !important;
+    color: #ffffff !important;
+    border-color: #e65c65 !important;
+}
+
+html[data-theme="dark"] :where(.badge, .role-badge, .status-badge, .phase-badge, .type-badge, [class*="-badge"]:not(.notif-badge)) {
+    background-color: #2a3850 !important;
+    color: #f1f5f9 !important;
+    border: 1px solid #465975 !important;
+}
+
+html[data-theme="dark"] :where(.success, .completed, .active, .status-active) {
+    --status-color: #69d59c;
+}
+
+html[data-theme="dark"] :where(.warning, .pending, .status-pending) {
+    --status-color: #ffc46b;
+}
+
+html[data-theme="dark"] :where(.danger, .failed, .overdue, .inactive, .status-inactive) {
+    --status-color: #ff8b91;
+}
+
+html[data-theme="dark"] :where(.status-badge, .phase-badge, .type-badge)[class] {
+    color: var(--status-color, #f1f5f9) !important;
+}
+
+html[data-theme="dark"] :where(.modal-overlay, .overlay, .backdrop) {
+    background-color: rgba(0, 0, 0, 0.72) !important;
+}
+
+html[data-theme="dark"] :where(.modal-header, .modal-footer, .card-header, .card-footer, .section-header) {
+    background-color: var(--ui-surface-raised) !important;
+    color: var(--ui-text-strong) !important;
+    border-color: var(--ui-border) !important;
+}
+
+html[data-theme="dark"] :where(hr, .divider, .separator) {
+    border-color: var(--ui-border) !important;
+    background-color: var(--ui-border) !important;
+}
+
+html[data-theme="dark"] :where(.progress, progress) {
+    background-color: #2a3548 !important;
+}
+
+html[data-theme="dark"] :where(.alert, .message, .notification-item) {
+    color: var(--ui-text) !important;
+    border-color: var(--ui-border-strong) !important;
+}
+
+html[data-theme="dark"] :focus-visible {
+    outline: 3px solid var(--ui-focus) !important;
+    outline-offset: 2px;
+}
+
+/* Dashboard: preserve surface hierarchy and strong contrast in dark mode. */
+html[data-theme="dark"] .dashboard-page :where(.stat-card, .chart-box, .projects-section, .projects-list, .project-item) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .dashboard-page :where(.stat-card .stat-value, #activeProjectsCount, #totalBudgetDisplay, #netVarianceDisplay) {
+    color: #f8fafc !important;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme="dark"] .dashboard-page :where(.stat-card .stat-label, .stat-card .stat-sub, .bar-label) {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .dashboard-page :where(.chart-box, .chart-box .bar-chart, .chart-box .line-chart, .chart-box svg) {
+    background: #111827 !important;
+}
+
+html[data-theme="dark"] .dashboard-page .chart-box h3 {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .dashboard-page .chart-box:first-child .bar,
+html[data-theme="dark"] .dashboard-page .bar-chart .bar {
+    background: #f08a1a !important;
+}
+
+html[data-theme="dark"] .dashboard-page .line-chart :where(.dot-label, .x-label, .y-label) {
+    fill: #dbe5f3 !important;
+}
+
+html[data-theme="dark"] .dashboard-page .line-chart .grid-line {
+    stroke: #344158 !important;
+}
+
+html[data-theme="dark"] .dashboard-page .line-chart .dot {
+    stroke: #111827 !important;
+}
+
+html[data-theme="dark"] .dashboard-page .project-item:hover {
+    background: #182235 !important;
+}
+
+html[data-theme="dark"] .dashboard-page .project-item :where(h4, .progress-label, .progress-label span) {
+    color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .dashboard-page .project-item .budget {
+    color: #f3a64f !important;
+}
+
+html[data-theme="dark"] .dashboard-page .project-item .progress-bar {
+    background: #2d394d !important;
+}
+
+/* Active Projects detail modal uses one continuous dark surface. */
+html[data-theme="dark"] .dashboard-page #projectDetailModal :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    .project-details-grid, .detail-item
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .dashboard-page #projectDetailModal :where(h2, h3, h4, .subtitle, label, span, .detail-item span) {
+    color: #edf2f7 !important;
+}
+
+html[data-theme="dark"] .dashboard-page #projectDetailModal .detail-item label,
+html[data-theme="dark"] .dashboard-page #projectDetailModal .subtitle {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .dashboard-page #projectDetailModal :where(
+    .phase-badge, .status-badge.completed, .status-badge.at-risk
+) {
+    color: #f3a64f !important;
+}
+
+html[data-theme="dark"] .dashboard-page #projectDetailModal .modal-close {
+    background: transparent !important;
+    color: #edf2f7 !important;
+    border-color: transparent !important;
+}
+
+/* Selected pagination is light; all available pages remain dark. */
+html[data-theme="dark"] .dashboard-page .pagination-links :where(a, button, span):not(.active):not(.dots):not(.ellipsis) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .dashboard-page .pagination-links :where(a, button, span).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .dashboard-page .pagination-links :where(a, button):not(.active):not(:disabled):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .dashboard-page .pagination-links :where(.dots, .ellipsis) {
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border-color: transparent !important;
+}
+
+/* Projects dark mode: KPI, search, and pagination contrast. */
+html[data-theme="dark"] .projects-page :where(.stat-card-proj, .stats-grid-proj .stat-card-proj) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .projects-page .stat-card-proj .stat-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .projects-page .stat-card-proj :where(.stat-label, .stat-sub) {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .projects-page :where(.search-bar-wrapper, .search-bar) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #36445a !important;
+}
+
+html[data-theme="dark"] .projects-page .search-bar .search-input {
+    background: transparent !important;
+    color: #f8fafc !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .projects-page .search-bar .btn-clear-search {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .projects-page .search-bar .btn-clear-search:hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #f08a1a !important;
+}
+
+/* Shared Projects-style pagination for Projects and Dashboard. */
+.projects-page .pagination-wrapper,
+.dashboard-page .pagination-wrapper {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 15px 20px 0 !important;
+    margin-top: 15px !important;
+    border-top: 0 !important;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.projects-page .pagination-links,
+.dashboard-page .pagination-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px !important;
+}
+
+.projects-page .pagination-links :where(a, button),
+.dashboard-page .pagination-links :where(a, button) {
+    min-width: 34px;
+    padding: 6px 12px !important;
+    border: 1px solid #d7dde6 !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    font-size: 0.85rem !important;
+    line-height: 1.35;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.dashboard-page .pagination-links :where(a, button) {
+    font-weight: 400 !important;
+}
+
+.projects-page .pagination-links :where(a, button):not(.active):not(:disabled):hover,
+.dashboard-page .pagination-links :where(a, button):not(.active):not(:disabled):hover {
+    background: #eef2f6 !important;
+    color: #172033 !important;
+    border-color: #aeb8c7 !important;
+}
+
+.projects-page .pagination-links :where(a, button).active,
+.dashboard-page .pagination-links :where(a, button).active {
+    background: #1a2b3c !important;
+    color: #ffffff !important;
+    border-color: #1a2b3c !important;
+}
+
+.projects-page .pagination-links :where(.disabled, :disabled),
+.dashboard-page .pagination-links :where(.disabled, :disabled) {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.projects-page .pagination-links :where(.dots, .ellipsis, .pagination-info),
+.dashboard-page .pagination-links :where(.dots, .ellipsis, .pagination-info) {
+    padding: 6px 8px;
+    color: #778195;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+html[data-theme="dark"] :where(.projects-page, .dashboard-page) .pagination-wrapper {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] :where(.projects-page, .dashboard-page) .pagination-links :where(a, button):not(.active) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] :where(.projects-page, .dashboard-page) .pagination-links :where(a, button).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] :where(.projects-page, .dashboard-page) .pagination-links :where(a, button):not(.active):not(:disabled):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] :where(.projects-page, .dashboard-page) .pagination-links :where(.dots, .ellipsis, .pagination-info) {
+    color: #94a3b8 !important;
+}
+
+/* Finance dark mode: selectable controls and KPI contrast. */
+html[data-theme="dark"] .finance-page :where(.stat-mini, .stats-row .stat-mini, .stats-row-budget .stat-mini) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .finance-page .stat-mini .stat-label {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .finance-page :where(#totalExpensesValue, [id*="totalExpenses"], [id*="TotalExpenses"]) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .finance-page :where(.view-toggle .toggle-btn, .filter-tabs .tab):not(.active) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .finance-page .btn-clear-search {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .finance-page .btn-clear-search:hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] .finance-page :where(.view-toggle .toggle-btn, .filter-tabs .tab):not(.active):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] .finance-page :where(.view-toggle .toggle-btn, .filter-tabs .tab).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .finance-page .pagination-links :where(a, button, span):not(.active):not(.dots):not(.ellipsis) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .finance-page .pagination-links :where(a, button, span).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .finance-page .report-section :where(.report-table-wrapper, .table-wrapper, .budget-table-wrapper) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .finance-page .report-section :where(.report-table-wrapper, .table-wrapper, .budget-table-wrapper) table,
+html[data-theme="dark"] .finance-page .report-section :where(.report-table-wrapper, .table-wrapper, .budget-table-wrapper) tbody,
+html[data-theme="dark"] .finance-page .report-section :where(.report-table-wrapper, .table-wrapper, .budget-table-wrapper) tbody tr,
+html[data-theme="dark"] .finance-page .report-section :where(.report-table-wrapper, .table-wrapper, .budget-table-wrapper) tbody td {
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .finance-page .report-section :where(.report-table-wrapper, .table-wrapper, .budget-table-wrapper) tbody tr:hover,
+html[data-theme="dark"] .finance-page .report-section :where(.report-table-wrapper, .table-wrapper, .budget-table-wrapper) tbody tr:hover td {
+    background-color: #182235 !important;
+}
+
+/* Finance add modals use one continuous dark surface. */
+html[data-theme="dark"] .finance-page [id^="add"][id$="Modal"] :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    form, .form-group, .form-row, .form-section, .input-group,
+    .file-upload-wrapper, .file-upload-area
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .finance-page [id^="add"][id$="Modal"] :where(.modal-header, .modal-footer) {
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .finance-page [id^="add"][id$="Modal"] :where(h2, h3, h4, label, .modal-title) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .finance-page :where(#addExpenseModal, #addBudgetModal) .file-upload-button {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border: 1px solid #46546a !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .finance-page :where(#addExpenseModal, #addBudgetModal) .file-upload-button:hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] .finance-page :where(#addExpenseModal, #addBudgetModal) :where(.file-upload-name, .file-upload-hint) {
+    color: #c2cddd !important;
+}
+
+/* Inventory receives the same complete dark treatment as Projects and Finance. */
+html[data-theme="dark"] .inventory-page :where(.stat-card-inv, .stats-grid-inv .stat-card-inv) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .inventory-page .stat-card-inv .stat-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page .stat-card-inv :where(.stat-label, .stat-sub) {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.filters-bar, .search-bar, .filter-row) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #36445a !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.btn-clear, .btn-clear-search, .clear-btn) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.btn-clear, .btn-clear-search, .clear-btn):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.inventory-tabs .tab, .filter-tabs .tab, .toggle-btn):not(.active) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.inventory-tabs .tab, .filter-tabs .tab, .toggle-btn).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.table-wrapper, .items-table-wrapper) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.table-wrapper, .items-table-wrapper) :where(table, tbody, tbody tr, tbody td) {
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.table-wrapper, .items-table-wrapper) tbody tr:hover,
+html[data-theme="dark"] .inventory-page :where(.table-wrapper, .items-table-wrapper) tbody tr:hover td {
+    background-color: #182235 !important;
+}
+
+.inventory-page .pagination-links :where(a, button) {
+    min-width: 34px;
+    padding: 6px 12px !important;
+    border: 1px solid #d7dde6 !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    text-align: center;
+    text-decoration: none;
+}
+
+.inventory-page .pagination-links :where(a, button).active {
+    background: #1a2b3c !important;
+    color: #ffffff !important;
+    border-color: #1a2b3c !important;
+}
+
+html[data-theme="dark"] .inventory-page .pagination-links :where(a, button, span):not(.active):not(.dots):not(.ellipsis) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .inventory-page .pagination-links :where(a, button, span).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page .modal-overlay :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    form, .form-group, .form-row, .form-row-three, .form-section,
+    .input-group, .step-indicator, .step-content,
+    .summary-section, .summary-item, .view-grid, .view-item
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .inventory-page .modal-overlay :where(h2, h3, h4, label, .modal-title, .view-value) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page .modal-overlay :where(.step, .view-label, .helper-text, p) {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .inventory-page .modal-overlay :where(.file-upload-button, input[type="file"]::file-selector-button) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+/* Items and Transactions view/edit modals: remove every remaining light panel. */
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    .view-details-grid, .view-item, .form-group, .input-group,
+    form, fieldset
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) :where(
+    h2, h3, h4, label, .view-value, span:not(.required)
+) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) .view-item label {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) :where(
+    input, select, textarea, .view-input
+) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) :where(
+    input, select, textarea, .view-input
+):disabled,
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) :where(
+    input, select, textarea, .view-input
+)[readonly] {
+    background: #202b3d !important;
+    color: #c2cddd !important;
+    opacity: 1;
+}
+
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) .modal-close {
+    background: transparent !important;
+    color: #f8fafc !important;
+    border-color: transparent !important;
+}
+
+/* Add New Transaction review step uses one dark surface. */
+html[data-theme="dark"] .inventory-page #transactionModal #step2 :where(
+    .modal-step, .summary-list, .summary-item, .modal-footer,
+    .footer-left, .footer-right
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .inventory-page #transactionModal #step2 :where(h3, strong, .summary-value, span) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page #transactionModal #step2 .summary-list {
+    border-left-color: #f08a1a !important;
+}
+
+html[data-theme="dark"] .inventory-page #transactionModal #step2 hr {
+    border-top-color: #2c3749 !important;
+    background: transparent !important;
+}
+
+html[data-theme="dark"] .inventory-page #transactionModal .quantity-control button {
+    background: #c9a96e !important;
+    color: #ffffff !important;
+    border-color: #c9a96e !important;
+}
+
+html[data-theme="dark"] .inventory-page #transactionModal .quantity-control button:hover {
+    background: #b8975a !important;
+    color: #ffffff !important;
+    border-color: #b8975a !important;
+}
+
+/* Suppliers receives the same complete dark treatment as other modules. */
+html[data-theme="dark"] .suppliers-page :where(.stat-card, .stat-card-supplier, .kpi-card) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .suppliers-page :where(.stat-card, .stat-card-supplier, .kpi-card) :where(.stat-value, .value) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .filters-bar {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #36445a !important;
+}
+
+html[data-theme="dark"] .suppliers-page .filters-bar .search-input {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .suppliers-page :where(.btn-clear, .btn-clear-search, .clear-btn) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .suppliers-page :where(.btn-clear, .btn-clear-search, .clear-btn):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .suppliers-page .table-wrapper,
+html[data-theme="dark"] .suppliers-page .table-wrapper :where(table, tbody, tbody tr, tbody td) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .table-wrapper tbody tr:hover,
+html[data-theme="dark"] .suppliers-page .table-wrapper tbody tr:hover td {
+    background: #182235 !important;
+    background-color: #182235 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .pagination-links :where(a, button, span):not(.active):not(.dots):not(.ellipsis) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .suppliers-page .pagination-links :where(a, button, span).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    .add-row, .edit-section, .left-col, .right-col,
+    .footer-left, .footer-right, form, .form-group, .form-row
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay :where(h2, h3, h4, label, .add-label, .edit-label, p) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay :where(input, select, textarea) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay :where(.file-upload-button, input[type="file"]::file-selector-button) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-close {
+    background: transparent !important;
+    color: #f8fafc !important;
+    border-color: transparent !important;
+}
+
+/* Reports receives the same complete dark treatment as other modules. */
+html[data-theme="dark"] .reports-page :where(.kpi-card, .stat-card, .summary-card) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .reports-page .kpi-card .kpi-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .reports-page .kpi-card :where(.kpi-label, .kpi-sub) {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .reports-page :where(.filters-bar, .tab-row, .report-tabs) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #36445a !important;
+}
+
+html[data-theme="dark"] .reports-page .report-tabs .tab:not(.active) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .reports-page .report-tabs .tab:not(.active):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .reports-page .report-tabs .tab.active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .reports-page :where(.btn-clear, .btn-clear-search, .btn-action-icon) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .reports-page .table-wrapper,
+html[data-theme="dark"] .reports-page .table-wrapper :where(table, tbody, tbody tr, tbody td) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .reports-page .table-wrapper tbody tr:hover,
+html[data-theme="dark"] .reports-page .table-wrapper tbody tr:hover td {
+    background: #182235 !important;
+    background-color: #182235 !important;
+}
+
+html[data-theme="dark"] .reports-page .pagination-links :where(a, button, span):not(.active):not(.dots):not(.ellipsis) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .reports-page .pagination-links :where(a, button, span).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .reports-page .modal-overlay :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    form, .form-group, .form-row, .upload-area, .file-upload-wrapper,
+    .progress-container, .detail-grid, .detail-item
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .reports-page .modal-overlay :where(h2, h3, h4, label, .modal-title, .detail-value) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .reports-page .modal-overlay :where(.file-upload-button, input[type="file"]::file-selector-button) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .reports-page .modal-close {
+    background: transparent !important;
+    color: #f8fafc !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .reports-page :where(.tab-actions, .icon-group) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .reports-page .icon-group .btn-action-icon {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .reports-page .icon-group .btn-action-icon:hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+/* Notifications receives the same complete dark treatment as other modules. */
+html[data-theme="dark"] .notifications-page :where(.notification-card, .notifications-list, .total-notif-item, .notif-section, .empty-state) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-tabs .tab:not(.active) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-tabs .tab:not(.active):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-tabs .tab.active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .notifications-page :where(.btn-mark-read, .btn-clear-all) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .notifications-page :where(.btn-mark-read, .btn-clear-all):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-item {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-item.unread {
+    background: #182235 !important;
+    border-color: #465975 !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-item:hover {
+    background: #223047 !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-item :where(.notif-title, .notif-content) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .notifications-page .notif-item :where(.notif-desc, .notif-time) {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .notifications-page .pagination-links :where(a, button, span):not(.active):not(.dots):not(.ellipsis) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .notifications-page .pagination-links :where(a, button, span).active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .notifications-page .modal-overlay :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    form, .form-group, .detail-container, .detail-item
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .notifications-page .modal-overlay :where(h2, h3, h4, label, p, .detail-value) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .notifications-page .modal-close {
+    background: transparent !important;
+    color: #f8fafc !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .notifications-page :where(
+    .notification-card, .notifications-list, .total-notif-item,
+    .notif-section, .notif-item, .empty-state, .notif-tabs,
+    .notif-actions, .modal-container, .modal-header, .modal-body,
+    .modal-footer, .detail-container, .detail-item
+) {
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+html[data-theme="dark"] .top-header .right a:hover {
+    background: #182235 !important;
+    background-color: #182235 !important;
+    color: #f8fafc !important;
+}
+
+/* Settings receives the finalized dark treatment used across all modules. */
+html[data-theme="dark"] .settings-page :where(
+    .settings-wrapper, .settings-sidebar, .settings-content, .settings-section,
+    .profile-preview, .security-item, .preference-item,
+    .config-tabs, #userConfigDetails
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .settings-page .settings-nav li:not(.active) {
+    background: #111827 !important;
+    color: #c2cddd !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .settings-page .settings-nav li:not(.active):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .settings-page .settings-nav li.active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-left-color: #f08a1a !important;
+}
+
+html[data-theme="dark"] .settings-page .config-tab:not(.active) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .settings-page .config-tab.active {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .settings-page :where(.section-title, .label, .name, h2, h3, h4, label) {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .settings-page :where(.section-desc, .desc, .role, .helper-text) {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .settings-page :where(.user-table, .user-table tbody, .user-table tbody tr, .user-table tbody td) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .settings-page .user-table tbody tr:hover,
+html[data-theme="dark"] .settings-page .user-table tbody tr:hover td {
+    background: #182235 !important;
+    background-color: #182235 !important;
+}
+
+html[data-theme="dark"] .settings-page :where(.btn-change, .btn-cancel, .btn-cancel-config, .btn-edit-user, .btn-close-config, .password-toggle) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .settings-page :where(.btn-change, .btn-cancel, .btn-cancel-config, .btn-edit-user, .btn-close-config, .password-toggle):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .settings-page .modal-overlay :where(
+    .modal-container, .modal-header, .modal-body, .modal-footer,
+    form, .form-group, .form-row, .config-form, .user-form
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .settings-page .modal-overlay :where(input, select, textarea) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .settings-page .modal-close {
+    background: transparent !important;
+    color: #f8fafc !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .settings-page #configUserName {
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .settings-page .security-item .btn-change {
+    background: linear-gradient(135deg, var(--ui-accent), var(--ui-accent-dark)) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .settings-page .security-item .btn-change:hover {
+    background: linear-gradient(135deg, #f59a31, #c96806) !important;
+    color: #ffffff !important;
+}
+
+/* Shared pagination — Projects is the visual model for every module. */
+.pagination-wrapper {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 15px !important;
+    margin-top: 15px !important;
+    padding: 15px 20px 0 !important;
+    border-top: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.pagination-wrapper .rows-info {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    color: #6b7280 !important;
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+}
+
+.pagination-wrapper .rows-info select {
+    min-width: 58px;
+    padding: 5px 9px !important;
+    border: 1px solid #d7dde6 !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+    cursor: pointer;
+}
+
+.pagination-wrapper .pagination-links {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+}
+
+.pagination-wrapper .pagination-links :where(a, button) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 34px !important;
+    min-height: 32px !important;
+    padding: 6px 12px !important;
+    border: 1px solid #d7dde6 !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+    line-height: 1.35 !important;
+    text-align: center;
+    text-decoration: none !important;
+    cursor: pointer;
+    box-shadow: none !important;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease !important;
+}
+
+.pagination-wrapper .pagination-links :where(a, button):not(.active):not(:disabled):hover {
+    background: #eef2f6 !important;
+    color: #172033 !important;
+    border-color: #aeb8c7 !important;
+}
+
+.pagination-wrapper .pagination-links :where(a, button).active {
+    background: #1a2b3c !important;
+    color: #ffffff !important;
+    border-color: #1a2b3c !important;
+}
+
+.pagination-wrapper .pagination-links :where(a, button).active:hover {
+    background: #253d54 !important;
+    color: #ffffff !important;
+    border-color: #253d54 !important;
+}
+
+.pagination-wrapper .pagination-links :where(.disabled, :disabled) {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+.pagination-wrapper .pagination-links :where(.dots, .ellipsis, .pagination-info) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 6px 8px !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: #778195 !important;
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+    cursor: default !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .pagination-wrapper .rows-info {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .pagination-wrapper .rows-info select {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .pagination-wrapper .pagination-links :where(a, button):not(.active) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .pagination-wrapper .pagination-links :where(a, button):not(.active):not(:disabled):hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] .pagination-wrapper .pagination-links :where(a, button).active,
+html[data-theme="dark"] .pagination-wrapper .pagination-links :where(a, button).active:hover {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .pagination-wrapper .pagination-links :where(.dots, .ellipsis, .pagination-info) {
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border-color: transparent !important;
+}
+
+@media (max-width: 650px) {
+    .pagination-wrapper {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center;
+        padding-inline: 0 !important;
+    }
+
+    .pagination-wrapper .rows-info,
+    .pagination-wrapper .pagination-links {
+        justify-content: center !important;
+    }
+}
+
+/* Keep wide data tables inside the content column instead of widening the page. */
+html,
+body:not(.landing-page) {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.main-content {
+    box-sizing: border-box;
+    min-width: 0;
+    width: auto;
+    max-width: calc(100vw - 288px);
+}
+
+:where(
+    .table-wrapper,
+    .table-container,
+    .budget-table-wrapper,
+    .items-table-wrapper,
+    .forecast-table-wrapper,
+    .report-table-wrapper
+) {
+    box-sizing: border-box;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+:where(
+    .table-wrapper,
+    .table-container,
+    .budget-table-wrapper,
+    .items-table-wrapper,
+    .forecast-table-wrapper,
+    .report-table-wrapper
+) > table {
+    max-width: none;
+}
+
+@media (max-width: 900px) {
+    .main-content {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+/* Legacy button icons are JPEGs with a white canvas; invert that canvas in dark mode. */
+html[data-theme="dark"] button img:is(
+    [src$="/add.jpg"],
+    [src$="/edit.jpg"],
+    [src$="/export.jpg"],
+    [src$="/refresh.jpg"],
+    [src$="/wrench.jpg"]
+) {
+    filter: invert(1) !important;
+    mix-blend-mode: screen;
+    background: transparent !important;
+    border-radius: 3px;
+}
+
+html[data-theme="dark"] button:hover img:is(
+    [src$="/add.jpg"],
+    [src$="/edit.jpg"],
+    [src$="/export.jpg"],
+    [src$="/refresh.jpg"],
+    [src$="/wrench.jpg"]
+) {
+    filter: invert(1) brightness(1.15) !important;
+}
+
+/* Projects: complete dark-mode surface and contrast coverage. */
+html[data-theme="dark"] .projects-page :where(
+    .table-wrapper,
+    .search-bar-wrapper,
+    .search-bar,
+    .stat-card-proj
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .projects-page .table-wrapper :where(table, tbody, tbody tr, tbody td) {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .projects-page .table-wrapper tbody tr:nth-child(even) :where(td) {
+    background: #151f30 !important;
+}
+
+html[data-theme="dark"] .projects-page .table-wrapper tbody tr:hover :where(td) {
+    background: #223047 !important;
+}
+
+html[data-theme="dark"] .projects-page :where(#projectSearch, .search-input, .rows-info select) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .projects-page :where(#projectSearch, .search-input)::placeholder {
+    color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .projects-page :where(.btn-clear-search, .btn-cancel, .btn-back) {
+    background: #263349 !important;
+    color: #f1f5f9 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .projects-page :where(.btn-clear-search, .btn-cancel, .btn-back):hover {
+    background: #34435b !important;
+    color: #ffffff !important;
+    border-color: #68768c !important;
+}
+
+html[data-theme="dark"] .projects-page :where(
+    #projectModal,
+    #updateModal,
+    #editProjectModal
+) :where(
+    .modal-container,
+    .modal-header,
+    .modal-body,
+    .modal-step,
+    .modal-footer,
+    .summary-list,
+    .summary-item,
+    .project-details-grid,
+    .detail-item,
+    .step-indicator
+) {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .projects-page :where(
+    #projectModal,
+    #updateModal,
+    #editProjectModal
+) :where(h2, h3, label, strong, span, .summary-value, .detail-item span) {
+    color: #edf2f7 !important;
+}
+
+html[data-theme="dark"] .projects-page :where(
+    #projectModal,
+    #updateModal,
+    #editProjectModal
+) :where(.subtitle, .detail-item label, .step:not(.active):not(.completed)) {
+    color: #aeb8c7 !important;
+}
+
+html[data-theme="dark"] .projects-page :where(
+    #projectModal,
+    #updateModal,
+    #editProjectModal
+) :where(input, select, textarea) {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .projects-page :where(
+    #projectModal,
+    #updateModal,
+    #editProjectModal
+) :where(input, select, textarea):focus {
+    background: #0b1220 !important;
+    border-color: #f08a1a !important;
+    box-shadow: 0 0 0 3px rgba(240, 138, 26, 0.20) !important;
+}
+
+html[data-theme="dark"] .projects-page :where(
+    #projectModal,
+    #updateModal,
+    #editProjectModal
+) .modal-close {
+    background: transparent !important;
+    color: #edf2f7 !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .projects-page .step-indicator .step.active {
+    color: #f3a64f !important;
+    border-bottom-color: #f08a1a !important;
+}
+
+html[data-theme="dark"] .projects-page :where(.phase-badge, .status-badge) {
+    color: #f3a64f !important;
+}
+
+/* Header notification/user JPEGs have white canvases; convert them to dark canvases. */
+html[data-theme="dark"] .top-header .right img:is(
+    [src$="/notif.jpg"],
+    [src$="/user.jpg"]
+) {
+    filter: invert(1) !important;
+    mix-blend-mode: screen;
+    background: transparent !important;
+}
+
+/* Let every monochrome JPEG icon canvas visually adopt its control background. */
+html[data-theme="dark"] :where(button, [role="button"], .top-header .right a) > img:is(
+    [src$="/add.jpg"],
+    [src$="/edit.jpg"],
+    [src$="/export.jpg"],
+    [src$="/refresh.jpg"],
+    [src$="/wrench.jpg"],
+    [src$="/notif.jpg"],
+    [src$="/user.jpg"]
+) {
+    filter: invert(1) !important;
+    mix-blend-mode: screen;
+    background-color: transparent !important;
+}
+
+html[data-theme="dark"] .top-header .right a:hover > img:is(
+    [src$="/notif.jpg"],
+    [src$="/user.jpg"]
+) {
+    filter: invert(1) !important;
+    mix-blend-mode: screen !important;
+    background: transparent !important;
+    opacity: 1 !important;
+}
+
+@media (max-width: 900px) {
+    .sidebar-collapse-toggle {
+        display: none;
+    }
+
+    html.sidebar-collapsed .sidebar {
+        width: 100% !important;
+        padding: 18px 14px !important;
+    }
+
+    html.sidebar-collapsed .sidebar nav a {
+        justify-content: flex-start;
+        gap: initial !important;
+        font-size: inherit !important;
+    }
+
+    html.sidebar-collapsed .sidebar nav a::before {
+        content: none;
+    }
+
+    html.sidebar-collapsed .sidebar .bottom-nav :where(a, button) {
+        justify-content: flex-start;
+        gap: 12px !important;
+        color: inherit !important;
+        font-size: inherit !important;
+    }
+
+    html.sidebar-collapsed .main-content {
+        margin-left: 0 !important;
+        width: 100%;
+        max-width: 100%;
     }
 }

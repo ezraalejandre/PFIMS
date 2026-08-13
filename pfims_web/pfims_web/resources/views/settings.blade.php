@@ -7,11 +7,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/settings.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="settings-page">
 
     <!-- ─── SUCCESS NOTIFICATION ─── -->
-    <div id="successNotification" class="success-notification" style="display: none;">
+    <div id="successNotification" class="success-notification" style="display: none; z-index: 4000;">
         <div class="success-content">
             <span class="success-icon">●</span>
             <span id="successMessage">Saved successfully!</span>
@@ -111,7 +112,7 @@
                             <div class="name">Elito V. Catapang</div>
                             <div class="role">Project Manager</div>
                         </div>
-                        <button class="btn-go-profile" onclick="window.location.href='{{ url('/profile') }}'">Go to Profile</button>
+                        <button class="btn-go-profile" data-url="{{ url('/profile') }}" onclick="window.location.href=this.dataset.url">Go to Profile</button>
                     </div>
                 </div>
 
@@ -136,14 +137,13 @@
 
                     <div class="preference-item">
                         <div class="left">
-                            <div class="label">Email Notifications</div>
-                            <div class="desc">Receive email notifications for system updates</div>
+                            <div class="label">Dark Mode</div>
+                            <div class="desc">Toggle dark mode for the entire system</div>
                         </div>
-                        <div class="toggle active" onclick="toggleSwitch(this)">
+                        <div class="toggle" data-theme-toggle role="switch" aria-label="Dark mode" aria-checked="false" onclick="toggleDarkMode()">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
-                
                 </div>
 
                 <!-- ─── CONFIGURATIONS (Dropdown Management) ─── -->
@@ -206,7 +206,6 @@
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
-                    
                 </div>
 
                 <!-- ─── USER MANAGEMENT ─── -->
@@ -240,7 +239,7 @@
                                             </td>
                                             <td>{{ $u->status ?? 'Active' }}</td>
                                             <td style="text-align: center;">
-                                                <button class="btn-edit-user" onclick="openUserConfig({{ $u->id }})">
+                                                <button class="btn-edit-user" data-user-id="{{ $u->id }}" onclick="openUserConfig(Number(this.dataset.userId))">
                                                     <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
                                                 </button>
                                             </td>
@@ -301,6 +300,20 @@
     </main>
 
     <!-- ─── CONFIG ITEM MODAL (Add/Edit/Delete) ─── -->
+    <div id="deleteUserConfirmModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
+        <div class="modal-container" style="background:#fff; width:440px; max-width:95%; border-radius:16px; padding:28px 32px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="text-align:center;">
+                <div style="width:58px; height:58px; margin:0 auto 16px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#ffebee; color:#d32f2f; font-size:28px; font-weight:700;">!</div>
+                <h2 style="margin:0 0 10px; color:#1a2b3c; font-size:1.35rem;">Delete User?</h2>
+                <p style="margin:0; color:#666; line-height:1.5;">Are you sure you want to permanently delete this user? This action cannot be undone.</p>
+            </div>
+            <div style="display:flex; justify-content:center; gap:12px; margin-top:26px;">
+                <button type="button" class="btn-cancel" onclick="closeDeleteUserModal()" style="padding:10px 22px; border-radius:8px; border:1px solid #ddd; background:#fff; color:#666; font-weight:600; cursor:pointer;">Cancel</button>
+                <button type="button" id="confirmDeleteUserBtn" onclick="confirmDeleteUser()" style="padding:10px 22px; border-radius:8px; border:0; background:#d32f2f; color:#fff; font-weight:600; cursor:pointer;">Delete User</button>
+            </div>
+        </div>
+    </div>
+
     <div id="configItemModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
         <div class="modal-container" style="background: #fff; width: 500px; max-width: 95%; border-radius: 16px; padding: 30px 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -332,9 +345,8 @@
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                                 <div>
                                     <h3 style="margin:0; font-size:1.1rem;">User Created</h3>
-                                    <div style="font-size:0.9rem; color:#666;">Temporary password (copy and share securely)</div>
+                                    <div style="font-size:0.9rem; color:#666;">Use the user's email without the @gmail.com as initial password.</div>
                                 </div>
-                                <button onclick="closePasswordModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:#888;">×</button>
                             </div>
                             <div style="margin-top:10px;">
                                 <input id="generatedPasswordField" type="text" readonly style="width:100%; padding:12px 14px; font-size:1rem; border:1px solid #ddd; border-radius:8px; background:#f7f7f7;" />
@@ -431,6 +443,10 @@
     <script>
         // ─── SETTINGS NAVIGATION ───
         var csrfToken = '{{ csrf_token() }}';
+        function redirectToUserManagement() {
+            window.location.href = '/settings?section=usermanagement';
+        }
+
         function switchSettings(el, section) {
             var navItems = document.querySelectorAll('.settings-nav li');
             navItems.forEach(function(item) {
@@ -462,19 +478,15 @@
             console.log('Switch toggled: ' + status);
         }
 
-        // ─── NOTIFICATION CATEGORY TOGGLES (persisted via localStorage) ───
         function toggleNotifCategory(el) {
             var category = el.getAttribute('data-notif-category');
             el.classList.toggle('active');
-            var isEnabled = el.classList.contains('active');
-            localStorage.setItem('notif_mute_' + category, isEnabled ? 'false' : 'true');
-            console.log('Notification category "' + category + '": ' + (isEnabled ? 'Enabled' : 'Muted'));
+            localStorage.setItem('notif_mute_' + category, el.classList.contains('active') ? 'false' : 'true');
         }
 
         function initNotifCategoryToggles() {
             document.querySelectorAll('[data-notif-category]').forEach(function(el) {
-                var category = el.getAttribute('data-notif-category');
-                var muted = localStorage.getItem('notif_mute_' + category) === 'true';
+                var muted = localStorage.getItem('notif_mute_' + el.getAttribute('data-notif-category')) === 'true';
                 el.classList.toggle('active', !muted);
             });
         }
@@ -537,7 +549,7 @@
             .then(function(data) {
                 if (data.success) {
                     showSuccess('User updated successfully!');
-                    setTimeout(function() { location.reload(); }, 700);
+                    setTimeout(redirectToUserManagement, 700);
                 } else {
                     alert('Failed to update user.');
                 }
@@ -550,7 +562,20 @@
 
         function deleteUserFromConfig() {
             if (!activeConfigUserId) return;
-            if (!confirm('Are you sure you want to permanently delete this user?')) return;
+            document.getElementById('deleteUserConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteUserModal() {
+            document.getElementById('deleteUserConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function confirmDeleteUser() {
+            if (!activeConfigUserId) return;
+            var confirmButton = document.getElementById('confirmDeleteUserBtn');
+            confirmButton.disabled = true;
+            confirmButton.textContent = 'Deleting...';
 
             fetch('/users/' + activeConfigUserId, {
                 method: 'DELETE',
@@ -559,8 +584,9 @@
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {
+                    closeDeleteUserModal();
                     showSuccess('User deleted');
-                    setTimeout(function() { location.reload(); }, 700);
+                    setTimeout(redirectToUserManagement, 700);
                 } else {
                     alert('Failed to delete user.');
                 }
@@ -568,8 +594,16 @@
             .catch(function(err) {
                 alert('Failed to delete user.');
                 console.error(err);
+            })
+            .finally(function() {
+                confirmButton.disabled = false;
+                confirmButton.textContent = 'Delete User';
             });
         }
+
+        document.getElementById('deleteUserConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteUserModal();
+        });
 
         // ─── CONFIGURATIONS (Dropdown Management) ───
         var configData = {
@@ -800,11 +834,11 @@
             .then(function(data) {
                 if (data.success) {
                     closeAddUserModal();
-                    // show generated password to admin in a modal so they can copy it
+                    // Show the initial-password instructions only after the user is created.
                     if (data.password) {
                         openPasswordModal(data.password, name);
                     }
-                    showSuccess('New user ' + name + ' added successfully!');
+                    showSuccess('New user added successfully!');
                 } else {
                     alert('Failed to add user.');
                 }
@@ -826,12 +860,6 @@
                 closeConfigItemModal();
             }
         });
-        document.getElementById('passwordModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closePasswordModal();
-            }
-        });
-
         function openPasswordModal(password, username) {
             var field = document.getElementById('generatedPasswordField');
             if (field) field.value = password || '';
@@ -849,7 +877,7 @@
                 document.body.style.overflow = '';
             }
             if (reload) {
-                location.reload();
+                redirectToUserManagement();
             }
         }
 
@@ -858,16 +886,16 @@
             if (!field) return;
             try {
                 navigator.clipboard.writeText(field.value).then(function(){
-                    alert('Password copied to clipboard. Share it securely.');
+                    showSuccess('Password copied to clipboard. Share it securely.');
                 }).catch(function(){
                     field.select();
                     document.execCommand('copy');
-                    alert('Password copied to clipboard. Share it securely.');
+                    showSuccess('Password copied to clipboard. Share it securely.');
                 });
             } catch (e) {
                 field.select();
                 document.execCommand('copy');
-                alert('Password copied to clipboard. Share it securely.');
+                showSuccess('Password copied to clipboard. Share it securely.');
             }
         }
 
@@ -1086,7 +1114,18 @@
             return strength;
         }
 
-        document.addEventListener('DOMContentLoaded', resetPasswordToggleButtons);
+        document.addEventListener('DOMContentLoaded', function() {
+            resetPasswordToggleButtons();
+            var query = new URLSearchParams(window.location.search);
+            if (query.get('section') === 'usermanagement') {
+                var userManagementTab = document.querySelector(".settings-nav li[onclick*='usermanagement']");
+                if (userManagementTab) switchSettings(userManagementTab, 'usermanagement');
+            } else if (query.get('change_password') === '1') {
+                var securityTab = document.querySelector(".settings-nav li[onclick*='security']");
+                if (securityTab) switchSettings(securityTab, 'security');
+                openChangePasswordModal();
+            }
+        });
     </script>
 
 </body>

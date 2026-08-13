@@ -41,7 +41,7 @@
         
         .rows-info select:focus {
             border-color: #3b82f6;
-            ring: 2px solid #93c5fd;
+            box-shadow: 0 0 0 2px #93c5fd;
         }
         
         .pagination-links {
@@ -103,8 +103,9 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="dashboard-page">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -208,7 +209,7 @@
                     @if(isset($completionData) && count($completionData['months']) > 0)
                         @foreach($completionData['months'] as $index => $month)
                             <div class="bar-group">
-                                <div class="bar" style="height:{{ $completionData['percentages'][$index] ?? 35 }}px;"></div>
+                                <div class="bar" data-height="{{ $completionData['percentages'][$index] ?? 35 }}"></div>
                                 <span class="bar-label">{{ $month }}</span>
                             </div>
                         @endforeach
@@ -287,7 +288,7 @@
                             </div>
                             <div class="progress-wrapper">
                                 <div class="progress-bar">
-                                    <div class="fill" style="width:{{ $project->completion_percentage ?? 0 }}%;"></div>
+                                    <div class="fill" data-progress="{{ $project->completion_percentage ?? 0 }}"></div>
                                 </div>
                                 <div class="progress-label">
                                     <span>{{ $project->completion_percentage ?? 0 }}%</span>
@@ -380,6 +381,16 @@
 
         // Initialize pagination
         document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.bar[data-height]').forEach(function(bar) {
+                var height = Math.max(0, Number(bar.dataset.height) || 0);
+                bar.style.height = height + 'px';
+            });
+
+            document.querySelectorAll('.progress-bar .fill[data-progress]').forEach(function(fill) {
+                var progress = Math.min(100, Math.max(0, Number(fill.dataset.progress) || 0));
+                fill.style.width = progress + '%';
+            });
+
             // Get all project items
             const projectItems = document.querySelectorAll('.project-item');
             allProjects = Array.from(projectItems);

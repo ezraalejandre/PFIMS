@@ -6,8 +6,9 @@
     <title>Operations Settings - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Osettings.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="settings-page">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -115,7 +116,7 @@
                             <div class="name">Elito V. Catapang</div>
                             <div class="role">Operations Manager</div>
                         </div>
-                        <button class="btn-go-profile" onclick="window.location.href='{{ url('/oprofile') }}'">Go to Profile</button>
+                        <button class="btn-go-profile" data-url="{{ url('/oprofile') }}" onclick="window.location.href=this.dataset.url">Go to Profile</button>
                     </div>
                 </div>
 
@@ -143,13 +144,12 @@
                 <div id="section-preferences" class="settings-section" style="display: none;">
                     <div class="section-title">System Preferences</div>
                     <div class="section-desc">Customize your system experience and preferences.</div>
-                    
                     <div class="preference-item">
                         <div class="left">
-                            <div class="label">Email Notifications</div>
-                            <div class="desc">Receive email notifications for system updates</div>
+                            <div class="label">Dark Mode</div>
+                            <div class="desc">Toggle dark mode for the entire system</div>
                         </div>
-                        <div class="toggle active" onclick="toggleSwitch(this)">
+                        <div class="toggle" data-theme-toggle role="switch" aria-label="Dark mode" aria-checked="false" onclick="toggleDarkMode()">
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
@@ -186,7 +186,6 @@
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
-                    
                 </div>
 
             </div>
@@ -202,31 +201,37 @@
                 <button class="modal-close" onclick="closeChangePasswordModal()">×</button>
             </div>
             <div class="modal-body">
+                <form id="changePasswordForm" onsubmit="savePassword(event)">
                 <div class="form-group">
                     <label>Current Password <span class="required">*</span></label>
                     <div class="password-control">
-                        <input type="password" id="currentPassword" placeholder="Enter current password">
+                        <input type="password" id="currentPassword" placeholder="Enter current password" required>
                         <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('currentPassword', this)"></button>
                     </div>
+                    <div id="currentPasswordError" class="error-message" style="display: none; color: #d32f2f; font-size: 0.75rem; margin-top: 4px;"></div>
                 </div>
                 <div class="form-group">
                     <label>New Password <span class="required">*</span></label>
                     <div class="password-control">
-                        <input type="password" id="newPassword" placeholder="Enter new password">
+                        <input type="password" id="newPassword" placeholder="Enter new password" minlength="8" required>
                         <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('newPassword', this)"></button>
                     </div>
+                    <div id="newPasswordError" class="error-message" style="display: none; color: #d32f2f; font-size: 0.75rem; margin-top: 4px;"></div>
+                    <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">Minimum 8 characters</div>
                 </div>
                 <div class="form-group">
                     <label>Confirm New Password <span class="required">*</span></label>
                     <div class="password-control">
-                        <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                        <input type="password" id="confirmPassword" placeholder="Confirm new password" minlength="8" required>
                         <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" onclick="togglePasswordVisibility('confirmPassword', this)"></button>
                     </div>
+                    <div id="confirmPasswordError" class="error-message" style="display: none; color: #d32f2f; font-size: 0.75rem; margin-top: 4px;"></div>
                 </div>
                 <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e9ecef;">
-                    <button class="btn-cancel" onclick="closeChangePasswordModal()">Cancel</button>
-                    <button class="btn-save" onclick="savePassword()">Save</button>
+                    <button type="button" class="btn-cancel" onclick="closeChangePasswordModal()">Cancel</button>
+                    <button type="submit" class="btn-save">Save</button>
                 </div>
+                </form>
             </div>
         </div>
     </div>
@@ -307,19 +312,15 @@
             console.log('Switch toggled: ' + status);
         }
 
-        // ─── NOTIFICATION CATEGORY TOGGLES (persisted via localStorage) ───
         function toggleNotifCategory(el) {
             var category = el.getAttribute('data-notif-category');
             el.classList.toggle('active');
-            var isEnabled = el.classList.contains('active');
-            localStorage.setItem('notif_mute_' + category, isEnabled ? 'false' : 'true');
-            console.log('Notification category "' + category + '": ' + (isEnabled ? 'Enabled' : 'Muted'));
+            localStorage.setItem('notif_mute_' + category, el.classList.contains('active') ? 'false' : 'true');
         }
 
         function initNotifCategoryToggles() {
             document.querySelectorAll('[data-notif-category]').forEach(function(el) {
-                var category = el.getAttribute('data-notif-category');
-                var muted = localStorage.getItem('notif_mute_' + category) === 'true';
+                var muted = localStorage.getItem('notif_mute_' + el.getAttribute('data-notif-category')) === 'true';
                 el.classList.toggle('active', !muted);
             });
         }
@@ -381,11 +382,10 @@
 
         // ─── CHANGE PASSWORD ───
         function openChangePasswordModal() {
+            document.getElementById('changePasswordForm').reset();
             document.getElementById('changePasswordModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
-            document.getElementById('currentPassword').value = '';
-            document.getElementById('newPassword').value = '';
-            document.getElementById('confirmPassword').value = '';
+            clearPasswordErrors();
             resetPasswordToggleButtons();
         }
 
@@ -427,15 +427,91 @@
             input.focus({ preventScroll: true });
         }
 
-        function savePassword() {
+        function clearPasswordErrors() {
+            ['currentPasswordError', 'newPasswordError', 'confirmPasswordError'].forEach(function(id) {
+                document.getElementById(id).style.display = 'none';
+            });
+        }
+
+        function showPasswordError(id, message) {
+            var error = document.getElementById(id);
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+
+        async function savePassword(event) {
+            if (event) event.preventDefault();
+            clearPasswordErrors();
             var current = document.getElementById('currentPassword').value;
             var newPass = document.getElementById('newPassword').value;
             var confirm = document.getElementById('confirmPassword').value;
-            if (!current || !newPass || !confirm) { showError('Please fill in all fields.'); return; }
-            if (newPass.length < 6) { showError('New password must be at least 6 characters.'); return; }
-            if (newPass !== confirm) { showError('New password and confirm password do not match.'); return; }
-            closeChangePasswordModal();
-            showSuccess('Password updated successfully!');
+            var hasError = false;
+
+            if (!current) { showPasswordError('currentPasswordError', 'Current password is required'); hasError = true; }
+            if (newPass.length < 8) { showPasswordError('newPasswordError', 'Password must be at least 8 characters long'); hasError = true; }
+            else if (newPass === current) { showPasswordError('newPasswordError', 'The new password must be different from your current password.'); hasError = true; }
+            if (newPass !== confirm) { showPasswordError('confirmPasswordError', 'Passwords do not match'); hasError = true; }
+            if (hasError) return;
+
+            try {
+                var response = await fetch('/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        current_password: current,
+                        new_password: newPass,
+                        new_password_confirmation: confirm
+                    })
+                });
+                var data = await response.json();
+                if (!response.ok || !data.success) {
+                    var errors = data.errors || {};
+                    if (errors.current_password) showPasswordError('currentPasswordError', errors.current_password[0]);
+                    if (errors.new_password) showPasswordError('newPasswordError', errors.new_password[0]);
+                    if (errors.new_password_confirmation) showPasswordError('confirmPasswordError', errors.new_password_confirmation[0]);
+                    if (Object.keys(errors).length) return;
+                    throw new Error(data.message || 'Failed to update password.');
+                }
+                closeChangePasswordModal();
+                showSuccess('Password updated successfully!');
+                var descElement = document.querySelector('.security-item .left .desc');
+                if (descElement) descElement.textContent = 'Last changed just now';
+            } catch (error) {
+                showError(error.message || 'Failed to update password.');
+            }
+        }
+
+        document.getElementById('newPassword').addEventListener('input', function() {
+            var indicator = document.getElementById('passwordStrength');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'passwordStrength';
+                indicator.style.marginTop = '4px';
+                indicator.style.fontSize = '0.75rem';
+                this.closest('.form-group').appendChild(indicator);
+            }
+
+            var strength = checkPasswordStrength(this.value);
+            indicator.textContent = 'Strength: ' + strength.text;
+            indicator.style.color = strength.color;
+        });
+
+        function checkPasswordStrength(password) {
+            var score = 0;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/\d/.test(password)) score++;
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+            if (password.length >= 8 && score >= 4) return { text: 'Strong', color: '#2e7d32' };
+            if (password.length >= 8 && score >= 3) return { text: 'Good', color: '#f57c00' };
+            if (password.length >= 8 && score >= 2) return { text: 'Fair', color: '#f57c00' };
+            return { text: 'Weak', color: '#d32f2f' };
         }
 
         // ─── TWO FACTOR AUTHENTICATION ───
@@ -476,7 +552,15 @@
             }
         });
 
-        document.addEventListener('DOMContentLoaded', resetPasswordToggleButtons);
+        document.addEventListener('DOMContentLoaded', function() {
+            resetPasswordToggleButtons();
+            if (new URLSearchParams(window.location.search).get('change_password') === '1') {
+                var securityTab = document.querySelector(".settings-nav li[onclick*='security']");
+                if (securityTab) switchSettings(securityTab, 'security');
+                openChangePasswordModal();
+            }
+        });
+
     </script>
 
 </body>

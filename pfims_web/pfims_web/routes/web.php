@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 use App\Models\User;
+use App\Models\AppNotification;
+use App\Mail\FirstLoginVerificationMail;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\InventoryController;
@@ -221,7 +223,8 @@ Route::post('/users', function (Request $request) {
 
     $role = strtolower($validated['role']);
 
-    $plainPassword = Str::random(12);
+    // The initial password is the part of the user's email before the domain.
+    $plainPassword = strstr($validated['email'], '@', true);
 
     $user = User::create([
         'name' => $validated['name'],
@@ -229,6 +232,19 @@ Route::post('/users', function (Request $request) {
         'role' => $role,
         'status' => $validated['status'] ?? 'Active',
         'password' => Hash::make($plainPassword),
+        'first_login_verification_required' => true,
+    ]);
+
+    AppNotification::create([
+        'user_id' => $user->id,
+        'title' => 'Change Your Initial Password',
+        'message' => 'For your account security, please change your initial password in Settings.',
+        'type' => 'password_change_reminder',
+        'kind' => 'warning',
+        'filter' => 'system',
+        'reference_type' => 'user',
+        'reference_id' => $user->id,
+        'requires_acknowledgement' => true,
     ]);
 
     return response()->json(['success' => true, 'user' => $user, 'password' => $plainPassword]);
@@ -281,10 +297,10 @@ Route::post('/login', function (Request $request) {
         return '/dashboard';
     };
 
-    if (Auth::attempt($credentials)) {
-        $user = Auth::user();
+    $user = User::where('email', $credentials['email'])->first();
+
+    if ($user && Hash::check($credentials['password'], $user->password)) {
         if ($user->status !== 'Active') {
-            Auth::logout();
             if ($wantsJson) {
                 return response()->json([
                     'success' => false,
@@ -295,6 +311,36 @@ Route::post('/login', function (Request $request) {
                 'email' => 'Your account has been deactivated.',
             ]);
         }
+
+        if ($user->first_login_verification_required) {
+            Auth::logout();
+            $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+            $user->forceFill([
+                'first_login_otp' => Hash::make($otp),
+                'first_login_otp_expires_at' => now()->addMinutes(10),
+            ])->save();
+
+            $request->session()->put('first_login_user_id', $user->id);
+            Mail::to($user->email)->send(new FirstLoginVerificationMail($otp, $user->name));
+
+            if ($wantsJson) {
+                [$emailName, $emailDomain] = explode('@', $user->email, 2);
+                $maskedEmail = mb_substr($emailName, 0, min(2, mb_strlen($emailName))).'***@'.$emailDomain;
+
+                return response()->json([
+                    'success' => true,
+                    'requires_first_login_verification' => true,
+                    'masked_email' => $maskedEmail,
+                    'message' => 'A 6-digit verification code has been sent to your email.',
+                ]);
+            }
+
+            return back()->with('first_login_verification', true);
+        }
+
+        Auth::login($user);
+        $request->session()->forget('first_login_user_id');
         $request->session()->regenerate();
 
         $redirectPath = $dashboardPath($user->role ?? '');
@@ -320,6 +366,92 @@ Route::post('/login', function (Request $request) {
         'email' => 'Invalid email or password.',
     ]);
 });
+
+Route::post('/login/verify-first-login', function (Request $request) {
+    $validated = $request->validate([
+        'otp' => ['required', 'digits:6'],
+    ]);
+
+    $userId = $request->session()->get('first_login_user_id');
+    $user = $userId ? User::find($userId) : null;
+
+    if (!$user || !$user->first_login_verification_required || !$user->first_login_otp) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Your verification session is no longer valid. Please sign in again.',
+        ], 401);
+    }
+
+    if (!$user->first_login_otp_expires_at || $user->first_login_otp_expires_at->isPast()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'This code has expired. Please sign in again to receive a new code.',
+        ], 410);
+    }
+
+    if (!Hash::check($validated['otp'], $user->first_login_otp)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid verification code. Please try again.',
+        ], 422);
+    }
+
+    $user->forceFill([
+        'first_login_verification_required' => false,
+        'first_login_otp' => null,
+        'first_login_otp_expires_at' => null,
+        'email_verified_at' => $user->email_verified_at ?? now(),
+    ])->save();
+
+    $request->session()->forget('first_login_user_id');
+    Auth::login($user);
+    $request->session()->regenerate();
+
+    $role = strtolower($user->role ?? '');
+    $redirectPath = $role === 'accounting' ? '/adashboard' : ($role === 'operations' ? '/odashboard' : '/dashboard');
+
+    return response()->json([
+        'success' => true,
+        'redirect' => url($redirectPath),
+    ]);
+})->middleware('throttle:6,1')->name('login.verify-first-login');
+
+Route::post('/login/resend-first-login', function (Request $request) {
+    $userId = $request->session()->get('first_login_user_id');
+    $user = $userId ? User::find($userId) : null;
+
+    if (!$user || !$user->first_login_verification_required) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Your verification session is no longer valid. Please sign in again.',
+        ], 401);
+    }
+
+    if ($user->first_login_otp_expires_at) {
+        $nextResendAt = $user->first_login_otp_expires_at->copy()->subMinutes(9);
+        if (now()->lt($nextResendAt)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please wait before requesting another code.',
+                'retry_after' => max(1, (int) ceil(now()->diffInSeconds($nextResendAt, false))),
+            ], 429);
+        }
+    }
+
+    $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $user->forceFill([
+        'first_login_otp' => Hash::make($otp),
+        'first_login_otp_expires_at' => now()->addMinutes(10),
+    ])->save();
+
+    Mail::to($user->email)->send(new FirstLoginVerificationMail($otp, $user->name));
+
+    return response()->json([
+        'success' => true,
+        'message' => 'A new 6-digit verification code has been sent.',
+        'retry_after' => 60,
+    ]);
+})->middleware('throttle:6,1')->name('login.resend-first-login');
 
 Route::post('/logout', function (Request $request) {
 

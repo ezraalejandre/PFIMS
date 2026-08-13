@@ -6,6 +6,7 @@
     <title>Operations Login - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Olanding.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
 <body>
 

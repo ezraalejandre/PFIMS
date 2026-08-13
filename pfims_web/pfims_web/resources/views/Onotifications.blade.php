@@ -111,8 +111,9 @@
         .total-notif-item.card-blue { border-left-color: #1565c0; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="notifications-page">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -243,29 +244,17 @@
         var currentTab = 'all';
         var showOnlyTotals = false;
 
-        // ─── NOTIFICATION CATEGORY MUTING (mirrors settings toggles) ───
         var MUTABLE_TYPES = {
             project_updates: ['project_delayed', 'project_at_risk', 'project_delayed_total', 'project_at_risk_total', 'project_past_deadline_total'],
             budget_alerts: ['budget_expense_overrun_total', 'new_expense', 'new_budget', 'budget_updated'],
             inventory_alerts: ['item_low_stock', 'item_low_stock_total', 'item_out_of_stock', 'stock_in_expense']
         };
-
-        function getMutedTypes() {
-            var muted = [];
-            Object.keys(MUTABLE_TYPES).forEach(function(category) {
-                if (localStorage.getItem('notif_mute_' + category) === 'true') {
-                    muted = muted.concat(MUTABLE_TYPES[category]);
-                }
-            });
-            return muted;
-        }
-
         function filterMutedNotifications(list) {
-            var mutedTypes = getMutedTypes();
-            if (!mutedTypes.length) return list;
-            return list.filter(function(n) {
-                return mutedTypes.indexOf(n.type) === -1;
+            var mutedTypes = [];
+            Object.keys(MUTABLE_TYPES).forEach(function(category) {
+                if (localStorage.getItem('notif_mute_' + category) === 'true') mutedTypes = mutedTypes.concat(MUTABLE_TYPES[category]);
             });
+            return list.filter(function(n) { return n.requires_acknowledgement || mutedTypes.indexOf(n.type) === -1; });
         }
 
         // ─── HIDE NOTIFICATION BADGE ───
@@ -611,12 +600,13 @@
                 var timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
                 html += `
-                    <div class="notif-item ${readClass}" data-id="${notification.notification_id}" onclick="markAsRead(this)">
+                    <div class="notif-item ${readClass}" data-id="${notification.notification_id}" ${notification.requires_acknowledgement ? '' : 'onclick="markAsRead(this)"'}>
                         <div class="notif-icon ${icon.class}">${icon.text}</div>
                         <div class="notif-content">
                             <div class="notif-title">${notification.title}</div>
                             <div class="notif-desc">${notification.message}</div>
                             <div class="notif-time">${isToday ? 'Today' : isYesterday ? 'Yesterday' : dateStr} at ${timeStr}</div>
+                            ${notification.requires_acknowledgement ? '<button type="button" style="margin-top:10px; padding:8px 14px; border:0; border-radius:8px; background:#c9a96e; color:#fff; font-weight:600; cursor:pointer;" onclick="event.stopPropagation(); window.location.href=\'' + notification.action_url + '\'">Change Password</button>' : ''}
                         </div>
                         ${!notification.is_read ? '<div style="width: 8px; height: 8px; background: #1a237e; border-radius: 50%; flex-shrink: 0; margin-left: 10px;"></div>' : ''}
                     </div>
@@ -655,6 +645,13 @@
             })
             .then(function(data) {
                 if (data.success) {
+                    if (data.removed) {
+                        allNotifications = allNotifications.filter(function(n) { return n.notification_id != id; });
+                        renderNotifications();
+                        updateBadgeCount();
+                        showSuccess('Reminder acknowledged.');
+                        return;
+                    }
                     element.classList.remove('unread');
                     element.classList.add('read');
                     var dot = element.querySelector('.notif-icon + .notif-content + div');
@@ -678,7 +675,7 @@
 
         // ─── MARK ALL READ ───
         function markAllRead() {
-            var unreadIds = allNotifications.filter(function(n) { return !n.is_read; }).map(function(n) { return n.notification_id; });
+            var unreadIds = allNotifications.filter(function(n) { return !n.is_read && !n.requires_acknowledgement; }).map(function(n) { return n.notification_id; });
             
             if (unreadIds.length === 0) {
                 showSuccess('All notifications are already read!');
@@ -699,7 +696,7 @@
             })
             .then(function(data) {
                 if (data.success) {
-                    allNotifications.forEach(function(n) { n.is_read = true; });
+                    allNotifications.forEach(function(n) { if (!n.requires_acknowledgement) n.is_read = true; });
                     renderNotifications();
                     updateBadgeCount();
                     showSuccess('All notifications marked as read!');
@@ -709,7 +706,7 @@
             })
             .catch(function(error) {
                 console.error('Mark all read error:', error);
-                allNotifications.forEach(function(n) { n.is_read = true; });
+                allNotifications.forEach(function(n) { if (!n.requires_acknowledgement) n.is_read = true; });
                 renderNotifications();
                 updateBadgeCount();
                 showSuccess('All notifications marked as read!');

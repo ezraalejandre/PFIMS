@@ -7,8 +7,9 @@
     <title>Operations Reports - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Oreports.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="reports-page">
 
     <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
     <header class="top-header">

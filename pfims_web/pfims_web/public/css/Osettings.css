@@ -17,6 +17,12 @@ body {
     position: relative;
 }
 
+/* Hide the browser's reveal icon; the modal provides its own eye button. */
+.password-control input::-ms-reveal,
+.password-control input::-ms-clear {
+    display: none;
+}
+
 .password-control input {
     padding-right: 44px;
 }

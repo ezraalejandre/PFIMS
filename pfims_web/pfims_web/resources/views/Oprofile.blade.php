@@ -10,6 +10,7 @@
         .success-notification { z-index: 9999 !important; }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
 <body>
 

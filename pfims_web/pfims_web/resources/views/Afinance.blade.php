@@ -531,8 +531,9 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="finance-page">
 
     <!-- ─── ERROR NOTIFICATION ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">

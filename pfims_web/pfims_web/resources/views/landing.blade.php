@@ -121,6 +121,11 @@
             padding-right: 42px; /* room for the icon */
             box-sizing: border-box;
         }
+        /* Hide the browser-provided reveal control; the app supplies its own. */
+        .password-field input::-ms-reveal,
+        .password-field input::-ms-clear {
+            display: none;
+        }
         .password-toggle {
             position: absolute;
             top: 50%;
@@ -160,6 +165,7 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
 <body class="landing-page">
 
@@ -171,8 +177,34 @@
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
+    <div id="serverLoginError" data-message="{{ $errors->first() }}" hidden></div>
 
     <!-- ─── FORGOT PASSWORD MODAL ─── -->
+    <div id="firstLoginVerificationModal" class="modal-overlay" style="display:none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Verify Your Email</h2>
+            </div>
+            <div class="modal-body">
+                <p style="color:#888; margin-bottom:20px; font-size:.95rem;">
+                    We sent a 6-digit code to <strong id="firstLoginEmailDisplay"></strong>. Enter it to complete your first login.
+                </p>
+                <div class="form-group">
+                    <label for="firstLoginOtpInput">6-Digit Code</label>
+                    <input type="text" id="firstLoginOtpInput" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="letter-spacing:6px; text-align:center; font-size:1.2rem;">
+                </div>
+                <div id="firstLoginOtpError" class="login-alert" role="alert" hidden>
+                    <span class="alert-icon">!</span>
+                    <div><span id="firstLoginOtpErrorMessage"></span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" id="resendFirstLoginBtn" onclick="resendFirstLoginCode()" disabled>Resend code (60s)</button>
+                <button type="button" class="btn-save" id="verifyFirstLoginBtn" onclick="verifyFirstLoginCode()">Verify Code</button>
+            </div>
+        </div>
+    </div>
+
     <div id="forgotModal" class="modal-overlay" style="display: none;">
         <div class="modal-container">
 
@@ -353,6 +385,119 @@
             resetToken: ''
         };
 
+        var firstLoginResendTimer = null;
+
+        function startFirstLoginResendCountdown(seconds) {
+            var button = document.getElementById('resendFirstLoginBtn');
+            var remaining = Math.max(0, Number(seconds) || 60);
+            if (firstLoginResendTimer) clearInterval(firstLoginResendTimer);
+
+            function updateButton() {
+                if (remaining > 0) {
+                    button.disabled = true;
+                    button.textContent = 'Resend code (' + remaining + 's)';
+                    remaining--;
+                } else {
+                    button.disabled = false;
+                    button.textContent = 'Resend code';
+                    clearInterval(firstLoginResendTimer);
+                    firstLoginResendTimer = null;
+                }
+            }
+
+            updateButton();
+            firstLoginResendTimer = setInterval(updateButton, 1000);
+        }
+
+        function openFirstLoginVerification(email) {
+            document.getElementById('firstLoginEmailDisplay').textContent = email || '';
+            document.getElementById('firstLoginOtpInput').value = '';
+            document.getElementById('firstLoginOtpError').hidden = true;
+            document.getElementById('firstLoginVerificationModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            startFirstLoginResendCountdown(60);
+            setTimeout(function () { document.getElementById('firstLoginOtpInput').focus(); }, 0);
+        }
+
+        async function resendFirstLoginCode() {
+            var button = document.getElementById('resendFirstLoginBtn');
+            button.disabled = true;
+            button.textContent = 'Sending...';
+            document.getElementById('firstLoginOtpError').hidden = true;
+
+            try {
+                var res = await fetch("{{ route('login.resend-first-login') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({})
+                });
+                var data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    showFirstLoginOtpError(data.message || 'Unable to resend the code.');
+                    startFirstLoginResendCountdown(data.retry_after || 60);
+                    return;
+                }
+
+                document.getElementById('firstLoginOtpInput').value = '';
+                showError(data.message, true);
+                startFirstLoginResendCountdown(data.retry_after || 60);
+            } catch (err) {
+                showFirstLoginOtpError('Unable to resend the code right now. Please try again.');
+                startFirstLoginResendCountdown(60);
+            }
+        }
+
+        function showFirstLoginOtpError(message) {
+            document.getElementById('firstLoginOtpErrorMessage').textContent = message;
+            document.getElementById('firstLoginOtpError').hidden = false;
+        }
+
+        async function verifyFirstLoginCode() {
+            var otp = document.getElementById('firstLoginOtpInput').value.trim();
+            var button = document.getElementById('verifyFirstLoginBtn');
+            document.getElementById('firstLoginOtpError').hidden = true;
+
+            if (!/^\d{6}$/.test(otp)) {
+                showFirstLoginOtpError('Please enter the complete 6-digit code.');
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = 'Verifying...';
+
+            try {
+                var res = await fetch("{{ route('login.verify-first-login') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ otp: otp })
+                });
+                var data = await res.json();
+
+                if (res.ok && data.success && data.redirect) {
+                    window.location.assign(data.redirect);
+                    return;
+                }
+
+                showFirstLoginOtpError(firstValidationMessage(data.errors, data.message || 'Unable to verify the code.'));
+            } catch (err) {
+                showFirstLoginOtpError('Unable to verify the code right now. Please try again.');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Verify Code';
+            }
+        }
+
         // ─── PASSWORD VISIBILITY TOGGLE ───
         function togglePasswordVisibility(inputId, btnEl) {
             if (window.event) window.event.preventDefault();
@@ -425,6 +570,11 @@
                     body: new FormData(form)
                 });
                 var data = await res.json();
+
+                if (res.ok && data.success && data.requires_first_login_verification) {
+                    openFirstLoginVerification(data.masked_email);
+                    return;
+                }
 
                 if (res.ok && data.success && data.redirect) {
                     window.location.assign(data.redirect);
@@ -616,12 +766,18 @@
         });
 
         document.getElementById('loginForm').addEventListener('submit', submitLogin);
+        document.getElementById('firstLoginOtpInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                verifyFirstLoginCode();
+            }
+        });
 
-        @if ($errors->any())
-            document.addEventListener('DOMContentLoaded', function() {
-                showError(@json($errors->first()));
-            });
-        @endif
+        document.addEventListener('DOMContentLoaded', function() {
+            var serverLoginError = document.getElementById('serverLoginError');
+            var serverLoginErrorMessage = serverLoginError ? serverLoginError.dataset.message : '';
+            if (serverLoginErrorMessage) showError(serverLoginErrorMessage);
+        });
     </script>
 
 </body>
