@@ -21,7 +21,8 @@ class InventoryTransactionController extends Controller
             'project_id'=>'nullable|integer',
             'transaction_type'=>'required|string|in:IN,OUT',
             'quantity'=>'required|numeric|min:0.01',
-            'transaction_date'=>'required|date',
+            'bar_code'=>'nullable|integer|min:0',
+            'transaction_date'=>'required|date|before_or_equal:today',
 
         ]);
 
@@ -55,6 +56,7 @@ class InventoryTransactionController extends Controller
                     'project_id'       => $request->project_id,
                     'transaction_type' => $request->transaction_type,
                     'quantity'         => $request->quantity,
+                    'bar_code'         => $request->bar_code,
                     'transaction_date' => $request->transaction_date,
                 ]);
 
@@ -134,6 +136,7 @@ class InventoryTransactionController extends Controller
                 'p.project_name',
                 't.transaction_type',
                 't.quantity',
+                't.bar_code',
                 't.transaction_date'
             )
             ->orderByDesc('t.transaction_date')

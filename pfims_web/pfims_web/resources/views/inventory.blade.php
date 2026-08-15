@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="{{ asset('css/Inventory.css') }}">
     <style>
         #deleteConfirmModal { z-index: 9999 !important; }
-        #expenseConfirmModal { z-index: 9999 !important; }
         
         /* Add Item Modal specific styles */
         .modal-add-item .modal-container {
@@ -474,8 +473,8 @@
                         <tr>
                             <th>Item Name</th>
                             <th>Category</th>
-                            <th>Unit</th>
                             <th>Supplier</th>
+                            <th>Unit</th>
                             <th>Current Stock</th>
                             <th>Status</th>
                             <th style="text-align: center;">Action</th>
@@ -524,15 +523,15 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Item Name</th>
+                            <th>Project Name</th>
                             <th>Category</th>
-                            <th>Unit</th>
-                            <th>Quantity</th>
-                            <th>Supplier</th>
+                            <th>Item Name</th>
+                            <th>Description</th>
+                            <th>Bar Code</th>
                             <th>Type</th>
                             <th>Date</th>
-                            <th>Current Stock</th>
-                            <th>Status</th>
+                            <th>Unit</th>
+                            <th>Qty</th>
                             <th style="text-align: center;">Actions</th>
                         </tr>
                     </thead>
@@ -644,6 +643,7 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeItemDetailModal()">Close</button>
+                <button class="btn-delete" onclick="deleteItem()">Delete Item</button>
                 <button class="btn-edit-project" onclick="openItemEditModal()">Edit Item</button>
             </div>
         </div>
@@ -729,6 +729,11 @@
                     <input type="number" id="viewQuantityInput" class="view-input" style="display: none;" min="1">
                 </div>
                 <div class="view-item">
+                    <label>Bar Code</label>
+                    <span id="viewBarCodeDisplay" class="view-value">—</span>
+                    <input type="text" id="viewBarCodeInput" class="view-input" style="display: none;" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+                <div class="view-item">
                     <label>Supplier</label>
                     <span id="viewSupplierDisplay" class="view-value">—</span>
                     <select id="viewSupplierInput" class="view-input" style="display: none;" disabled>
@@ -747,14 +752,6 @@
                     <label>Date</label>
                     <span id="viewDateDisplay" class="view-value">—</span>
                     <input type="date" id="viewDateInput" class="view-input" style="display: none;">
-                </div>
-                <div class="view-item">
-                    <label>Current Stock</label>
-                    <span id="viewStockDisplay" class="view-value">—</span>
-                </div>
-                <div class="view-item">
-                    <label>Status</label>
-                    <span id="viewStatusDisplay" class="view-value status-badge">—</span>
                 </div>
                 <div class="view-item" id="viewProjectRow" style="display: none;">
                     <label>Project</label>
@@ -820,6 +817,11 @@
                     <input type="text" id="transactionItemSupplier" readonly style="background: #f5f5f5; color: #555;">
                 </div>
 
+                <div class="form-group">
+                    <label>Barcode</label>
+                    <input type="text" id="transactionItemBarCode" placeholder="Enter transaction barcode" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+
                 <!-- Project Selection for OUT transactions -->
                 <div class="form-group" id="transactionProjectGroup" style="display: none;">
                     <label>Project Name <span class="required" style="display:none;" id="transactionProjectRequired">*</span></label>
@@ -844,7 +846,7 @@
                     </div>
                     <div class="form-group">
                         <label>Transaction Date <span class="required">*</span></label>
-                        <input type="date" id="transactionDate" value="{{ date('Y-m-d') }}">
+                        <input type="date" id="transactionDate" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
                     </div>
                 </div>
 
@@ -890,6 +892,10 @@
                     <div class="summary-item">
                         <strong>Item Supplier</strong>
                         <span class="summary-value" id="reviewTransItemSupplier">—</span>
+                    </div>
+                    <div class="summary-item">
+                        <strong>Barcode</strong>
+                        <span class="summary-value" id="reviewTransItemBarCode">—</span>
                     </div>
                     <div class="summary-item">
                         <strong>Item Quantity</strong>
@@ -1199,7 +1205,6 @@
             populateViewDropdowns();
             populateEditItemDropdowns();
             populateProjectDropdown();
-            populateExpenseCategoryDropdown();
             populateFilterDropdowns();
         }
 
@@ -1529,13 +1534,13 @@
                 tr.innerHTML = `
                     <td><strong>${item.item_name || 'Unknown'}</strong></td>
                     <td>${item.category || '—'}</td>
-                    <td>${item.unit || '—'}</td>
                     <td>${item.supplier || '—'}</td>
+                    <td>${item.unit || '—'}</td>
                     <td>${stock}</td>
                     <td><span class="status-badge ${statusClass}"><span class="dot"></span> ${statusText}</span></td>
                     <td style="text-align: center;">
                         <button onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr'));" title="View Details" style="background: transparent; border: none; cursor: pointer; padding: 4px 8px; border-radius: 4px;">
-                            <img src="{{ asset('images/edit.jpg') }}" alt="View" style="width: 18px; height: 18px; opacity: 0.7; transition: 0.2s;" onmouseover="this.querySelector('img').style.opacity='1'" onmouseout="this.querySelector('img').style.opacity='0.7'">
+                            <img src="{{ asset('images/edit.jpg') }}" alt="View" style="width: 18px; height: 18px; opacity: 0.7; transition: 0.2s;">
                         </button>
                     </td>
                 `;
@@ -1662,6 +1667,7 @@
                 tr.setAttribute('data-category', row.category || '');
                 tr.setAttribute('data-unit', row.unit || '');
                 tr.setAttribute('data-quantity', row.quantity || '');
+                tr.setAttribute('data-bar-code', row.bar_code ?? '');
                 tr.setAttribute('data-supplier', row.supplier || '');
                 tr.setAttribute('data-supplier-id', row.supplier_id || '');
                 tr.setAttribute('data-type', typeLabel);
@@ -1673,25 +1679,20 @@
                 var statusClass = status === 'in-stock' ? 'in-stock' : (status === 'out-of-stock' ? 'out-of-stock' : 'low-stock');
 
                 tr.innerHTML = `
-                    <td><strong>${row.item_name}</strong></td>
+                    <td>${row.project || '-'}</td>
                     <td>${row.category}</td>
-                    <td>${row.unit}</td>
-                    <td>${row.quantity}</td>
-                    <td>${row.supplier}</td>
+                    <td><strong>${row.item_name}</strong></td>
+                    <td>${row.description || '-'}</td>
+                    <td>${row.bar_code ?? '-'}</td>
                     <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
                     <td>${dateValue}</td>
-                    <td>${stock}</td>
-                    <td><span class="status-badge ${statusClass}"><span class="dot"></span> ${statusText}</span></td>
+                    <td>${row.unit}</td>
+                    <td>${row.quantity}</td>
                     <td style="text-align: center;">
                         <div class="action-cell" style="display: flex; gap: 4px; justify-content: center; align-items: center;">
                             <button onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" title="View/Edit" style="background: transparent; border: none; cursor: pointer; padding: 4px 6px; border-radius: 4px;">
                                 <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 18px; height: 18px; opacity: 0.7; transition: 0.2s;" onmouseover="this.querySelector('img').style.opacity='1'" onmouseout="this.querySelector('img').style.opacity='0.7'">
                             </button>
-                            ${typeLabel === 'IN' ? `
-                            <button onclick="event.stopPropagation(); openExpenseFromTransaction(this.closest('tr'));" title="Create Expense from Stock-In" style="background: transparent; border: none; cursor: pointer; padding: 4px 6px; border-radius: 4px;">
-                                <img src="{{ asset('images/add.jpg') }}" alt="Add Expense" style="width: 18px; height: 18px; opacity: 0.7; transition: 0.2s;" onmouseover="this.querySelector('img').style.opacity='1'" onmouseout="this.querySelector('img').style.opacity='0.7'">
-                            </button>
-                            ` : ''}
                         </div>
                     </td>
                 `;
@@ -2008,6 +2009,37 @@
             });
         }
 
+        function deleteItem() {
+            if (!currentItemDetailRow) return;
+            var itemId = currentItemDetailRow.dataset.itemId || '';
+            if (!itemId) { showError('Item ID missing.'); return; }
+
+            openDeleteModal('Deleting this item will also delete its inventory transactions. Continue?', function() {
+                fetch('/api/inventory/item/' + itemId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        closeItemDetailModal();
+                        showSuccess(data.message || 'Item deleted successfully!');
+                        loadInventoryItems();
+                    } else {
+                        showError(data.message || 'Failed to delete item.');
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Error deleting item:', err);
+                    showError('Failed to delete item.');
+                });
+            });
+        }
+
         document.getElementById('itemDetailModal').addEventListener('click', function(e) {
             if (e.target === this) { closeItemDetailModal(); }
         });
@@ -2028,6 +2060,7 @@
             document.getElementById('transactionItemCategory').value = '';
             document.getElementById('transactionItemUnit').value = '';
             document.getElementById('transactionItemSupplier').value = '';
+            document.getElementById('transactionItemBarCode').value = '';
             document.getElementById('transactionQuantity').value = 1;
             document.getElementById('transactionDate').value = new Date().toISOString().split('T')[0];
             document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
@@ -2038,6 +2071,7 @@
             document.getElementById('reviewTransItemName').textContent = '—';
             document.getElementById('reviewTransItemCategory').textContent = '—';
             document.getElementById('reviewTransItemSupplier').textContent = '—';
+            document.getElementById('reviewTransItemBarCode').textContent = '—';
             document.getElementById('reviewTransItemQuantity').textContent = '—';
             document.getElementById('reviewTransItemUnit').textContent = '—';
             document.getElementById('reviewTransType').textContent = '—';
@@ -2070,12 +2104,15 @@
         function transactionNextStep(step) {
             var itemId = document.getElementById('transactionItemSelect').value;
             var quantity = document.getElementById('transactionQuantity').value;
+            var barCode = document.getElementById('transactionItemBarCode').value.trim();
             var date = document.getElementById('transactionDate').value;
             var type = document.querySelector('input[name="transactionType"]:checked');
 
             if (!itemId) { showError('Please select an item.'); return; }
             if (!quantity || quantity < 1) { showError('Please enter a valid quantity (minimum 1).'); return; }
+            if (barCode !== '' && !/^\d+$/.test(barCode)) { showError('Barcode must contain numbers only.'); return; }
             if (!date) { showError('Please select a transaction date.'); return; }
+            if (date > document.getElementById('transactionDate').max) { showError('Transaction date cannot be in the future.'); return; }
 
             var typeLabel = type ? type.value : 'IN';
             if (typeLabel === 'OUT') {
@@ -2097,10 +2134,12 @@
             var category = document.getElementById('transactionItemCategory').value || '—';
             var supplier = document.getElementById('transactionItemSupplier').value || '—';
             var unit = document.getElementById('transactionItemUnit').value || '—';
+            var barCode = document.getElementById('transactionItemBarCode').value || '—';
 
             document.getElementById('reviewTransItemName').textContent = itemName;
             document.getElementById('reviewTransItemCategory').textContent = category;
             document.getElementById('reviewTransItemSupplier').textContent = supplier;
+            document.getElementById('reviewTransItemBarCode').textContent = barCode;
             document.getElementById('reviewTransItemQuantity').textContent = quantity;
             document.getElementById('reviewTransItemUnit').textContent = unit;
             document.getElementById('reviewTransType').textContent = typeLabel === 'IN' ? 'IN (Item Stock in)' : 'OUT (Item Stock out)';
@@ -2138,6 +2177,7 @@
         function saveTransaction() {
             var itemId = document.getElementById('transactionItemSelect').value;
             var quantity = parseFloat(document.getElementById('transactionQuantity').value);
+            var barCode = document.getElementById('transactionItemBarCode').value.trim();
             var date = document.getElementById('transactionDate').value;
             var type = document.querySelector('input[name="transactionType"]:checked').value;
             var projectId = null;
@@ -2155,6 +2195,7 @@
                 project_id: projectId || null,
                 transaction_type: type,
                 quantity: quantity,
+                bar_code: barCode === '' ? null : parseInt(barCode, 10),
                 transaction_date: date
             };
 
@@ -2307,12 +2348,11 @@
             var category = row.dataset.category || '';
             var unit = row.dataset.unit || '';
             var quantity = row.dataset.quantity || '';
+            var barCode = row.dataset.barCode || '';
             var supplier = row.dataset.supplier || '';
             var supplierId = row.dataset.supplierId || '';
             var type = row.dataset.type || '';
             var date = row.dataset.date || '';
-            var stock = row.dataset.stock || '';
-            var status = row.dataset.status || '';
             var project = row.dataset.project || '';
 
             var selectedItem = inventoryItems.find(function(i) {
@@ -2341,19 +2381,12 @@
             document.getElementById('viewUnitDisplay').textContent = unit;
             document.getElementById('viewQuantityDisplay').textContent = quantity;
             document.getElementById('viewQuantityInput').value = quantity;
+            document.getElementById('viewBarCodeDisplay').textContent = barCode || '—';
+            document.getElementById('viewBarCodeInput').value = barCode;
             document.getElementById('viewSupplierDisplay').textContent = supplier;
             document.getElementById('viewTypeDisplay').textContent = type;
             document.getElementById('viewDateDisplay').textContent = date;
             document.getElementById('viewDateInput').value = date;
-            document.getElementById('viewStockDisplay').textContent = stock;
-            
-            var statusEl = document.getElementById('viewStatusDisplay');
-            statusEl.textContent = status;
-            statusEl.className = 'view-value status-badge';
-            if (status === 'In Stock') statusEl.classList.add('in-stock');
-            else if (status === 'Low Stock') statusEl.classList.add('low-stock');
-            else if (status === 'Out of Stock') statusEl.classList.add('out-of-stock');
-
             var projectRow = document.getElementById('viewProjectRow');
             if (type === 'OUT' && project) {
                 projectRow.style.display = 'flex';
@@ -2379,6 +2412,8 @@
             // Only show edit for Quantity and Date fields
             document.getElementById('viewQuantityDisplay').style.display = 'none';
             document.getElementById('viewQuantityInput').style.display = 'block';
+            document.getElementById('viewBarCodeDisplay').style.display = 'none';
+            document.getElementById('viewBarCodeInput').style.display = 'block';
             document.getElementById('viewDateDisplay').style.display = 'none';
             document.getElementById('viewDateInput').style.display = 'block';
             
@@ -2395,9 +2430,6 @@
             document.getElementById('viewUnitDisplay').style.display = 'block';
             document.getElementById('viewSupplierDisplay').style.display = 'block';
             document.getElementById('viewTypeDisplay').style.display = 'block';
-            document.getElementById('viewStockDisplay').style.display = 'block';
-            document.getElementById('viewStatusDisplay').style.display = 'block';
-            
             // Project row handling
             var projectRow = document.getElementById('viewProjectRow');
             if (projectRow.style.display !== 'none') {
@@ -2428,6 +2460,7 @@
             if (!currentRow) return;
             var transactionId = currentRow.dataset.id || '';
             var quantity = parseFloat(document.getElementById('viewQuantityInput').value);
+            var barCode = document.getElementById('viewBarCodeInput').value.trim();
             var date = document.getElementById('viewDateInput').value;
 
             if (!transactionId) { showError('Transaction ID missing.'); return; }
@@ -2439,9 +2472,14 @@
                 showError('Please select a date.');
                 return;
             }
+            if (barCode !== '' && !/^\d+$/.test(barCode)) {
+                showError('Barcode must contain numbers only.');
+                return;
+            }
 
             var payload = {
                 quantity: quantity,
+                bar_code: barCode === '' ? null : parseInt(barCode, 10),
                 transaction_date: date
             };
 
@@ -2460,13 +2498,15 @@
                 if (data.success) {
                     // Update the row data
                     currentRow.dataset.quantity = quantity;
+                    currentRow.dataset.barCode = barCode;
                     currentRow.dataset.date = date;
                     
                     // Update display cells
                     var cells = currentRow.querySelectorAll('td');
-                    if (cells.length >= 7) {
-                        cells[3].textContent = quantity; // Quantity column
-                        cells[6].textContent = new Date(date).toLocaleDateString(); // Date column
+                    if (cells.length >= 10) {
+                        cells[8].textContent = quantity;
+                        cells[4].textContent = barCode || '-';
+                        cells[6].textContent = new Date(date).toLocaleDateString();
                     }
                     
                     closeViewModal();

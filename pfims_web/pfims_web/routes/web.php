@@ -13,6 +13,7 @@ use App\Mail\FirstLoginVerificationMail;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\MLController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\PasswordController;
@@ -159,11 +160,128 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/inventory', [InventoryController::class, 'index']);
     Route::get('/api/inventory/lookup-data', [InventoryController::class, 'getLookupData']);
     Route::post('/api/inventory/item', [InventoryController::class, 'storeItem']);
+    Route::patch('/api/inventory/item/{id}', [InventoryController::class, 'updateItem']);
+    Route::delete('/api/inventory/item/{id}', [InventoryController::class, 'destroyItem']);
     Route::post('/api/inventory/transaction', [InventoryController::class, 'addTransaction']);
     Route::patch('/api/inventory/transaction/{id}', [InventoryController::class, 'updateTransaction']);
     Route::delete('/api/inventory/transaction/{id}', [InventoryController::class, 'destroyTransaction']);
     Route::get('/api/inventory/transactions', [InventoryController::class, 'getAllTransactions']);
     Route::get('/api/inventory/{itemId}/transactions', [InventoryController::class, 'getTransactions']);
+
+    Route::post('/api/inventory-transactions', [InventoryTransactionController::class, 'store']);
+    Route::get('/api/inventory-transactions', [InventoryTransactionController::class, 'index']);
+
+    Route::get('/api/inventory-categories', function () {
+        return response()->json(
+            DB::table('inventory_category_tbl')
+                ->select('inventory_category_id', 'inventory_category_name')
+                ->get()
+        );
+    });
+
+    Route::get('/api/inventory-items', function (Request $request) {
+        $query = DB::table('inventory_item_tbl')
+            ->select('item_id', 'item_name', 'inventory_category_id', 'supplier_id', 'unit_id', 'current_stock');
+
+        if ($request->has('category_id')) {
+            $query->where('inventory_category_id', $request->category_id);
+        }
+        if ($request->has('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        return response()->json($query->get());
+    });
+
+    Route::post('/api/inventory-items', function (Request $request) {
+        $id = DB::table('inventory_item_tbl')->insertGetId([
+            'item_name' => $request->item_name,
+            'inventory_category_id' => $request->inventory_category_id,
+            'supplier_id' => $request->supplier_id,
+            'unit_id' => $request->unit_id,
+            'current_stock' => $request->current_stock,
+            'reorder_level' => $request->reorder_level ?? 0,
+        ]);
+
+        return response()->json(['item_id' => $id], 201);
+    });
+
+    Route::put('/api/inventory-items/{id}', function (Request $request, $id) {
+        $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
+        if (!$exists) {
+            return response()->json(['message' => 'Item not found'], 404);
+        }
+
+        $data = [];
+        foreach ([
+            'item_name' => 'item_name',
+            'inventory_category_id' => 'inventory_category_id',
+            'supplier_id' => 'supplier_id',
+            'unit_id' => 'unit_id',
+            'current_stock' => 'current_stock',
+            'reorder_level' => 'reorder_level',
+        ] as $requestKey => $column) {
+            if ($request->has($requestKey)) {
+                $data[$column] = $request->input($requestKey);
+            }
+        }
+
+        if (empty($data)) {
+            return response()->json(['message' => 'No fields to update'], 422);
+        }
+
+        DB::table('inventory_item_tbl')->where('item_id', $id)->update($data);
+
+        return response()->json(DB::table('inventory_item_tbl')->where('item_id', $id)->first());
+    });
+
+    Route::delete('/api/inventory-items/{id}', function ($id) {
+        $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
+        if (!$exists) {
+            return response()->json(['message' => 'Item not found'], 404);
+        }
+
+        DB::table('inventory_transaction_tbl')->where('item_id', $id)->delete();
+        DB::table('inventory_item_tbl')->where('item_id', $id)->delete();
+
+        return response()->json(['message' => 'Item deleted'], 200);
+    });
+
+    Route::get('/api/inventory-items-list', function () {
+        return response()->json(
+            DB::table('inventory_item_tbl as i')
+                ->join('inventory_category_tbl as c', 'i.inventory_category_id', '=', 'c.inventory_category_id')
+                ->join('unit_tbl as u', 'i.unit_id', '=', 'u.unit_id')
+                ->leftJoinSub(
+                    DB::table('inventory_transaction_tbl as t1')
+                        ->select('t1.item_id', 't1.transaction_type', 't1.transaction_date')
+                        ->whereRaw('t1.transaction_date = (
+                            select max(t2.transaction_date) from inventory_transaction_tbl t2
+                            where t2.item_id = t1.item_id
+                        )'),
+                    'lt',
+                    'i.item_id',
+                    '=',
+                    'lt.item_id'
+                )
+                ->select(
+                    'i.item_id',
+                    'i.item_name',
+                    'i.current_stock',
+                    'c.inventory_category_name',
+                    'u.unit_name',
+                    'lt.transaction_type',
+                    'lt.transaction_date'
+                )
+                ->get()
+        );
+    });
+
+    Route::get('/api/suppliers', [SupplierController::class, 'index']);
+    Route::post('/api/suppliers', [SupplierController::class, 'store']);
+    Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
+    Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
+    Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
 });
 
 // Reports page

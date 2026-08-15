@@ -25,6 +25,9 @@ class InventoryController extends Controller
                 return [
                     'item_id' => $item->item_id,
                     'item_name' => $item->item_name,
+                    'inventory_category_id' => $item->inventory_category_id,
+                    'supplier_id' => $item->supplier_id,
+                    'unit_id' => $item->unit_id,
                     'category' => $item->category?->inventory_category_name ?? 'N/A',
                     'unit' => $item->unit?->unit_name ?? 'N/A',
                     'quantity' => $item->current_stock,
@@ -66,16 +69,18 @@ class InventoryController extends Controller
             'project_id' => 'nullable|integer',
             'transaction_type' => 'required|in:IN,OUT',
             'quantity' => 'required|numeric|min:0.01',
-            'transaction_date' => 'required|date',
+            'bar_code' => 'nullable|integer|min:0',
+            'transaction_date' => 'required|date|before_or_equal:today',
         ]);
 
         DB::beginTransaction();
         try {
+            $item = InventoryItem::findOrFail($validated['item_id']);
+
             // Create transaction record
             $transaction = InventoryTransaction::create($validated);
 
             // Update inventory stock
-            $item = InventoryItem::findOrFail($validated['item_id']);
             if ($validated['transaction_type'] === 'IN') {
                 $item->current_stock += $validated['quantity'];
             } else {
@@ -95,12 +100,51 @@ class InventoryController extends Controller
         }
     }
 
+    public function updateItem(Request $request, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'item_name' => 'required|string|max:100',
+            'inventory_category_id' => 'required|integer|exists:inventory_category_tbl,inventory_category_id',
+            'supplier_id' => 'required|integer|exists:supplier_tbl,supplier_id',
+            'unit_id' => 'required|integer|exists:unit_tbl,unit_id',
+            'reorder_level' => 'required|numeric|min:0',
+        ]);
+
+        $item = InventoryItem::findOrFail($id);
+        $item->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'data' => $item->fresh(),
+            'message' => 'Item updated successfully!',
+        ]);
+    }
+
+    public function destroyItem($id): JsonResponse
+    {
+        DB::beginTransaction();
+        try {
+            $item = InventoryItem::lockForUpdate()->findOrFail($id);
+            InventoryTransaction::where('item_id', $item->item_id)->delete();
+            $item->delete();
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Item deleted successfully!']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete item: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Get all transactions across inventory items
      */
     public function getAllTransactions(): JsonResponse
     {
-        $transactions = InventoryTransaction::with(['item.category', 'item.unit', 'item.supplier'])
+        $transactions = InventoryTransaction::with(['item.category', 'item.unit', 'item.supplier', 'project'])
             ->orderBy('transaction_date')
             ->orderBy('inventory_transaction_id')
             ->get();
@@ -121,12 +165,15 @@ class InventoryController extends Controller
             return [
                 'inventory_transaction_id' => $transaction->inventory_transaction_id,
                 'item_id' => $transaction->item_id,
+                'project' => $transaction->project?->project_name,
                 'item_name' => $transaction->item?->item_name ?? 'N/A',
+                'description' => null,
                 'category' => $transaction->item?->category?->inventory_category_name ?? 'N/A',
                 'unit' => $transaction->item?->unit?->unit_name ?? 'N/A',
                 'supplier' => $transaction->item?->supplier?->supplier_name ?? 'N/A',
                 'supplier_id' => $transaction->item?->supplier?->supplier_id ?? null,
                 'quantity' => $transaction->quantity,
+                'bar_code' => $transaction->bar_code,
                 'transaction_type' => $transaction->transaction_type,
                 'transaction_date' => $transaction->transaction_date,
                 'current_stock' => $runningStock[$itemId],
@@ -152,32 +199,18 @@ class InventoryController extends Controller
     public function updateTransaction(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
-            'item_name' => 'required|string|max:100',
-            'inventory_category_id' => 'required|integer|exists:inventory_category_tbl,inventory_category_id',
-            'supplier_id' => 'required|integer|exists:supplier_tbl,supplier_id',
-            'unit_id' => 'required|integer|exists:unit_tbl,unit_id',
-            'transaction_type' => 'required|in:IN,OUT',
             'quantity' => 'required|numeric|min:0.01',
+            'bar_code' => 'nullable|integer|min:0',
             'transaction_date' => 'required|date',
-            'project_id' => 'nullable|integer',
         ]);
 
-        $transaction = InventoryTransaction::findOrFail($id);
         DB::beginTransaction();
         try {
+            $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
             $transaction->update([
-                'transaction_type' => $validated['transaction_type'],
                 'quantity' => $validated['quantity'],
+                'bar_code' => $validated['bar_code'] ?? null,
                 'transaction_date' => $validated['transaction_date'],
-                'project_id' => $validated['project_id'] ?? null,
-            ]);
-
-            $item = InventoryItem::findOrFail($transaction->item_id);
-            $item->update([
-                'item_name' => $validated['item_name'],
-                'inventory_category_id' => $validated['inventory_category_id'],
-                'supplier_id' => $validated['supplier_id'],
-                'unit_id' => $validated['unit_id'],
             ]);
 
             $this->recalculateItemStock($transaction->item_id);
@@ -192,13 +225,23 @@ class InventoryController extends Controller
 
     public function destroyTransaction($id): JsonResponse
     {
-        $transaction = InventoryTransaction::findOrFail($id);
-        $itemId = $transaction->item_id;
-        $transaction->delete();
+        DB::beginTransaction();
+        try {
+            $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
+            $itemId = $transaction->item_id;
+            $transaction->delete();
 
-        $this->recalculateItemStock($itemId);
+            $this->recalculateItemStock($itemId);
+            DB::commit();
 
-        return response()->json(['success' => true, 'message' => 'Transaction deleted successfully!']);
+            return response()->json(['success' => true, 'message' => 'Transaction deleted successfully!']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete transaction: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     protected function recalculateItemStock(int $itemId): void

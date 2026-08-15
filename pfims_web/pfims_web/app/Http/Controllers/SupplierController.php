@@ -28,7 +28,7 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'supplier_name' => 'required|string|max:100',
             'address' => 'required|string|max:255',
-            'contact_number' => 'required|string|max:20',
+            'contact_number' => ['required', 'string', 'max:20', 'regex:/^(?=.*\d)[0-9+().\s-]+$/'],
         ]);
 
         $supplier = Supplier::create($validated);
@@ -50,7 +50,7 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'supplier_name' => 'required|string|max:100',
             'address' => 'required|string|max:255',
-            'contact_number' => 'required|string|max:20',
+            'contact_number' => ['required', 'string', 'max:20', 'regex:/^(?=.*\d)[0-9+().\s-]+$/'],
         ]);
 
         $supplier->update($validated);

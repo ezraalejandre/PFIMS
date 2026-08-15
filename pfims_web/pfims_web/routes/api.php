@@ -4,14 +4,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Services\NotificationService;
-use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\Api\FinExpenseCategoryController;
 use App\Http\Controllers\Api\FinExpenseController;
 use App\Http\Controllers\Api\FinReportController;
@@ -47,16 +45,6 @@ Route::post('/profile', [AuthController::class,'profile']);
 Route::post('/profile/photo', [AuthController::class,'uploadProfilePhoto']);
 
 Route::post('/change-password', [AuthController::class,'changePassword']);
-
-Route::post('/inventory-transactions', [InventoryTransactionController::class, 'store']);
-
-Route::get('/inventory-categories', function () {
-    return response()->json(
-        DB::table('inventory_category_tbl')
-            ->select('inventory_category_id', 'inventory_category_name')
-            ->get()
-    );
-});
 
 Route::get('/units', function () {
     return response()->json(
@@ -467,90 +455,6 @@ Route::delete('/expenses/{id}', function ($id) {
     return response()->json(['message' => 'Expense deleted'], 200);
 });
 
-/*
-|--------------------------------------------------------------------------
-| Inventory items
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/inventory-items', function (Request $request) {
-    $query = DB::table('inventory_item_tbl')
-        ->select('item_id', 'item_name', 'inventory_category_id', 'supplier_id', 'unit_id', 'current_stock');
-
-    if ($request->has('category_id')) {
-        $query->where('inventory_category_id', $request->category_id);
-    }
-    if ($request->has('supplier_id')) {
-        $query->where('supplier_id', $request->supplier_id);
-    }
-
-    return response()->json($query->get());
-});
-
-Route::post('/inventory-items', function (Request $request) {
-    $id = DB::table('inventory_item_tbl')->insertGetId([
-        'item_name'               => $request->item_name,
-        'inventory_category_id'   => $request->inventory_category_id,
-        'supplier_id'             => $request->supplier_id,
-        'unit_id'                 => $request->unit_id,
-        'current_stock'           => $request->current_stock,
-        'reorder_level'           => $request->reorder_level ?? 0,
-    ]);
-
-    return response()->json(['item_id' => $id], 201);
-});
-
-// NEW: update an inventory item. Every field is optional so the client can
-// send just the ones it actually changed (e.g. name + stock from the Edit
-// Item modal) without clobbering the rest.
-//
-// NOTE: low-stock notification is NOT wired in here yet — see the message
-// after this file. It needs the same "capture old value before update"
-// pattern used above for project status, plus it likely also needs to live
-// inside InventoryTransactionController::store, since stock probably
-// changes there too (not just through this route).
-Route::put('/inventory-items/{id}', function (Request $request, $id) {
-    $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
-    if (!$exists) {
-        return response()->json(['message' => 'Item not found'], 404);
-    }
-
-    $data = [];
-    foreach ([
-        'item_name'             => 'item_name',
-        'inventory_category_id' => 'inventory_category_id',
-        'supplier_id'           => 'supplier_id',
-        'unit_id'                => 'unit_id',
-        'current_stock'          => 'current_stock',
-        'reorder_level'           => 'reorder_level',
-    ] as $requestKey => $column) {
-        if ($request->has($requestKey)) {
-            $data[$column] = $request->input($requestKey);
-        }
-    }
-
-    if (empty($data)) {
-        return response()->json(['message' => 'No fields to update'], 422);
-    }
-
-    DB::table('inventory_item_tbl')->where('item_id', $id)->update($data);
-
-    $item = DB::table('inventory_item_tbl')->where('item_id', $id)->first();
-    return response()->json($item);
-});
-
-Route::delete('/inventory-items/{id}', function ($id) {
-    $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
-    if (!$exists) {
-        return response()->json(['message' => 'Item not found'], 404);
-    }
-
-    DB::table('inventory_transaction_tbl')->where('item_id', $id)->delete();
-    DB::table('inventory_item_tbl')->where('item_id', $id)->delete();
-
-    return response()->json(['message' => 'Item deleted'], 200);
-});
-
 // ─── EXPENSES ROUTES ─────────────────────────────────────────────
 
 Route::get('/expense-categories', function () {
@@ -686,52 +590,9 @@ Route::delete('/expenses/{id}', function ($id) {
     return response()->json(['message' => 'Expense deleted successfully']);
 });
 
-Route::get('/inventory-items-list', function () {
-    return response()->json(
-        DB::table('inventory_item_tbl as i')
-            ->join('inventory_category_tbl as c', 'i.inventory_category_id', '=', 'c.inventory_category_id')
-            ->join('unit_tbl as u', 'i.unit_id', '=', 'u.unit_id')
-            ->leftJoinSub(
-                DB::table('inventory_transaction_tbl as t1')
-                    ->select('t1.item_id', 't1.transaction_type', 't1.transaction_date')
-                    ->whereRaw('t1.transaction_date = (
-                        select max(t2.transaction_date) from inventory_transaction_tbl t2
-                        where t2.item_id = t1.item_id
-                    )'),
-                'lt',
-                'i.item_id',
-                '=',
-                'lt.item_id'
-            )
-            ->select(
-                'i.item_id',
-                'i.item_name',
-                'i.current_stock',
-                'c.inventory_category_name',
-                'u.unit_name',
-                'lt.transaction_type',
-                'lt.transaction_date'
-            )
-            ->get()
-    );
-});
-
-/*
-|--------------------------------------------------------------------------
-| Suppliers
-|--------------------------------------------------------------------------
-*/
-
-Route::get('/suppliers', [SupplierController::class, 'index']);
-Route::post('/suppliers', [SupplierController::class, 'store']);
-Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
-Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
-Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
-
 Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'reset']);
-Route::get('/inventory-transactions', [InventoryTransactionController::class, 'index']);
 Route::get('/budgets', [BudgetController::class, 'index']);
 Route::post('/budgets', [BudgetController::class, 'store']);
 

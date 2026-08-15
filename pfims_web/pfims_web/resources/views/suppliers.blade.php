@@ -157,7 +157,7 @@
                         <th>Supplier Name</th>
                         <th>Address</th>
                         <th>Contact Number</th>
-                        <th style="width: 60px; text-align: center;">Action</th>
+                        <th style="width: 140px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="supplierTableBody">
@@ -195,15 +195,31 @@
                     </div>
                     <div class="col-group">
                         <label>Supplier Contact no.</label>
-                        <input type="text" placeholder="Item Name" id="addSupplierContact">
+                        <input type="tel" placeholder="e.g. +63 (912) 345-6789" id="addSupplierContact" inputmode="tel" maxlength="20" oninput="this.value = this.value.replace(/[^0-9+().\s-]/g, '')">
                     </div>
                 </div>
             </div>
 
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
-                <button class="btn-save" onclick="saveSupplier()">Add Supplier</button>
+                <button class="btn-save" id="addSupplierSubmitBtn" onclick="saveSupplier()">Add Supplier</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ─── OVERLAY / MODAL (Supplier Details) ─── -->
+    <div id="viewSupplierModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Supplier Details</h2>
+                <button class="modal-close" onclick="closeViewModal()">×</button>
+            </div>
+            <div class="modal-body view-details-grid">
+                <div class="view-item"><label>Supplier Name</label><span id="viewSupplierName" class="view-value">—</span></div>
+                <div class="view-item"><label>Supplier Address</label><span id="viewSupplierAddress" class="view-value">—</span></div>
+                <div class="view-item"><label>Supplier Contact no.</label><span id="viewSupplierContact" class="view-value">—</span></div>
+            </div>
+            <div class="modal-footer"><button class="btn-cancel" onclick="closeViewModal()">Close</button></div>
         </div>
     </div>
 
@@ -220,7 +236,7 @@
                 <div class="edit-section">
                     <div class="left-col">
                         <div class="current-label">Current Supplier Name</div>
-                        <div class="current-value">Description</div>
+                        <div class="current-value" id="currentSupplierName">—</div>
                     </div>
                     <div class="right-col">
                         <label>Supplier Name</label>
@@ -234,7 +250,7 @@
                 <div class="edit-section">
                     <div class="left-col">
                         <div class="current-label">Current Supplier Address</div>
-                        <div class="current-value">Description</div>
+                        <div class="current-value" id="currentSupplierAddress">—</div>
                     </div>
                     <div class="right-col">
                         <label>Address</label>
@@ -248,11 +264,11 @@
                 <div class="edit-section">
                     <div class="left-col">
                         <div class="current-label">Current Supplier Contact no.</div>
-                        <div class="current-value">Description</div>
+                        <div class="current-value" id="currentSupplierContact">—</div>
                     </div>
                     <div class="right-col">
                         <label>Contact no.</label>
-                        <input type="text" placeholder="Item Name" id="editSupplierContact">
+                        <input type="tel" placeholder="e.g. +63 (912) 345-6789" id="editSupplierContact" inputmode="tel" maxlength="20" oninput="this.value = this.value.replace(/[^0-9+().\s-]/g, '')">
                     </div>
                 </div>
             </div>
@@ -305,13 +321,34 @@
                     <td>${supplier.address}</td>
                     <td>${supplier.contact_number}</td>
                     <td style="text-align: center;">
-                        <button class="btn-edit" onclick="openEditModal(${supplier.supplier_id})">
-                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
+                        <button class="btn-view-details" onclick="openViewModal(${supplier.supplier_id})" title="View Details" aria-label="View supplier details">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5.5 0-9.5 5.2-9.7 5.4a2.5 2.5 0 0 0 0 3.2C2.5 13.8 6.5 19 12 19s9.5-5.2 9.7-5.4a2.5 2.5 0 0 0 0-3.2C21.5 10.2 17.5 5 12 5Zm0 11.5A4.5 4.5 0 1 1 12 7a4.5 4.5 0 0 1 0 9.5Zm0-7A2.5 2.5 0 1 0 12 14a2.5 2.5 0 0 0 0-5Z"/></svg>
                         </button>
+                        <button class="btn-edit" onclick="openEditModal(${supplier.supplier_id})" title="Edit Supplier" aria-label="Edit supplier"><img src="{{ asset('images/edit.jpg') }}" alt="Edit"></button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        function openViewModal(supplierId) {
+            fetch(`/api/suppliers/${supplierId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.message || 'Unable to load supplier.');
+                    const supplier = data.data;
+                    document.getElementById('viewSupplierName').textContent = supplier.supplier_name || '—';
+                    document.getElementById('viewSupplierAddress').textContent = supplier.address || '—';
+                    document.getElementById('viewSupplierContact').textContent = supplier.contact_number || '—';
+                    document.getElementById('viewSupplierModal').classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                })
+                .catch(error => showError(error.message || 'Unable to load supplier.'));
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewSupplierModal').classList.remove('active');
+            document.body.style.overflow = '';
         }
 
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
@@ -343,7 +380,11 @@
             var contact = document.getElementById('addSupplierContact').value.trim();
 
             if (!name || !address || !contact) {
-                alert('Please fill in all fields.');
+                showError('Please fill in all supplier fields.');
+                return;
+            }
+            if (!/^(?=.*\d)[0-9+().\s-]+$/.test(contact)) {
+                showError('Contact number may only contain numbers, spaces, +, -, parentheses, and periods.');
                 return;
             }
 
@@ -353,27 +394,41 @@
                 contact_number: contact
             };
 
+            const submitButton = document.getElementById('addSupplierSubmitBtn');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Saving...';
+
             fetch('/api/suppliers', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(payload)
             })
-            .then(response => response.json())
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat()[0] || 'Error saving supplier.');
+                return data;
+            })
             .then(data => {
                 if (data.success) {
                     closeAddModal();
                     showSuccess(data.message);
                     loadSuppliers();
                 } else {
-                    alert('Error saving supplier');
+                    showError(data.message || 'Error saving supplier.');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error saving supplier');
+                showError(error.message || 'Error saving supplier.');
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Add Supplier';
             });
         }
 
@@ -390,6 +445,9 @@
                         document.getElementById('editSupplierName').value = supplier.supplier_name;
                         document.getElementById('editSupplierAddress').value = supplier.address;
                         document.getElementById('editSupplierContact').value = supplier.contact_number;
+                        document.getElementById('currentSupplierName').textContent = supplier.supplier_name || '—';
+                        document.getElementById('currentSupplierAddress').textContent = supplier.address || '—';
+                        document.getElementById('currentSupplierContact').textContent = supplier.contact_number || '—';
                     }
                 })
                 .catch(error => console.error('Error loading supplier:', error));
@@ -435,6 +493,7 @@
             .then(data => {
                 closeDeleteModal();
                 if (data.success) {
+                    closeEditModal();
                     showSuccess(data.message || 'Supplier deleted successfully!');
                     loadSuppliers();
                 } else {
@@ -455,6 +514,10 @@
 
             if (!name || !address || !contact) {
                 alert('Please fill in all fields.');
+                return;
+            }
+            if (!/^(?=.*\d)[0-9+().\s-]+$/.test(contact)) {
+                showError('Contact number may only contain numbers, spaces, +, -, parentheses, and periods.');
                 return;
             }
 

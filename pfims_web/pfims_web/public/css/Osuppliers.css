@@ -348,6 +348,60 @@ body {
     filter: brightness(0.7);
 }
 
+.btn-view-details {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    padding: 4px 8px;
+}
+
+.btn-view-details svg {
+    fill: #000;
+    height: 22px;
+    transition: 0.2s;
+    width: 22px;
+}
+
+html[data-theme="dark"] .btn-view-details svg {
+    fill: #fff;
+}
+
+.btn-view-details:hover svg {
+    filter: brightness(0.7);
+    transform: scale(1.15);
+}
+
+#viewSupplierModal .view-details-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#viewSupplierModal .view-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+#viewSupplierModal .view-item label {
+    color: #666;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+#viewSupplierModal .view-value {
+    color: #222;
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+}
+
+html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value) {
+    color: #fff;
+}
+
 /* ─── SUCCESS NOTIFICATION ─── */
 .success-notification {
     position: fixed;
@@ -564,13 +618,13 @@ body {
 .edit-section .left-col .current-label {
     font-size: 0.85rem;
     font-weight: 500;
-    color: #333;
+    color: #fff;
     margin-bottom: 2px;
 }
 
 .edit-section .left-col .current-value {
     font-size: 0.9rem;
-    color: #888;
+    color: #fff;
     padding: 4px 0 6px 0;
     /* border-bottom removed */
 }
