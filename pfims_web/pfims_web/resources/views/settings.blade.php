@@ -44,14 +44,14 @@
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -288,8 +288,7 @@
                             <button class="btn-delete-user" onclick="deleteUserFromConfig()" style="background: #d32f2f; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Delete User</button>
                             <div style="display: flex; gap: 12px; margin-left: auto;">
                                 <button class="btn-cancel-config" onclick="closeUserConfig()" style="background: transparent; color: #888; border: 1px solid #ddd; padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Cancel</button>
-                                <button class="btn-save-config" onclick="saveUserConfig()" style="background: #c9a96e; color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Save Changes</button>
-                            </div>
+                                <button class="btn-save-config" onclick="saveUserConfig(this)" style="background: #c9a96e; color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Save Changes</button>
                         </div>
                     </div>
                 </div>
@@ -332,7 +331,7 @@
                     <!-- Delete + Save on the RIGHT -->
                     <div style="display: flex; gap: 12px;">
                         <button class="btn-delete-config" id="deleteConfigBtn" onclick="deleteConfigItem()" style="display: none; background: #d32f2f; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Delete</button>
-                        <button class="btn-save" onclick="saveConfigItem()" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Save</button>
+                        <button class="btn-save" onclick="saveConfigItem(this)" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Save</button>
                     </div>
                 </div>
             </div>
@@ -391,7 +390,7 @@
                 </div>
                 <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e9ecef; padding-top: 20px;">
                     <button class="btn-cancel" onclick="closeAddUserModal()" style="background: transparent; color: #888; border: 1px solid #ddd; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
-                    <button class="btn-save" onclick="saveNewUser()" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Add User</button>
+                    <button class="btn-save" onclick="saveNewUser(this)" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Add User</button>
                 </div>
             </div>
         </div>
@@ -441,8 +440,26 @@
     </div>
 
     <script>
-        // ─── SETTINGS NAVIGATION ───
+                // ─── SETTINGS NAVIGATION ───
         var csrfToken = '{{ csrf_token() }}';
+
+        // ─── BUTTON LOADING STATE ───
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Saving...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
+        }
+
         function redirectToUserManagement() {
             window.location.href = '/settings?section=usermanagement';
         }
@@ -532,13 +549,15 @@
             activeConfigUserId = null;
         }
 
-        function saveUserConfig() {
+                function saveUserConfig(btn) {
             if (!activeConfigUserId) return;
             var payload = {
                 role: document.getElementById('configRole').value,
                 status: document.getElementById('configStatus').value,
                 _token: csrfToken
             };
+
+            setButtonLoading(btn, true, 'Saving...');
 
             fetch('/users/' + activeConfigUserId, {
                 method: 'PATCH',
@@ -557,6 +576,9 @@
             .catch(function(err) {
                 alert('Failed to update user.');
                 console.error(err);
+            })
+            .finally(function() {
+                setButtonLoading(btn, false);
             });
         }
 
@@ -707,7 +729,7 @@
             document.body.style.overflow = '';
         }
 
-        function saveConfigItem() {
+                function saveConfigItem(btn) {
             var id = document.getElementById('configItemId').value;
             var name = document.getElementById('configItemName').value.trim();
             if (!name) {
@@ -725,6 +747,8 @@
                 url += '/' + id;
                 method = 'PATCH';
             }
+
+            setButtonLoading(btn, true, 'Saving...');
 
             fetch(url, {
                 method: method,
@@ -748,14 +772,20 @@
             .catch(function(err) {
                 console.error(err);
                 alert('Failed to save item.');
+            })
+            .finally(function() {
+                setButtonLoading(btn, false);
             });
         }
 
-        function deleteConfigItem() {
+                function deleteConfigItem() {
             var id = document.getElementById('configItemId').value;
             if (!id) return;
             var name = document.getElementById('configItemName').value.trim();
             if (!confirm('Are you sure you want to permanently delete "' + name + '"?')) return;
+
+            var btn = document.getElementById('deleteConfigBtn');
+            setButtonLoading(btn, true, 'Deleting...');
 
             fetch('/api/config/' + currentConfigType + '/' + id, {
                 method: 'DELETE',
@@ -777,6 +807,9 @@
             .catch(function(err) {
                 console.error(err);
                 alert('Failed to delete item.');
+            })
+            .finally(function() {
+                setButtonLoading(btn, false);
             });
         }
         
@@ -813,7 +846,7 @@
             document.body.style.overflow = '';
         }
 
-        function saveNewUser() {
+                function saveNewUser(btn) {
             var name = document.getElementById('addUserName').value.trim();
             var email = document.getElementById('addUserEmail').value.trim();
             var role = document.getElementById('addUserRole').value;
@@ -824,6 +857,8 @@
             }
 
             var payload = { name: name, email: email, role: role, status: status, _token: csrfToken };
+
+            setButtonLoading(btn, true, 'Adding...');
 
             fetch('/users', {
                 method: 'POST',
@@ -846,6 +881,9 @@
             .catch(function(err) {
                 alert('Failed to add user.');
                 console.error(err);
+            })
+            .finally(function() {
+                setButtonLoading(btn, false);
             });
         }
 
@@ -977,8 +1015,9 @@
             input.focus({ preventScroll: true });
         }
 
-        function submitChangePassword(event) {
+                function submitChangePassword(event) {
             event.preventDefault();
+            var saveBtn = event.submitter || document.querySelector('#changePasswordForm .btn-save');
             
             // Clear previous errors
             document.getElementById('currentPasswordError').style.display = 'none';
@@ -1016,6 +1055,8 @@
                 _token: csrfToken
             };
             
+                        setButtonLoading(saveBtn, true, 'Updating...');
+
             fetch('/change-password', {
                 method: 'POST',
                 headers: {
@@ -1049,6 +1090,9 @@
             .catch(function(err) {
                 console.error('Error:', err);
                 alert('An error occurred. Please try again.');
+            })
+            .finally(function() {
+                setButtonLoading(saveBtn, false);
             });
         }
 

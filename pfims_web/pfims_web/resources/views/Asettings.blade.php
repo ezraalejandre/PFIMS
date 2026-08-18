@@ -52,11 +52,11 @@
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li><a href="{{ url('/adashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/afinance') }}">FINANCE</a></li>
-                <li><a href="{{ url('/areports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/adashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/afinance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li><a href="{{ url('/areports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -289,8 +289,26 @@
     </div>
 
     <script>
-        // ─── SETTINGS NAVIGATION ───
+                // ─── SETTINGS NAVIGATION ───
         var csrfToken = '{{ csrf_token() }}';
+
+        // ─── BUTTON LOADING STATE ───
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Saving...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
+        }
+
         function switchSettings(el, section) {
             var navItems = document.querySelectorAll('.settings-nav li');
             navItems.forEach(function(item) { item.classList.remove('active'); });
@@ -442,8 +460,9 @@
             input.focus({ preventScroll: true });
         }
 
-        function submitChangePassword(event) {
+                function submitChangePassword(event) {
             event.preventDefault();
+            var saveBtn = event.submitter || document.querySelector('#changePasswordForm .btn-save');
             
             // Clear previous errors
             document.getElementById('currentPasswordError').style.display = 'none';
@@ -489,6 +508,8 @@
                 _token: csrfToken
             };
             
+                        setButtonLoading(saveBtn, true, 'Updating...');
+
             fetch('/change-password', {
                 method: 'POST',
                 headers: {
@@ -533,6 +554,9 @@
             .catch(function(err) {
                 console.error('Error:', err);
                 alert('An error occurred. Please try again.');
+            })
+            .finally(function() {
+                setButtonLoading(saveBtn, false);
             });
         }
 

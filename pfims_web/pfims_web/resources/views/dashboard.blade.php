@@ -5,102 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <style>
+        <style>
         .error-notification { z-index: 9999 !important; }
         .success-notification { z-index: 9999 !important; }
-        
-        /* Pagination Styles */
-        .pagination-wrapper {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 0;
-            border-top: 1px solid #e5e7eb;
-            margin-top: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .rows-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            color: #6b7280;
-        }
-        
-        .rows-info select {
-            padding: 6px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            background: white;
-            font-size: 14px;
-            cursor: pointer;
-            outline: none;
-        }
-        
-        .rows-info select:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px #93c5fd;
-        }
-        
-        .pagination-links {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-        }
-        
-        .pagination-links button {
-            padding: 8px 14px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            background: white;
-            color: #374151;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-        
-        .pagination-links button:hover:not(:disabled) {
-            background: #f3f4f6;
-            border-color: #9ca3af;
-        }
-        
-        .pagination-links button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .pagination-links button.active {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-        
-        .pagination-links button.active:hover {
-            background: #2563eb;
-        }
-        
-        .pagination-links .ellipsis {
-            padding: 8px 10px;
-            color: #6b7280;
-        }
-        
-        @media (max-width: 768px) {
-            .pagination-wrapper {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .rows-info {
-                justify-content: center;
-            }
-            
-            .pagination-links {
-                justify-content: center;
-                flex-wrap: wrap;
-            }
-        }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
@@ -149,14 +56,14 @@
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li class="active">DASHBOARD</li>
-                <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
+                <li class="active"><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -269,7 +176,8 @@
             <div class="projects-list" id="projectsList">
                 @if(isset($projects) && count($projects) > 0)
                     @foreach($projects as $project)
-                        <div class="project-item" 
+                                                <div class="project-item" 
+                             data-project-id="{{ $project->project_id }}"
                              data-name="{{ $project->project_name }}"
                              data-client="{{ $project->client_name ?? '—' }}"
                              data-budget="₱{{ number_format($project->budget->budget_amount ?? 0, 2) }}"
@@ -281,10 +189,35 @@
                              data-status="{{ $project->status ?? '—' }}"
                              data-progress="{{ $project->completion_percentage ?? 0 }}"
                              onclick="openProjectDetail(this)">
-                            <img src="{{ asset('images/building1.jpg') }}" alt="{{ $project->project_name }}">
+                                                        <img src="{{ asset('images/building1.jpg') }}" alt="{{ $project->project_name }}">
+                                                        @php
+                                $statusClass = match($project->status ?? '') {
+                                    'On Track' => 'on-track',
+                                    'At Risk' => 'at-risk',
+                                    'Delayed' => 'delayed',
+                                    'Completed' => 'completed',
+                                    default => '',
+                                };
+
+                                $budgetAmount = $project->budget->budget_amount ?? 0;
+                                $actualAmount = $project->budget->actual_amount ?? 0;
+                                $variance = $budgetAmount - $actualAmount;
+                                $variancePercent = $budgetAmount > 0 ? ($variance / $budgetAmount) * 100 : 0;
+                                if ($variance < 0) {
+                                    $budgetStatusText = 'Over Budget';
+                                    $budgetStatusClass = 'over-budget';
+                                } elseif ($variancePercent < 10) {
+                                    $budgetStatusText = 'At Risk';
+                                    $budgetStatusClass = 'at-risk';
+                                } else {
+                                    $budgetStatusText = 'On Track';
+                                    $budgetStatusClass = 'on-track';
+                                }
+                            @endphp
                             <div class="info">
                                 <h4>{{ $project->project_name }}</h4>
-                                <div class="budget">Budget: ₱{{ number_format($project->budget->budget_amount ?? 0, 0) }}</div>
+                                <div class="budget">Budget: ₱{{ number_format($budgetAmount, 0) }} <span class="status-text {{ $budgetStatusClass }}">{{ $budgetStatusText }}</span></div>
+                                <div class="budget">Client: {{ $project->client_name ?? '—' }} | Status: <span class="status-text {{ $statusClass }}">{{ $project->status ?? '—' }}</span></div>
                             </div>
                             <div class="progress-wrapper">
                                 <div class="progress-bar">
@@ -309,7 +242,7 @@
 
             <!-- ─── PAGINATION ─── -->
             <div class="pagination-wrapper">
-                <div class="rows-info">
+                                <div class="rows-info">
                     Rows Displayed:
                     <select id="projectsRowsPerPage" onchange="changeProjectPageSize()">
                         <option value="5">5</option>
@@ -318,6 +251,7 @@
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
+                    <span class="total-count"></span>
                 </div>
                 <div class="pagination-links" id="projectPaginationLinks">
                     <!-- Generated by JavaScript -->
@@ -367,8 +301,9 @@
                     <span id="detailStatus" class="status-badge">—</span>
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content: flex-end;">
+                        <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeProjectDetail()">Close</button>
+                <button class="btn-view-project" onclick="viewProject(this)">View Project</button>
             </div>
         </div>
     </div>
@@ -553,7 +488,8 @@
         // ─── PROJECT DETAIL MODAL ───
         var currentProjectData = null;
 
-        function openProjectDetail(element) {
+                function openProjectDetail(element) {
+            var projectId = element.dataset.projectId || '';
             var name = element.dataset.name || 'Untitled';
             var client = element.dataset.client || '—';
             var budget = element.dataset.budget || '—';
@@ -564,7 +500,7 @@
             var phase = element.dataset.phase || '—';
             var status = element.dataset.status || '—';
 
-            currentProjectData = { name: name };
+            currentProjectData = { id: projectId, name: name };
 
             document.getElementById('detailProjectName').textContent = name;
             document.getElementById('detailClientName').textContent = client;
@@ -595,9 +531,14 @@
             document.body.style.overflow = '';
         }
 
-        function viewProject() {
-            window.location.href = "{{ url('/projects') }}";
-        }
+                function viewProject(btn) {
+    var id = currentProjectData && currentProjectData.id ? currentProjectData.id : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Loading...';
+    }
+    window.location.href = "{{ url('/projects') }}" + (id ? '?project=' + id : '');
+}
 
         document.getElementById('projectDetailModal').addEventListener('click', function(e) {
             if (e.target === this) {

@@ -104,16 +104,16 @@ body.landing-page::before {
 }
 
 .sidebar {
-    top: 86px !important;
-    left: 16px !important;
+    top: 72px !important;
+    left: 0 !important;
     width: 248px !important;
-    height: calc(100vh - 102px) !important;
+    height: calc(100vh - 72px) !important;
     padding: 18px 14px !important;
-    background:
-        linear-gradient(180deg, rgba(31, 41, 55, 0.96), rgba(17, 24, 39, 0.98)) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 22px;
-    box-shadow: 0 16px 35px rgba(15, 23, 42, 0.24);
+    background: linear-gradient(180deg, #1f2937, #111827) !important;
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0;
+    box-shadow: 4px 0 20px rgba(15, 23, 42, 0.18);
     transition: width 0.24s ease, padding 0.24s ease;
 }
 
@@ -161,6 +161,7 @@ body.landing-page::before {
 .sidebar nav ul li a,
 .sidebar .bottom-nav ul li a {
     color: inherit !important;
+    text-decoration: none !important;
 }
 
 .sidebar nav ul li:hover,
@@ -183,7 +184,7 @@ body.landing-page::before {
 }
 
 .main-content {
-    margin-left: 288px !important;
+    margin-left: 248px !important;
     padding: 34px 34px 48px !important;
     transition: margin-left 0.24s ease, max-width 0.24s ease;
 }
@@ -235,8 +236,33 @@ html.sidebar-collapsed .sidebar .bottom-nav .nav-icon {
 }
 
 html.sidebar-collapsed .main-content {
-    margin-left: 116px !important;
-    max-width: calc(100vw - 116px);
+    margin-left: 76px !important;
+    max-width: calc(100vw - 76px);
+}
+
+.sidebar nav ul li a .nav-link-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    margin-right: 12px;
+    vertical-align: middle;
+    mix-blend-mode: screen;
+}
+
+html.sidebar-collapsed .sidebar nav ul li a {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+html.sidebar-collapsed .sidebar nav ul li a .nav-link-icon {
+    display: inline-block;
+    margin-right: 0;
+}
+
+html.sidebar-collapsed .sidebar nav a::before {
+    content: none !important;
 }
 
 .main-content h1,
@@ -477,11 +503,54 @@ button,
 
 @media (max-width: 900px) {
     .sidebar {
+        position: static !important;
         left: 0 !important;
-        top: 72px !important;
+        top: 0 !important;
         width: 100% !important;
         height: auto !important;
+        padding: 10px 8px !important;
         border-radius: 0 !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-collapse-toggle {
+        display: none !important;
+    }
+
+    .sidebar nav {
+        margin-top: 0 !important;
+    }
+
+    .sidebar nav ul,
+    .sidebar .bottom-nav ul {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 6px !important;
+        justify-content: center;
+    }
+
+    .sidebar nav ul li,
+    .sidebar .bottom-nav ul li {
+        flex: 0 0 auto;
+    }
+
+    .sidebar nav ul li a,
+    .sidebar .bottom-nav ul li a,
+    .sidebar .bottom-nav ul li button {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 0 !important;
+        font-size: 0 !important;
+        color: transparent !important;
+        padding: 8px !important;
+    }
+
+    .sidebar nav ul li a .nav-link-icon,
+    .sidebar .bottom-nav .nav-icon {
+        display: inline-block !important;
+        margin: 0 !important;
     }
 
     .main-content {
@@ -1921,36 +1990,112 @@ body:not(.landing-page) {
     box-sizing: border-box;
     min-width: 0;
     width: auto;
-    max-width: calc(100vw - 288px);
+    max-width: calc(100vw - 248px);
 }
 
-:where(
-    .table-wrapper,
-    .table-container,
-    .budget-table-wrapper,
-    .items-table-wrapper,
-    .forecast-table-wrapper,
-    .report-table-wrapper
-) {
+
+.table-wrapper,
+.table-container,
+.budget-table-wrapper,
+.items-table-wrapper,
+.forecast-table-wrapper,
+.report-table-wrapper {
     box-sizing: border-box;
-    display: block;
+    display: flex;
     min-width: 0;
     max-width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-inline: contain;
     -webkit-overflow-scrolling: touch;
+    position: relative;
+    background-image: none !important;
 }
 
-:where(
-    .table-wrapper,
-    .table-container,
-    .budget-table-wrapper,
-    .items-table-wrapper,
-    .forecast-table-wrapper,
-    .report-table-wrapper
-) > table {
+.table-wrapper > table,
+.table-container > table,
+.budget-table-wrapper > table,
+.items-table-wrapper > table,
+.forecast-table-wrapper > table,
+.report-table-wrapper > table {
     max-width: none;
+    flex: 0 0 auto;
+}
+
+.table-wrapper::before,
+.table-container::before,
+.budget-table-wrapper::before,
+.items-table-wrapper::before,
+.forecast-table-wrapper::before,
+.report-table-wrapper::before {
+    content: "";
+    position: sticky;
+    left: 0;
+    top: 0;
+    flex: 0 0 28px;
+    width: 28px;
+    margin-right: -28px;
+    align-self: stretch;
+    pointer-events: none;
+    z-index: 5;
+    background: linear-gradient(to right, var(--ui-surface-solid) 0%, rgba(255, 255, 255, 0) 100%);
+    transition: opacity 0.15s ease;
+}
+
+.table-wrapper::after,
+.table-container::after,
+.budget-table-wrapper::after,
+.items-table-wrapper::after,
+.forecast-table-wrapper::after,
+.report-table-wrapper::after {
+    content: "";
+    position: sticky;
+    right: 0;
+    top: 0;
+    flex: 0 0 28px;
+    width: 28px;
+    margin-left: -28px;
+    align-self: stretch;
+    pointer-events: none;
+    z-index: 5;
+    background: linear-gradient(to left, var(--ui-surface-solid) 0%, rgba(255, 255, 255, 0) 100%);
+    transition: opacity 0.15s ease;
+}
+
+.table-wrapper.is-at-start::before,
+.table-container.is-at-start::before,
+.budget-table-wrapper.is-at-start::before,
+.items-table-wrapper.is-at-start::before,
+.forecast-table-wrapper.is-at-start::before,
+.report-table-wrapper.is-at-start::before {
+    opacity: 0;
+}
+
+.table-wrapper.is-at-end::after,
+.table-container.is-at-end::after,
+.budget-table-wrapper.is-at-end::after,
+.items-table-wrapper.is-at-end::after,
+.forecast-table-wrapper.is-at-end::after,
+.report-table-wrapper.is-at-end::after {
+    opacity: 0;
+}
+
+html[data-theme="dark"] .table-wrapper::before,
+html[data-theme="dark"] .table-container::before,
+html[data-theme="dark"] .budget-table-wrapper::before,
+html[data-theme="dark"] .items-table-wrapper::before,
+html[data-theme="dark"] .forecast-table-wrapper::before,
+html[data-theme="dark"] .report-table-wrapper::before {
+    background: linear-gradient(to right, var(--ui-surface-solid) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+html[data-theme="dark"] .table-wrapper::after,
+html[data-theme="dark"] .table-container::after,
+html[data-theme="dark"] .budget-table-wrapper::after,
+html[data-theme="dark"] .items-table-wrapper::after,
+html[data-theme="dark"] .forecast-table-wrapper::after,
+html[data-theme="dark"] .report-table-wrapper::after {
+    background: linear-gradient(to left, var(--ui-surface-solid) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 @media (max-width: 900px) {
@@ -2147,36 +2292,27 @@ html[data-theme="dark"] .top-header .right a:hover > img:is(
     opacity: 1 !important;
 }
 
-@media (max-width: 900px) {
-    .sidebar-collapse-toggle {
-        display: none;
-    }
+/* Status text color indicators — Active Projects list (dashboard + Odashboard). */
+.dashboard-page .project-item .budget .status-text {
+    font-weight: 700;
+}
 
-    html.sidebar-collapsed .sidebar {
-        width: 100% !important;
-        padding: 18px 14px !important;
-    }
+.dashboard-page .project-item .budget .status-text.on-track {
+    color: #2e7d32;
+}
 
-    html.sidebar-collapsed .sidebar nav a {
-        justify-content: flex-start;
-        gap: initial !important;
-        font-size: inherit !important;
-    }
+.dashboard-page .project-item .budget .status-text.at-risk {
+    color: #e65100;
+}
 
-    html.sidebar-collapsed .sidebar nav a::before {
-        content: none;
-    }
+.dashboard-page .project-item .budget .status-text.delayed {
+    color: #c62828;
+}
 
-    html.sidebar-collapsed .sidebar .bottom-nav :where(a, button) {
-        justify-content: flex-start;
-        gap: 12px !important;
-        color: inherit !important;
-        font-size: inherit !important;
-    }
+.dashboard-page .project-item .budget .status-text.completed {
+    color: #667085;
+}
 
-    html.sidebar-collapsed .main-content {
-        margin-left: 0 !important;
-        width: 100%;
-        max-width: 100%;
-    }
+.dashboard-page .project-item .budget .status-text.over-budget {
+    color: #c62828;
 }

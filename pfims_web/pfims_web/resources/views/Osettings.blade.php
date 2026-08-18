@@ -52,13 +52,13 @@
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li><a href="{{ url('/odashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/oprojects') }}">PROJECTS</a></li>
-                <li><a href="{{ url('/oinventory') }}">INVENTORY</a></li>
-                <li><a href="{{ url('/osuppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/oreports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/odashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/oprojects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li><a href="{{ url('/oinventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li><a href="{{ url('/osuppliers') }}"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+                <li><a href="{{ url('/oreports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -291,6 +291,23 @@
     </div>
 
     <script>
+                // ─── BUTTON LOADING STATE ───
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Saving...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
+        }
+
         // ─── SETTINGS NAVIGATION ───
         function switchSettings(el, section) {
             var navItems = document.querySelectorAll('.settings-nav li');
@@ -439,8 +456,9 @@
             error.style.display = 'block';
         }
 
-        async function savePassword(event) {
+                async function savePassword(event) {
             if (event) event.preventDefault();
+            var saveBtn = (event && event.submitter) || document.querySelector('#changePasswordForm .btn-save');
             clearPasswordErrors();
             var current = document.getElementById('currentPassword').value;
             var newPass = document.getElementById('newPassword').value;
@@ -452,6 +470,8 @@
             else if (newPass === current) { showPasswordError('newPasswordError', 'The new password must be different from your current password.'); hasError = true; }
             if (newPass !== confirm) { showPasswordError('confirmPasswordError', 'Passwords do not match'); hasError = true; }
             if (hasError) return;
+
+            setButtonLoading(saveBtn, true, 'Updating...');
 
             try {
                 var response = await fetch('/change-password', {
@@ -477,12 +497,14 @@
                     if (Object.keys(errors).length) return;
                     throw new Error(data.message || 'Failed to update password.');
                 }
-                closeChangePasswordModal();
+                                closeChangePasswordModal();
                 showSuccess('Password updated successfully!');
                 var descElement = document.querySelector('.security-item .left .desc');
                 if (descElement) descElement.textContent = 'Last changed just now';
             } catch (error) {
                 showError(error.message || 'Failed to update password.');
+            } finally {
+                setButtonLoading(saveBtn, false);
             }
         }
 
