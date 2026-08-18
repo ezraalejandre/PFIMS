@@ -106,6 +106,92 @@ body {
     line-height: 1.4;
 }
 
+/* ─── ERROR NOTIFICATION (HIGHEST Z-INDEX) ─── */
+.error-notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999 !important;
+    background: #d32f2f;
+    color: #fff;
+    padding: 14px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    min-width: 350px;
+    max-width: 90%;
+    animation: slideDown 0.4s ease;
+}
+
+.error-notification .error-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.error-notification .error-icon {
+    font-size: 1.5rem;
+}
+
+.error-notification .error-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: 0.7;
+    transition: 0.2s;
+    margin-left: auto;
+}
+
+.error-notification .error-close:hover {
+    opacity: 1;
+}
+
+/* ─── SUCCESS NOTIFICATION (HIGHEST Z-INDEX) ─── */
+.success-notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999 !important;
+    background: #2e7d32;
+    color: #fff;
+    padding: 14px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    min-width: 350px;
+    max-width: 90%;
+    animation: slideDown 0.4s ease;
+}
+
+.success-notification .success-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.success-notification .success-icon {
+    font-size: 1.5rem;
+}
+
+.success-notification .success-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: 0.7;
+    transition: 0.2s;
+    margin-left: auto;
+}
+
+.success-notification .success-close:hover {
+    opacity: 1;
+}
+
 /* ─── SIDEBAR (Black) ─── */
 .sidebar {
     width: 260px;
@@ -644,31 +730,35 @@ body {
 
 /* ─── MODAL OVERLAY ─── */
 .modal-overlay {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 2000;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1500;
+    display: none;
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(4px);
 }
+
 .modal-overlay.active {
     display: flex;
 }
 
 .modal-container {
     background: #fff;
-    width: 550px;
+    width: 600px;
     max-width: 95%;
+    max-height: 90vh;
     border-radius: 16px;
     padding: 30px 35px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    max-height: 90vh;
     overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: fadeInScale 0.25s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
@@ -932,6 +1022,24 @@ body {
     display: block;
 }
 
+/* ─── DELETE BUTTON ─── */
+.btn-delete {
+    background: #d32f2f;
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-delete:hover {
+    background: #b71c1c;
+    transform: translateY(-2px);
+}
+
 /* ─── PAGINATION ─── */
 .pagination-wrapper {
     display: flex;
@@ -1095,5 +1203,27 @@ body {
         flex-direction: column;
         align-items: center;
         text-align: center;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateX(-50%) translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
     }
 }

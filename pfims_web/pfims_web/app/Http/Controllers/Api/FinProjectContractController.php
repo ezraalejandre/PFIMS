@@ -12,11 +12,22 @@ class FinProjectContractController extends Controller
     public function index()
     {
         try {
-            $contracts = DB::table('fin_project_contract_tbl')
-                ->leftJoin('project_tbl', 'fin_project_contract_tbl.project_id', '=', 'project_tbl.project_id')
+            // Get contracts with budget data from budgets_tbl
+            $contracts = DB::table('fin_project_contract_tbl as c')
+                ->rightJoin('project_tbl as p', 'c.project_id', '=', 'p.project_id')
+                ->leftJoin('budgets_tbl as b', 'p.project_id', '=', 'b.project_id')
                 ->select(
-                    'fin_project_contract_tbl.*',
-                    'project_tbl.project_name'
+                    'p.project_id',
+                    'p.project_name',
+                    'p.start_date',
+                    'p.actual_end_date',
+                    DB::raw('COALESCE(c.contract_id, 0) as contract_id'),
+                    // Use budget as contract price if available, otherwise use contract table value
+                    DB::raw('COALESCE(b.budget_amount, c.original_contract_price, 0) as original_contract_price'),
+                    DB::raw('COALESCE(c.additional_works_contract, 0) as additional_works_contract'),
+                    DB::raw('COALESCE(c.original_payment_received, 0) as original_payment_received'),
+                    DB::raw('COALESCE(c.additional_works_payment, 0) as additional_works_payment'),
+                    'c.remarks'
                 )
                 ->get();
             
@@ -31,7 +42,7 @@ class FinProjectContractController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'project_id' => 'required|exists:project_tbl,project_id',
-                'original_contract_price' => 'required|numeric|min:0',
+                'original_contract_price' => 'nullable|numeric|min:0',
                 'additional_works_contract' => 'nullable|numeric|min:0',
                 'original_payment_received' => 'nullable|numeric|min:0',
                 'additional_works_payment' => 'nullable|numeric|min:0',
@@ -42,9 +53,32 @@ class FinProjectContractController extends Controller
                 return response()->json(['errors' => $validator->errors()], 422);
             }
             
+            // Check if contract already exists for this project
+            $existing = DB::table('fin_project_contract_tbl')
+                ->where('project_id', $request->project_id)
+                ->first();
+            
+            if ($existing) {
+                // Update existing
+                DB::table('fin_project_contract_tbl')
+                    ->where('project_id', $request->project_id)
+                    ->update([
+                        'additional_works_contract' => $request->additional_works_contract ?? 0,
+                        'original_payment_received' => $request->original_payment_received ?? 0,
+                        'additional_works_payment' => $request->additional_works_payment ?? 0,
+                        'remarks' => $request->remarks,
+                    ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Contract updated successfully',
+                    'contract_id' => $existing->contract_id
+                ]);
+            }
+            
             $id = DB::table('fin_project_contract_tbl')->insertGetId([
                 'project_id' => $request->project_id,
-                'original_contract_price' => $request->original_contract_price,
+                'original_contract_price' => $request->original_contract_price ?? 0,
                 'additional_works_contract' => $request->additional_works_contract ?? 0,
                 'original_payment_received' => $request->original_payment_received ?? 0,
                 'additional_works_payment' => $request->additional_works_payment ?? 0,
@@ -70,7 +104,7 @@ class FinProjectContractController extends Controller
             }
             
             $validator = Validator::make($request->all(), [
-                'original_contract_price' => 'required|numeric|min:0',
+                'original_contract_price' => 'nullable|numeric|min:0',
                 'additional_works_contract' => 'nullable|numeric|min:0',
                 'original_payment_received' => 'nullable|numeric|min:0',
                 'additional_works_payment' => 'nullable|numeric|min:0',
@@ -84,7 +118,6 @@ class FinProjectContractController extends Controller
             DB::table('fin_project_contract_tbl')
                 ->where('contract_id', $id)
                 ->update([
-                    'original_contract_price' => $request->original_contract_price,
                     'additional_works_contract' => $request->additional_works_contract ?? 0,
                     'original_payment_received' => $request->original_payment_received ?? 0,
                     'additional_works_payment' => $request->additional_works_payment ?? 0,
