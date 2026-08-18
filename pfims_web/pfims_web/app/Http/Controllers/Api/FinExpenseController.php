@@ -14,6 +14,7 @@ class FinExpenseController extends Controller
     public function __construct(private NotificationService $notifications)
     {
     }
+
     private function mapExpense($item)
     {
         return [
@@ -21,11 +22,11 @@ class FinExpenseController extends Controller
             'expense_id' => $item->fin_expense_id,
             'project_id' => $item->project_id,
             'project_name' => $item->project_name,
-            'expense_description' => $item->expense_description,
+            'expense_description' => $item->expense_description ?? '',
             'fin_category_id' => $item->fin_category_id,
             'expense_category_id' => $item->fin_category_id,
-            'category_name' => $item->category_name,
-            'amount' => $item->amount,
+            'category_name' => $item->category_name ?? '',
+            'amount' => (float) $item->amount,
             'expense_date' => $item->expense_date,
             'remarks' => $item->remarks,
             'proof_file_path' => $item->proof_file_path,
@@ -81,7 +82,7 @@ class FinExpenseController extends Controller
                 return $this->mapExpense($item);
             }));
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage(), 'line' => $e->getLine()], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -119,9 +120,9 @@ class FinExpenseController extends Controller
             }
 
             $id = DB::table('fin_expense_tbl')->insertGetId($data);
-
             $expense = $this->findWithJoins($id);
 
+            // Send notification
             $category = $expense->category_name ?? 'Expense';
             $project = $expense->project_name ? " for {$expense->project_name}" : '';
             $formatted = 'PHP ' . number_format((float) $expense->amount, 2);
@@ -189,7 +190,6 @@ class FinExpenseController extends Controller
             }
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->update($data);
-
             $expense = $this->findWithJoins($id);
 
             return response()->json($this->mapExpense($expense));

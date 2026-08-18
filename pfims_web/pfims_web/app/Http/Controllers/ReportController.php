@@ -147,6 +147,29 @@ class ReportController extends Controller
                 return response()->json(['error' => 'File not found.'], 404);
             }
             
+            // Check if inline view is requested
+            $inline = request()->has('inline');
+            
+            if ($inline) {
+                // For inline viewing (PDF, images, etc.)
+                $mimeType = Storage::disk('public')->mimeType($report->file_path);
+                $fileContent = Storage::disk('public')->get($report->file_path);
+                
+                // For PDF files, ensure proper display
+                if ($mimeType === 'application/pdf') {
+                    return response($fileContent)
+                        ->header('Content-Type', 'application/pdf')
+                        ->header('Content-Disposition', 'inline; filename="' . $report->file_name . '"')
+                        ->header('Cache-Control', 'public, max-age=3600');
+                }
+                
+                // For other file types
+                return response($fileContent)
+                    ->header('Content-Type', $mimeType)
+                    ->header('Content-Disposition', 'inline; filename="' . $report->file_name . '"')
+                    ->header('Cache-Control', 'public, max-age=3600');
+            }
+            
             return Storage::disk('public')->download($report->file_path, $report->file_name);
             
         } catch (\Exception $e) {

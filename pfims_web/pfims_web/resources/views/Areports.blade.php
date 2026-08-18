@@ -81,6 +81,28 @@
         </div>
     </div>
 
+    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-container" style="width: 400px; max-width: 95%;">
+            <div class="modal-header">
+                <h2>Confirm Deletion</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
+                    Are you sure you want to permanently delete this report?
+                </p>
+                <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button class="btn-cancel" onclick="closeDeleteModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
+                <button class="btn-delete" onclick="confirmDeleteReport()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #d32f2f; color: #fff; transition: 0.3s;">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
 
@@ -784,26 +806,85 @@
                 var reportId = r.report_id || r.id;
                 return reportId === id; 
             });
-            if (report) {
-                var details = '📄 Report Details\n' +
-                              '━━━━━━━━━━━━━━━━━━━━━━━\n' +
-                              'ID: #' + (report.report_id || report.id) + '\n' +
-                              'Title: ' + report.title + '\n' +
-                              'Type: ' + getTypeLabel(report.type) + '\n' +
-                              'File: ' + report.file_name + '\n' +
-                              'Uploaded: ' + formatDate(report.date_uploaded) + '\n' +
-                              'By: ' + report.uploaded_by + '\n' +
-                              'Status: ' + report.status + '\n' +
-                              (report.description ? 'Description: ' + report.description : '');
-                alert(details);
-            } else {
+            if (!report) {
                 showError('Report not found.');
+                return;
+            }
+            
+            // Populate detail modal
+            document.getElementById('detailReportId').textContent = '#' + (report.report_id || report.id);
+            document.getElementById('detailTitle').textContent = report.title;
+            document.getElementById('detailType').textContent = getTypeLabel(report.type);
+            document.getElementById('detailFileName').textContent = report.file_name;
+            document.getElementById('detailDate').textContent = formatDate(report.date_uploaded);
+            document.getElementById('detailUploadedBy').textContent = report.uploaded_by;
+            document.getElementById('detailStatus').innerHTML = getStatusBadge(report.status);
+            document.getElementById('detailDescription').textContent = report.description || 'No description provided.';
+            
+            // Store report id for view file action
+            document.getElementById('reportDetailModal').dataset.reportId = id;
+            
+            // Show modal
+            document.getElementById('reportDetailModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeReportDetailModal() {
+            document.getElementById('reportDetailModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function openReportFile() {
+            var id = document.getElementById('reportDetailModal').dataset.reportId;
+            if (id) {
+                var url = '/api/reports/download/' + id + '?inline=true';
+                window.open(url, '_blank');
             }
         }
 
+        // Close modal on backdrop click
+        document.getElementById('reportDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReportDetailModal();
+            }
+        });
+
+        // ─── DELETE CONFIRMATION MODAL FUNCTIONS ──────────────────────────
+        var deleteReportId = null;
+
+        function openDeleteModal(message, reportId) {
+            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this report?';
+            deleteReportId = reportId;
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            deleteReportId = null;
+        }
+
+        function confirmDeleteReport() {
+            if (deleteReportId) {
+                executeDeleteReport(deleteReportId);
+            }
+            closeDeleteModal();
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteModal();
+            }
+        });
+
+        // ─── DELETE REPORT ──────────────────────────────────────────────────
         function deleteReport(id) {
-            if (!confirm('Are you sure you want to delete this report? This action cannot be undone.')) return;
-            
+            openDeleteModal('Are you sure you want to permanently delete this report? This action cannot be undone.', id);
+        }
+
+        function executeDeleteReport(id) {
             fetch('/api/reports/' + id, {
                 method: 'DELETE',
                 headers: {
