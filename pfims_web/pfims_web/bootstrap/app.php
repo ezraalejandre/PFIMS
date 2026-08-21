@@ -12,8 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-    $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
-})
+        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\PreventAuthenticatedPageCaching::class);
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $exception, \Illuminate\Http\Request $request) {
+            if ($request->is('logout')) {
+                return redirect()->route('login');
+            }
+
+            return null;
+        });
     })->create();

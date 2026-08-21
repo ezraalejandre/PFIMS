@@ -2,6 +2,10 @@
 
 return [
 
+    'ip_geolocation' => [
+        'url' => env('IP_GEOLOCATION_URL', 'https://ipwho.is'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

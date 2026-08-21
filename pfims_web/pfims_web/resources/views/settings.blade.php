@@ -128,6 +128,7 @@
                         </div>
                         <button class="btn-change" onclick="openChangePasswordModal()">Change Password</button>
                     </div>
+                    @include('partials.login-history')
                 </div>
 
                 <!-- ─── SYSTEM PREFERENCES ─── -->

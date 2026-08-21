@@ -1,4 +1,22 @@
 (function () {
+    // Authenticated pages can be kept as visual snapshots in a browser's
+    // back/forward cache. Hide the page before it enters that cache. If the
+    // snapshot is restored, keep it hidden while a real request verifies the
+    // session; logged-out users will then be redirected by Laravel.
+    const isAuthenticatedPage = Boolean(document.querySelector('form[action$="/logout"]'));
+
+    if (isAuthenticatedPage) {
+        window.addEventListener('pagehide', function () {
+            document.documentElement.style.visibility = 'hidden';
+        });
+    }
+
+    window.addEventListener('pageshow', function (event) {
+        if (isAuthenticatedPage && event.persisted) {
+            window.location.reload();
+        }
+    });
+
     const storageKey = 'pfims_theme';
     const sidebarStorageKey = 'pfims_sidebar_collapsed';
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Models\User;
 use App\Models\AppNotification;
+use App\Models\LoginHistory;
 use App\Mail\FirstLoginVerificationMail;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ConfigController;
@@ -61,9 +62,12 @@ Route::get('/aprofile', function () {
 })->middleware('auth');
 
 Route::get('/asettings', function () {
+    /** @var User $currentUser */
+    $currentUser = Auth::user();
     $users = User::orderBy('name')->get();
     return view('Asettings', [
         'users' => $users,
+        'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
 })->middleware('auth');
 
@@ -95,9 +99,12 @@ Route::get('/oprofile', function () {
 })->middleware('auth');
 
 Route::get('/osettings', function () {
+    /** @var User $currentUser */
+    $currentUser = Auth::user();
     $users = User::orderBy('name')->get();
     return view('Osettings', [
         'users' => $users,
+        'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
 })->middleware('auth');
 
@@ -324,9 +331,12 @@ Route::patch('/profile', function (Request $request) {
 
 // Settings page
 Route::get('/settings', function () {
+    /** @var User $currentUser */
+    $currentUser = Auth::user();
     $users = User::orderBy('name')->get();
     return view('settings', [
         'users' => $users,
+        'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
 })->middleware('auth');
 
@@ -460,6 +470,7 @@ Route::post('/login', function (Request $request) {
         Auth::login($user);
         $request->session()->forget('first_login_user_id');
         $request->session()->regenerate();
+        LoginHistory::record($user, $request);
 
         $redirectPath = $dashboardPath($user->role ?? '');
 
@@ -524,6 +535,7 @@ Route::post('/login/verify-first-login', function (Request $request) {
     $request->session()->forget('first_login_user_id');
     Auth::login($user);
     $request->session()->regenerate();
+    LoginHistory::record($user, $request);
 
     $role = strtolower($user->role ?? '');
     $redirectPath = $role === 'accounting' ? '/adashboard' : ($role === 'operations' ? '/odashboard' : '/dashboard');
@@ -578,7 +590,9 @@ Route::post('/logout', function (Request $request) {
     $request->session()->invalidate();
     $request->session()->regenerateToken();
 
-    return redirect('/');
+    return redirect('/')
+        ->header('Clear-Site-Data', '"cache"')
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 });
 
 // Change password route

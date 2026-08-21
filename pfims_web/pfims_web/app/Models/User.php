@@ -74,6 +74,11 @@ class User extends Authenticatable
         return isset($this->role) && $this->role === $role;
     }
 
+    public function loginHistories()
+    {
+        return $this->hasMany(LoginHistory::class)->latest('logged_in_at');
+    }
+
 //     public function sendPasswordResetNotification($token)
 // {
 //     $this->notify(new ApiResetPasswordNotification($token));

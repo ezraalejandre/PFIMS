@@ -536,6 +536,89 @@ body {
     background: #f0ebe2;
     border-color: #c9a96e;
 }
+/* ─── LOGIN HISTORY ─── */
+.login-history {
+    margin-top: 22px;
+    border-top: 1px solid #f0ebe2;
+}
+
+.login-history-heading {
+    padding: 18px 0 10px;
+}
+
+.login-history-heading .label {
+    font-weight: 600;
+    color: #1a2b3c;
+}
+
+.login-history-heading .desc,
+.login-history-meta {
+    margin-top: 3px;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.login-history-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 13px 0;
+    border-bottom: 1px solid #f0ebe2;
+}
+
+.login-history-device {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+}
+
+.login-history-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #f5efe5;
+    color: #9a7136;
+}
+
+.login-history-name {
+    color: #1a2b3c;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.login-history-row time {
+    flex: 0 0 auto;
+    color: #44515d;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    text-align: right;
+}
+
+.login-history-row time span {
+    color: #888;
+}
+
+.login-history-empty {
+    padding: 18px 0;
+    color: #888;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 560px) {
+    .login-history-row {
+        align-items: flex-start;
+    }
+
+    .login-history-row time {
+        font-size: 0.76rem;
+    }
+}
+
 
 /* ─── PREFERENCE ITEMS ─── */
 .preference-item {

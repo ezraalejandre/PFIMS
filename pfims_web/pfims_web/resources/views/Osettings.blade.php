@@ -138,6 +138,7 @@
                         </div>
                         <button class="btn-change" onclick="open2FAModal()">Manage Authentication</button>
                     </div>
+                    @include('partials.login-history')
                 </div>
 
                 <!-- ─── SYSTEM PREFERENCES ─── -->
