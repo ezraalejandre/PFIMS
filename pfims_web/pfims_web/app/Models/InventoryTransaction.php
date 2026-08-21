@@ -17,6 +17,8 @@ class InventoryTransaction extends Model
         'quantity',
         'bar_code',
         'transaction_date',
+        'proof_file_path',
+        'proof_file_name',
     ];
 
     public function item()

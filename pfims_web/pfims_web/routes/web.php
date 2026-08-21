@@ -19,6 +19,7 @@ use App\Http\Controllers\MLController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Api\FinExpenseController;
 use App\Http\Controllers\Auth\ForgotPasswordControllerWeb;
 
 // Landing page (login)
@@ -289,6 +290,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
     Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
     Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
+    Route::post('/api/finance-expenses/from-inventory/{transactionId}', [FinExpenseController::class, 'storeFromInventory']);
 });
 
 // Reports page

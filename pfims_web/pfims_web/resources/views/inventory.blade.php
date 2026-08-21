@@ -532,11 +532,12 @@
                             <th>Date</th>
                             <th>Unit</th>
                             <th>Qty</th>
+                            <th>Proof File</th>
                             <th style="text-align: center;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="inventoryTableBody">
-                        <tr><td colspan="10" style="text-align: center; padding: 20px;">Loading transactions...</td></tr>
+                        <tr><td colspan="11" style="text-align: center; padding: 20px;">Loading transactions...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -866,6 +867,12 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label>Transaction Proof <span class="required">*</span></label>
+                    <input type="file" id="transactionProofFile" accept=".jpg,.jpeg,.png,.pdf">
+                    <span style="font-size:0.75rem;color:#888;display:block;margin-top:4px;">Required: PDF, JPG, or PNG. Maximum 10MB.</span>
+                </div>
+
                 <div class="modal-footer">
                     <div class="footer-left">
                         <button class="btn-cancel" onclick="closeTransactionModal()">Cancel</button>
@@ -904,6 +911,10 @@
                     <div class="summary-item">
                         <strong>Item Unit</strong>
                         <span class="summary-value" id="reviewTransItemUnit">—</span>
+                    </div>
+                    <div class="summary-item">
+                        <strong>Transaction Proof</strong>
+                        <span class="summary-value" id="reviewTransProof">—</span>
                     </div>
                 </div>
 
@@ -1009,6 +1020,12 @@
         var itemsCurrentPage = 1;
         var currentExpenseRow = null;
         var currentItemDetailRow = null;
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>'"]/g, function(character) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[character];
+            });
+        }
 
         // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
         function hideBadge(event) {
@@ -1647,7 +1664,7 @@
             tbody.innerHTML = '';
             
             if (!pageData.length) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #888;">No transactions found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #888;">No transactions found.</td></tr>';
                 renderTransactionPagination();
                 return;
             }
@@ -1660,6 +1677,9 @@
                 var statusText = stock > reorderLevel ? 'In Stock' : (stock <= 0 ? 'Out of Stock' : 'Low Stock');
                 var typeLabel = row.transaction_type || '—';
                 var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
+                var proofFile = row.proof_file_path
+                    ? `<a href="/storage/${encodeURI(row.proof_file_path)}" target="_blank" rel="noopener" title="Open proof file">${escapeHtml(row.proof_file_name || 'View Proof')}</a>`
+                    : '—';
 
                 tr.setAttribute('data-id', row.inventory_transaction_id || '');
                 tr.setAttribute('data-item-id', row.item_id || '');
@@ -1688,6 +1708,7 @@
                     <td>${dateValue}</td>
                     <td>${row.unit}</td>
                     <td>${row.quantity}</td>
+                    <td>${proofFile}</td>
                     <td style="text-align: center;">
                         <div class="action-cell" style="display: flex; gap: 4px; justify-content: center; align-items: center;">
                             <button onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" title="View/Edit" style="background: transparent; border: none; cursor: pointer; padding: 4px 6px; border-radius: 4px;">
@@ -2062,6 +2083,7 @@
             document.getElementById('transactionItemSupplier').value = '';
             document.getElementById('transactionItemBarCode').value = '';
             document.getElementById('transactionQuantity').value = 1;
+            document.getElementById('transactionProofFile').value = '';
             document.getElementById('transactionDate').value = new Date().toISOString().split('T')[0];
             document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
             document.getElementById('transactionProjectGroup').style.display = 'none';
@@ -2074,6 +2096,7 @@
             document.getElementById('reviewTransItemBarCode').textContent = '—';
             document.getElementById('reviewTransItemQuantity').textContent = '—';
             document.getElementById('reviewTransItemUnit').textContent = '—';
+            document.getElementById('reviewTransProof').textContent = '—';
             document.getElementById('reviewTransType').textContent = '—';
             document.getElementById('reviewTransDate').textContent = '—';
             document.getElementById('reviewTransProjectRow').style.display = 'none';
@@ -2107,12 +2130,16 @@
             var barCode = document.getElementById('transactionItemBarCode').value.trim();
             var date = document.getElementById('transactionDate').value;
             var type = document.querySelector('input[name="transactionType"]:checked');
+            var proofFile = document.getElementById('transactionProofFile').files[0];
 
             if (!itemId) { showError('Please select an item.'); return; }
             if (!quantity || quantity < 1) { showError('Please enter a valid quantity (minimum 1).'); return; }
             if (barCode !== '' && !/^\d+$/.test(barCode)) { showError('Barcode must contain numbers only.'); return; }
             if (!date) { showError('Please select a transaction date.'); return; }
             if (date > document.getElementById('transactionDate').max) { showError('Transaction date cannot be in the future.'); return; }
+            if (!proofFile) { showError('Transaction proof file is required.'); return; }
+            if (!['application/pdf', 'image/jpeg', 'image/png'].includes(proofFile.type)) { showError('Proof must be a PDF, JPG, or PNG file.'); return; }
+            if (proofFile.size > 10 * 1024 * 1024) { showError('Proof file must not exceed 10MB.'); return; }
 
             var typeLabel = type ? type.value : 'IN';
             if (typeLabel === 'OUT') {
@@ -2142,6 +2169,7 @@
             document.getElementById('reviewTransItemBarCode').textContent = barCode;
             document.getElementById('reviewTransItemQuantity').textContent = quantity;
             document.getElementById('reviewTransItemUnit').textContent = unit;
+            document.getElementById('reviewTransProof').textContent = proofFile.name;
             document.getElementById('reviewTransType').textContent = typeLabel === 'IN' ? 'IN (Item Stock in)' : 'OUT (Item Stock out)';
             document.getElementById('reviewTransDate').textContent = date;
 
@@ -2181,6 +2209,7 @@
             var date = document.getElementById('transactionDate').value;
             var type = document.querySelector('input[name="transactionType"]:checked').value;
             var projectId = null;
+            var proofFile = document.getElementById('transactionProofFile').files[0];
             
             if (type === 'OUT') {
                 projectId = document.getElementById('transactionProject').value;
@@ -2190,24 +2219,25 @@
                 }
             }
 
-            var payload = {
-                item_id: parseInt(itemId),
-                project_id: projectId || null,
-                transaction_type: type,
-                quantity: quantity,
-                bar_code: barCode === '' ? null : parseInt(barCode, 10),
-                transaction_date: date
-            };
+            if (!proofFile) { showError('Transaction proof file is required.'); return; }
+
+            var payload = new FormData();
+            payload.append('item_id', parseInt(itemId));
+            if (projectId) payload.append('project_id', projectId);
+            payload.append('transaction_type', type);
+            payload.append('quantity', quantity);
+            if (barCode !== '') payload.append('bar_code', parseInt(barCode, 10));
+            payload.append('transaction_date', date);
+            payload.append('proof_file', proofFile);
 
             fetch('/api/inventory/transaction', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(payload)
+                body: payload
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {

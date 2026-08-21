@@ -23,6 +23,7 @@ class InventoryTransactionController extends Controller
             'quantity'=>'required|numeric|min:0.01',
             'bar_code'=>'nullable|integer|min:0',
             'transaction_date'=>'required|date|before_or_equal:today',
+            'proof_file'=>'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
 
         ]);
 
@@ -58,6 +59,8 @@ class InventoryTransactionController extends Controller
                     'quantity'         => $request->quantity,
                     'bar_code'         => $request->bar_code,
                     'transaction_date' => $request->transaction_date,
+                    'proof_file_path'   => $request->file('proof_file')->store('inventory-transaction-proofs', 'public'),
+                    'proof_file_name'   => $request->file('proof_file')->getClientOriginalName(),
                 ]);
 
                 DB::table('inventory_item_tbl')

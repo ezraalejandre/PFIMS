@@ -873,7 +873,7 @@
             </div>
             <div class="table-wrapper expense-table-wrapper">
                 <table id="expenseTable">
-                    <thead><tr><th>Project</th><th>Expense Description</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th></tr></thead>
+                    <thead><tr><th>Project</th><th>Expense Description</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th><th>Actions</th></tr></thead>
                     <tbody id="expenseTableBody"></tbody>
                 </table>
             </div>
@@ -1139,6 +1139,16 @@
         </div>
 
     </main>
+
+    <div id="inventoryExpenseModal" class="modal-overlay">
+        <div class="modal-container" style="max-width:420px;">
+            <div class="modal-header"><h2>Add Stock-In Expense</h2><button class="modal-close" onclick="closeInventoryExpenseModal()">×</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" id="inventoryExpenseAmount" min="0.01" step="0.01" placeholder="0.00"></div>
+            </div>
+            <div class="modal-footer"><button class="btn-cancel" onclick="closeInventoryExpenseModal()">Cancel</button><button class="btn-save" id="inventoryExpenseSaveBtn" onclick="saveInventoryExpense()">Add Expense</button></div>
+        </div>
+    </div>
 
     <!-- ─── ADD EXPENSE MODAL (Unified - Handles ALL Expense Types) ─── -->
     <div id="addExpenseModal" class="modal-overlay">
@@ -1673,6 +1683,7 @@
         var financeFilteredData = [];
         var financePageSize = 25;
         var financeCurrentPage = 1;
+        var pendingInventoryTransactionId = null;
         var currentDetailRow = null;
         var isEditMode = false;
         var currentReportTab = 'expenses';
@@ -1998,12 +2009,12 @@
             }).then(function(response) {
                 if (!response.ok) {
                     return response.text().then(function(text) {
+                        var data = null;
                         try {
-                            var data = JSON.parse(text);
-                            throw new Error(data.message || data.errors ? Object.values(data.errors).flat().join(', ') : 'Server error');
-                        } catch (e) {
-                            throw new Error('Server error: ' + text.substring(0, 100));
-                        }
+                            data = JSON.parse(text);
+                        } catch (e) {}
+                        var validationMessage = data && data.errors ? Object.values(data.errors).flat().join(', ') : '';
+                        throw new Error((data && (data.message || data.error)) || validationMessage || 'Server error: ' + text.substring(0, 100));
                     });
                 }
                 return response.json();
@@ -2508,7 +2519,7 @@
             tbody.innerHTML = '';
 
             if (!pageData.length) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">No expenses found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;">No expenses found.</td></tr>';
                 renderFinancePagination();
                 updateRowsInfo(0);
                 return;
@@ -2527,8 +2538,8 @@
                 row.setAttribute('data-remarks', expense.remarks || '');
                 row.setAttribute('data-proof-file-path', expense.proof_file_path || '');
                 row.setAttribute('data-proof-file-name', expense.proof_file_name || '');
-                row.style.cursor = 'pointer';
-                row.onclick = function() { openExpenseModal(this); };
+                row.style.cursor = expense.is_pending_inventory ? 'default' : 'pointer';
+                if (!expense.is_pending_inventory) row.onclick = function() { openExpenseModal(this); };
 
                 var categoryName = expense.category_name || '';
                 var categoryClass = categoryName.toLowerCase().replace(/[^a-z]/g, '-');
@@ -2548,14 +2559,57 @@
                 row.innerHTML = '<td><strong>' + (expense.project_name || '') + '</strong></td>' +
                 '<td>' + (expense.expense_description || '') + '</td>' +
                 '<td><span class="category-badge ' + categoryClass + '">' + categoryName + '</span></td>' +
-                '<td>' + formatCurrency(expense.amount || 0) + '</td>' +
+                '<td>' + (expense.is_pending_inventory ? '—' : formatCurrency(expense.amount || 0)) + '</td>' +
                 '<td>' + (expense.expense_date || '') + '</td>' +
-                '<td>' + (expense.remarks || '—') + '</td>';
+                '<td>' + (expense.remarks || '—') + '</td>' +
+                '<td>' + (expense.is_pending_inventory ? '<button class="btn-add-expense" onclick="event.stopPropagation(); openInventoryExpenseModal(' + expense.inventory_transaction_id + ')">Add Expense</button>' : '—') + '</td>';
                 tbody.appendChild(row);
             });
 
             renderFinancePagination();
             updateRowsInfo(financeFilteredData.length);
+        }
+
+        function openInventoryExpenseModal(transactionId) {
+            pendingInventoryTransactionId = transactionId;
+            document.getElementById('inventoryExpenseAmount').value = '';
+            document.getElementById('inventoryExpenseModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeInventoryExpenseModal() {
+            document.getElementById('inventoryExpenseModal').classList.remove('active');
+            document.body.style.overflow = '';
+            pendingInventoryTransactionId = null;
+        }
+
+        function saveInventoryExpense() {
+            var transactionId = pendingInventoryTransactionId;
+            var amount = parseFloat(document.getElementById('inventoryExpenseAmount').value);
+            if (!transactionId || !amount || amount < 0.01) {
+                showError('Please enter a valid amount.');
+                return;
+            }
+
+            var saveButton = document.getElementById('inventoryExpenseSaveBtn');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            apiFetch('/finance-expenses/from-inventory/' + transactionId, {
+                method: 'POST',
+                body: JSON.stringify({ amount: amount })
+            }).then(function() {
+                return fetchExpenses();
+            }).then(function() {
+                applyFilters();
+                closeInventoryExpenseModal();
+                showSuccess('Stock-in expense added and Finance expenses refreshed.');
+            }).catch(function(error) {
+                showError(error.message || 'Unable to add stock-in expense.');
+            }).finally(function() {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Add Expense';
+            });
         }
 
         function renderFinancePagination() {

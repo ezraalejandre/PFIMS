@@ -10,6 +10,7 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class InventoryController extends Controller
 {
@@ -71,7 +72,13 @@ class InventoryController extends Controller
             'quantity' => 'required|numeric|min:0.01',
             'bar_code' => 'nullable|integer|min:0',
             'transaction_date' => 'required|date|before_or_equal:today',
+            'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
+
+        $proofFile = $validated['proof_file'];
+        unset($validated['proof_file']);
+        $validated['proof_file_path'] = $proofFile->store('inventory-transaction-proofs', 'public');
+        $validated['proof_file_name'] = $proofFile->getClientOriginalName();
 
         DB::beginTransaction();
         try {
@@ -96,6 +103,9 @@ class InventoryController extends Controller
             return response()->json(['success' => true, 'data' => $transaction, 'message' => 'Transaction added successfully!'], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+            if (!empty($validated['proof_file_path'])) {
+                Storage::disk('public')->delete($validated['proof_file_path']);
+            }
             return response()->json(['success' => false, 'message' => 'Failed to add transaction: ' . $e->getMessage()], 500);
         }
     }
@@ -122,6 +132,13 @@ class InventoryController extends Controller
 
     public function destroyItem($id): JsonResponse
     {
+        if (InventoryTransaction::where('item_id', $id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete this item because it has inventory transaction history.',
+            ], 409);
+        }
+
         DB::beginTransaction();
         try {
             $item = InventoryItem::lockForUpdate()->findOrFail($id);
@@ -178,6 +195,8 @@ class InventoryController extends Controller
                 'transaction_date' => $transaction->transaction_date,
                 'current_stock' => $runningStock[$itemId],
                 'reorder_level' => $transaction->item?->reorder_level ?? 0,
+                'proof_file_path' => $transaction->proof_file_path,
+                'proof_file_name' => $transaction->proof_file_name,
             ];
         });
 
@@ -225,23 +244,12 @@ class InventoryController extends Controller
 
     public function destroyTransaction($id): JsonResponse
     {
-        DB::beginTransaction();
-        try {
-            $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
-            $itemId = $transaction->item_id;
-            $transaction->delete();
+        InventoryTransaction::findOrFail($id);
 
-            $this->recalculateItemStock($itemId);
-            DB::commit();
-
-            return response()->json(['success' => true, 'message' => 'Transaction deleted successfully!']);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete transaction: ' . $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Inventory transactions cannot be deleted because they are part of the Finance audit trail.',
+        ], 409);
     }
 
     protected function recalculateItemStock(int $itemId): void
