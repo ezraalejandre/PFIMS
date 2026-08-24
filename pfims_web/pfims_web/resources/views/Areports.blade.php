@@ -24,7 +24,7 @@
             <a href="{{ url('/anotifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
                 <span>Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+                <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
             </a>
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
@@ -36,10 +36,10 @@
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
         <nav>
-            <ul>
-                <li><a href="{{ url('/adashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/afinance') }}">FINANCE</a></li>
-                <li class="active"><a href="{{ url('/areports') }}">REPORTS</a></li>
+                        <ul>
+                <li><a href="{{ url('/adashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/afinance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li class="active"><a href="{{ url('/areports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -81,7 +81,7 @@
         </div>
     </div>
 
-    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+        <!-- ─── DELETE CONFIRMATION MODAL ─── -->
     <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -103,6 +103,56 @@
         </div>
     </div>
 
+    <!-- ─── REPORT DETAIL MODAL ─── -->
+    <div id="reportDetailModal" class="modal-overlay modal-view" style="display: none; z-index: 9999;">
+        <div class="modal-container" style="max-width: 550px;">
+            <div class="modal-header">
+                <h2>Report Details</h2>
+                <button class="modal-close" onclick="closeReportDetailModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="view-details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px 25px; padding: 20px; background: #faf8f5; border-radius: 12px; margin-bottom: 10px;">
+                    <div class="view-item">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">Report ID</label>
+                        <span id="detailReportId" class="view-value" style="font-size: 1rem; font-weight: 500; color: #1a2b3c;">—</span>
+                    </div>
+                    <div class="view-item">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">Title</label>
+                        <span id="detailTitle" class="view-value" style="font-size: 1rem; font-weight: 500; color: #1a2b3c;">—</span>
+                    </div>
+                    <div class="view-item">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">Type</label>
+                        <span id="detailType" class="view-value" style="font-size: 1rem; font-weight: 500; color: #1a2b3c;">—</span>
+                    </div>
+                    <div class="view-item" style="grid-column: 1 / -1;">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">File Name</label>
+                        <span id="detailFileName" class="view-value" style="font-size: 1rem; font-weight: 500; color: #1a2b3c;">—</span>
+                    </div>
+                    <div class="view-item">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">Date Uploaded</label>
+                        <span id="detailDate" class="view-value" style="font-size: 1rem; font-weight: 500; color: #1a2b3c;">—</span>
+                    </div>
+                    <div class="view-item">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">Uploaded By</label>
+                        <span id="detailUploadedBy" class="view-value" style="font-size: 1rem; font-weight: 500; color: #1a2b3c;">—</span>
+                    </div>
+                    <div class="view-item" style="grid-column: 1 / -1;">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">Status</label>
+                        <span id="detailStatus" class="view-value" style="font-size: 1rem; font-weight: 500;">—</span>
+                    </div>
+                    <div class="view-item" style="grid-column: 1 / -1;">
+                        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 2px;">Description</label>
+                        <span id="detailDescription" class="view-value" style="font-size: 0.95rem; font-weight: 400; color: #555; padding: 4px 0;">—</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button class="btn-cancel" onclick="closeReportDetailModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Close</button>
+                <button class="btn-edit-project" onclick="openReportFile()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #c9a96e; color: #fff; transition: 0.3s;">View File</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
 
@@ -116,7 +166,7 @@
             <input type="date" class="date-input" id="startDate" value="{{ date('Y-m-d', strtotime('-30 days')) }}">
             <span style="color: #888; font-size: 0.9rem;">to</span>
             <input type="date" class="date-input" id="endDate" value="{{ date('Y-m-d') }}">
-            <select id="reportTypeFilter" onchange="filterReports()">
+                        <select id="reportTypeFilter" onchange="syncTabFromDropdown(); filterReports();">
                 <option value="all">All Types</option>
                 <option value="finance">Financial Reports</option>
                 <option value="budget">Budget Reports</option>
@@ -201,14 +251,15 @@
 
         <!-- Pagination -->
         <div class="pagination-wrapper">
-            <div class="rows-info">
-                Showing <span id="showingStart">0</span>-<span id="showingEnd">0</span> of <span id="totalCount">0</span> reports
+                        <div class="rows-info">
+                Rows Displayed:
                 <select id="rowsPerPage" onchange="changePageSize()">
                     <option value="10">10</option>
                     <option value="25" selected>25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
                 </select>
+                <span id="totalCount" class="pagination-total">Total: 0</span>
             </div>
             <div class="pagination-links" id="paginationLinks">
                 <!-- Generated by JavaScript -->
@@ -300,12 +351,60 @@
             }
         }
 
-        // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
+                // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.style.display = 'none';
             }
+        }
+
+                var MUTABLE_TYPES = {
+            project_updates: ['project_delayed', 'project_at_risk', 'project_delayed_total', 'project_at_risk_total', 'project_past_deadline_total'],
+            budget_alerts: ['budget_expense_overrun_total', 'new_expense', 'new_budget', 'budget_updated'],
+            inventory_alerts: ['item_low_stock', 'item_low_stock_total', 'item_out_of_stock', 'stock_in_expense']
+        };
+
+        var ROLE_RELEVANT_KEYWORDS = ['budget', 'expense', 'finance', 'system_update'];
+        function isRoleRelevant(type) {
+            if (!type) return true;
+            return ROLE_RELEVANT_KEYWORDS.some(function(keyword) {
+                return type.indexOf(keyword) !== -1;
+            });
+        }
+
+        function isMuted(type) {
+            return Object.keys(MUTABLE_TYPES).some(function(category) {
+                return localStorage.getItem('notif_mute_' + category) === 'true' &&
+                       MUTABLE_TYPES[category].indexOf(type) !== -1;
+            });
+        }
+
+        function fetchNotifBadge() {
+            fetch('/api/notifications', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load notifications.');
+                return response.json();
+            })
+            .then(function(data) {
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                var relevant = (data.notifications || []).filter(function(n) {
+                    return isRoleRelevant(n.type) && !isMuted(n.type);
+                });
+                var count = relevant.filter(function(n) { return !n.is_read; }).length;
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function(error) {
+                console.error('Error loading notification badge:', error);
+            });
         }
 
         function showError(message) {
@@ -629,9 +728,10 @@
                 tbody.appendChild(row);
             });
             
-            updatePagination();
+                        updatePagination();
             updateRowsInfo();
             updateKPIs();
+            if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
         // ─── PAGINATION ──────────────────────────────────────────────
@@ -694,14 +794,9 @@
             renderReports();
         }
 
-        function updateRowsInfo() {
+                function updateRowsInfo() {
             var total = filteredReports.length;
-            var start = (currentPage - 1) * pageSize + 1;
-            var end = Math.min(start + pageSize - 1, total);
-            
-            document.getElementById('showingStart').textContent = total === 0 ? 0 : start;
-            document.getElementById('showingEnd').textContent = total === 0 ? 0 : end;
-            document.getElementById('totalCount').textContent = total;
+            document.getElementById('totalCount').textContent = 'Total: ' + total;
         }
 
         // ─── FILTER FUNCTIONS ────────────────────────────────────────
@@ -761,6 +856,25 @@
             document.getElementById('financeReports').textContent = finance;
             document.getElementById('budgetReports').textContent = budget;
             document.getElementById('expenseReports').textContent = expense;
+        }
+
+                // ─── SYNC TAB FROM DROPDOWN ────────────────────────────────
+        function syncTabFromDropdown() {
+            var dropdown = document.getElementById('reportTypeFilter');
+            var selectedType = dropdown.value;
+            var tabs = document.querySelectorAll('.report-tabs .tab');
+            tabs.forEach(function(tab) { tab.classList.remove('active'); });
+            currentTab = selectedType;
+            if (selectedType === 'all') {
+                tabs[0].classList.add('active');
+                return;
+            }
+            tabs.forEach(function(tab) {
+                var onclickAttr = tab.getAttribute('onclick') || '';
+                if (onclickAttr.indexOf("'" + selectedType + "'") !== -1) {
+                    tab.classList.add('active');
+                }
+            });
         }
 
         // ─── TAB SWITCH ──────────────────────────────────────────────
@@ -843,6 +957,25 @@
         }
 
         // Close modal on backdrop click
+        document.getElementById('reportDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReportDetailModal();
+            }
+        });
+
+                function closeReportDetailModal() {
+            document.getElementById('reportDetailModal').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function openReportFile() {
+            var id = document.getElementById('reportDetailModal').dataset.reportId;
+            if (id) {
+                var url = '/api/reports/download/' + id + '?inline=true';
+                window.open(url, '_blank');
+            }
+        }
+
         document.getElementById('reportDetailModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeReportDetailModal();
@@ -959,8 +1092,12 @@
             showSuccess('Export complete!');
         }
 
-        // ─── FETCH REPORTS FROM SERVER ──────────────────────────────
+                // ─── FETCH REPORTS FROM SERVER ──────────────────────────────
         function fetchReports() {
+            var loadingBody = document.getElementById('reportTableBody');
+            if (loadingBody) {
+                loadingBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #888;">Loading reports...</td></tr>';
+            }
             fetch('/api/reports', {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -1053,11 +1190,13 @@
             }
         });
 
-        // ─── INIT ─────────────────────────────────────────────────────
+                // ─── INIT ─────────────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', function() {
             fetchReports();
+            fetchNotifBadge();
         });
     </script>
+    <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
 
 </body>
 </html>

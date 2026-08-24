@@ -105,10 +105,44 @@
             margin-top: 6px;
         }
         
-        .total-notif-item.card-red { border-left-color: #d32f2f; }
+                .total-notif-item.card-red { border-left-color: #d32f2f; }
         .total-notif-item.card-orange { border-left-color: #e65100; }
         .total-notif-item.card-green { border-left-color: #2e7d32; }
         .total-notif-item.card-blue { border-left-color: #1565c0; }
+
+        .notif-actions {
+            align-items: center;
+        }
+
+        .notif-actions .btn-action-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .notif-actions .btn-action-icon img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        .notif-actions .btn-action-icon:hover {
+            background: #f5f5f5;
+            border-color: #c9a96e;
+        }
+
+        .notif-actions .btn-action-icon:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         
         #confirmModal .modal-container {
             width: 400px;
@@ -184,14 +218,14 @@
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;">DASHBOARD</a></li>
-                <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -224,7 +258,10 @@
                 <h1>NOTIFICATIONS</h1>
                 <div class="subtitle">alerts &amp; system updates</div>
             </div>
-            <div class="notif-actions">
+                        <div class="notif-actions">
+                <button class="btn-action-icon" id="refreshNotifBtn" onclick="refreshNotifications(this)" title="Refresh">
+                    <img src="{{ asset('images/refresh.jpg') }}" alt="Refresh">
+                </button>
                 <button class="btn-mark-read" onclick="markAllRead()">✓ Mark all read</button>
                 <button class="btn-clear-all" onclick="openClearAllModal()">✕ Clear all</button>
             </div>
@@ -237,18 +274,37 @@
             <span class="tab" onclick="switchTab(this, 'system')">System</span>
         </div>
 
-        <!-- ─── NOTIFICATIONS LIST ─── -->
+                <!-- ─── NOTIFICATIONS LIST ─── -->
         <div id="notifList">
             <div style="text-align: center; padding: 40px; color: #888;">Loading notifications...</div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper" id="notifPaginationWrapper" style="display: none;">
+            <div class="rows-info">
+                Rows Displayed:
+                <select id="notifRowsPerPage" onchange="changeNotifPageSize()">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+                <span id="notifTotalCount" class="pagination-total">Total: 0</span>
+            </div>
+            <div class="pagination-links" id="notifPaginationLinks">
+                <!-- Generated by JavaScript -->
+            </div>
         </div>
 
     </main>
 
     <script>
-        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         var allNotifications = [];
         var currentTab = 'all';
         var showOnlyTotals = false;
+        var notifPageSize = 10;
+        var notifCurrentPage = 1;
 
         // Category muting from the original file, combined with the E-version
         // acknowledgement flow. Mandatory notices are never hidden.
@@ -308,7 +364,7 @@
             }
         });
 
-        // ─── TAB SWITCHING ───
+                // ─── TAB SWITCHING ───
         function switchTab(el, type) {
             var tabs = document.querySelectorAll('.notif-tabs .tab');
             tabs.forEach(function(tab) {
@@ -316,6 +372,7 @@
             });
             el.classList.add('active');
             currentTab = type;
+            notifCurrentPage = 1;
             renderNotifications();
         }
 
@@ -358,12 +415,12 @@
             return Object.values(types);
         }
 
-        // ─── LOAD NOTIFICATIONS ───
+                // ─── LOAD NOTIFICATIONS ───
         function loadNotifications() {
             var list = document.getElementById('notifList');
             list.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;">Loading notifications...</div>';
 
-            fetch('/api/notifications', {
+            return fetch('/api/notifications', {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
@@ -378,9 +435,23 @@
                 updateBadgeCount();
                 renderNotifications();
             })
-            .catch(function(error) {
+                        .catch(function(error) {
                 console.error('Error loading notifications:', error);
                 loadMockNotifications();
+            });
+        }
+
+        // ─── REFRESH BUTTON ───
+        function refreshNotifications(btn) {
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+            }
+            Promise.resolve(loadNotifications()).finally(function() {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '';
+                }
             });
         }
 
@@ -456,9 +527,10 @@
             }
         }
 
-        // ─── RENDER NOTIFICATIONS ───
+                // ─── RENDER NOTIFICATIONS ───
         function renderNotifications() {
             var list = document.getElementById('notifList');
+            var paginationWrapper = document.getElementById('notifPaginationWrapper');
             var filtered = allNotifications;
 
             // Filter by tab
@@ -474,6 +546,7 @@
 
             // If showing only totals, display grouped notifications
             if (showOnlyTotals) {
+                paginationWrapper.style.display = 'none';
                 var totals = getTotalNotifications();
                 
                 // Filter totals by tab
@@ -540,6 +613,7 @@
             });
 
             if (filtered.length === 0) {
+                paginationWrapper.style.display = 'none';
                 list.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">🔔</div>
@@ -550,10 +624,20 @@
                 return;
             }
 
+            var totalFiltered = filtered.length;
+            var totalPages = Math.ceil(totalFiltered / notifPageSize);
+            if (notifCurrentPage > totalPages) notifCurrentPage = totalPages || 1;
+            var start = (notifCurrentPage - 1) * notifPageSize;
+            var pageData = filtered.slice(start, start + notifPageSize);
+
+            paginationWrapper.style.display = 'flex';
+            document.getElementById('notifTotalCount').textContent = 'Total: ' + totalFiltered;
+            renderNotifPaginationLinks(totalPages);
+
             var html = '';
             var currentDate = '';
 
-            filtered.forEach(function(notification) {
+            pageData.forEach(function(notification) {
                 var date = new Date(notification.created_at);
                 var dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
                 var isToday = new Date().toDateString() === date.toDateString();
@@ -591,9 +675,44 @@
             list.innerHTML = html;
         }
 
-        // ─── EXPAND TOTAL TO SHOW INDIVIDUAL NOTIFICATIONS ───
+        // ─── NOTIFICATION PAGINATION ───
+        function renderNotifPaginationLinks(totalPages) {
+            var container = document.getElementById('notifPaginationLinks');
+            var current = notifCurrentPage;
+
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            var html = '';
+            html += '<a href="#" onclick="goToNotifPage(' + (current - 1) + '); return false;" class="' + (current <= 1 ? 'disabled' : '') + '">«</a>';
+
+            for (var i = 1; i <= totalPages; i++) {
+                html += '<a href="#" onclick="goToNotifPage(' + i + '); return false;" class="' + (i === current ? 'active' : '') + '">' + i + '</a>';
+            }
+
+            html += '<a href="#" onclick="goToNotifPage(' + (current + 1) + '); return false;" class="' + (current >= totalPages ? 'disabled' : '') + '">»</a>';
+            container.innerHTML = html;
+        }
+
+        function goToNotifPage(page) {
+            if (page < 1) return;
+            notifCurrentPage = page;
+            renderNotifications();
+        }
+
+        function changeNotifPageSize() {
+            var select = document.getElementById('notifRowsPerPage');
+            notifPageSize = parseInt(select.value) || 10;
+            notifCurrentPage = 1;
+            renderNotifications();
+        }
+
+                // ─── EXPAND TOTAL TO SHOW INDIVIDUAL NOTIFICATIONS ───
         function expandTotal(type) {
             showOnlyTotals = false;
+            notifCurrentPage = 1;
             // Reload to get individual notifications back
             loadNotifications();
         }

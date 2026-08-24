@@ -216,7 +216,7 @@
                             @endphp
                             <div class="info">
                                 <h4>{{ $project->project_name }}</h4>
-                                <div class="budget">Budget: ₱{{ number_format($budgetAmount, 0) }} <span class="status-text {{ $budgetStatusClass }}">{{ $budgetStatusText }}</span></div>
+                                <div class="budget">Budget: ₱{{ number_format($budgetAmount, 0) }} | Status: <span class="status-text {{ $budgetStatusClass }}">{{ $budgetStatusText }}</span></div>
                                 <div class="budget">Client: {{ $project->client_name ?? '—' }} | Status: <span class="status-text {{ $statusClass }}">{{ $project->status ?? '—' }}</span></div>
                             </div>
                             <div class="progress-wrapper">
