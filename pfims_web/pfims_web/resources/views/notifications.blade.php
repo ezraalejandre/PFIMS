@@ -282,12 +282,12 @@
         <!-- Pagination -->
         <div class="pagination-wrapper" id="notifPaginationWrapper" style="display: none;">
             <div class="rows-info">
-                Rows Displayed:
-                <select id="notifRowsPerPage" onchange="changeNotifPageSize()">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="25">25</option>
+                Rows per page
+                <select id="notifRowsPerPage" aria-label="Notification rows per page" onchange="changeNotifPageSize()">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
                     <option value="50">50</option>
+                    <option value="100">100</option>
                 </select>
                 <span id="notifTotalCount" class="pagination-total">Total: 0</span>
             </div>
@@ -303,7 +303,7 @@
         var allNotifications = [];
         var currentTab = 'all';
         var showOnlyTotals = false;
-        var notifPageSize = 10;
+        var notifPageSize = 25;
         var notifCurrentPage = 1;
 
         // Category muting from the original file, combined with the E-version
@@ -704,7 +704,7 @@
 
         function changeNotifPageSize() {
             var select = document.getElementById('notifRowsPerPage');
-            notifPageSize = parseInt(select.value) || 10;
+            notifPageSize = parseInt(select.value) || 25;
             notifCurrentPage = 1;
             renderNotifications();
         }

@@ -146,9 +146,12 @@
             <button class="btn-add-supplier" onclick="openAddModal()">+ Add Supplier</button>
         </div>
 
+        <div id="supplierKpis" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px;"></div>
         <div class="filters-bar">
-            <input type="text" class="search-input" placeholder="Search Category...">
+            <input type="search" id="supplierSearch" class="search-input" maxlength="100" placeholder="Search supplier, address, or contact..." oninput="filterSuppliers()">
+            <select id="supplierSort" onchange="filterSuppliers()"><option value="name">Sort by supplier name</option><option value="items">Sort by items supplied</option><option value="alerts">Sort by stock alerts</option></select>
         </div>
+        <div id="supplierCoverageChart" style="display:grid;gap:7px;margin:0 0 16px;padding:14px;background:#fff;border:1px solid #e1e7ef;border-radius:10px;"></div>
 
         <div class="table-wrapper">
             <table>
@@ -286,6 +289,7 @@
     <script>
         // Global state
         let currentSupplierId = null;
+        let suppliersData = [];
 
         // ─── LOAD SUPPLIERS ON PAGE LOAD ───
         document.addEventListener('DOMContentLoaded', function() {
@@ -294,11 +298,15 @@
 
         // ─── LOAD SUPPLIERS FROM API ───
         function loadSuppliers() {
-            fetch('/api/suppliers')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        renderSuppliers(data.data);
+            Promise.all([fetch('/api/suppliers').then(response => response.json()), fetch('/api/inventory').then(response => response.json()).catch(() => ({success: false, data: []}))])
+                .then(([supplierResponse, inventoryResponse]) => {
+                    if (supplierResponse.success) {
+                        const items = inventoryResponse.success ? inventoryResponse.data : [];
+                        suppliersData = supplierResponse.data.map(supplier => {
+                            const supplied = items.filter(item => Number(item.supplier_id) === Number(supplier.supplier_id));
+                            return {...supplier, item_count: supplied.length, low_stock_count: supplied.filter(item => Number(item.current_stock) <= Number(item.reorder_level)).length};
+                        });
+                        filterSuppliers();
                     }
                 })
                 .catch(error => console.error('Error loading suppliers:', error));
@@ -308,6 +316,7 @@
         function renderSuppliers(suppliers) {
             const tbody = document.getElementById('supplierTableBody');
             tbody.innerHTML = '';
+            updateSupplierAnalytics(suppliers);
 
             if (suppliers.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No suppliers found.</td></tr>';
@@ -329,6 +338,28 @@
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        function filterSuppliers() {
+            const term = (document.getElementById('supplierSearch')?.value || '').toLowerCase().trim();
+            const sort = document.getElementById('supplierSort')?.value || 'name';
+            const filtered = suppliersData.filter(supplier => [supplier.supplier_name, supplier.address, supplier.contact_number].some(value => (value || '').toLowerCase().includes(term)));
+            filtered.sort((a, b) => sort === 'items' ? b.item_count - a.item_count : (sort === 'alerts' ? b.low_stock_count - a.low_stock_count : (a.supplier_name || '').localeCompare(b.supplier_name || '')));
+            renderSuppliers(filtered);
+        }
+
+        function updateSupplierAnalytics(filtered) {
+            const totalItems = filtered.reduce((sum, supplier) => sum + supplier.item_count, 0);
+            const alerts = filtered.reduce((sum, supplier) => sum + supplier.low_stock_count, 0);
+            document.getElementById('supplierKpis').innerHTML = [
+                ['Matching suppliers', filtered.length], ['Items supplied', totalItems], ['Low-stock item links', alerts]
+            ].map(([label, value]) => `<article style="padding:14px;background:#fff;border:1px solid #e1e7ef;border-left:4px solid #2563eb;border-radius:9px"><small style="display:block;color:#64748b">${label}</small><strong style="font-size:22px">${value.toLocaleString()}</strong></article>`).join('');
+            const top = [...filtered].sort((a,b) => b.item_count - a.item_count).slice(0,8); const max = Math.max(...top.map(item => item.item_count), 1);
+            document.getElementById('supplierCoverageChart').innerHTML = '<strong>Inventory items by supplier</strong>' + (top.length ? top.map(supplier => `<div style="display:grid;grid-template-columns:minmax(120px,220px) 1fr 45px;gap:9px;align-items:center"><span>${escapeSupplierHtml(supplier.supplier_name)}</span><div style="height:10px;background:#edf2f7;border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:${supplier.item_count/max*100}%;background:#2563eb"></i></div><b style="text-align:right">${supplier.item_count}</b></div>`).join('') : '<span>No matching supplier data.</span>');
+        }
+
+        function escapeSupplierHtml(value) {
+            return String(value || '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
         }
 
         function openViewModal(supplierId) {

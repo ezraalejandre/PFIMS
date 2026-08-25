@@ -1847,7 +1847,7 @@ html[data-theme="dark"] .settings-page .security-item .btn-change:hover {
     color: #ffffff !important;
 }
 
-/* Shared pagination — Projects is the visual model for every module. */
+/* Shared pagination and rows-per-page controls for every module. */
 .pagination-wrapper {
     display: flex !important;
     justify-content: space-between !important;

@@ -1,5 +1,7 @@
+@php($fragment = $fragment ?? false)
+@unless($fragment)
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="{{ request()->boolean('embedded') ? 'embedded-ml-document' : '' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -181,9 +183,9 @@
         /* Main Grid */
         .main-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 25px;
-            margin-bottom: 25px;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 18px;
+            margin-bottom: 18px;
         }
 
         @media (max-width: 1024px) {
@@ -275,6 +277,67 @@
             margin-top: 5px;
         }
 
+        .project-selection {
+            display: grid;
+            gap: 14px;
+        }
+
+        .project-selection select {
+            width: 100%;
+            min-height: 44px;
+            padding: 10px 12px;
+            border: 1px solid #d7dde6;
+            border-radius: 7px;
+            background: #fff;
+            color: #172033;
+            font: inherit;
+        }
+
+        .project-selection-note {
+            margin: 0;
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .project-snapshot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .project-snapshot-grid[hidden] {
+            display: none;
+        }
+
+        .snapshot-item {
+            min-width: 0;
+            padding: 11px 13px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .snapshot-item span,
+        .snapshot-item strong {
+            display: block;
+        }
+
+        .snapshot-item span {
+            margin-bottom: 4px;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+
+        .snapshot-item strong {
+            color: #172033;
+            font-size: 14px;
+            overflow-wrap: anywhere;
+        }
+
         /* Prediction Result */
         .prediction-result {
             margin-top: 20px;
@@ -346,8 +409,52 @@
         /* Model Status */
         .model-status-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
+        }
+
+        .metric-section {
+            margin-top: 18px;
+        }
+
+        .metric-section:first-child {
+            margin-top: 0;
+        }
+
+        .metric-section-title {
+            margin: 0 0 10px;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .model-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .metric-item.metric-detail {
+            min-height: 110px;
+            align-items: flex-start;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 8px;
+        }
+
+        .metric-item.metric-detail .metric-value {
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.55;
+            overflow-wrap: anywhere;
+        }
+
+        .metric-item.metric-interpretation {
+            grid-column: 1 / -1;
+            background: #f0f4ff;
+            border-left: 4px solid #1a2b3c;
         }
 
         .metric-item {
@@ -443,6 +550,64 @@
 
         .notification-close:hover {
             opacity: 1;
+        }
+
+        .ml-confirm-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(15, 23, 42, .58);
+            backdrop-filter: blur(3px);
+        }
+
+        .ml-confirm-overlay[hidden] {
+            display: none;
+        }
+
+        .ml-confirm-dialog {
+            width: min(440px, 100%);
+            padding: 24px;
+            border: 1px solid #dfe5ed;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, .24);
+        }
+
+        .ml-confirm-dialog h2 {
+            margin: 0 0 9px;
+            color: #172033;
+            font-size: 19px;
+        }
+
+        .ml-confirm-dialog p {
+            margin: 0;
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .ml-confirm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        html[data-theme="dark"] .ml-confirm-dialog {
+            border-color: #344258;
+            background: #172033;
+        }
+
+        html[data-theme="dark"] .ml-confirm-dialog h2 {
+            color: #edf2f7;
+        }
+
+        html[data-theme="dark"] .ml-confirm-dialog p {
+            color: #b7c3d4;
         }
 
         /* Material Table */
@@ -572,7 +737,15 @@
                 grid-template-columns: 1fr;
             }
 
+            .project-snapshot-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
             .model-status-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .model-detail-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -599,123 +772,245 @@
             .stat-value {
                 font-size: 22px;
             }
+
+            .project-snapshot-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        html.embedded-ml-document,
+        body.embedded-ml-dashboard {
+            width: 100%;
+            min-width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            overflow-y: hidden;
+        }
+
+        body.embedded-ml-dashboard {
+            background: transparent;
+            color: #172033;
+        }
+
+        .embedded-ml-dashboard .dashboard-container {
+            width: 100%;
+            min-width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .embedded-ml-dashboard :where(.header, .main-grid, .model-performance-card, .card, .table-responsive) {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .embedded-ml-dashboard .main-grid > div {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .embedded-ml-dashboard .header,
+        .embedded-ml-dashboard .card,
+        .embedded-ml-dashboard .stat-card {
+            border: 1px solid #dfe5ed;
+            border-radius: 10px;
+            background: #fff;
+            color: #172033;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+
+        .embedded-ml-dashboard .header {
+            padding: 20px 22px;
+            margin-bottom: 18px;
+        }
+
+        .embedded-ml-dashboard .stats-grid,
+        .embedded-ml-dashboard .main-grid {
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .embedded-ml-dashboard .card {
+            margin-bottom: 18px;
+            padding: 20px;
+        }
+
+        .embedded-ml-dashboard .card-title {
+            color: #172033;
+            font-size: 16px;
+        }
+
+        .embedded-ml-dashboard :where(.form-group input, .form-group select) {
+            border: 1px solid #d7dde6;
+            border-radius: 7px;
+            background: #fff;
+        }
+
+        .embedded-ml-dashboard :where(.form-group input, .form-group select):focus {
+            border-color: #64748b;
+            box-shadow: 0 0 0 3px rgba(100, 116, 139, .14);
+        }
+
+        .embedded-ml-dashboard .btn-success {
+            background: #1a2b3c;
+            color: #fff;
+        }
+
+        .embedded-ml-dashboard .model-performance-card .metric-item {
+            min-width: 0;
+            align-items: flex-start;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 7px;
+        }
+
+        .embedded-ml-dashboard .model-performance-card .metric-value {
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .embedded-ml-dashboard .header h1,
+        .embedded-ml-dashboard .header small {
+            color: #172033;
+        }
+
+        .embedded-ml-dashboard .header small {
+            opacity: 0.68;
+        }
+
+        .embedded-ml-dashboard .btn-primary,
+        .embedded-ml-dashboard .tab-btn.active {
+            background: #1a2b3c;
+            color: #fff;
+        }
+
+        .embedded-ml-dashboard .btn-primary:hover {
+            background: #253d54;
+            box-shadow: none;
+        }
+
+        .embedded-ml-dashboard .card-header {
+            border-bottom-color: #e5eaf0;
+        }
+
+        .embedded-ml-dashboard .stat-card {
+            border-left: 1px solid #dfe5ed;
+        }
+
+        html[data-theme="dark"] body.embedded-ml-dashboard {
+            color: #edf2f7;
+        }
+
+        html[data-theme="dark"] .embedded-ml-dashboard :where(.header, .card, .stat-card) {
+            border-color: #344258;
+            background: #172033;
+            color: #edf2f7;
+        }
+
+        html[data-theme="dark"] .embedded-ml-dashboard :where(.header h1, .header small, .card-title, .stat-value, .metric-value) {
+            color: #edf2f7;
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/centralized-predictive-analytics.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="{{ request()->boolean('embedded') ? 'embedded-ml-dashboard' : '' }}">
+@endunless
 
-    <div class="dashboard-container">
-        <!-- Header -->
-        <div class="header">
-            <div>
-                <h1>🤖 AI/ML Analytics Dashboard</h1>
-                <small>Centralized Material Logistic & Project Financial Tracking System</small>
+    <div id="predictiveAnalyticsRoot" class="predictive-analytics-root embedded-ml-dashboard" data-api-base="{{ url('/api/ml') }}">
+    <div class="dashboard-container analytics-shell">
+        <section class="header analytics-toolbar">
+            <div class="analytics-heading">
+                <span class="analytics-eyebrow">DECISION SUPPORT</span>
+                <h1>Predictive Analytics</h1>
+                <p>Review project cost forecasts, material demand, budget variance, and model reliability.</p>
             </div>
             <div class="header-actions">
-                <button class="btn btn-outline" onclick="refreshData()">
-                    🔄 Refresh
+                <button class="btn btn-outline analytics-button" type="button" onclick="refreshData()">
+                    Refresh data
                 </button>
-                <button class="btn btn-primary" onclick="retrainModel()">
-                    🧠 Retrain Model
-                </button>
+                @if(auth()->check() && strtolower((string) auth()->user()->role) === 'admin')
+                    <button class="btn btn-primary analytics-button" type="button" onclick="openRetrainConfirmation()">
+                        Retrain model
+                    </button>
+                @endif
             </div>
-        </div>
-
-        <!-- Stats Grid -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-label">Total Projects</div>
-                <div class="stat-value" id="totalProjects">-</div>
-                <div class="stat-sub" id="activeProjects">Active: -</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Total Budget</div>
-                <div class="stat-value" id="totalBudget">-</div>
-                <div class="stat-sub" id="totalExpenses">Expenses: -</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Inventory Items</div>
-                <div class="stat-value" id="totalItems">-</div>
-                <div class="stat-sub" id="lowStockItems">Low Stock: -</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Model Accuracy</div>
-                <div class="stat-value" id="modelAccuracy">-</div>
-                <div class="stat-sub" id="modelStatus">Status: -</div>
-            </div>
-        </div>
+        </section>
 
         <!-- Main Grid -->
         <div class="main-grid">
             <!-- Left Column: Prediction -->
             <div>
-                <div class="card">
+                <section class="card analytics-panel prediction-workspace">
                     <div class="card-header">
-                        <div class="card-title">🎯 Project Cost Prediction</div>
-                        <span class="badge badge-info">Powered by Linear Regression</span>
+                        <div>
+                            <div class="card-title">Project Cost Prediction</div>
+                            <p class="analytics-panel-description">Select an eligible project to forecast its final cost from current system records.</p>
+                        </div>
+                        <span class="badge badge-info">Linear regression</span>
                     </div>
 
                     <form id="predictionForm" onsubmit="return false;">
-                        <div class="prediction-form">
+                        <div class="project-selection">
                             <div class="form-group">
-                                <label for="budget">📊 Project Budget (₱)</label>
-                                <input type="number" id="budget" placeholder="e.g., 1000000" required>
+                                <label for="predictionProject">Project to predict</label>
+                                <select id="predictionProject" required disabled>
+                                    <option value="">Loading eligible projects…</option>
+                                </select>
                             </div>
-                            <div class="form-group">
-                                <label for="duration">📅 Duration (months)</label>
-                                <input type="number" id="duration" placeholder="e.g., 6" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="workers">👷 Worker Count</label>
-                                <input type="number" id="workers" placeholder="e.g., 10" value="5">
-                            </div>
-                            <div class="form-group">
-                                <label for="completion">📈 Completion (%)</label>
-                                <input type="number" id="completion" placeholder="e.g., 50" value="0" min="0" max="100">
-                            </div>
-                            <div class="form-group">
-                                <label for="materialCost">🧱 Material Cost (₱)</label>
-                                <input type="number" id="materialCost" placeholder="e.g., 500000" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="laborCost">👨‍🔧 Labor Cost (₱)</label>
-                                <input type="number" id="laborCost" placeholder="e.g., 300000" value="0">
+                            <p class="project-selection-note" id="predictionProjectNote">Only incomplete projects with a recorded budget, schedule, and workforce are available. Prediction inputs come directly from current project and finance records.</p>
+                            <div class="project-snapshot-grid" id="predictionProjectSnapshot" hidden>
+                                <div class="snapshot-item"><span>Status</span><strong id="snapshotStatus">-</strong></div>
+                                <div class="snapshot-item"><span>Budget</span><strong id="snapshotBudget">-</strong></div>
+                                <div class="snapshot-item"><span>Planned duration</span><strong id="snapshotDuration">-</strong></div>
+                                <div class="snapshot-item"><span>Workers</span><strong id="snapshotWorkers">-</strong></div>
+                                <div class="snapshot-item"><span>Completion</span><strong id="snapshotCompletion">-</strong></div>
+                                <div class="snapshot-item"><span>Recorded expenses</span><strong id="snapshotFinanceTotal">-</strong></div>
+                                <div class="snapshot-item"><span>Material</span><strong id="snapshotMaterial">-</strong></div>
+                                <div class="snapshot-item"><span>Labor</span><strong id="snapshotLabor">-</strong></div>
+                                <div class="snapshot-item"><span>Equipment / Other</span><strong id="snapshotOther">-</strong></div>
                             </div>
                             <div class="form-actions">
-                                <button type="button" class="btn btn-primary" onclick="predictCost()" style="flex:1;">
-                                    🔮 Predict Cost
+                                <button id="predictCostButton" type="button" class="btn btn-primary analytics-button" onclick="predictCost()" disabled>
+                                    Predict cost
                                 </button>
-                                <button type="button" class="btn btn-outline" onclick="clearPredictionForm()" style="flex:0.5; border:2px solid #ddd; color:#666; background:white;">
-                                    Clear
+                                <button type="button" class="btn btn-outline analytics-button" onclick="clearPredictionForm()">
+                                    Clear selection
                                 </button>
                             </div>
                         </div>
                     </form>
 
                     <div id="predictionResult" class="prediction-result">
-                        <h4>📋 Prediction Result</h4>
+                        <h4>Prediction Result</h4>
                         <div id="resultContent"></div>
                     </div>
-                </div>
+                </section>
 
                 <!-- Material Forecast -->
-                <div class="card">
+                <section class="card analytics-panel">
                     <div class="card-header">
-                        <div class="card-title">📦 Material Demand Forecast</div>
-                        <button class="btn btn-success" onclick="loadMaterialForecast()" style="padding:6px 14px; font-size:12px;">
-                            🔄 Refresh
+                        <div>
+                            <div class="card-title">30-Day Material Stock Projection</div>
+                            <p class="analytics-panel-description">Expected demand based on recent dated inventory usage.</p>
+                        </div>
+                        <button class="btn btn-outline analytics-button analytics-button-small" type="button" onclick="loadMaterialForecast()">
+                            Refresh
                         </button>
                     </div>
                     <div class="table-responsive">
-                        <table>
+                        <table class="analytics-table">
                             <thead>
                                 <tr>
                                     <th>Material</th>
                                     <th>Current Stock</th>
-                                    <th>Avg Usage</th>
-                                    <th>Projected Demand</th>
+                                    <th>Avg Daily Usage</th>
+                                    <th>30-Day Demand</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -726,50 +1021,24 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
             </div>
 
-            <!-- Right Column: Model Status & Analytics -->
+            <!-- Right Column: Financial Analytics -->
             <div>
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">📊 Model Performance</div>
-                        <span class="badge badge-info" id="samplesCount">0 samples</span>
-                    </div>
-                    <div class="model-status-grid" id="modelMetrics">
-                        <div class="metric-item">
-                            <span class="metric-label">Accuracy</span>
-                            <span class="metric-value" id="metricAccuracy">-</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">MAE</span>
-                            <span class="metric-value" id="metricMAE">-</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">R-Squared</span>
-                            <span class="metric-value" id="metricRSquared">-</span>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">F1 Score</span>
-                            <span class="metric-value" id="metricF1">-</span>
-                        </div>
-                        <div class="metric-item" style="grid-column: 1 / -1; background: #f0f4ff; border-left: 4px solid #1a237e;">
-                            <span class="metric-label">📝 Interpretation</span>
-                            <span class="metric-value" id="metricInterpretation" style="font-size:13px; font-weight:400; color:#555;">-</span>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Budget Variance -->
-                <div class="card">
+                <section class="card analytics-panel">
                     <div class="card-header">
-                        <div class="card-title">💰 Budget Variance Analysis</div>
-                        <button class="btn btn-success" onclick="loadBudgetVariance()" style="padding:6px 14px; font-size:12px;">
-                            🔄 Refresh
+                        <div>
+                            <div class="card-title">Budget Variance Analysis</div>
+                            <p class="analytics-panel-description">Latest recorded spending compared with project budgets.</p>
+                        </div>
+                        <button class="btn btn-outline analytics-button analytics-button-small" type="button" onclick="loadBudgetVariance()">
+                            Refresh
                         </button>
                     </div>
                     <div class="table-responsive">
-                        <table>
+                        <table class="analytics-table">
                             <thead>
                                 <tr>
                                     <th>Project</th>
@@ -785,22 +1054,82 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
             </div>
         </div>
 
+        <!-- Full-width model performance section -->
+        <section class="card analytics-panel model-performance-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Model Performance</div>
+                    <p class="analytics-panel-description">Evaluation, selection, and governance details for the active prediction model.</p>
+                </div>
+                <span class="badge badge-info" id="samplesCount">0 samples</span>
+            </div>
+            <div id="modelMetrics">
+                <section class="metric-section" aria-labelledby="modelQualityTitle">
+                    <h3 class="metric-section-title" id="modelQualityTitle">Prediction quality</h3>
+                    <div class="model-status-grid">
+                        <div class="metric-item"><span class="metric-label">Avg. Closeness</span><span class="metric-value" id="metricAccuracy">-</span></div>
+                        <div class="metric-item"><span class="metric-label">MAE</span><span class="metric-value" id="metricMAE">-</span></div>
+                        <div class="metric-item"><span class="metric-label">R-Squared</span><span class="metric-value" id="metricRSquared">-</span></div>
+                    </div>
+                </section>
+                <section class="metric-section" aria-labelledby="overrunDetectionTitle">
+                    <h3 class="metric-section-title" id="overrunDetectionTitle">Cost-overrun detection at 5%</h3>
+                    <div class="model-status-grid">
+                        <div class="metric-item"><span class="metric-label">Precision</span><span class="metric-value" id="metricPrecision">-</span></div>
+                        <div class="metric-item"><span class="metric-label">Recall</span><span class="metric-value" id="metricRecall">-</span></div>
+                        <div class="metric-item"><span class="metric-label">F1 Score</span><span class="metric-value" id="metricF1">-</span></div>
+                    </div>
+                </section>
+                <section class="metric-section" aria-labelledby="modelSelectionTitle">
+                    <h3 class="metric-section-title" id="modelSelectionTitle">Model selection</h3>
+                    <div class="model-status-grid">
+                        <div class="metric-item"><span class="metric-label">Selected Split</span><span class="metric-value" id="metricSplit">-</span></div>
+                        <div class="metric-item"><span class="metric-label">Feature Decision</span><span class="metric-value" id="metricFeatureDecision">-</span></div>
+                        <div class="metric-item"><span class="metric-label">Model Comparison</span><span class="metric-value" id="metricModelComparison">-</span></div>
+                    </div>
+                </section>
+                <section class="metric-section" aria-labelledby="modelGovernanceTitle">
+                    <h3 class="metric-section-title" id="modelGovernanceTitle">Validation and governance</h3>
+                    <div class="model-detail-grid">
+                        <div class="metric-item metric-detail"><span class="metric-label">Validation</span><span class="metric-value" id="metricValidation">-</span></div>
+                        <div class="metric-item metric-detail"><span class="metric-label">Finance Feature Gate</span><span class="metric-value" id="metricFinancePolicy">-</span></div>
+                        <div class="metric-item metric-detail"><span class="metric-label">Holdout Monitoring</span><span class="metric-value" id="metricMonitoring">-</span></div>
+                        <div class="metric-item metric-detail metric-interpretation"><span class="metric-label">Interpretation</span><span class="metric-value" id="metricInterpretation">-</span></div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
         <!-- Footer -->
-        <div style="text-align:center; padding:20px; color:#888; font-size:13px; border-top:1px solid #e0e0e0; margin-top:10px;">
-            Centralized Material Logistic & Project Financial Tracking System | ML Dashboard v1.0
-            <br>
-            <span style="font-size:11px;">Last updated: <span id="lastUpdated">-</span></span>
+        <footer class="analytics-footer">Last updated <span id="lastUpdated">-</span></footer>
+    </div>
+
+    @if(auth()->check() && strtolower((string) auth()->user()->role) === 'admin')
+        <div class="ml-confirm-overlay" id="retrainConfirmModal" hidden>
+            <section class="ml-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="retrainConfirmTitle" aria-describedby="retrainConfirmDescription">
+                <h2 id="retrainConfirmTitle">Retrain prediction model?</h2>
+                <p id="retrainConfirmDescription">PFIMS will rebuild and evaluate the model using the latest eligible completed-project records. This can take a few moments.</p>
+                <div class="ml-confirm-actions">
+                    <button class="btn btn-outline" id="cancelRetrainButton" type="button" onclick="closeRetrainConfirmation()">Cancel</button>
+                    <button class="btn btn-primary" id="confirmRetrainButton" type="button" onclick="confirmRetrainModel()">Retrain model</button>
+                </div>
+            </section>
         </div>
+    @endif
     </div>
 
     <script>
     // ─── CONFIGURATION ─────────────────────────────────────────────
-    const API_BASE = '/api/ml';
+    const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+    let predictionProjects = [];
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[character]);
 
     // ─── NOTIFICATION SYSTEM ──────────────────────────────────────
     function showNotification(message, type = 'info', duration = 5000) {
@@ -837,7 +1166,6 @@
             const data = await response.json();
 
             if (data.success) {
-                updateStats(data.descriptive);
                 updateModelMetrics(data.model_metrics);
                 updateMaterialForecast(data.predictive?.material_forecast || {});
                 updateBudgetVariance(data.diagnostic?.budget_variance || []);
@@ -851,66 +1179,118 @@
         }
     }
 
-    // ─── UPDATE STATS ─────────────────────────────────────────────
-    function updateStats(descriptive) {
-        if (!descriptive) return;
-
-        const totalProjects = parseInt(descriptive.total_projects) || 0;
-        const activeProjects = parseInt(descriptive.active_projects) || 0;
-        const totalBudget = parseFloat(descriptive.total_budget) || 0;
-        const totalExpenses = parseFloat(descriptive.total_expenses) || 0;
-        const totalItems = parseInt(descriptive.total_inventory_items) || 0;
-
-        document.getElementById('totalProjects').textContent = totalProjects;
-        document.getElementById('activeProjects').textContent = `Active: ${activeProjects}`;
-
-        document.getElementById('totalBudget').textContent = '₱' + totalBudget.toLocaleString();
-        document.getElementById('totalExpenses').textContent = 'Expenses: ₱' + totalExpenses.toLocaleString();
-
-        document.getElementById('totalItems').textContent = totalItems;
-        
-        if (descriptive.material_status && Array.isArray(descriptive.material_status)) {
-            const lowStock = descriptive.material_status.filter(m => {
-                const status = m.status || '';
-                return status === 'Low Stock' || status === 'Reorder Needed';
-            }).length;
-            document.getElementById('lowStockItems').textContent = `Low Stock: ${lowStock}`;
-        }
-    }
-
     // ─── UPDATE MODEL METRICS ─────────────────────────────────────
     function updateModelMetrics(metrics) {
         if (!metrics) return;
 
-        const accuracy = parseFloat(metrics.accuracy) || 0;
-        const mae = parseFloat(metrics.mean_absolute_error) || 0;
-        const rSquared = parseFloat(metrics.r_squared) || 0;
-        const f1Score = parseFloat(metrics.f1_score) || 0;
+        const displayPercent = value => value === null || value === undefined || Number.isNaN(Number(value))
+            ? '-' : Number(value).toFixed(2) + '%';
+        const displayNumber = (value, decimals = 4) => value === null || value === undefined || Number.isNaN(Number(value))
+            ? '-' : Number(value).toFixed(decimals);
+        const accuracy = metrics.accuracy;
+        const rSquared = metrics.r_squared;
         const samplesTrained = parseInt(metrics.samples_trained) || 0;
+        const realSamples = parseInt(metrics.real_samples_available) || 0;
 
-        document.getElementById('metricAccuracy').textContent = accuracy ? accuracy + '%' : '-';
-        document.getElementById('metricMAE').textContent = metrics.mae_formatted || '₱' + mae.toLocaleString();
-        document.getElementById('metricRSquared').textContent = rSquared ? rSquared.toFixed(4) : '-';
-        document.getElementById('metricF1').textContent = f1Score ? f1Score.toFixed(4) : '-';
+        document.getElementById('metricAccuracy').textContent = displayPercent(accuracy);
+        document.getElementById('metricMAE').textContent = metrics.mae_formatted || 'Unavailable';
+        document.getElementById('metricRSquared').textContent = displayNumber(rSquared);
+        document.getElementById('metricPrecision').textContent = displayPercent(metrics.precision);
+        document.getElementById('metricRecall').textContent = displayPercent(metrics.recall);
+        document.getElementById('metricF1').textContent = displayPercent(metrics.f1_score);
+        document.getElementById('metricSplit').textContent = (metrics.split_selection?.selected_method || metrics.evaluation_method || '-').replaceAll('_', ' ');
+        document.getElementById('metricFeatureDecision').textContent = (metrics.feature_set?.decision || '-').replaceAll('_', ' ');
+        const comparison = metrics.model_comparison;
+        document.getElementById('metricModelComparison').textContent = comparison
+            ? `${comparison.production_model.replaceAll('_', ' ')} retained; ${comparison.comparison_result.replaceAll('_', ' ')}`
+            : '-';
+        const cv = metrics.cross_validation;
+        document.getElementById('metricValidation').textContent = cv
+            ? `${cv.method.replaceAll('_', ' ')}: mean MAE ${metricsCurrency(cv.average_mean_absolute_error)}, mean MAPE ${displayPercent(cv.average_mean_absolute_percentage_error)}. ${metrics.split_selection?.scoring_rule || ''}`
+            : 'Cross-validation is unavailable while the synthetic fallback is active.';
+        const featureSet = metrics.feature_set;
+        document.getElementById('metricFinancePolicy').textContent = featureSet
+            ? `${(featureSet.decision || 'not evaluated').replaceAll('_', ' ')}. ${featureSet.finance_feature_leakage_note || 'Finance features require an as-of date and must pass the documented validation gate.'}`
+            : 'Finance features are not evaluated while the synthetic fallback is active.';
+        const monitoring = metrics.monitoring_segments;
+        document.getElementById('metricMonitoring').textContent = monitoring
+            ? `MAE, MAPE, precision, recall and F1 are reported by ${Object.keys(monitoring.by_project_size || {}).length} budget-size and ${Object.keys(monitoring.by_project_type || {}).length} project-type holdout segment(s).`
+            : 'Segment monitoring is unavailable while the synthetic fallback is active.';
         document.getElementById('metricInterpretation').textContent = metrics.interpretation || 'No data available';
-        document.getElementById('samplesCount').textContent = samplesTrained + ' samples';
-        document.getElementById('modelAccuracy').textContent = accuracy ? accuracy + '%' : '-';
-        document.getElementById('modelStatus').textContent = metrics.status || 'Unknown';
+        document.getElementById('samplesCount').textContent = metrics.uses_synthetic_data
+            ? `${samplesTrained} synthetic / ${realSamples} real`
+            : `${samplesTrained} real samples`;
+    }
+
+    function metricsCurrency(value) {
+        return value === null || value === undefined || Number.isNaN(Number(value))
+            ? '-' : `₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    async function loadPredictionProjects(preserveSelection = true) {
+        const select = document.getElementById('predictionProject');
+        const previous = preserveSelection ? select.value : '';
+        select.disabled = true;
+        select.innerHTML = '<option value="">Loading eligible projects…</option>';
+
+        try {
+            const response = await fetch(`${API_BASE}/prediction-projects`, {
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN }
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load projects');
+
+            predictionProjects = Array.isArray(data.projects) ? data.projects : [];
+            select.innerHTML = '<option value="">Select a project…</option>';
+            predictionProjects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = String(project.project_id);
+                option.textContent = `${project.project_name} — ${project.status}`;
+                select.appendChild(option);
+            });
+            select.disabled = predictionProjects.length === 0;
+            if (previous && predictionProjects.some(project => String(project.project_id) === previous)) {
+                select.value = previous;
+            }
+            document.getElementById('predictionProjectNote').textContent = predictionProjects.length
+                ? 'Inputs are loaded from the selected project, its latest budget, and finance expenses recorded through today.'
+                : 'No eligible projects were found. Add an incomplete project with a budget, valid schedule, and workforce assignment.';
+            updatePredictionProjectSnapshot();
+        } catch (error) {
+            predictionProjects = [];
+            select.innerHTML = '<option value="">Unable to load projects</option>';
+            document.getElementById('predictionProjectNote').textContent = error.message;
+            updatePredictionProjectSnapshot();
+        }
+    }
+
+    function updatePredictionProjectSnapshot() {
+        const select = document.getElementById('predictionProject');
+        const project = predictionProjects.find(item => String(item.project_id) === select.value);
+        const snapshot = document.getElementById('predictionProjectSnapshot');
+        const button = document.getElementById('predictCostButton');
+        snapshot.hidden = !project;
+        button.disabled = !project;
+        if (!project) return;
+
+        const currency = value => `₱${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById('snapshotStatus').textContent = project.status || 'Unspecified';
+        document.getElementById('snapshotBudget').textContent = currency(project.budget);
+        document.getElementById('snapshotDuration').textContent = `${project.duration} month${Number(project.duration) === 1 ? '' : 's'}`;
+        document.getElementById('snapshotWorkers').textContent = Number(project.workers || 0).toLocaleString();
+        document.getElementById('snapshotCompletion').textContent = `${Number(project.completion || 0).toFixed(1)}%`;
+        document.getElementById('snapshotFinanceTotal').textContent = `${currency(project.fin_total_expense)}${project.finance_as_of_date ? ` through ${project.finance_as_of_date}` : ''}`;
+        document.getElementById('snapshotMaterial').textContent = currency(project.fin_material_expense);
+        document.getElementById('snapshotLabor').textContent = currency(project.fin_labor_expense);
+        document.getElementById('snapshotOther').textContent = `${currency(project.fin_equipment_expense)} / ${currency(project.fin_other_expense)}`;
     }
 
     // ─── PREDICT COST ─────────────────────────────────────────────
     async function predictCost() {
-        const budget = document.getElementById('budget').value;
-        const duration = document.getElementById('duration').value;
-        const workers = document.getElementById('workers').value || 5;
-        const completion = document.getElementById('completion').value || 0;
-        const materialCost = document.getElementById('materialCost').value || 0;
-        const laborCost = document.getElementById('laborCost').value || 0;
+        const form = document.getElementById('predictionForm');
+        if (!form.reportValidity()) return;
 
-        if (!budget || !duration) {
-            showNotification('Please enter both budget and duration', 'error');
-            return;
-        }
+        const projectId = document.getElementById('predictionProject').value;
 
         const resultDiv = document.getElementById('predictionResult');
         const contentDiv = document.getElementById('resultContent');
@@ -926,14 +1306,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': CSRF_TOKEN
                 },
-                body: JSON.stringify({
-                    budget: parseFloat(budget) || 0,
-                    duration: parseFloat(duration) || 0,
-                    workers: parseFloat(workers) || 0,
-                    completion: parseFloat(completion) || 0,
-                    material_cost: parseFloat(materialCost) || 0,
-                    labor_cost: parseFloat(laborCost) || 0
-                })
+                body: JSON.stringify({ project_id: Number(projectId) })
             });
 
             const result = await response.json();
@@ -947,6 +1320,10 @@
                 
                 contentDiv.innerHTML = `
                     <div class="result-row">
+                        <span class="result-label">Project</span>
+                        <span class="result-value">${escapeHtml(result.input_features?.project_name || 'Selected project')}</span>
+                    </div>
+                    <div class="result-row">
                         <span class="result-label">Predicted Cost</span>
                         <span class="result-value">${result.formatted || '₱0'}</span>
                     </div>
@@ -959,7 +1336,19 @@
                     </div>
                     <div class="result-row">
                         <span class="result-label">Status</span>
-                        <span class="result-value">${result.status || 'Unknown'}</span>
+                        <span class="result-value">${result.risk_level || result.status || 'Unknown'}</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Business Action</span>
+                        <span class="result-value" style="font-size:13px;">${result.business_action || 'Review forecast inputs and continue monitoring.'}</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Prediction Source</span>
+                        <span class="result-value">${String(result.prediction_source || 'unknown').replaceAll('_', ' ')}</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Model Accuracy (holdout)</span>
+                        <span class="result-value">${result.model_accuracy === null || result.model_accuracy === undefined ? 'Unavailable' : `${Number(result.model_accuracy).toFixed(2)}%`}</span>
                     </div>
                     <div class="result-row" style="border-bottom: none; margin-top: 8px; font-size: 13px; color: #666;">
                         <span class="result-label">Inputs</span>
@@ -967,11 +1356,16 @@
                               Duration: ${parseFloat(result.input_features?.duration_months || 0)}mo | 
                               Workers: ${parseFloat(result.input_features?.worker_count || 0)}</span>
                     </div>
+                    ${(result.warnings || []).length ? `
+                        <div style="margin-top:12px; padding:10px; background:#fff3e0; color:#8a4b08; border-radius:6px; font-size:12px;">
+                            <strong>Reliability notes:</strong><br>${result.warnings.map(warning => `• ${warning}`).join('<br>')}
+                        </div>` : ''}
                 `;
                 showNotification('Prediction completed successfully!', 'success');
             } else {
                 resultDiv.className = 'prediction-result show danger';
-                contentDiv.innerHTML = `<p style="color:#c62828;">❌ ${result.message || 'Prediction failed'}</p>`;
+                const errors = result.errors ? Object.values(result.errors).flat().join('<br>') : '';
+                contentDiv.innerHTML = `<p style="color:#c62828;">❌ ${errors || result.message || 'Prediction failed'}</p>`;
                 showNotification('Prediction failed: ' + (result.message || 'Unknown error'), 'error');
             }
         } catch (error) {
@@ -983,12 +1377,8 @@
 
     // ─── CLEAR PREDICTION FORM ────────────────────────────────────
     function clearPredictionForm() {
-        document.getElementById('budget').value = '';
-        document.getElementById('duration').value = '';
-        document.getElementById('workers').value = '5';
-        document.getElementById('completion').value = '0';
-        document.getElementById('materialCost').value = '0';
-        document.getElementById('laborCost').value = '0';
+        document.getElementById('predictionProject').value = '';
+        updatePredictionProjectSnapshot();
         document.getElementById('predictionResult').style.display = 'none';
         document.getElementById('predictionResult').className = 'prediction-result';
     }
@@ -1108,8 +1498,20 @@
     }
 
     // ─── RETRAIN MODEL ────────────────────────────────────────────
-    async function retrainModel() {
-        if (!confirm('Retraining the model may take a few moments. Continue?')) return;
+    function openRetrainConfirmation() {
+        const modal = document.getElementById('retrainConfirmModal');
+        if (!modal) return;
+        modal.hidden = false;
+        document.getElementById('confirmRetrainButton').focus();
+    }
+
+    function closeRetrainConfirmation() {
+        const modal = document.getElementById('retrainConfirmModal');
+        if (modal) modal.hidden = true;
+    }
+
+    async function confirmRetrainModel() {
+        closeRetrainConfirmation();
 
         showNotification('🔄 Retraining model... Please wait.', 'info', 10000);
 
@@ -1137,12 +1539,14 @@
     function refreshData() {
         showNotification('🔄 Refreshing dashboard data...', 'info', 2000);
         loadDashboard();
+        loadPredictionProjects();
         loadMaterialForecast();
         loadBudgetVariance();
     }
 
     // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
     document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeRetrainConfirmation();
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
             predictCost();
@@ -1156,15 +1560,32 @@
     // ─── INIT ─────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
         loadDashboard();
+        loadPredictionProjects(false);
         loadMaterialForecast();
         loadBudgetVariance();
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+        document.getElementById('predictionProject').addEventListener('change', updatePredictionProjectSnapshot);
+        document.getElementById('retrainConfirmModal')?.addEventListener('click', event => {
+            if (event.target.id === 'retrainConfirmModal') closeRetrainConfirmation();
+        });
 
         setInterval(() => {
             loadDashboard();
         }, 60000);
+
+        if (document.body.classList.contains('embedded-ml-dashboard')) {
+            const reportHeight = () => window.parent.postMessage({
+                type: 'pfims-ml-height',
+                height: document.documentElement.scrollHeight
+            }, window.location.origin);
+            reportHeight();
+            window.addEventListener('load', reportHeight);
+            new ResizeObserver(reportHeight).observe(document.body);
+        }
     });
 </script>
 
+@unless($fragment)
 </body>
 </html>
+@endunless

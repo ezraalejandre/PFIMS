@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Inventory - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/Oinventory.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
     <style>
         #deleteConfirmModal { z-index: 9999 !important; }
         
@@ -419,6 +420,7 @@
         <div class="page-header">
             <h1>INVENTORY RECORDS</h1>
             <div class="btn-group">
+                <button class="btn-add-transaction" onclick="openPfimsImport()">Import CSV/XLSX</button>
                 <button class="btn-add-item" onclick="openAddItemModal()">+ Add Item</button>
                 <button class="btn-add-transaction" onclick="openTransactionModal()">+ Add Transaction</button>
             </div>
@@ -427,17 +429,17 @@
         <!-- Stats Cards -->
         <div class="stats-grid-inv">
             <div class="stat-card-inv">
-                <div class="stat-label">Total Items</div>
+                <div class="stat-label" id="totalItemsLabel">Total Items</div>
                 <div class="stat-value" id="totalItemsCount">0</div>
                 <div class="stat-sub" id="totalItemsSub">Across all transactions</div>
             </div>
             <div class="stat-card-inv">
-                <div class="stat-label">Low Stock Items</div>
+                <div class="stat-label" id="lowStockLabel">Low Stock Items</div>
                 <div class="stat-value" id="lowStockCount">0</div>
                 <div class="stat-sub" id="lowStockSub">Items for restocking</div>
             </div>
             <div class="stat-card-inv">
-                <div class="stat-label">Categories</div>
+                <div class="stat-label" id="categoriesLabel">Categories</div>
                 <div class="stat-value" id="categoriesCount">0</div>
                 <div class="stat-sub" id="categoriesSub">Item categories</div>
             </div>
@@ -455,14 +457,28 @@
         <div id="tabItems" class="tab-content active">
             <!-- Filters Bar -->
             <div class="filters-bar">
-                <input type="text" class="search-input" placeholder="Search items..." id="itemsSearchInput" oninput="filterItemsTable()">
+                <input type="search" class="search-input" maxlength="150" placeholder="Search items..." id="itemsSearchInput" oninput="filterItemsTable()">
                 <select id="itemsCategoryFilter" onchange="filterItemsTable()">
                     <option value="all">All Categories</option>
                 </select>
                 <select id="itemsSupplierFilter" onchange="filterItemsTable()">
                     <option value="all">All Suppliers</option>
                 </select>
+                <select id="itemsStockFilter" onchange="filterItemsTable()">
+                    <option value="all">All Stock States</option>
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                </select>
                 <button class="btn-add-transaction" onclick="applyItemsFilters()" style="background: #c9a96e;">Apply Filters</button>
+                <button type="button" class="btn-add-transaction" onclick="clearItemsFilters()">Clear Filters</button>
+            </div>
+            <div class="module-insights">
+                <section class="module-insight-card" aria-labelledby="inventoryStockChartTitle">
+                    <h3 id="inventoryStockChartTitle">Items by Stock State</h3>
+                    <p class="insight-caption">Uses each item's configured reorder level and the current item filters.</p>
+                    <div id="inventoryStockChart" class="insight-chart" role="img" aria-label="Filtered inventory items by stock state"></div>
+                </section>
             </div>
 
             <!-- Items Table -->
@@ -488,8 +504,8 @@
             <!-- Items Pagination -->
             <div class="pagination-wrapper" id="itemsPagination">
                 <div class="rows-info">
-                    Rows Displayed:
-                    <select id="itemsRowsPerPage" onchange="changeItemsPageSize()">
+                    Rows per page
+                    <select id="itemsRowsPerPage" aria-label="Inventory item rows per page" onchange="changeItemsPageSize()">
                         <option value="10">10</option>
                         <option value="25" selected>25</option>
                         <option value="50">50</option>
@@ -506,15 +522,25 @@
         <div id="tabTransactions" class="tab-content">
             <!-- Filters Bar -->
             <div class="filters-bar">
-                <input type="text" class="search-input" placeholder="Search transactions..." id="searchInput" oninput="filterTable()">
+                <input type="search" class="search-input" maxlength="150" placeholder="Search transactions..." id="searchInput" oninput="filterTable()">
                 <select id="typeFilter" onchange="filterTable()">
                     <option value="all">All Transactions</option>
                     <option value="IN">IN</option>
                     <option value="OUT">OUT</option>
                 </select>
-                <input type="date" class="date-input" id="startDate" value="{{ date('Y-m-d', strtotime('-30 days')) }}">
-                <input type="date" class="date-input" id="endDate" value="{{ date('Y-m-d') }}">
+                <select id="transactionCategoryFilter" onchange="filterTable()"><option value="all">All Categories</option></select>
+                <select id="transactionProjectFilter" onchange="filterTable()"><option value="all">All Projects</option></select>
+                <label class="filter-date-label">From <input type="date" class="date-input" id="startDate" value="{{ date('Y-m-d', strtotime('-30 days')) }}" onchange="filterTable()"></label>
+                <label class="filter-date-label">To <input type="date" class="date-input" id="endDate" value="{{ date('Y-m-d') }}" onchange="filterTable()"></label>
                 <button class="btn-add-transaction" onclick="applyFilters()" style="background: #c9a96e;">Apply Filters</button>
+                <button type="button" class="btn-add-transaction" onclick="clearTransactionFilters()">Clear Filters</button>
+            </div>
+            <div class="module-insights">
+                <section class="module-insight-card" aria-labelledby="inventoryMovementChartTitle">
+                    <h3 id="inventoryMovementChartTitle">Stock Movement by Date</h3>
+                    <p class="insight-caption">Inbound and outbound quantities for the latest 10 matching transaction dates.</p>
+                    <div id="inventoryMovementChart" class="insight-chart" role="img" aria-label="Filtered stock movement quantities by date"></div>
+                </section>
             </div>
 
             <!-- Transactions Table -->
@@ -544,8 +570,8 @@
             <!-- Transactions Pagination -->
             <div class="pagination-wrapper" id="transactionsPagination">
                 <div class="rows-info">
-                    Rows Displayed:
-                    <select id="transactionRowsPerPage" onchange="changeTransactionPageSize()">
+                    Rows per page
+                    <select id="transactionRowsPerPage" aria-label="Inventory transaction rows per page" onchange="changeTransactionPageSize()">
                         <option value="10">10</option>
                         <option value="25" selected>25</option>
                         <option value="50">50</option>
@@ -2621,5 +2647,7 @@
         });
     </script>
 
+    @include('partials.data-import', ['importModule' => 'inventory'])
+    <script src="{{ asset('js/inventory-analytics.js') }}"></script>
 </body>
 </html>

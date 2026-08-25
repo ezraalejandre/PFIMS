@@ -1,8 +1,12 @@
 <?php
 
+use App\Http\Middleware\PreventAuthenticatedPageCaching;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,11 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
-        $middleware->appendToGroup('web', \App\Http\Middleware\PreventAuthenticatedPageCaching::class);
+        $middleware->append(HandleCors::class);
+        $middleware->appendToGroup('web', PreventAuthenticatedPageCaching::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $exception, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (TokenMismatchException $exception, Request $request) {
             if ($request->is('logout')) {
                 return redirect()->route('login');
             }

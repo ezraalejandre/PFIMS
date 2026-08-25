@@ -20,6 +20,20 @@
             border-color: #d32f2f !important;
             box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15) !important;
         }
+        .project-filter-panel { display:grid; grid-template-columns:minmax(220px,2fr) repeat(4,minmax(140px,1fr)) auto; gap:12px; align-items:end; margin:18px 0; padding:16px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; }
+        .project-filter-field { display:flex; flex-direction:column; gap:6px; }
+        .project-filter-field label { font-size:.78rem; font-weight:700; color:#4b5563; }
+        .project-filter-field input,.project-filter-field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid #d1d5db; border-radius:8px; background:#fff; }
+        .project-analytics { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; margin-bottom:18px; }
+        .project-chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
+        .project-chart-card h2 { margin:0 0 12px; font-size:1rem; }
+        .status-chart { display:grid; gap:9px; }
+        .status-chart-row { display:grid; grid-template-columns:90px minmax(0,1fr) 40px; gap:10px; align-items:center; font-size:.82rem; }
+        .status-chart-track { height:16px; border-radius:999px; background:#eef2f7; overflow:hidden; }
+        .status-chart-bar { height:100%; min-width:0; border-radius:999px; transition:width .25s ease; }
+        .status-chart-empty { color:#6b7280; font-size:.85rem; }
+        @media (max-width:1100px) { .project-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (max-width:640px) { .project-filter-panel { grid-template-columns:1fr; } }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
@@ -160,16 +174,29 @@
             </div>
         </div>
 
-        <!-- ─── SEARCH BAR ─── -->
-        <div class="search-bar-wrapper">
-            <div class="search-bar">
-                <input type="text" 
-                    id="projectSearch" 
-                    class="search-input" 
-                    placeholder="Search project..." 
-                    oninput="filterProjects()">
-                <button class="btn-clear-search" onclick="clearProjectSearch()">✕ Clear</button>
+        <div class="project-filter-panel" aria-label="Project filters">
+            <div class="project-filter-field">
+                <label for="projectSearch">Search</label>
+                <input type="search" id="projectSearch" maxlength="150" placeholder="Project, client, manager..." oninput="filterProjects()">
             </div>
+            <div class="project-filter-field">
+                <label for="projectStatusFilter">Status</label>
+                <select id="projectStatusFilter" onchange="filterProjects()"><option value="">All statuses</option><option>Pending</option><option>On Track</option><option>At Risk</option><option>Delayed</option><option>Completed</option></select>
+            </div>
+            <div class="project-filter-field">
+                <label for="projectPhaseFilter">Phase</label>
+                <select id="projectPhaseFilter" onchange="filterProjects()"><option value="">All phases</option><option>Planning</option><option>Foundation</option><option>Structure</option><option>Finishing</option><option>Complete</option></select>
+            </div>
+            <div class="project-filter-field"><label for="projectDateFrom">Started from</label><input type="date" id="projectDateFrom" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
+            <div class="project-filter-field"><label for="projectDateTo">Started to</label><input type="date" id="projectDateTo" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
+            <button type="button" class="btn-clear-search" onclick="clearProjectSearch()">✕ Clear</button>
+        </div>
+
+        <div class="project-analytics">
+            <section class="project-chart-card" aria-labelledby="projectStatusChartTitle">
+                <h2 id="projectStatusChartTitle">Project status distribution <small id="projectChartScope" style="font-weight:400;color:#6b7280"></small></h2>
+                <div id="projectStatusChart" class="status-chart" role="img" aria-label="Filtered projects grouped by status"></div>
+            </section>
         </div>
 
         <!-- Table with Progress Bar -->
@@ -195,8 +222,8 @@
         <!-- Pagination -->
         <div class="pagination-wrapper">
                         <div class="rows-info">
-                Rows Displayed:
-                <select id="projectRowsPerPage" onchange="changeProjectPageSize()">
+                Rows per page
+                <select id="projectRowsPerPage" aria-label="Project rows per page" onchange="changeProjectPageSize()">
                     <option value="10">10</option>
                     <option value="25" selected>25</option>
                     <option value="50">50</option>
@@ -235,12 +262,12 @@
                 <h3>BASIC INFORMATION</h3>
                 <div class="form-group">
                     <label>Project name <span class="required">*</span></label>
-                    <input type="text" placeholder="e.g. Skyline Tower Phase 2" id="projectName">
+                    <input type="text" placeholder="e.g. Skyline Tower Phase 2" id="projectName" maxlength="150">
 <span id="projectNameError" class="field-error"></span>
                 </div>
                 <div class="form-group">
                     <label>Client name <span class="required">*</span></label>
-                    <input type="text" placeholder="e.g. Mega Realty Corporation" id="clientName">
+                    <input type="text" placeholder="e.g. Mega Realty Corporation" id="clientName" maxlength="150">
 <span id="clientNameError" class="field-error"></span>
                 </div>
                 <div class="modal-footer">
@@ -270,7 +297,7 @@
                     </div>
                     <div class="form-group">
                         <label>No. of workers</label>
-                        <input type="number" placeholder="e.g. 50" id="workerCount" min="0">
+                            <input type="number" placeholder="e.g. 50" id="workerCount" min="0" max="100000" step="1">
 <span id="workerCountError" class="field-error"></span>
                     </div>
                 </div>
@@ -279,12 +306,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Start date <span class="required">*</span></label>
-                        <input type="date" id="startDate">
+                        <input type="date" id="startDate" min="2000-01-01" max="2100-12-31">
 <span id="startDateError" class="field-error"></span>
                     </div>
                                         <div class="form-group">
                         <label>Estimated end date <span class="required">*</span></label>
-                        <input type="date" id="endDate">
+                        <input type="date" id="endDate" min="2000-01-01" max="2100-12-31">
 <span id="endDateError" class="field-error"></span>
                     </div>
                 </div>
@@ -407,12 +434,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Start Date</label>
-                        <input type="date" id="editStartDate">
+                        <input type="date" id="editStartDate" min="2000-01-01" max="2100-12-31">
 <span id="editStartDateError" class="field-error"></span>
                     </div>
                     <div class="form-group">
                         <label>Estimated End Date</label>
-                        <input type="date" id="editEstEndDate">
+                        <input type="date" id="editEstEndDate" min="2000-01-01" max="2100-12-31">
 <span id="editEstEndDateError" class="field-error"></span>
                     </div>
                 </div>
@@ -781,8 +808,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     showEndDateError('Please select an estimated end date.');
                     return;
                 }
-                if (workers && parseInt(workers, 10) < 0) {
-                    showFieldError('workerCount', 'workerCountError', 'Number of workers cannot be negative.');
+                if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) > 100000)) {
+                    showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 0 to 100,000.');
                     return;
                 }
                 if (new Date(end) <= new Date(start)) {
@@ -881,15 +908,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // ─── RENDER PROJECT PAGE ───
         function renderProjectPage(page) {
-            projectCurrentPage = page;
-            var start = (page - 1) * projectPageSize;
+            var totalPages = Math.max(1, Math.ceil(projectFilteredData.length / projectPageSize));
+            projectCurrentPage = Math.min(Math.max(parseInt(page, 10) || 1, 1), totalPages);
+            var start = (projectCurrentPage - 1) * projectPageSize;
             var end = Math.min(start + projectPageSize, projectFilteredData.length);
             var pageData = projectFilteredData.slice(start, end);
             
             var tbody = document.getElementById('projectTableBody');
             tbody.innerHTML = '';
-            
-                        pageData.forEach(function(project) {
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:28px;color:#6b7280">No projects match the selected filters.</td></tr>';
+            }
+            pageData.forEach(function(project) {
                 tbody.appendChild(createProjectRow(project));
             });
             
@@ -969,60 +999,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function filterProjects() {
-        var searchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
-        projectSearchTerm = searchTerm;
-        
-        if (!searchTerm) {
-            projectFilteredData = allProjects;
-        } else {
+            projectSearchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
+            var status = document.getElementById('projectStatusFilter').value;
+            var phase = document.getElementById('projectPhaseFilter').value;
+            var from = document.getElementById('projectDateFrom').value;
+            var to = document.getElementById('projectDateTo').value;
             projectFilteredData = allProjects.filter(function(project) {
-                var name = (project.name || '').toLowerCase();
-                var client = (project.client || '').toLowerCase();
-                var manager = (project.manager || '').toLowerCase();
-                var phase = (project.phase || '').toLowerCase();
-                var status = (project.status || '').toLowerCase();
-                
-                return name.includes(searchTerm) || 
-                    client.includes(searchTerm) || 
-                    manager.includes(searchTerm) || 
-                    phase.includes(searchTerm) || 
-                    status.includes(searchTerm);
+                var haystack = [project.name, project.client, project.manager, project.phase, project.status]
+                    .join(' ').toLowerCase();
+                return (!projectSearchTerm || haystack.includes(projectSearchTerm))
+                    && (!status || project.status === status)
+                    && (!phase || project.phase === phase)
+                    && (!from || project.startDate >= from)
+                    && (!to || project.startDate <= to)
+                    && (!(from && to) || from <= to);
             });
+            refreshProjectAnalytics(projectFilteredData);
+            renderProjectPage(1);
         }
-        
-        renderProjectPage(1);
-    }
 
-    function clearProjectSearch() {
-        document.getElementById('projectSearch').value = '';
-        projectSearchTerm = '';
-        projectFilteredData = allProjects;
-        renderProjectPage(1);
-    }
-
-    // ─── UPDATE STATS (modified to handle search) ───
-    function updateStats(projects) {
-        allProjects = projects;
-        
-        // Apply current search filter if any
-        if (projectSearchTerm) {
-            projectFilteredData = allProjects.filter(function(project) {
-                var name = (project.name || '').toLowerCase();
-                var client = (project.client || '').toLowerCase();
-                var manager = (project.manager || '').toLowerCase();
-                var phase = (project.phase || '').toLowerCase();
-                var status = (project.status || '').toLowerCase();
-                
-                return name.includes(projectSearchTerm) || 
-                    client.includes(projectSearchTerm) || 
-                    manager.includes(projectSearchTerm) || 
-                    phase.includes(projectSearchTerm) || 
-                    status.includes(projectSearchTerm);
-            });
-        } else {
-            projectFilteredData = projects;
+        function clearProjectSearch() {
+            ['projectSearch', 'projectStatusFilter', 'projectPhaseFilter', 'projectDateFrom', 'projectDateTo']
+                .forEach(function(id) { document.getElementById(id).value = ''; });
+            projectSearchTerm = '';
+            filterProjects();
         }
-        
+
+        function updateStats(projects) {
+            allProjects = projects.slice();
+            filterProjects();
+        }
+
+        function refreshProjectAnalytics(projects) {
         var activeProjects = projects.filter(function(p) {
             return p.status !== 'Completed';
         });
@@ -1052,10 +1060,36 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('delayedSub').textContent = delayed.length > 0 ? 'Needs attention' : 'All projects on track';
         
         document.getElementById('avgCompletion').textContent = avgProgress + '%';
-        document.getElementById('avgCompletionSub').textContent = 'Across ' + projects.length + ' projects';
-        
-        renderProjectPage(1);
-    }
+        document.getElementById('avgCompletionSub').textContent = 'Across ' + projects.length + ' filtered projects';
+        renderStatusChart(projects);
+        }
+
+        function renderStatusChart(projects) {
+            var chart = document.getElementById('projectStatusChart');
+            var scope = document.getElementById('projectChartScope');
+            var statuses = [
+                { label: 'Pending', color: '#94a3b8' }, { label: 'On Track', color: '#16a34a' },
+                { label: 'At Risk', color: '#f59e0b' }, { label: 'Delayed', color: '#dc2626' },
+                { label: 'Completed', color: '#2563eb' }
+            ];
+            chart.innerHTML = '';
+            scope.textContent = '(' + projects.length + ' filtered)';
+            if (!projects.length) {
+                chart.innerHTML = '<div class="status-chart-empty">No chart data for the selected filters.</div>';
+                return;
+            }
+            statuses.forEach(function(item) {
+                var count = projects.filter(function(project) { return project.status === item.label; }).length;
+                var row = document.createElement('div'); row.className = 'status-chart-row';
+                var label = document.createElement('span'); label.textContent = item.label;
+                var track = document.createElement('div'); track.className = 'status-chart-track';
+                var bar = document.createElement('div'); bar.className = 'status-chart-bar';
+                bar.style.background = item.color; bar.style.width = ((count / projects.length) * 100) + '%';
+                track.appendChild(bar);
+                var value = document.createElement('strong'); value.textContent = count;
+                row.append(label, track, value); chart.appendChild(row);
+            });
+        }
 
                 // ─── FETCH PROJECTS (modified) ───
         function fetchProjects() {
@@ -1112,6 +1146,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        function escapeHtml(value) {
+            return String(value == null ? '' : value).replace(/[&<>'"]/g, function(character) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character];
+            });
+        }
+
+        function apiErrorMessage(error, fallback) {
+            if (error && error.errors) {
+                var fields = Object.keys(error.errors);
+                if (fields.length && error.errors[fields[0]].length) return error.errors[fields[0]][0];
+            }
+            return (error && error.message) || fallback;
+        }
+
         function updateProjectRow(row, project) {
             row.dataset.projectId = project.id || '';
             row.dataset.manager = project.manager || '';
@@ -1146,20 +1194,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 );
             };
 
+            var progress = Math.min(100, Math.max(0, parseFloat(project.progress) || 0));
             row.innerHTML = '' +
-                '<td><strong>' + project.name + '</strong></td>' +
-                '<td>' + project.client + '</td>' +
-                '<td>' + project.startDateDisplay + '</td>' +
-                '<td>' + project.estEndDateDisplay + '</td>' +
-                '<td>' + (project.actualEndDateDisplay || '—') + '</td>' +
-                '<td>' + project.duration + '</td>' +
-                '<td><span class="phase-badge">' + project.phase + '</span></td>' +
+                '<td><strong>' + escapeHtml(project.name) + '</strong></td>' +
+                '<td>' + escapeHtml(project.client) + '</td>' +
+                '<td>' + escapeHtml(project.startDateDisplay) + '</td>' +
+                '<td>' + escapeHtml(project.estEndDateDisplay) + '</td>' +
+                '<td>' + escapeHtml(project.actualEndDateDisplay || '—') + '</td>' +
+                '<td>' + escapeHtml(project.duration) + '</td>' +
+                '<td><span class="phase-badge">' + escapeHtml(project.phase) + '</span></td>' +
                 '<td>' +
                     '<div class="progress-cell">' +
-                        '<div class="mini-bar"><div class="fill" style="width:' + project.progress + '%;"></div></div>' +
+                        '<div class="mini-bar"><div class="fill" style="width:' + progress + '%;"></div></div>' +
                     '</div>' +
                 '</td>' +
-                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'On Track' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + project.status + '</span></td>';
+                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'On Track' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>';
         }
 
         function createProjectRow(project) {
@@ -1205,8 +1254,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 showEndDateError('Please select an estimated end date.');
                 return;
             }
-            if (workers && parseInt(workers, 10) < 0) {
-                showFieldError('workerCount', 'workerCountError', 'Number of workers cannot be negative.');
+            if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) > 100000)) {
+                showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 0 to 100,000.');
                 return;
             }
             if (new Date(endDate) <= new Date(startDate)) {
@@ -1241,7 +1290,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(response) {
                 if (!response.ok) {
                     return response.json().then(function(err) {
-                        throw new Error(err.message || 'Failed to save project');
+                        throw new Error(apiErrorMessage(err, 'Failed to save project'));
                     });
                 }
                 return response.json();
@@ -1483,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(response) {
                 if (!response.ok) {
                     return response.json().then(function(err) {
-                        throw new Error(err.message || 'Failed to save project changes');
+                        throw new Error(apiErrorMessage(err, 'Failed to save project changes'));
                     });
                 }
                 return response.json();

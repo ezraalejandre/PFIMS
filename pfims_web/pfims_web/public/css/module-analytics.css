@@ -1,0 +1,112 @@
+.module-insights {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 0 0 22px;
+}
+
+.stats-row-budget {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+    max-width: none !important;
+}
+
+.module-insight-card {
+    min-width: 0;
+    padding: 18px 20px;
+    border: 1px solid #e8e4dc;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(20, 35, 50, .05);
+}
+
+.module-insight-card h3 {
+    margin: 0;
+    color: #1a2b3c;
+    font-size: .95rem;
+}
+
+.module-insight-card .insight-caption {
+    margin: 4px 0 14px;
+    color: #777;
+    font-size: .76rem;
+}
+
+.insight-chart {
+    display: grid;
+    gap: 10px;
+    min-height: 58px;
+}
+
+.insight-bar-row {
+    display: grid;
+    grid-template-columns: minmax(85px, 135px) minmax(80px, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.insight-bar-label {
+    overflow: hidden;
+    color: #44505b;
+    font-size: .75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.insight-bar-track {
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #eef0f2;
+}
+
+.insight-bar-fill {
+    display: block;
+    height: 100%;
+    min-width: 2px;
+    border-radius: inherit;
+    background: #c9a96e;
+}
+
+.insight-bar-fill.is-secondary { background: #547896; }
+.insight-bar-fill.is-warning { background: #e19a45; }
+.insight-bar-fill.is-danger { background: #c95c5c; }
+.insight-bar-fill.is-success { background: #4f8b68; }
+
+.insight-bar-value {
+    color: #1a2b3c;
+    font-size: .74rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.insight-empty,
+.insight-error {
+    display: flex;
+    min-height: 58px;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    border-radius: 8px;
+    background: #f7f8f9;
+    color: #747b82;
+    font-size: .8rem;
+    text-align: center;
+}
+
+.insight-error {
+    background: #fff3f3;
+    color: #a63f3f;
+}
+
+.filter-date-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #626b73;
+    font-size: .78rem;
+}
+
+@media (max-width: 680px) {
+    .module-insights { grid-template-columns: 1fr; }
+    .insight-bar-row { grid-template-columns: 88px minmax(60px, 1fr) auto; }
+}

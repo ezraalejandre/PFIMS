@@ -150,15 +150,19 @@
                 <!-- ─── CONFIGURATIONS (Dropdown Management) ─── -->
                 <div id="section-configurations" class="settings-section" style="display: none;">
                     <div class="section-title">Configurations</div>
-                    <div class="section-desc">Manage system dropdown lists such as units, inventory categories, and expense categories.</div>
+                    <div class="section-desc">Manage the live values used by inventory and finance input forms.</div>
 
                     <div class="config-tabs">
                         <button class="config-tab active" onclick="switchConfigType(this, 'units')">Units</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'inv_categories')">Inventory Categories</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'exp_categories')">Expense Categories</button>
+                        <button class="config-tab" onclick="switchConfigType(this, 'suppliers')">Suppliers</button>
                     </div>
 
-                    <button class="btn-add-user" onclick="openConfigAddModal()">+ Add New</button>
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <button class="btn-add-user" onclick="openConfigAddModal()">+ Add New</button>
+                        <input type="search" id="configTableSearch" oninput="renderConfigTable()" placeholder="Search configurations..." style="min-width:240px;padding:9px 13px;border:1px solid #ddd;border-radius:8px;">
+                    </div>
 
                     <div style="overflow-x: auto; margin-top: 15px;">
                         <table class="user-table" id="configTable">
@@ -322,10 +326,7 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="configItemId">
-                <div class="form-group" style="margin-bottom: 18px;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">Name <span style="color: #d32f2f;">*</span></label>
-                    <input type="text" id="configItemName" placeholder="Enter name" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa;">
-                </div>
+                <div id="configItemFields"></div>
                 <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e9ecef; padding-top: 20px;">
                     <!-- Cancel on the LEFT -->
                     <button class="btn-cancel" onclick="closeConfigItemModal()" style="background: transparent; color: #888; border: 1px solid #ddd; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
@@ -632,14 +633,17 @@
         var configData = {
             'units': [],
             'inv_categories': [],
-            'exp_categories': []
+            'exp_categories': [],
+            'suppliers': []
         };
 
         var configFieldMap = {
             'units': { id: 'unit_id', name: 'unit_name' },
             'inv_categories': { id: 'inventory_category_id', name: 'inventory_category_name' },
-            'exp_categories': { id: 'expense_category_id', name: 'category_name' }
+            'exp_categories': { id: 'fin_category_id', name: 'category_name' },
+            'suppliers': { id: 'supplier_id', name: 'supplier_name' }
         };
+        var configMeta = {};
 
         var currentConfigType = 'units';
 
@@ -650,6 +654,7 @@
             });
             el.classList.add('active');
             currentConfigType = type;
+            document.getElementById('configTableSearch').value = '';
             fetchConfigItems(type);
         }
 
@@ -666,6 +671,7 @@
             .then(function(data) {
                 if (data.success) {
                     configData[type] = data.data || [];
+                    configMeta[type] = data.meta || null;
                     renderConfigTable();
                 } else {
                     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px; color: red;">Failed to load data.</td></tr>';
@@ -679,34 +685,47 @@
 
         function renderConfigTable() {
             var items = configData[currentConfigType] || [];
+            var search = document.getElementById('configTableSearch').value.trim().toLowerCase();
             var tbody = document.getElementById('configTableBody');
             tbody.innerHTML = '';
+            var fields = configFieldMap[currentConfigType];
+            if (search) {
+                items = items.filter(function(item) {
+                    return String(item[fields.name] || '').toLowerCase().indexOf(search) !== -1;
+                });
+            }
 
             if (!items.length) {
                 tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px;">No items found.</td></tr>';
                 return;
             }
 
-            var fields = configFieldMap[currentConfigType];
             items.forEach(function(item) {
                 var tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${item[fields.id]}</td>
-                    <td><strong>${item[fields.name]}</strong></td>
-                    <td style="text-align: center;">
-                        <button class="btn-edit-user" onclick="openConfigEditModal(${item[fields.id]})">
-                            <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                        </button>
-                    </td>
-                `;
+                var idCell = document.createElement('td');
+                idCell.textContent = item[fields.id];
+                var nameCell = document.createElement('td');
+                var strong = document.createElement('strong');
+                strong.textContent = item[fields.name];
+                nameCell.appendChild(strong);
+                var actionCell = document.createElement('td');
+                actionCell.style.textAlign = 'center';
+                var edit = document.createElement('button');
+                edit.className = 'btn-edit-user';
+                edit.type = 'button';
+                edit.setAttribute('aria-label', 'Edit ' + item[fields.name]);
+                edit.innerHTML = `<img src="{{ asset('images/edit.jpg') }}" alt="">`;
+                edit.onclick = function() { openConfigEditModal(item[fields.id]); };
+                actionCell.appendChild(edit);
+                tr.append(idCell, nameCell, actionCell);
                 tbody.appendChild(tr);
             });
         }
 
         function openConfigAddModal() {
             document.getElementById('configItemId').value = '';
-            document.getElementById('configItemName').value = '';
-            document.getElementById('configItemModalTitle').textContent = 'Add New Item';
+            renderConfigFields(null);
+            document.getElementById('configItemModalTitle').textContent = 'Add Configuration';
             document.getElementById('deleteConfigBtn').style.display = 'none';
             document.getElementById('configItemModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -718,8 +737,8 @@
             var item = items.find(function(i) { return i[fields.id] === id; });
             if (!item) return;
             document.getElementById('configItemId').value = id;
-            document.getElementById('configItemName').value = item[fields.name];
-            document.getElementById('configItemModalTitle').textContent = 'Edit Item';
+            renderConfigFields(item);
+            document.getElementById('configItemModalTitle').textContent = 'Edit Configuration';
             document.getElementById('deleteConfigBtn').style.display = 'inline-block';
             document.getElementById('configItemModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -730,17 +749,55 @@
             document.body.style.overflow = '';
         }
 
-                function saveConfigItem(btn) {
-            var id = document.getElementById('configItemId').value;
-            var name = document.getElementById('configItemName').value.trim();
-            if (!name) {
-                alert('Please enter a name.');
-                return;
-            }
+        function renderConfigFields(item) {
+            var container = document.getElementById('configItemFields');
+            var meta = configMeta[currentConfigType];
+            var definitions = meta && meta.fields ? meta.fields : {};
+            container.innerHTML = '';
+            Object.keys(definitions).forEach(function(field) {
+                var definition = definitions[field];
+                var wrapper = document.createElement('div');
+                wrapper.className = 'form-group';
+                wrapper.style.marginBottom = '18px';
+                var label = document.createElement('label');
+                label.style.cssText = 'display:block;font-size:.85rem;font-weight:500;color:#333;margin-bottom:4px;';
+                label.textContent = definition.label + (definition.required ? ' *' : '');
+                var input;
+                if (definition.type === 'select') {
+                    input = document.createElement('select');
+                    Object.keys(definition.options || {}).forEach(function(value) {
+                        var option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = definition.options[value];
+                        input.appendChild(option);
+                    });
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.maxLength = definition.max || 255;
+                }
+                input.id = 'configField_' + field;
+                input.dataset.field = field;
+                input.required = !!definition.required;
+                input.style.cssText = 'width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;background:#fafafa;';
+                var value = item && item[field] !== null && item[field] !== undefined ? item[field] : '';
+                if (field === 'is_active' && value === '') value = '1';
+                input.value = String(value === true ? 1 : (value === false ? 0 : value));
+                wrapper.append(label, input);
+                container.appendChild(wrapper);
+            });
+        }
 
-            var fields = configFieldMap[currentConfigType];
+        function saveConfigItem(btn) {
+            var id = document.getElementById('configItemId').value;
             var payload = {};
-            payload[fields.name] = name;
+            var invalid = false;
+            document.querySelectorAll('#configItemFields [data-field]').forEach(function(input) {
+                var value = input.value.trim();
+                if (input.required && !value) invalid = true;
+                payload[input.dataset.field] = value;
+            });
+            if (invalid) { alert('Complete every required configuration field.'); return; }
 
             var url = '/api/config/' + currentConfigType;
             var method = 'POST';
@@ -760,14 +817,16 @@
                 },
                 body: JSON.stringify(payload)
             })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data.success) {
+            .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+            .then(function(result) {
+                var data = result.data;
+                if (result.ok && data.success) {
                     closeConfigItemModal();
                     showSuccess(data.message || 'Saved successfully!');
                     fetchConfigItems(currentConfigType);
                 } else {
-                    alert(data.message || 'Failed to save item.');
+                    var messages = data.errors ? Object.values(data.errors).flat().join('\n') : data.message;
+                    alert(messages || 'Failed to save configuration.');
                 }
             })
             .catch(function(err) {
@@ -779,10 +838,12 @@
             });
         }
 
-                function deleteConfigItem() {
+        function deleteConfigItem() {
             var id = document.getElementById('configItemId').value;
             if (!id) return;
-            var name = document.getElementById('configItemName').value.trim();
+            var fields = configFieldMap[currentConfigType];
+            var item = (configData[currentConfigType] || []).find(function(row) { return String(row[fields.id]) === String(id); });
+            var name = item ? item[fields.name] : 'this configuration';
             if (!confirm('Are you sure you want to permanently delete "' + name + '"?')) return;
 
             var btn = document.getElementById('deleteConfigBtn');

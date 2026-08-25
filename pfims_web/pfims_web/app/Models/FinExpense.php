@@ -8,8 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class FinExpense extends Model
 {
     protected $table = 'fin_expense_tbl';
+
     protected $primaryKey = 'fin_expense_id';
+
     public $incrementing = true;
+
     protected $keyType = 'int';
     // Table has created_at / updated_at columns, so Eloquent timestamps apply.
 
@@ -17,9 +20,14 @@ class FinExpense extends Model
         'project_id',
         'fin_category_id',
         'source_expense_id',
+        'inventory_transaction_id',
+        'project_cost_component',
+        'expense_description',
         'amount',
         'expense_date',
         'remarks',
+        'proof_file_path',
+        'proof_file_name',
     ];
 
     protected $casts = [

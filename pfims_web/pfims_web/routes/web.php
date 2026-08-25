@@ -1,26 +1,24 @@
 <?php
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use App\Models\User;
-use App\Models\AppNotification;
-use App\Models\LoginHistory;
-use App\Mail\FirstLoginVerificationMail;
-use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\ConfigController;
-use App\Http\Controllers\InventoryController;
-use App\Http\Controllers\InventoryTransactionController;
-use App\Http\Controllers\MLController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Auth\PasswordController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Api\FinExpenseController;
 use App\Http\Controllers\Auth\ForgotPasswordControllerWeb;
+use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataImportController;
+use App\Http\Controllers\MLController;
+use App\Http\Controllers\ReportController;
+use App\Mail\FirstLoginVerificationMail;
+use App\Models\AppNotification;
+use App\Models\LoginHistory;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 
 // Landing page (login)
 Route::get('/', function () {
@@ -66,6 +64,7 @@ Route::get('/asettings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
     $users = User::orderBy('name')->get();
+
     return view('Asettings', [
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
@@ -103,6 +102,7 @@ Route::get('/osettings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
     $users = User::orderBy('name')->get();
+
     return view('Osettings', [
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
@@ -150,147 +150,23 @@ Route::get('/suppliers', function () {
     return view('suppliers');
 })->middleware('auth');
 
-// Supplier API endpoints
+// Authenticated web-only API endpoints
 Route::middleware('auth')->group(function () {
-    // Route::get('/api/suppliers', [SupplierController::class, 'index']);
-    // Route::post('/api/suppliers', [SupplierController::class, 'store']);
-    // Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
-    // Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
-    // Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
-
     // Config API endpoints
     Route::get('/api/config/{type}', [ConfigController::class, 'index']);
     Route::post('/api/config/{type}', [ConfigController::class, 'store']);
     Route::patch('/api/config/{type}/{id}', [ConfigController::class, 'update']);
     Route::delete('/api/config/{type}/{id}', [ConfigController::class, 'destroy']);
 
-    // // Inventory API endpoints
-    Route::get('/api/inventory', [InventoryController::class, 'index']);
-    Route::get('/api/inventory/lookup-data', [InventoryController::class, 'getLookupData']);
-    Route::post('/api/inventory/item', [InventoryController::class, 'storeItem']);
-    Route::patch('/api/inventory/item/{id}', [InventoryController::class, 'updateItem']);
-    Route::delete('/api/inventory/item/{id}', [InventoryController::class, 'destroyItem']);
-    Route::post('/api/inventory/transaction', [InventoryController::class, 'addTransaction']);
-    Route::patch('/api/inventory/transaction/{id}', [InventoryController::class, 'updateTransaction']);
-    Route::delete('/api/inventory/transaction/{id}', [InventoryController::class, 'destroyTransaction']);
-    Route::get('/api/inventory/transactions', [InventoryController::class, 'getAllTransactions']);
-    Route::get('/api/inventory/{itemId}/transactions', [InventoryController::class, 'getTransactions']);
-
-    Route::post('/api/inventory-transactions', [InventoryTransactionController::class, 'store']);
-    Route::get('/api/inventory-transactions', [InventoryTransactionController::class, 'index']);
-
-    Route::get('/api/inventory-categories', function () {
-        return response()->json(
-            DB::table('inventory_category_tbl')
-                ->select('inventory_category_id', 'inventory_category_name')
-                ->get()
-        );
-    });
-
-    Route::get('/api/inventory-items', function (Request $request) {
-        $query = DB::table('inventory_item_tbl')
-            ->select('item_id', 'item_name', 'inventory_category_id', 'supplier_id', 'unit_id', 'current_stock');
-
-        if ($request->has('category_id')) {
-            $query->where('inventory_category_id', $request->category_id);
-        }
-        if ($request->has('supplier_id')) {
-            $query->where('supplier_id', $request->supplier_id);
-        }
-
-        return response()->json($query->get());
-    });
-
-    Route::post('/api/inventory-items', function (Request $request) {
-        $id = DB::table('inventory_item_tbl')->insertGetId([
-            'item_name' => $request->item_name,
-            'inventory_category_id' => $request->inventory_category_id,
-            'supplier_id' => $request->supplier_id,
-            'unit_id' => $request->unit_id,
-            'current_stock' => $request->current_stock,
-            'reorder_level' => $request->reorder_level ?? 0,
-        ]);
-
-        return response()->json(['item_id' => $id], 201);
-    });
-
-    Route::put('/api/inventory-items/{id}', function (Request $request, $id) {
-        $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
-        if (!$exists) {
-            return response()->json(['message' => 'Item not found'], 404);
-        }
-
-        $data = [];
-        foreach ([
-            'item_name' => 'item_name',
-            'inventory_category_id' => 'inventory_category_id',
-            'supplier_id' => 'supplier_id',
-            'unit_id' => 'unit_id',
-            'current_stock' => 'current_stock',
-            'reorder_level' => 'reorder_level',
-        ] as $requestKey => $column) {
-            if ($request->has($requestKey)) {
-                $data[$column] = $request->input($requestKey);
-            }
-        }
-
-        if (empty($data)) {
-            return response()->json(['message' => 'No fields to update'], 422);
-        }
-
-        DB::table('inventory_item_tbl')->where('item_id', $id)->update($data);
-
-        return response()->json(DB::table('inventory_item_tbl')->where('item_id', $id)->first());
-    });
-
-    Route::delete('/api/inventory-items/{id}', function ($id) {
-        $exists = DB::table('inventory_item_tbl')->where('item_id', $id)->exists();
-        if (!$exists) {
-            return response()->json(['message' => 'Item not found'], 404);
-        }
-
-        DB::table('inventory_transaction_tbl')->where('item_id', $id)->delete();
-        DB::table('inventory_item_tbl')->where('item_id', $id)->delete();
-
-        return response()->json(['message' => 'Item deleted'], 200);
-    });
-
-    Route::get('/api/inventory-items-list', function () {
-        return response()->json(
-            DB::table('inventory_item_tbl as i')
-                ->join('inventory_category_tbl as c', 'i.inventory_category_id', '=', 'c.inventory_category_id')
-                ->join('unit_tbl as u', 'i.unit_id', '=', 'u.unit_id')
-                ->leftJoinSub(
-                    DB::table('inventory_transaction_tbl as t1')
-                        ->select('t1.item_id', 't1.transaction_type', 't1.transaction_date')
-                        ->whereRaw('t1.transaction_date = (
-                            select max(t2.transaction_date) from inventory_transaction_tbl t2
-                            where t2.item_id = t1.item_id
-                        )'),
-                    'lt',
-                    'i.item_id',
-                    '=',
-                    'lt.item_id'
-                )
-                ->select(
-                    'i.item_id',
-                    'i.item_name',
-                    'i.current_stock',
-                    'c.inventory_category_name',
-                    'u.unit_name',
-                    'lt.transaction_type',
-                    'lt.transaction_date'
-                )
-                ->get()
-        );
-    });
-
-    Route::get('/api/suppliers', [SupplierController::class, 'index']);
-    Route::post('/api/suppliers', [SupplierController::class, 'store']);
-    Route::get('/api/suppliers/{id}', [SupplierController::class, 'show']);
-    Route::patch('/api/suppliers/{id}', [SupplierController::class, 'update']);
-    Route::delete('/api/suppliers/{id}', [SupplierController::class, 'destroy']);
     Route::post('/api/finance-expenses/from-inventory/{transactionId}', [FinExpenseController::class, 'storeFromInventory']);
+
+    // Validated, transactional CSV/XLSX imports and downloadable CSV templates.
+    Route::post('/api/imports/finance-expenses', [DataImportController::class, 'finance'])
+        ->middleware('throttle:10,1');
+    Route::post('/api/imports/inventory', [DataImportController::class, 'inventory'])
+        ->middleware('throttle:10,1');
+    Route::get('/api/imports/templates/{type}', [DataImportController::class, 'template'])
+        ->whereIn('type', ['finance-expenses', 'inventory-items', 'inventory-transactions']);
 });
 
 // Reports page
@@ -316,7 +192,7 @@ Route::get('/profile', function () {
 //     $validated = $request->validate([
 Route::patch('/profile', function (Request $request) {
 
-    /** @var \App\Models\User $user */
+    /** @var User $user */
     $user = Auth::user();
 
     $validated = $request->validate([
@@ -336,6 +212,7 @@ Route::get('/settings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
     $users = User::orderBy('name')->get();
+
     return view('settings', [
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
@@ -344,10 +221,16 @@ Route::get('/settings', function () {
 
 // User CRUD endpoints (used by settings page)
 Route::post('/users', function (Request $request) {
+    abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+    $request->merge([
+        'name' => preg_replace('/\s+/u', ' ', trim((string) $request->input('name'))),
+        'email' => mb_strtolower(trim((string) $request->input('email'))),
+        'role' => strtolower(trim((string) $request->input('role'))),
+    ]);
     $validated = $request->validate([
-        'name' => ['required', 'string', 'max:255'],
-        'email' => ['required', 'email', 'max:255', Rule::unique('users')],
-        'role' => ['required', 'in:admin,operations,accounting,Admin,Operations,Accounting'],
+        'name' => ['required', 'string', 'max:150'],
+        'email' => ['required', 'email:rfc', 'max:254', Rule::unique('users', 'email')],
+        'role' => ['required', 'in:admin,operations,accounting'],
         'status' => ['required', 'in:Active,Inactive'],
     ]);
 
@@ -381,30 +264,52 @@ Route::post('/users', function (Request $request) {
 })->middleware('auth');
 
 Route::get('/users/{id}', function ($id) {
+    abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
+
     return response()->json($user);
-})->middleware('auth');
+})->middleware('auth')->whereNumber('id');
 
 Route::patch('/users/{id}', function (Request $request, $id) {
+    abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
 
+    $request->merge(['role' => strtolower(trim((string) $request->input('role')))]);
+
     $validated = $request->validate([
-        'role' => ['required', 'in:admin,operations,accounting,Admin,Operations,Accounting'],
+        'role' => ['required', 'in:admin,operations,accounting'],
         'status' => ['required', 'in:Active,Inactive'],
     ]);
+
+    if ((int) Auth::id() === (int) $user->id && $validated['status'] === 'Inactive') {
+        return response()->json(['message' => 'You cannot deactivate your own account.'], 422);
+    }
+    if ($user->role === 'admin' && ($validated['role'] !== 'admin' || $validated['status'] !== 'Active')
+        && User::where('role', 'admin')->where('status', 'Active')->count() <= 1) {
+        return response()->json(['message' => 'At least one active administrator is required.'], 422);
+    }
 
     $user->role = strtolower($validated['role']);
     $user->status = $validated['status'];
     $user->save();
 
     return response()->json(['success' => true, 'user' => $user]);
-})->middleware('auth');
+})->middleware('auth')->whereNumber('id');
 
 Route::delete('/users/{id}', function ($id) {
+    abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
+    if ((int) Auth::id() === (int) $user->id) {
+        return response()->json(['message' => 'You cannot delete your own account.'], 422);
+    }
+    if ($user->role === 'admin' && $user->status === 'Active'
+        && User::where('role', 'admin')->where('status', 'Active')->count() <= 1) {
+        return response()->json(['message' => 'At least one active administrator is required.'], 422);
+    }
     $user->delete();
+
     return response()->json(['success' => true]);
-})->middleware('auth');
+})->middleware('auth')->whereNumber('id');
 
 // Redirect login form submission to dashboard
 Route::post('/login', function (Request $request) {
@@ -424,6 +329,7 @@ Route::post('/login', function (Request $request) {
         if ($role === 'operations') {
             return '/odashboard';
         }
+
         return '/dashboard';
     };
 
@@ -437,6 +343,7 @@ Route::post('/login', function (Request $request) {
                     'message' => 'Your account has been deactivated.',
                 ], 403);
             }
+
             return back()->withErrors([
                 'email' => 'Your account has been deactivated.',
             ]);
@@ -506,21 +413,21 @@ Route::post('/login/verify-first-login', function (Request $request) {
     $userId = $request->session()->get('first_login_user_id');
     $user = $userId ? User::find($userId) : null;
 
-    if (!$user || !$user->first_login_verification_required || !$user->first_login_otp) {
+    if (! $user || ! $user->first_login_verification_required || ! $user->first_login_otp) {
         return response()->json([
             'success' => false,
             'message' => 'Your verification session is no longer valid. Please sign in again.',
         ], 401);
     }
 
-    if (!$user->first_login_otp_expires_at || $user->first_login_otp_expires_at->isPast()) {
+    if (! $user->first_login_otp_expires_at || $user->first_login_otp_expires_at->isPast()) {
         return response()->json([
             'success' => false,
             'message' => 'This code has expired. Please sign in again to receive a new code.',
         ], 410);
     }
 
-    if (!Hash::check($validated['otp'], $user->first_login_otp)) {
+    if (! Hash::check($validated['otp'], $user->first_login_otp)) {
         return response()->json([
             'success' => false,
             'message' => 'Invalid verification code. Please try again.',
@@ -552,7 +459,7 @@ Route::post('/login/resend-first-login', function (Request $request) {
     $userId = $request->session()->get('first_login_user_id');
     $user = $userId ? User::find($userId) : null;
 
-    if (!$user || !$user->first_login_verification_required) {
+    if (! $user || ! $user->first_login_verification_required) {
         return response()->json([
             'success' => false,
             'message' => 'Your verification session is no longer valid. Please sign in again.',
@@ -600,71 +507,37 @@ Route::post('/logout', function (Request $request) {
 // Change password route
 Route::post('/change-password', [PasswordController::class, 'update'])->middleware('auth')->name('password.update');
 
-// ─── MACHINE LEARNING ROUTES (NO AUTH REQUIRED) ────────────────
-Route::get('/ml-dashboard-test', function () {
-    return view('ml-dashboard-test');
+// ─── MACHINE LEARNING ROUTES ────────────────────────────────────
+// Financial analytics and model details are available only to signed-in users.
+Route::middleware('auth')->group(function () {
+    Route::get('/ml-dashboard-test', function () {
+        $user = Auth::user();
+        abort_unless($user instanceof User && in_array(strtolower((string) $user->role), ['admin', 'accounting'], true), 403);
+
+        return view('ml-dashboard-test');
+    });
+
+    Route::prefix('api/ml')->group(function () {
+        Route::post('/predict/cost', [MLController::class, 'predictProjectCost'])
+            ->middleware('throttle:60,1');
+        Route::get('/prediction-projects', [MLController::class, 'predictionProjects']);
+        Route::get('/predict/material-demand', [MLController::class, 'predictMaterialDemand']);
+        Route::get('/status', [MLController::class, 'status']);
+        Route::get('/analytics/dashboard', [MLController::class, 'dashboardAnalytics']);
+        Route::get('/analytics/budget-variance', [MLController::class, 'budgetVariance']);
+
+        // The controller also enforces the administrator role. Retraining is POST-only.
+        Route::post('/retrain', [MLController::class, 'retrain'])
+            ->middleware('throttle:3,1');
+    });
 });
 
-// Test endpoints
-Route::get('/api/ml/test', [MLController::class, 'test']);
-Route::get('/api/ml/test-service', [MLController::class, 'testService']);
-
-// Predictive Analytics - GET for testing, POST for production
-Route::post('/api/ml/predict/cost', [MLController::class, 'predictProjectCost']);
-Route::get('/api/ml/predict/cost', [MLController::class, 'predictProjectCost']); // Also allow GET for testing
-
-Route::get('/api/ml/predict/material-demand', [MLController::class, 'predictMaterialDemand']);
-
-// Model Management
-Route::post('/api/ml/retrain', [MLController::class, 'retrain']);
-Route::get('/api/ml/retrain', [MLController::class, 'retrain']); // Also allow GET for testing
-
-Route::get('/api/ml/status', [MLController::class, 'status']);
-
-// Analytics
-Route::get('/api/ml/analytics/dashboard', [MLController::class, 'dashboardAnalytics']);
-Route::get('/api/ml/analytics/budget-variance', [MLController::class, 'budgetVariance']);
-
-// ─── TEST SERVICE ROUTE ──────────────────────────────────────────
-Route::get('/api/ml/test-service', [MLController::class, 'testService']);
-
-Route::get('/ml-debug', function () {
-    try {
-        $mlService = new \App\Services\MLService();
-        $metrics = $mlService->getModelMetrics();
-        return response()->json([
-            'success' => true,
-            'metrics' => $metrics
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString()
-        ]);
-    }
-});
-
-// Report routes - Using web.php with JSON responses
+// Centralized reports: live datasets + system-generated export history.
 Route::middleware(['auth'])->group(function () {
-    // Page routes
-    Route::get('/reports', function () {
-        return view('reports');
-    })->name('reports');
-    
-    Route::get('/areports', function () {
-        return view('areports');
-    })->name('accounting.reports');
-    
-    Route::get('/oreports', function () {
-        return view('oreports');
-    })->name('operations.reports');
-    
-    // API routes for reports (keep in web.php but return JSON)
     Route::get('/api/reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::post('/api/reports/upload', [ReportController::class, 'upload'])->name('reports.upload');
+    Route::get('/api/reports/catalog', [ReportController::class, 'catalog'])->name('reports.catalog');
+    Route::get('/api/reports/data/{dataset}', [ReportController::class, 'data'])->name('reports.data');
+    Route::post('/api/reports/export', [ReportController::class, 'export'])->name('reports.export');
     Route::get('/api/reports/download/{id}', [ReportController::class, 'download'])->name('reports.download');
     Route::delete('/api/reports/{id}', [ReportController::class, 'destroy'])->name('reports.destroy');
 });
@@ -672,11 +545,11 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/forgot-password/send-otp', [ForgotPasswordControllerWeb::class, 'sendOtp'])
     ->middleware('throttle:5,1') // max 5 requests per minute per IP
     ->name('password.send-otp');
- 
+
 Route::post('/forgot-password/verify-otp', [ForgotPasswordControllerWeb::class, 'verifyOtp'])
     ->middleware('throttle:10,1')
     ->name('password.verify-otp');
- 
+
 Route::post('/forgot-password/reset', [ForgotPasswordControllerWeb::class, 'resetPassword'])
     ->middleware('throttle:10,1')
     ->name('password.reset');

@@ -4,14 +4,13 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class ImportData extends Command
 {
     protected $signature = 'data:import 
                             {--mode=add : Import mode - add, overwrite, upsert, skip} 
                             {--force : Force import without confirmation}';
-    
+
     protected $description = 'Import data from JSON files into pfims_db database';
 
     /**
@@ -20,7 +19,7 @@ class ImportData extends Command
     public function handle()
     {
         $mode = $this->option('mode');
-        
+
         $this->info('========================================');
         $this->info('  IMPORTING DATA INTO pfims_db');
         $this->info('========================================');
@@ -48,22 +47,22 @@ class ImportData extends Command
     protected function checkTables()
     {
         $this->info('📋 Checking database tables...');
-        
-        $tables = ['project_tbl', 'budgets_tbl', 'expense_tbl', 'inventory_item_tbl', 'inventory_transaction_tbl'];
+
+        $tables = ['project_tbl', 'budgets_tbl', 'fin_expense_category_tbl', 'fin_expense_tbl', 'inventory_item_tbl', 'inventory_transaction_tbl'];
         $missing = [];
-        
+
         foreach ($tables as $table) {
             $exists = DB::select("SHOW TABLES LIKE '{$table}'");
             if (empty($exists)) {
                 $missing[] = $table;
             }
         }
-        
-        if (!empty($missing)) {
-            $this->error('❌ Missing tables: ' . implode(', ', $missing));
+
+        if (! empty($missing)) {
+            $this->error('❌ Missing tables: '.implode(', ', $missing));
             exit(1);
         }
-        
+
         $this->info('✅ All tables exist!');
     }
 
@@ -76,6 +75,7 @@ class ImportData extends Command
             return null;
         }
         $timestamp = strtotime($date);
+
         return $timestamp ? date('Y-m-d', $timestamp) : null;
     }
 
@@ -87,6 +87,7 @@ class ImportData extends Command
         if (empty($value) || $value === '' || $value === 'null' || $value === null) {
             return null;
         }
+
         return is_numeric($value) ? (float) $value : null;
     }
 
@@ -108,6 +109,7 @@ class ImportData extends Command
         if (isset($expense['other_amount']) && is_numeric($expense['other_amount'])) {
             $amount += $expense['other_amount'];
         }
+
         return $amount > 0 ? $amount : null;
     }
 
@@ -117,10 +119,11 @@ class ImportData extends Command
     protected function importProjects($mode)
     {
         $this->info("\n📦 Importing projects from projects.json...");
-        
+
         $data = $this->getData('projects');
         if (empty($data)) {
             $this->warn('No projects data found');
+
             return;
         }
 
@@ -137,7 +140,7 @@ class ImportData extends Command
                 'worker_count' => $this->cleanNumeric($item['worker_count'] ?? null),
                 'phase' => $item['phase'] ?? null,
                 'completion_percentage' => $this->cleanNumeric($item['completion_percentage'] ?? 0),
-                'status' => $item['status'] ?? 'Pending'
+                'status' => $item['status'] ?? 'Pending',
             ];
         }
 
@@ -151,10 +154,11 @@ class ImportData extends Command
     protected function importBudgets($mode)
     {
         $this->info("\n💰 Importing budgets from budgets.json...");
-        
+
         $data = $this->getData('budgets');
         if (empty($data)) {
             $this->warn('No budgets data found');
+
             return;
         }
 
@@ -164,7 +168,7 @@ class ImportData extends Command
                 'budget_id' => $item['budget_id'],
                 'project_id' => $item['project_id'],
                 'budget_amount' => $this->cleanNumeric($item['budget_amount'] ?? 0),
-                'actual_amount' => $this->cleanNumeric($item['actual_amount'] ?? null)
+                'actual_amount' => $this->cleanNumeric($item['actual_amount'] ?? null),
             ];
         }
 
@@ -178,34 +182,74 @@ class ImportData extends Command
     protected function importExpenses($mode)
     {
         $this->info("\n🧾 Importing expenses from expenses.json...");
-        
+
         $data = $this->getData('expenses');
         if (empty($data)) {
             $this->warn('No expenses data found');
+
             return;
         }
 
         $cleanData = [];
         foreach ($data as $item) {
-            $cleanData[] = [
-                'expense_id' => $item['expense_id'],
-                'project_id' => $this->cleanNumeric($item['project_id'] ?? null),
-                'expense_category_id' => $this->cleanNumeric($item['expense_category_id'] ?? null),
-                'inventory_transaction_id' => $this->cleanNumeric($item['inventory_transaction_id'] ?? null),
-                'unit_id' => $this->cleanNumeric($item['unit_id'] ?? null),
-                'expense_description' => $item['expense_description'] ?? null,
-                'labor_amount' => $this->cleanNumeric($item['labor_amount'] ?? null),
-                'material_amount' => $this->cleanNumeric($item['material_amount'] ?? null),
-                'equipment_amount' => $this->cleanNumeric($item['equipment_amount'] ?? null),
-                'other_amount' => $this->cleanNumeric($item['other_amount'] ?? null),
-                'actual_amount' => $this->calculateActualAmount($item),
-                'expense_date' => $this->cleanDate($item['expense_date'] ?? null),
-                'remarks' => $item['remarks'] ?? null
+            $sourceId = $this->cleanNumeric($item['expense_id'] ?? null);
+            $components = [
+                'labor' => $this->cleanNumeric($item['labor_amount'] ?? null),
+                'material' => $this->cleanNumeric($item['material_amount'] ?? null),
+                'equipment' => $this->cleanNumeric($item['equipment_amount'] ?? null),
+                'other' => $this->cleanNumeric($item['other_amount'] ?? null),
             ];
+            if (! collect($components)->contains(fn ($amount) => (float) $amount > 0)) {
+                $components['other'] = $this->calculateActualAmount($item);
+            }
+
+            $rowIndex = 1;
+            foreach ($components as $component => $amount) {
+                if ((float) $amount <= 0) {
+                    continue;
+                }
+
+                $cleanData[] = [
+                    'fin_expense_id' => $sourceId ? ((int) $sourceId * 10) + $rowIndex : null,
+                    'project_id' => $this->cleanNumeric($item['project_id'] ?? null),
+                    'fin_category_id' => $this->finExpenseCategoryIdForComponent($component),
+                    'inventory_transaction_id' => $this->cleanNumeric($item['inventory_transaction_id'] ?? null),
+                    'project_cost_component' => $component,
+                    'expense_description' => $item['expense_description'] ?? ucfirst($component).' expense',
+                    'amount' => $amount,
+                    'expense_date' => $this->cleanDate($item['expense_date'] ?? null),
+                    'remarks' => $item['remarks'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+                $rowIndex++;
+            }
         }
 
-        $this->insertData('expense_tbl', $cleanData, 'expense_id', $mode);
+        $this->insertData('fin_expense_tbl', $cleanData, 'fin_expense_id', $mode);
         $this->info('✅ Expenses imported');
+    }
+
+    protected function finExpenseCategoryIdForComponent(string $component): int
+    {
+        $terms = match ($component) {
+            'material' => ['material', 'materials', 'supply', 'supplies', 'construction'],
+            'labor' => ['labor', 'labour', 'salary', 'salaries', 'wage', 'wages'],
+            'equipment' => ['equipment', 'machine', 'machinery', 'rental', 'repair', 'maintenance'],
+            default => ['other', 'misc', 'admin'],
+        };
+
+        $query = DB::table('fin_expense_category_tbl')->where('classification', 'direct');
+        $query->where(function ($inner) use ($terms) {
+            foreach ($terms as $term) {
+                $inner->orWhere('category_code', 'like', '%'.$term.'%')
+                    ->orWhere('category_name', 'like', '%'.$term.'%');
+            }
+        });
+
+        return (int) ($query->value('fin_category_id')
+            ?? DB::table('fin_expense_category_tbl')->where('classification', 'direct')->value('fin_category_id')
+            ?? DB::table('fin_expense_category_tbl')->value('fin_category_id'));
     }
 
     /**
@@ -214,10 +258,11 @@ class ImportData extends Command
     protected function importInventoryItems($mode)
     {
         $this->info("\n📦 Importing inventory items from inventory_items.json...");
-        
+
         $data = $this->getData('inventory_items');
         if (empty($data)) {
             $this->warn('No inventory items data found');
+
             return;
         }
 
@@ -230,7 +275,7 @@ class ImportData extends Command
                 'unit_id' => $this->cleanNumeric($item['unit_id'] ?? null),
                 'item_name' => $item['item_name'] ?? null,
                 'current_stock' => $this->cleanNumeric($item['current_stock'] ?? 0),
-                'reorder_level' => $this->cleanNumeric($item['reorder_level'] ?? 0)
+                'reorder_level' => $this->cleanNumeric($item['reorder_level'] ?? 0),
             ];
         }
 
@@ -244,10 +289,11 @@ class ImportData extends Command
     protected function importInventoryTransactions($mode)
     {
         $this->info("\n📊 Importing inventory transactions from inventory_transactions.json...");
-        
+
         $data = $this->getData('inventory_transactions');
         if (empty($data)) {
             $this->warn('No inventory transactions data found');
+
             return;
         }
 
@@ -259,7 +305,7 @@ class ImportData extends Command
                 'project_id' => $this->cleanNumeric($item['project_id'] ?? null),
                 'transaction_type' => $item['transaction_type'] ?? 'IN',
                 'quantity' => $this->cleanNumeric($item['quantity'] ?? 0),
-                'transaction_date' => $this->cleanDate($item['transaction_date'] ?? null)
+                'transaction_date' => $this->cleanDate($item['transaction_date'] ?? null),
             ];
         }
 
@@ -273,23 +319,24 @@ class ImportData extends Command
     protected function getData($filename)
     {
         $filePath = storage_path("app/data/{$filename}.json");
-        
-        if (!file_exists($filePath)) {
+
+        if (! file_exists($filePath)) {
             // Try looking in project root
             $filePath = base_path("{$filename}.txt");
-            if (!file_exists($filePath)) {
+            if (! file_exists($filePath)) {
                 return [];
             }
         }
-        
+
         $content = file_get_contents($filePath);
         $data = json_decode($content, true);
-        
+
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->error("JSON error in {$filename}: " . json_last_error_msg());
+            $this->error("JSON error in {$filename}: ".json_last_error_msg());
+
             return [];
         }
-        
+
         return $data;
     }
 
@@ -300,20 +347,21 @@ class ImportData extends Command
     {
         if (empty($data)) {
             $this->warn("No data to import into {$table}");
+
             return;
         }
 
         switch ($mode) {
             case 'overwrite':
-                if (!$this->option('force')) {
-                    if (!$this->confirm("⚠️  Truncate table {$table} and insert all data? (--force to skip)")) {
+                if (! $this->option('force')) {
+                    if (! $this->confirm("⚠️  Truncate table {$table} and insert all data? (--force to skip)")) {
                         return;
                     }
                 }
                 DB::table($table)->truncate();
                 $this->insertChunks($table, $data);
                 break;
-                
+
             case 'upsert':
                 DB::table($table)->upsert(
                     $data,
@@ -321,19 +369,19 @@ class ImportData extends Command
                     array_keys($data[0])
                 );
                 break;
-                
+
             case 'skip':
                 $existingIds = DB::table($table)->pluck($primaryKey)->toArray();
-                $newData = array_filter($data, function($item) use ($existingIds, $primaryKey) {
-                    return !in_array($item[$primaryKey], $existingIds);
+                $newData = array_filter($data, function ($item) use ($existingIds, $primaryKey) {
+                    return ! in_array($item[$primaryKey], $existingIds);
                 });
-                if (!empty($newData)) {
+                if (! empty($newData)) {
                     $this->insertChunks($table, $newData);
                 } else {
                     $this->info("No new records to insert into {$table}");
                 }
                 break;
-                
+
             case 'add':
             default:
                 $this->insertChunks($table, $data);
@@ -348,25 +396,25 @@ class ImportData extends Command
     {
         $chunks = array_chunk($data, 100);
         $inserted = 0;
-        
+
         foreach ($chunks as $chunk) {
             try {
                 DB::table($table)->insert($chunk);
                 $inserted += count($chunk);
             } catch (\Exception $e) {
-                $this->warn("Error inserting into {$table}: " . $e->getMessage());
+                $this->warn("Error inserting into {$table}: ".$e->getMessage());
                 // Try one by one
                 foreach ($chunk as $record) {
                     try {
                         DB::table($table)->insert($record);
                         $inserted++;
                     } catch (\Exception $e2) {
-                        $this->warn("Failed to insert record: " . json_encode($record));
+                        $this->warn('Failed to insert record: '.json_encode($record));
                     }
                 }
             }
         }
-        
+
         $this->info("Inserted {$inserted} records into {$table}");
     }
 
@@ -376,21 +424,21 @@ class ImportData extends Command
     protected function showSummary()
     {
         $this->info("\n========================================");
-        $this->info("  IMPORT SUMMARY");
-        $this->info("========================================");
-        
+        $this->info('  IMPORT SUMMARY');
+        $this->info('========================================');
+
         $counts = [
             'Projects' => DB::table('project_tbl')->count(),
             'Budgets' => DB::table('budgets_tbl')->count(),
-            'Expenses' => DB::table('expense_tbl')->count(),
+            'Finance Expenses' => DB::table('fin_expense_tbl')->count(),
             'Inventory Items' => DB::table('inventory_item_tbl')->count(),
             'Inventory Transactions' => DB::table('inventory_transaction_tbl')->count(),
         ];
-        
+
         foreach ($counts as $name => $count) {
-            $this->info(sprintf("%-20s: %s", $name, number_format($count)));
+            $this->info(sprintf('%-20s: %s', $name, number_format($count)));
         }
-        
-        $this->info("========================================");
+
+        $this->info('========================================');
     }
 }

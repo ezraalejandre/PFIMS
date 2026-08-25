@@ -18,46 +18,66 @@ class FinCashPositionController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'account_id' => 'required|exists:company_bank_account_tbl,account_id',
-            'period_month' => 'required|date',
-            'balance_amount' => 'required|numeric|min:0',
+            'period_month' => ['required', 'date_format:Y-m-d', 'before_or_equal:today', 'regex:/^\d{4}-\d{2}-01$/'],
+            'balance_amount' => 'required|numeric|min:0|max:99999999999999.99',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $existing = FinCashPosition::where('account_id', $request->account_id)
-            ->where('period_month', $request->period_month)
+        $data = $validator->validated();
+        $existing = FinCashPosition::where('account_id', $data['account_id'])
+            ->where('period_month', $data['period_month'])
             ->first();
 
         if ($existing) {
-            $existing->update(['balance_amount' => $request->balance_amount]);
-            return response()->json($existing);
+            return response()->json(['message' => 'A cash position already exists for this account and month. Edit the existing record instead.'], 409);
         }
 
-        $cash = FinCashPosition::create($request->all());
+        $cash = FinCashPosition::create($data);
+
         return response()->json($cash, 201);
     }
 
     public function update(Request $request, $id)
     {
         $cash = FinCashPosition::find($id);
-        if (!$cash) {
+        if (! $cash) {
             return response()->json(['message' => 'Cash position not found'], 404);
         }
 
-        $cash->update($request->all());
+        $validator = Validator::make($request->all(), [
+            'account_id' => 'sometimes|required|exists:company_bank_account_tbl,account_id',
+            'period_month' => ['sometimes', 'required', 'date_format:Y-m-d', 'before_or_equal:today', 'regex:/^\d{4}-\d{2}-01$/'],
+            'balance_amount' => 'sometimes|required|numeric|min:0|max:99999999999999.99',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        $data = $validator->validated();
+        $candidate = array_merge($cash->only($cash->getFillable()), $data);
+        $duplicate = FinCashPosition::where('account_id', $candidate['account_id'])
+            ->where('period_month', $candidate['period_month'])
+            ->where('cash_position_id', '!=', $id)
+            ->exists();
+        if ($duplicate) {
+            return response()->json(['message' => 'A cash position already exists for this account and month.'], 409);
+        }
+        $cash->update($data);
+
         return response()->json($cash);
     }
 
     public function destroy($id)
     {
         $cash = FinCashPosition::find($id);
-        if (!$cash) {
+        if (! $cash) {
             return response()->json(['message' => 'Cash position not found'], 404);
         }
 
         $cash->delete();
+
         return response()->json(['message' => 'Cash position deleted successfully']);
     }
 }

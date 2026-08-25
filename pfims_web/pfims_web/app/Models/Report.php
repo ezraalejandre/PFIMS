@@ -23,12 +23,25 @@ class Report extends Model
         'date_uploaded',
         'uploaded_by',
         'status',
-        'user_id'
+        'generation_method',
+        'dataset_key',
+        'export_format',
+        'row_count',
+        'selected_columns',
+        'filters_applied',
+        'export_options',
+        'generated_at',
+        'user_id',
     ];
 
     protected $casts = [
         'date_uploaded' => 'date',
         'file_size' => 'integer',
+        'row_count' => 'integer',
+        'selected_columns' => 'array',
+        'filters_applied' => 'array',
+        'export_options' => 'array',
+        'generated_at' => 'datetime',
     ];
 
     public function user()
@@ -42,6 +55,7 @@ class Report extends Model
         if ($role === 'admin') {
             return $query; // Admin sees all
         }
+
         return $query->where('role', $role);
     }
 
@@ -51,7 +65,14 @@ class Report extends Model
         if ($type === 'all') {
             return $query;
         }
+
         return $query->where('type', $type);
+    }
+
+    public function scopeGenerated($query)
+    {
+        return $query->where('generation_method', 'system_export')
+            ->whereNotNull('generated_at');
     }
 
     /**
@@ -59,21 +80,10 @@ class Report extends Model
      */
     public static function generateReportId()
     {
-        $lastReport = self::orderBy('id', 'desc')->first();
-        
-        if ($lastReport) {
-            // Extract the number from the last report_id
-            $lastId = intval(str_replace('RPT-', '', $lastReport->report_id));
-            $newId = $lastId + 1;
-        } else {
-            $newId = 1;
-        }
-        
-        // Check if this ID already exists (just in case)
-        while (self::where('report_id', 'RPT-' . str_pad($newId, 3, '0', STR_PAD_LEFT))->exists()) {
-            $newId++;
-        }
-        
-        return 'RPT-' . str_pad($newId, 3, '0', STR_PAD_LEFT);
+        do {
+            $reportId = 'RPT-'.now()->format('Ymd').'-'.strtoupper(str()->random(6));
+        } while (self::where('report_id', $reportId)->exists());
+
+        return $reportId;
     }
 }

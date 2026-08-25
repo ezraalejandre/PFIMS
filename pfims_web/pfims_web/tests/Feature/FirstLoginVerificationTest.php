@@ -6,8 +6,8 @@ use App\Mail\FirstLoginVerificationMail;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -51,6 +51,15 @@ class FirstLoginVerificationTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_first_login_verification_email_template_renders(): void
+    {
+        $html = (new FirstLoginVerificationMail('123456', 'Test User'))->render();
+
+        $this->assertStringContainsString('Test User', $html);
+        $this->assertStringContainsString('123456', $html);
+        $this->assertStringContainsString('complete your first login', $html);
+    }
+
     public function test_first_login_sends_a_code_and_does_not_authenticate_until_it_is_verified(): void
     {
         Mail::fake();
@@ -78,6 +87,7 @@ class FirstLoginVerificationTest extends TestCase
         $code = null;
         Mail::assertSent(FirstLoginVerificationMail::class, function ($mail) use ($user, &$code) {
             $code = $mail->otp;
+
             return $mail->hasTo($user->email) && preg_match('/^\d{6}$/', $code) === 1;
         });
 

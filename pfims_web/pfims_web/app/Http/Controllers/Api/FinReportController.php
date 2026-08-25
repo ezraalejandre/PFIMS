@@ -3,15 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FinReportController extends Controller
 {
     public function getExpovrall(Request $request)
     {
-        $period = $request->input('period', date('Y-m-01'));
-        $projectId = $request->input('project_id');
+        $filters = $request->validate([
+            'period' => ['nullable', 'date_format:Y-m-d', 'regex:/^\d{4}-\d{2}-01$/', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            'project_id' => ['nullable', 'integer', 'exists:project_tbl,project_id'],
+        ]);
+        $period = $filters['period'] ?? date('Y-m-01');
+        $projectId = $filters['project_id'] ?? null;
 
         $query = DB::table('v_fin_expovrall')
             ->where('period_month', $period);
@@ -25,8 +29,12 @@ class FinReportController extends Controller
 
     public function getAdminExpense(Request $request)
     {
-        $period = $request->input('period', date('Y-m-01'));
-        $projectId = $request->input('project_id');
+        $filters = $request->validate([
+            'period' => ['nullable', 'date_format:Y-m-d', 'regex:/^\d{4}-\d{2}-01$/', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            'project_id' => ['nullable', 'integer', 'exists:project_tbl,project_id'],
+        ]);
+        $period = $filters['period'] ?? date('Y-m-01');
+        $projectId = $filters['project_id'] ?? null;
 
         $query = DB::table('v_fin_admin_expense')
             ->where('period_month', $period);
@@ -132,8 +140,12 @@ class FinReportController extends Controller
 
     public function getCashAsset(Request $request)
     {
-        $period = $request->input('period', date('Y-m-01'));
-        $accountId = $request->input('account_id');
+        $filters = $request->validate([
+            'period' => ['nullable', 'date_format:Y-m-d', 'regex:/^\d{4}-\d{2}-01$/', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            'account_id' => ['nullable', 'integer', 'exists:company_bank_account_tbl,account_id'],
+        ]);
+        $period = $filters['period'] ?? date('Y-m-01');
+        $accountId = $filters['account_id'] ?? null;
 
         $query = DB::table('fin_cash_position_tbl')
             ->leftJoin('company_bank_account_tbl', 'fin_cash_position_tbl.account_id', '=', 'company_bank_account_tbl.account_id')
@@ -152,9 +164,13 @@ class FinReportController extends Controller
 
     public function getBackhoeProfitability(Request $request)
     {
-        $assetId = $request->input('asset_id');
-        $period = $request->input('period');
-        
+        $filters = $request->validate([
+            'asset_id' => ['nullable', 'integer', 'exists:company_asset_tbl,asset_id'],
+            'period' => ['nullable', 'date_format:Y-m-d', 'regex:/^\d{4}-\d{2}-01$/', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+        ]);
+        $assetId = $filters['asset_id'] ?? null;
+        $period = $filters['period'] ?? null;
+
         $query = DB::table('fin_equipment_expense_tbl as ee')
             ->join('company_asset_tbl as a', 'a.asset_id', '=', 'ee.asset_id')
             ->leftJoin(DB::raw('(
@@ -164,9 +180,9 @@ class FinReportController extends Controller
                     SUM(amount) as rental_income
                 FROM fin_equipment_rental_income_tbl
                 GROUP BY asset_id, period_month
-            ) as ri'), function($join) {
+            ) as ri'), function ($join) {
                 $join->on('ri.asset_id', '=', 'ee.asset_id')
-                     ->on('ri.period_month', '=', DB::raw("DATE_FORMAT(ee.expense_date, '%Y-%m-01')"));
+                    ->on('ri.period_month', '=', DB::raw("DATE_FORMAT(ee.expense_date, '%Y-%m-01')"));
             })
             ->where('a.asset_type', 'heavy_equipment');
 
@@ -176,7 +192,7 @@ class FinReportController extends Controller
 
         if ($period) {
             $query->where('ee.expense_date', '>=', $period)
-                  ->where('ee.expense_date', '<', DB::raw("DATE_ADD('$period', INTERVAL 1 MONTH)"));
+                ->where('ee.expense_date', '<', DB::raw("DATE_ADD('$period', INTERVAL 1 MONTH)"));
         }
 
         $results = $query->select(
@@ -188,20 +204,21 @@ class FinReportController extends Controller
             DB::raw('COALESCE(ri.rental_income, 0) as rental_income'),
             DB::raw('COALESCE(ri.rental_income, 0) - SUM(ee.amount) OVER (PARTITION BY a.asset_id, DATE_FORMAT(ee.expense_date, "%Y-%m-01")) as net_income')
         )
-        ->orderBy('a.asset_name')
-        ->orderBy('period_month')
-        ->get();
+            ->orderBy('a.asset_name')
+            ->orderBy('period_month')
+            ->get();
 
         // Recalculate net income properly
-        $results = $results->map(function($item) {
+        $results = $results->map(function ($item) {
             // Find total expense for this asset and period
             $totalExpense = DB::table('fin_equipment_expense_tbl')
                 ->where('asset_id', $item->asset_id)
                 ->where(DB::raw("DATE_FORMAT(expense_date, '%Y-%m-01')"), $item->period_month)
                 ->sum('amount');
-            
+
             $item->total_expense = $totalExpense;
             $item->net_income = ($item->rental_income ?? 0) - $totalExpense;
+
             return $item;
         });
 
@@ -213,8 +230,11 @@ class FinReportController extends Controller
      */
     public function getReceivablePayable(Request $request)
     {
-        $entryType = $request->input('entry_type');
-        
+        $filters = $request->validate([
+            'entry_type' => ['nullable', 'in:accounts_receivable,accounts_payable,cash_advance_site,advance_employee'],
+        ]);
+        $entryType = $filters['entry_type'] ?? null;
+
         $query = DB::table('fin_receivable_payable_tbl as rp')
             ->leftJoin('project_tbl as p', 'p.project_id', '=', 'rp.project_id')
             ->select(
@@ -243,7 +263,10 @@ class FinReportController extends Controller
 
     public function getConstructionBond(Request $request)
     {
-        $projectId = $request->input('project_id');
+        $filters = $request->validate([
+            'project_id' => ['nullable', 'integer', 'exists:project_tbl,project_id'],
+        ]);
+        $projectId = $filters['project_id'] ?? null;
         $query = DB::table('fin_construction_bond_tbl')
             ->leftJoin('project_tbl', 'fin_construction_bond_tbl.project_id', '=', 'project_tbl.project_id')
             ->select('fin_construction_bond_tbl.*', 'project_tbl.project_name');
@@ -257,7 +280,10 @@ class FinReportController extends Controller
 
     public function getRepairTotal(Request $request)
     {
-        $period = $request->input('period', date('Y-m-01'));
+        $filters = $request->validate([
+            'period' => ['nullable', 'date_format:Y-m-d', 'regex:/^\d{4}-\d{2}-01$/', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+        ]);
+        $period = $filters['period'] ?? date('Y-m-01');
         $query = DB::table('v_fin_repair_total')
             ->where('period_month', $period);
 
@@ -266,7 +292,10 @@ class FinReportController extends Controller
 
     public function getSummaryExpenses(Request $request)
     {
-        $period = $request->input('period', date('Y-m-01'));
+        $filters = $request->validate([
+            'period' => ['nullable', 'date_format:Y-m-d', 'regex:/^\d{4}-\d{2}-01$/', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+        ]);
+        $period = $filters['period'] ?? date('Y-m-01');
         $query = DB::table('v_fin_overall_expense')
             ->where('period_month', $period);
 

@@ -5,46 +5,57 @@ namespace App\Http\Controllers;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class InventoryTransactionController extends Controller
 {
-    public function __construct(private NotificationService $notifications)
-    {
-    }
+    public function __construct(private NotificationService $notifications) {}
 
     public function store(Request $request)
     {
 
-        $request->validate([
+        $validated = $request->validate([
 
-            'item_id'=>'required|integer|exists:inventory_item_tbl,item_id',
-            'project_id'=>'nullable|integer',
-            'transaction_type'=>'required|string|in:IN,OUT',
-            'quantity'=>'required|numeric|min:0.01',
-            'bar_code'=>'nullable|integer|min:0',
-            'transaction_date'=>'required|date|before_or_equal:today',
-            'proof_file'=>'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'item_id' => 'required|integer|exists:inventory_item_tbl,item_id',
+            'project_id' => 'nullable|integer|exists:project_tbl,project_id',
+            'transaction_type' => 'required|string|in:IN,OUT',
+            'quantity' => 'required|numeric|min:0.01|max:999999999999.99',
+            'bar_code' => 'nullable|integer|min:0|max:2147483647',
+            'transaction_date' => 'required|date|before_or_equal:today',
+            'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
 
         ]);
 
+        $duplicate = DB::table('inventory_transaction_tbl')
+            ->where('item_id', $validated['item_id'])
+            ->where('transaction_type', $validated['transaction_type'])
+            ->where('quantity', $validated['quantity'])
+            ->whereDate('transaction_date', $validated['transaction_date']);
+        $duplicate = empty($validated['project_id']) ? $duplicate->whereNull('project_id') : $duplicate->where('project_id', $validated['project_id']);
+        $duplicate = ($validated['bar_code'] ?? null) === null ? $duplicate->whereNull('bar_code') : $duplicate->where('bar_code', $validated['bar_code']);
+        if ($duplicate->exists()) {
+            return response()->json(['message' => 'This inventory transaction already exists.'], 409);
+        }
+
+        $proofPath = $request->file('proof_file')->store('inventory-transaction-proofs', 'public');
         try {
-            $result = DB::transaction(function () use ($request) {
+            $result = DB::transaction(function () use ($validated, $request, $proofPath) {
 
                 // Lock the item row for the duration of this transaction so
                 // two simultaneous requests can't both read the same
                 // current_stock and overwrite each other's update.
                 $item = DB::table('inventory_item_tbl')
-                    ->where('item_id', $request->item_id)
+                    ->where('item_id', $validated['item_id'])
                     ->lockForUpdate()
                     ->first();
 
-                if (!$item) {
+                if (! $item) {
                     abort(404, 'Item not found');
                 }
 
-                $delta = $request->transaction_type === 'IN'
-                    ? (float) $request->quantity
-                    : -(float) $request->quantity;
+                $delta = $validated['transaction_type'] === 'IN'
+                    ? (float) $validated['quantity']
+                    : -(float) $validated['quantity'];
 
                 $newStock = (float) $item->current_stock + $delta;
 
@@ -53,32 +64,34 @@ class InventoryTransactionController extends Controller
                 }
 
                 $id = DB::table('inventory_transaction_tbl')->insertGetId([
-                    'item_id'          => $request->item_id,
-                    'project_id'       => $request->project_id,
-                    'transaction_type' => $request->transaction_type,
-                    'quantity'         => $request->quantity,
-                    'bar_code'         => $request->bar_code,
-                    'transaction_date' => $request->transaction_date,
-                    'proof_file_path'   => $request->file('proof_file')->store('inventory-transaction-proofs', 'public'),
-                    'proof_file_name'   => $request->file('proof_file')->getClientOriginalName(),
+                    'item_id' => $validated['item_id'],
+                    'project_id' => $validated['project_id'] ?? null,
+                    'transaction_type' => $validated['transaction_type'],
+                    'quantity' => $validated['quantity'],
+                    'bar_code' => $validated['bar_code'] ?? null,
+                    'transaction_date' => $validated['transaction_date'],
+                    'proof_file_path' => $proofPath,
+                    'proof_file_name' => $request->file('proof_file')->getClientOriginalName(),
                 ]);
 
                 DB::table('inventory_item_tbl')
-                    ->where('item_id', $request->item_id)
+                    ->where('item_id', $validated['item_id'])
                     ->update(['current_stock' => $newStock]);
 
                 return [
                     'inventory_transaction_id' => $id,
-                    'current_stock'            => $newStock,
-                    'item_id'                  => (int) $item->item_id,
-                    'item_name'                => $item->item_name,
-                    'old_stock'                => (float) $item->current_stock,
-                    'reorder_level'            => (float) ($item->reorder_level ?? 0),
+                    'current_stock' => $newStock,
+                    'item_id' => (int) $item->item_id,
+                    'item_name' => $item->item_name,
+                    'old_stock' => (float) $item->current_stock,
+                    'reorder_level' => (float) ($item->reorder_level ?? 0),
                 ];
             });
         } catch (\Throwable $e) {
+            Storage::disk('public')->delete($proofPath);
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
             $message = $e->getMessage() ?: 'Failed to save transaction.';
+
             return response()->json(['message' => $message], $status ?: 500);
         }
 
@@ -98,7 +111,7 @@ class InventoryTransactionController extends Controller
 
         if (
             $result['current_stock'] <= $result['reorder_level'] &&
-            !$this->notifications->alreadyNotified('item_low_stock', 'item', $result['item_id'])
+            ! $this->notifications->alreadyNotified('item_low_stock', 'item', $result['item_id'])
         ) {
             $stock = rtrim(rtrim(number_format((float) $result['current_stock'], 2), '0'), '.');
             $threshold = rtrim(rtrim(number_format((float) $result['reorder_level'], 2), '0'), '.');
@@ -115,13 +128,14 @@ class InventoryTransactionController extends Controller
         }
 
         return response()->json([
-            'message'                  => 'Transaction saved',
+            'message' => 'Transaction saved',
             'inventory_transaction_id' => $result['inventory_transaction_id'],
-            'current_stock'            => $result['current_stock'],
+            'current_stock' => $result['current_stock'],
         ], 201);
     }
-    //iloveyou
-        public function index()
+
+    // iloveyou
+    public function index()
     {
         $rows = DB::table('inventory_transaction_tbl as t')
             ->join('inventory_item_tbl as i', 'i.item_id', '=', 't.item_id')

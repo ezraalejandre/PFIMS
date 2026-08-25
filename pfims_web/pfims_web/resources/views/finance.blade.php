@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Budget & Finance - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/finance.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
     <style>
         /* ─── MODAL Z-INDEX ─── */
         #deleteConfirmModal { z-index: 9999 !important; }
@@ -210,48 +211,6 @@
             color: #1a2b3c;
         }
         .stats-row-budget .stat-mini .stat-value.blue { color: #c9a96e; }
-
-        .pagination-wrapper {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0 0;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        .pagination-wrapper .rows-info {
-            font-size: 0.85rem;
-            color: #888;
-        }
-        .pagination-wrapper .rows-info select {
-            padding: 4px 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            background: #fafafa;
-            cursor: pointer;
-        }
-        .pagination-links {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-        .pagination-links a,
-        .pagination-links span {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: #555;
-            text-decoration: none;
-            transition: 0.2s;
-            cursor: pointer;
-        }
-        .pagination-links a:hover { background: #e9ecef; }
-        .pagination-links .active {
-            background: #1a2b3c;
-            color: #fff;
-        }
-        .pagination-links .dots { color: #aaa; cursor: default; }
 
         .modal-overlay {
             position: fixed;
@@ -830,6 +789,7 @@
         <div class="page-header">
             <h1>BUDGET &amp; FINANCE</h1>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn-add-data" onclick="openPfimsImport()">Import Expenses</button>
                 <button class="btn-add-expense" onclick="openAddExpenseModal()">+ Add Expense</button>
                 <button class="btn-add-budget" onclick="openAddBudgetModal()">+ Add Budget</button>
             </div>
@@ -860,6 +820,7 @@
                 <div class="stat-mini"><div class="stat-label">Net Variance</div><div class="stat-value red" id="netVarianceValue">₱0.00</div></div>
             </div>
             <div class="filter-tabs">
+                <span class="tab" data-period="all" onclick="setActiveTab(this,'all')">All</span>
                 <span class="tab" data-period="daily" onclick="setActiveTab(this,'daily')">Daily</span>
                 <span class="tab" data-period="weekly" onclick="setActiveTab(this,'weekly')">Weekly</span>
                 <span class="tab active" data-period="monthly" onclick="setActiveTab(this,'monthly')">Monthly</span>
@@ -867,20 +828,30 @@
             </div>
             <div class="filter-row">
                 <select id="projectFilter" class="project-filter" onchange="filterByProject()"><option value="all">All Projects</option></select>
-                <input type="text" id="projectSearch" class="project-filter" placeholder="Search project name..." oninput="applyFilters()">
-                <button class="btn-clear-search" onclick="clearSearch()">✕ Clear</button>
+                <select id="expenseCategoryFilter" onchange="applyFilters()"><option value="all">All Categories</option></select>
+                <select id="expenseComponentFilter" onchange="applyFilters()"><option value="all">All Components</option><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="other">Other</option></select>
+                <input type="search" id="projectSearch" class="project-filter" maxlength="150" placeholder="Search project, category, description..." oninput="applyFilters()">
+                <button type="button" class="btn-clear-search" onclick="clearSearch()">✕ Clear Filters</button>
+            </div>
+            <div class="module-insights">
+                <section class="module-insight-card" aria-labelledby="expenseCategoryChartTitle">
+                    <h3 id="expenseCategoryChartTitle">Expenses by Category</h3>
+                    <p class="insight-caption">Amounts are calculated only from expenses matching the filters above.</p>
+                    <div id="expenseCategoryChart" class="insight-chart" role="img" aria-label="Filtered expenses by category"></div>
+                </section>
             </div>
             <div class="table-wrapper expense-table-wrapper">
                 <table id="expenseTable">
-                    <thead><tr><th>Project</th><th>Expense Description</th><th>Category</th><th>Amount</th><th>Date</th><th>Remarks</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Project</th><th>Expense Description</th><th>Category</th><th>Component</th><th>Amount</th><th>Date</th><th>Remarks</th><th>Actions</th></tr></thead>
                     <tbody id="expenseTableBody"></tbody>
                 </table>
             </div>
             <div class="pagination-wrapper" id="expensePagination">
-                <div class="rows-info"><span id="rowsInfoText">Showing 0 of 0 expenses</span>
-                    <select id="financeRowsPerPage" onchange="changeFinancePageSize()">
+                <div class="rows-info">Rows per page
+                    <select id="financeRowsPerPage" aria-label="Finance expense rows per page" onchange="changeFinancePageSize()">
                         <option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option>
                     </select>
+                    <span id="rowsInfoText">Showing 0 of 0 expenses</span>
                 </div>
                 <div class="pagination-links" id="financePaginationLinks"></div>
             </div>
@@ -890,11 +861,21 @@
         <div id="tabBudgets" class="report-section">
             <div class="stats-row-budget budget-stats visible">
                 <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="budgetTotalValue">₱0.00</div></div>
+                <div class="stat-mini"><div class="stat-label">Actual Spend</div><div class="stat-value" id="budgetSpentValue">₱0.00</div></div>
+                <div class="stat-mini"><div class="stat-label">Remaining</div><div class="stat-value green" id="budgetRemainingValue">₱0.00</div></div>
             </div>
             <div class="filter-row">
                 <select id="budgetProjectFilter" onchange="filterBudgetTable()"><option value="all">All Projects</option></select>
-                <input type="text" id="budgetSearch" placeholder="Search project name..." oninput="filterBudgetTable()">
-                <button class="btn-clear-search" onclick="clearBudgetSearch()">✕ Clear</button>
+                <select id="budgetStatusFilter" onchange="filterBudgetTable()"><option value="all">All Statuses</option><option value="On Track">On Track</option><option value="Near Limit">Near Limit</option><option value="Over Budget">Over Budget</option><option value="No Budget">No Budget</option></select>
+                <input type="search" id="budgetSearch" maxlength="150" placeholder="Search project name..." oninput="filterBudgetTable()">
+                <button type="button" class="btn-clear-search" onclick="clearBudgetSearch()">✕ Clear Filters</button>
+            </div>
+            <div class="module-insights">
+                <section class="module-insight-card" aria-labelledby="budgetStatusChartTitle">
+                    <h3 id="budgetStatusChartTitle">Projects by Budget Status</h3>
+                    <p class="insight-caption">Counts are calculated from the filtered budget rows.</p>
+                    <div id="budgetStatusChart" class="insight-chart" role="img" aria-label="Filtered projects by budget status"></div>
+                </section>
             </div>
             <div class="budget-table-wrapper visible">
                 <table id="budgetTable">
@@ -903,10 +884,11 @@
                 </table>
             </div>
             <div class="pagination-wrapper" id="budgetPagination">
-                <div class="rows-info"><span id="budgetRowsInfo">Showing 0 of 0 projects</span>
-                    <select id="budgetRowsPerPage" onchange="changeBudgetPageSize()">
+                <div class="rows-info">Rows per page
+                    <select id="budgetRowsPerPage" aria-label="Finance budget rows per page" onchange="changeBudgetPageSize()">
                         <option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option>
                     </select>
+                    <span id="budgetRowsInfo">Showing 0 of 0 projects</span>
                 </div>
                 <div class="pagination-links" id="budgetPaginationLinks"></div>
             </div>
@@ -1154,11 +1136,20 @@
         <div class="modal-container">
             <div class="modal-header"><h2 id="addExpenseModalTitle">Add Expense</h2><button class="modal-close" onclick="closeAddExpenseModal()">×</button></div>
             <div class="modal-body">
-                <div class="form-group"><label>Project <span class="required">*</span></label><select id="expenseProject"><option value="">Select Project...</option></select></div>
+                <div class="form-group"><label>Project</label><select id="expenseProject"><option value="">Office/Admin (no project)</option></select></div>
                 <div class="form-group"><label>Expense Description <span class="required">*</span></label><input type="text" placeholder="e.g. Office Rent, Salary, Materials" id="expenseDesc"></div>
                 <div class="form-group"><label>Category <span class="required">*</span></label>
                     <select id="expenseCategory" onchange="toggleExpenseAmountFields()">
                         <option value="">Select Category...</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Project Cost Component</label>
+                    <select id="expenseCostComponent">
+                        <option value="">No project component</option>
+                        <option value="material">Material</option>
+                        <option value="labor">Labor</option>
+                        <option value="equipment">Equipment</option>
+                        <option value="other">Other</option>
                     </select>
                 </div>
 
@@ -1450,6 +1441,7 @@
                 <div class="detail-item"><label>Project</label><span id="detailProjectDisplay" class="detail-value">—</span><select id="detailProjectEdit" class="detail-edit" style="display:none;"></select></div>
                 <div class="detail-item"><label>Expense Description</label><span id="detailDescDisplay" class="detail-value">—</span><input type="text" id="detailDescEdit" class="detail-edit" style="display:none;"></div>
                 <div class="detail-item"><label>Category</label><span id="detailCategoryDisplay" class="detail-value">—</span><select id="detailCategoryEdit" class="detail-edit" style="display:none;"></select></div>
+                <div class="detail-item"><label>Project Cost Component</label><span id="detailCostComponentDisplay" class="detail-value">—</span><select id="detailCostComponentEdit" class="detail-edit" style="display:none;"><option value="">No project component</option><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="other">Other</option></select></div>
                 <div class="detail-item"><label>Amount</label><span id="detailAmountDisplay" class="detail-value">—</span><input type="number" step="0.01" id="detailAmountEdit" class="detail-edit" style="display:none;"></div>
                 <div class="detail-item"><label>Date</label><span id="detailDateDisplay" class="detail-value">—</span><input type="date" id="detailDateEdit" class="detail-edit" style="display:none;"></div>
                 <div class="detail-item"><label>Remarks</label><span id="detailRemarksDisplay" class="detail-value">—</span><input type="text" id="detailRemarksEdit" class="detail-edit" style="display:none;"></div>
@@ -1711,6 +1703,12 @@
 
         // ─── ADMIN CATEGORY CODES ──────────────────────────────────────
         var ADMIN_CATEGORY_CODES = ['RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH'];
+        var PROJECT_COST_COMPONENT_LABELS = {
+            material: 'Material',
+            labor: 'Labor',
+            equipment: 'Equipment',
+            other: 'Other'
+        };
 
         // ─── FILE UPLOAD UI STATE ─────────────────────────────────────
         var selectedDetailFile = null;
@@ -1763,6 +1761,10 @@
 
         function isAdminCategory(categoryCode) {
             return ADMIN_CATEGORY_CODES.indexOf(categoryCode) !== -1;
+        }
+
+        function formatCostComponent(component) {
+            return PROJECT_COST_COMPONENT_LABELS[component] || '—';
         }
 
         // ─── DYNAMIC EXPENSE FIELDS ──────────────────────────────────
@@ -2129,7 +2131,11 @@
 
         function clearSearch() {
             document.getElementById('projectSearch').value = '';
+            document.getElementById('projectFilter').value = 'all';
+            document.getElementById('expenseCategoryFilter').value = 'all';
+            document.getElementById('expenseComponentFilter').value = 'all';
             currentSearchTerm = '';
+            currentProjectFilter = 'all';
             applyFilters();
         }
 
@@ -2137,20 +2143,31 @@
             if (currentReportTab !== 'expenses') return;
 
             var searchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
+            var categoryFilter = document.getElementById('expenseCategoryFilter').value;
+            var componentFilter = document.getElementById('expenseComponentFilter').value;
             currentSearchTerm = searchTerm;
 
             var projectFiltered = currentProjectFilter === 'all'
                 ? financeExpenses
                 : financeExpenses.filter(function(expense) { return expense.project_name === currentProjectFilter; });
 
-            var searchFiltered = projectFiltered;
+            var categoryFiltered = categoryFilter === 'all'
+                ? projectFiltered
+                : projectFiltered.filter(function(expense) { return String(expense.fin_category_id || expense.expense_category_id || '') === String(categoryFilter); });
+
+            var componentFiltered = componentFilter === 'all'
+                ? categoryFiltered
+                : categoryFiltered.filter(function(expense) { return expense.project_cost_component === componentFilter; });
+
+            var searchFiltered = componentFiltered;
             if (searchTerm) {
-                searchFiltered = projectFiltered.filter(function(expense) {
+                searchFiltered = componentFiltered.filter(function(expense) {
                     var projectName = (expense.project_name || '').toLowerCase();
                     var description = (expense.expense_description || '').toLowerCase();
                     var category = (expense.category_name || '').toLowerCase();
+                    var component = formatCostComponent(expense.project_cost_component).toLowerCase();
                     var remarks = (expense.remarks || '').toLowerCase();
-                    return projectName.includes(searchTerm) || description.includes(searchTerm) || category.includes(searchTerm) || remarks.includes(searchTerm);
+                    return projectName.includes(searchTerm) || description.includes(searchTerm) || category.includes(searchTerm) || component.includes(searchTerm) || remarks.includes(searchTerm);
                 });
             }
 
@@ -2230,9 +2247,10 @@
             return apiFetch('/finance-categories')
                 .then(function(data) {
                     console.log('Categories loaded:', data);
-                    financeCategories = data || [];
-                    populateCategoryDropdown();
-                })
+                financeCategories = data || [];
+                populateCategoryDropdown();
+                populateCategoryFilter();
+            })
                 .catch(function(error) { 
                     console.error('Error fetching categories:', error);
                     showError(error.message); 
@@ -2368,9 +2386,7 @@
                         }
                     });
 
-                    budgetFilteredData = budgetData;
-                    renderBudgetPage(1);
-                    updateBudgetStats();
+                    filterBudgetTable();
                 });
             })
             .catch(function(error) {
@@ -2386,6 +2402,9 @@
                 var select = document.getElementById(id);
                 if (!select) return;
                 select.innerHTML = '<option value="">Select Project...</option>';
+                if (id === 'expenseProject' || id === 'detailProjectEdit') {
+                    select.innerHTML = '<option value="">Office/Admin (no project)</option>';
+                }
                 financeProjects.forEach(function(project) {
                     var option = document.createElement('option');
                     option.value = project.project_id;
@@ -2406,6 +2425,7 @@
                     var option = document.createElement('option');
                     option.value = category.fin_category_id || category.expense_category_id;
                     option.setAttribute('data-code', category.category_code || '');
+                    option.setAttribute('data-classification', category.classification || '');
                     // Add classification indicator
                     option.textContent = category.category_name || category.category_code || category;
                     select.appendChild(option);
@@ -2431,6 +2451,20 @@
                 option.textContent = project.project_name;
                 filter.appendChild(option);
             });
+        }
+
+        function populateCategoryFilter() {
+            var filter = document.getElementById('expenseCategoryFilter');
+            if (!filter) return;
+            var currentValue = filter.value || 'all';
+            filter.innerHTML = '<option value="all">All Categories</option>';
+            financeCategories.forEach(function(category) {
+                var option = document.createElement('option');
+                option.value = category.fin_category_id || category.expense_category_id;
+                option.textContent = category.category_name || category.category_code || category;
+                filter.appendChild(option);
+            });
+            filter.value = currentValue;
         }
 
         function populateBudgetProjectFilter() {
@@ -2518,7 +2552,7 @@
             tbody.innerHTML = '';
 
             if (!pageData.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;">No expenses found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;">No expenses found.</td></tr>';
                 renderFinancePagination();
                 updateRowsInfo(0);
                 return;
@@ -2532,6 +2566,7 @@
                 row.setAttribute('data-desc', expense.expense_description || '');
                 row.setAttribute('data-category-id', expense.fin_category_id || expense.expense_category_id || '');
                 row.setAttribute('data-category', expense.category_name || '');
+                row.setAttribute('data-cost-component', expense.project_cost_component || '');
                 row.setAttribute('data-amount', expense.amount || '0');
                 row.setAttribute('data-date', expense.expense_date || '');
                 row.setAttribute('data-remarks', expense.remarks || '');
@@ -2558,6 +2593,7 @@
                 row.innerHTML = '<td><strong>' + (expense.project_name || '') + '</strong></td>' +
                 '<td>' + (expense.expense_description || '') + '</td>' +
                 '<td><span class="category-badge ' + categoryClass + '">' + categoryName + '</span></td>' +
+                '<td>' + formatCostComponent(expense.project_cost_component) + '</td>' +
                 '<td>' + (expense.is_pending_inventory ? '—' : formatCurrency(expense.amount || 0)) + '</td>' +
                 '<td>' + (expense.expense_date || '') + '</td>' +
                 '<td>' + (expense.remarks || '—') + '</td>' +
@@ -2970,6 +3006,7 @@
             document.getElementById('detailProjectDisplay').textContent = row.dataset.project;
             document.getElementById('detailDescDisplay').textContent = row.dataset.desc;
             document.getElementById('detailCategoryDisplay').textContent = row.dataset.category;
+            document.getElementById('detailCostComponentDisplay').textContent = formatCostComponent(row.dataset.costComponent);
             document.getElementById('detailAmountDisplay').textContent = formatCurrency(row.dataset.amount);
             document.getElementById('detailDateDisplay').textContent = row.dataset.date;
             document.getElementById('detailRemarksDisplay').textContent = row.dataset.remarks || '—';
@@ -2977,6 +3014,7 @@
             document.getElementById('detailProjectEdit').value = row.dataset.projectId || '';
             document.getElementById('detailDescEdit').value = row.dataset.desc;
             document.getElementById('detailCategoryEdit').value = row.dataset.categoryId || '';
+            document.getElementById('detailCostComponentEdit').value = row.dataset.costComponent || '';
             document.getElementById('detailAmountEdit').value = row.dataset.amount;
             document.getElementById('detailDateEdit').value = row.dataset.date;
             document.getElementById('detailRemarksEdit').value = row.dataset.remarks || '';
@@ -3062,15 +3100,29 @@
             var projectId = document.getElementById('detailProjectEdit').value;
             var desc = document.getElementById('detailDescEdit').value.trim();
             var categoryId = document.getElementById('detailCategoryEdit').value;
+            var costComponent = document.getElementById('detailCostComponentEdit').value;
             var amount = parseFloat(document.getElementById('detailAmountEdit').value) || 0;
             var date = document.getElementById('detailDateEdit').value;
             var remarks = document.getElementById('detailRemarksEdit').value.trim();
 
-            if (!projectId || !desc || !categoryId || !amount || !date) {
+            if (!desc || !categoryId || !amount || !date) {
                 showError('Please fill in all required fields.');
                 return;
             }
             if (amount <= 0) { showError('Amount must be greater than 0.'); return; }
+
+            var detailCategory = financeCategories.find(function(c) {
+                return c.fin_category_id == categoryId || c.expense_category_id == categoryId;
+            });
+            var isDirectDetailCategory = detailCategory && String(detailCategory.classification || '').toLowerCase() === 'direct';
+            if (isDirectDetailCategory && !projectId) {
+                showError('Direct project expenses require a project.');
+                return;
+            }
+            if ((isDirectDetailCategory || projectId) && !costComponent) {
+                showError('Please select a project cost component.');
+                return;
+            }
 
             var expenseId = currentDetailRow.getAttribute('data-expense-id');
 
@@ -3078,6 +3130,7 @@
             detailFormData.append('_method', 'PUT');
             detailFormData.append('project_id', projectId);
             detailFormData.append('fin_category_id', categoryId);
+            detailFormData.append('project_cost_component', costComponent);
             detailFormData.append('expense_description', desc);
             detailFormData.append('amount', amount);
             detailFormData.append('expense_date', date);
@@ -3137,6 +3190,7 @@
             document.getElementById('expenseProject').value = '';
             document.getElementById('expenseDesc').value = '';
             document.getElementById('expenseCategory').value = '';
+            document.getElementById('expenseCostComponent').value = '';
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expenseLaborAmount').value = '';
             document.getElementById('expenseMaterialAmount').value = '';
@@ -3165,10 +3219,11 @@
             var projectId = document.getElementById('expenseProject').value;
             var desc = document.getElementById('expenseDesc').value.trim();
             var categoryId = document.getElementById('expenseCategory').value;
+            var costComponent = document.getElementById('expenseCostComponent').value;
             var date = document.getElementById('expenseDate').value;
             var remarks = document.getElementById('expenseRemarks').value.trim();
 
-            if (!projectId || !desc || !categoryId || !date) {
+            if (!desc || !categoryId || !date) {
                 showError('Please fill in all required fields.');
                 return;
             }
@@ -3185,10 +3240,21 @@
 
             var categoryName = category.category_name ? category.category_name.toLowerCase() : '';
             var categoryCode = category.category_code || '';
+            var isDirectCategory = String(category.classification || '').toLowerCase() === 'direct';
+
+            if (isDirectCategory && !projectId) {
+                showError('Direct project expenses require a project.');
+                return;
+            }
+            if ((isDirectCategory || projectId) && !costComponent) {
+                showError('Please select a project cost component.');
+                return;
+            }
 
             var expenseFormData = new FormData();
             expenseFormData.append('project_id', projectId);
             expenseFormData.append('fin_category_id', categoryId);
+            expenseFormData.append('project_cost_component', costComponent);
             expenseFormData.append('expense_description', desc);
             expenseFormData.append('expense_date', date);
             if (remarks) expenseFormData.append('remarks', remarks);
@@ -5413,5 +5479,7 @@
         });
     </script>
 
+    @include('partials.data-import', ['importModule' => 'finance'])
+    <script src="{{ asset('js/finance-analytics.js') }}"></script>
 </body>
 </html>
