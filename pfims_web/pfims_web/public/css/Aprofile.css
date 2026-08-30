@@ -232,6 +232,105 @@ body {
     margin-top: 2px;
 }
 
+/* ─── ERROR NOTIFICATION (POP-UP) ─── */
+.error-notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: #d32f2f;
+    color: #fff;
+    padding: 14px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    min-width: 350px;
+    max-width: 90%;
+    animation: slideDown 0.4s ease;
+}
+
+.error-notification .error-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.error-notification .error-icon {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.error-notification .error-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.8;
+    padding: 0 8px;
+}
+
+.error-notification .error-close:hover {
+    opacity: 1;
+}
+
+/* ─── SUCCESS NOTIFICATION (POP-UP) ─── */
+.success-notification {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: #2e7d32;
+    color: #fff;
+    padding: 14px 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    min-width: 350px;
+    max-width: 90%;
+    animation: slideDown 0.4s ease;
+}
+
+.success-notification .success-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.success-notification .success-icon {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.success-notification .success-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.8;
+    padding: 0 8px;
+}
+
+.success-notification .success-close:hover {
+    opacity: 1;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateX(-50%) translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
 /* ─── PROFILE CARD ─── */
 .profile-card {
     background: #fff;
@@ -295,7 +394,7 @@ body {
 }
 
 .btn-edit-profile {
-    background: #1a2b3c;
+    background: #e19a45;
     color: #fff;
     border: none;
     padding: 10px 24px;
@@ -307,16 +406,16 @@ body {
 }
 
 .btn-edit-profile:hover {
-    background: #2a3f54;
+    background: #cf8735;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(26, 43, 60, 0.3);
+    box-shadow: 0 4px 15px rgba(225, 154, 69, 0.3);
 }
 
 /* ─── PROFILE DETAILS ─── */
 .profile-details .section-title {
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    color: #1a2b3c;
+    color: #888;
     margin-bottom: 15px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -360,8 +459,8 @@ body {
 
 .detail-item .edit-input:focus {
     outline: none;
-    border-color: #c9a96e;
-    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+    border-color: #e19a45;
+    box-shadow: 0 0 0 3px rgba(225, 154, 69, 0.2);
     background: #fff;
 }
 
@@ -392,7 +491,7 @@ body {
 
 .profile-actions .btn-save-profile {
     display: none;
-    background: #c9a96e;
+    background: #e19a45;
     color: #fff;
     border: none;
     padding: 10px 24px;
@@ -404,7 +503,7 @@ body {
 }
 
 .profile-actions .btn-save-profile:hover {
-    background: #b8975a;
+    background: #cf8735;
     transform: translateY(-2px);
 }
 

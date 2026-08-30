@@ -48,8 +48,47 @@
     .pfims-import-errors { margin-top: 12px; padding: 12px 14px; max-height: 210px; overflow: auto; border: 1px solid #efb4b4; border-radius: 8px; background: #fff4f4; color: #982c2c; font-size: .8rem; }
     .pfims-import-errors ul { margin: 8px 0 0 18px; padding: 0; }
     .pfims-import-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid #eee; }
-    .pfims-import-actions .btn-add-data { border: 0; border-radius: 7px; padding: 9px 16px; background: #c9a96e; color: #fff; font-weight: 600; cursor: pointer; }
+    .pfims-import-actions .btn-add-data { border: 0; border-radius: 7px; padding: 9px 16px; background: #e19a45; color: #fff; font-weight: 600; cursor: pointer; }
+    .pfims-import-actions .btn-add-data:hover { background: #cf8735; }
     .pfims-import-actions .btn-clear-search { border: 1px solid #d8dce0; border-radius: 7px; padding: 9px 16px; background: #fff; color: #555; font-weight: 600; cursor: pointer; }
+
+    html[data-theme="dark"] .pfims-import-card {
+        background: #111827;
+        color: #edf2f7;
+        box-shadow: 0 24px 70px rgba(0,0,0,.5);
+    }
+    html[data-theme="dark"] .pfims-import-titlebar h2 { color: #f8fafc; }
+    html[data-theme="dark"] .pfims-import-titlebar p { color: #b7c3d4; }
+    html[data-theme="dark"] .pfims-import-close { color: #c2cddd; }
+    html[data-theme="dark"] .pfims-import-field { color: #edf2f7; }
+    html[data-theme="dark"] .pfims-import-field input,
+    html[data-theme="dark"] .pfims-import-field select {
+        background: #0b1220;
+        color: #f8fafc;
+        border-color: #46546a;
+    }
+    html[data-theme="dark"] .pfims-import-guidance {
+        background: #182235;
+        color: #c2cddd;
+    }
+    html[data-theme="dark"] .pfims-template-link { color: #f3a64f; }
+    html[data-theme="dark"] .pfims-import-errors {
+        background: #3a1f1f;
+        border-color: #6b3a3a;
+        color: #ff8b91;
+    }
+    html[data-theme="dark"] .pfims-import-actions { border-top-color: #2c3749; }
+    html[data-theme="dark"] .pfims-import-actions .btn-add-data {
+        background: #cf8735;
+        color: #ffffff;
+    }
+    html[data-theme="dark"] .pfims-import-actions .btn-add-data:hover { background: #b8752c; }
+    html[data-theme="dark"] .pfims-import-actions .btn-clear-search {
+        background: #263349;
+        color: #f1f5f9;
+        border-color: #46546a;
+    }
+    html[data-theme="dark"] .pfims-import-actions .btn-clear-search:hover { background: #34435b; }
 </style>
 
 <script>

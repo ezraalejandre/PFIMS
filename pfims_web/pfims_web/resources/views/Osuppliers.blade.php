@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Operations Item Suppliers - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/Osuppliers.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/Osuppliers.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
     <style>
         #deleteConfirmModal { z-index: 9999 !important; }
-        .btn-delete-supplier {
+                .btn-delete-supplier {
             background: #d32f2f;
             color: #fff;
             border: none;
@@ -36,6 +37,17 @@
             margin-top: 10px;
             padding-top: 20px;
             border-top: 1px solid #e9ecef;
+        }
+        #addSupplierModal .modal-container {
+            width: 460px;
+        }
+        .supplier-section-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 12px;
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
@@ -92,28 +104,27 @@
                 <small>E.V. Catapang Design-Construction & Supply</small>
             </div>
         </div>
-        <div class="right">
+                <div class="right">
             <a href="{{ url('/onotifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
-                <span>Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+                <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
             </a>
             <a href="{{ url('/oprofile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
         </div>
     </header>
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li><a href="{{ url('/odashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/oprojects') }}">PROJECTS</a></li>
-                <li><a href="{{ url('/oinventory') }}">INVENTORY</a></li>
-                <li class="active"><a href="{{ url('/osuppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/oreports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/odashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/oprojects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li><a href="{{ url('/oinventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li class="active"><a href="{{ url('/osuppliers') }}"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+                <li><a href="{{ url('/oreports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -145,12 +156,21 @@
             <button class="btn-add-supplier" onclick="openAddModal()">+ Add Supplier</button>
         </div>
 
-        <div id="supplierKpis" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px;"></div>
-        <div class="filters-bar">
+                <div class="filters-bar">
             <input type="search" id="supplierSearch" class="search-input" maxlength="100" placeholder="Search supplier, address, or contact..." oninput="filterSuppliers()">
             <select id="supplierSort" onchange="filterSuppliers()"><option value="name">Sort by supplier name</option><option value="items">Sort by items supplied</option><option value="alerts">Sort by stock alerts</option></select>
+            <button type="button" class="btn-clear-filters" onclick="clearSupplierFilters()">X</button>
         </div>
-        <div id="supplierCoverageChart" style="display:grid;gap:7px;margin:0 0 16px;padding:14px;background:#fff;border:1px solid #e1e7ef;border-radius:10px;"></div>
+
+        <div id="supplierKpis" class="stats-grid-supplier"></div>
+
+        <div class="module-insights">
+            <section class="module-insight-card" aria-labelledby="supplierCoverageChartTitle">
+                <h3 id="supplierCoverageChartTitle">Inventory Items by Supplier</h3>
+                <p class="insight-caption">Top suppliers by number of items currently linked to them.</p>
+                <div id="supplierCoverageChart" class="insight-chart" role="img" aria-label="Inventory items by supplier"></div>
+            </section>
+        </div>
 
         <div class="table-wrapper">
             <table>
@@ -162,10 +182,26 @@
                         <th style="width: 140px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="supplierTableBody">
+                                <tbody id="supplierTableBody">
                     <!-- Suppliers will be loaded here dynamically -->
                 </tbody>
             </table>
+        </div>
+
+        <div class="pagination-wrapper" id="suppliersPagination">
+            <div class="rows-info">
+                Rows per page
+                <select id="supplierRowsPerPage" aria-label="Supplier rows per page" onchange="changeSupplierPageSize()">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span id="suppliersTotalCount" class="pagination-total">Total: 0</span>
+            </div>
+            <div class="pagination-links" id="suppliersPaginationLinks">
+                <!-- Generated by JavaScript -->
+            </div>
         </div>
 
     </main>
@@ -178,7 +214,8 @@
                 <button class="modal-close" onclick="closeAddModal()">×</button>
             </div>
 
-            <div class="modal-body">
+                        <div class="modal-body">
+                <h3 class="supplier-section-title">Supplier Information</h3>
                 <!-- Supplier Name: label + input on same row -->
                 <div class="add-row">
                     <div class="add-label">Supplier Name</div>
@@ -204,7 +241,7 @@
 
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
-                <button class="btn-save" id="addSupplierSubmitBtn" onclick="saveSupplier()">Add Supplier</button>
+                                <button class="btn-save" id="addSupplierSubmitBtn" onclick="saveSupplier()">Add</button>
             </div>
         </div>
     </div>
@@ -216,12 +253,18 @@
                 <h2>Supplier Details</h2>
                 <button class="modal-close" onclick="closeViewModal()">×</button>
             </div>
-            <div class="modal-body view-details-grid">
+                        <div class="modal-body view-details-grid">
                 <div class="view-item"><label>Supplier Name</label><span id="viewSupplierName" class="view-value">—</span></div>
                 <div class="view-item"><label>Supplier Address</label><span id="viewSupplierAddress" class="view-value">—</span></div>
                 <div class="view-item"><label>Supplier Contact no.</label><span id="viewSupplierContact" class="view-value">—</span></div>
             </div>
-            <div class="modal-footer"><button class="btn-cancel" onclick="closeViewModal()">Close</button></div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeViewModal()">Close</button>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
+                    <button class="btn-save" onclick="openEditFromView()" type="button">Edit</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -233,7 +276,8 @@
                 <button class="modal-close" onclick="closeEditModal()">×</button>
             </div>
 
-            <div class="modal-body">
+                        <div class="modal-body">
+                <h3 class="supplier-section-title">Supplier Information</h3>
                 <!-- Section 1: Supplier Name -->
                 <div class="edit-section">
                     <div class="left-col">
@@ -275,25 +319,51 @@
                 </div>
             </div>
 
-            <div class="modal-footer">
+                        <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
-                    <button class="btn-save" onclick="updateSupplier()">Save Changes</button>
-                </div>
+                <button class="btn-save" id="updateSupplierBtn" onclick="updateSupplier()">Save Changes</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Global state
+                // Global state
         let currentSupplierId = null;
         let suppliersData = [];
+        var supplierPageSize = 25;
+        var supplierCurrentPage = 1;
+        var supplierFilteredData = [];
 
-        // ─── LOAD SUPPLIERS ON PAGE LOAD ───
+                // ─── LOAD SUPPLIERS ON PAGE LOAD ───
         document.addEventListener('DOMContentLoaded', function() {
             loadSuppliers();
+            fetchNotifBadge();
         });
+
+        // ─── FETCH UNREAD NOTIFICATION COUNT ───
+        function fetchNotifBadge() {
+            fetch('/api/notifications/unread-count', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load unread count.');
+                return response.json();
+            })
+            .then(function(data) {
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                var count = data.unread_count || 0;
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function(error) {
+                console.error('Error loading notification badge:', error);
+            });
+        }
 
         // ─── LOAD SUPPLIERS FROM API ───
         function loadSuppliers() {
@@ -311,35 +381,76 @@
                 .catch(error => console.error('Error loading suppliers:', error));
         }
 
-        // ─── RENDER SUPPLIERS IN TABLE ───
+                // ─── RENDER SUPPLIERS IN TABLE ───
         function renderSuppliers(suppliers) {
+            supplierFilteredData = suppliers;
+            updateSupplierAnalytics(suppliers);
+            renderSupplierPage(1);
+        }
+
+        function renderSupplierPage(page) {
+            supplierCurrentPage = page;
             const tbody = document.getElementById('supplierTableBody');
             tbody.innerHTML = '';
-            updateSupplierAnalytics(suppliers);
 
-            if (suppliers.length === 0) {
+            if (supplierFilteredData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No suppliers found.</td></tr>';
+                renderSupplierPagination();
                 return;
             }
 
-            suppliers.forEach(supplier => {
+            const start = (page - 1) * supplierPageSize;
+            const end = Math.min(start + supplierPageSize, supplierFilteredData.length);
+            const pageData = supplierFilteredData.slice(start, end);
+
+            pageData.forEach(supplier => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${supplier.supplier_name}</strong></td>
                     <td>${supplier.address}</td>
                     <td>${supplier.contact_number}</td>
                     <td style="text-align: center;">
-                        <button class="btn-view-details" onclick="openViewModal(${supplier.supplier_id})" title="View Details" aria-label="View supplier details">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5.5 0-9.5 5.2-9.7 5.4a2.5 2.5 0 0 0 0 3.2C2.5 13.8 6.5 19 12 19s9.5-5.2 9.7-5.4a2.5 2.5 0 0 0 0-3.2C21.5 10.2 17.5 5 12 5Zm0 11.5A4.5 4.5 0 1 1 12 7a4.5 4.5 0 0 1 0 9.5Zm0-7A2.5 2.5 0 1 0 12 14a2.5 2.5 0 0 0 0-5Z"/></svg>
-                        </button>
-                        <button class="btn-edit" onclick="openEditModal(${supplier.supplier_id})" title="Edit Supplier" aria-label="Edit supplier"><img src="{{ asset('images/edit.jpg') }}" alt="Edit"></button>
+                    <button class="btn-edit" onclick="openViewModal(${supplier.supplier_id}, this)" title="View Details" aria-label="View supplier details"><img src="{{ asset('images/edit.jpg') }}" alt="View"></button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
+
+            renderSupplierPagination();
+            if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
-        function filterSuppliers() {
+        function renderSupplierPagination() {
+            const container = document.getElementById('suppliersPaginationLinks');
+            if (!container) return;
+
+            const total = supplierFilteredData.length;
+            const totalEl = document.getElementById('suppliersTotalCount');
+            if (totalEl) totalEl.textContent = 'Total: ' + total;
+            const totalPages = Math.ceil(total / supplierPageSize);
+            const current = supplierCurrentPage;
+
+                        if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            var html = '';
+            html += `<a href="#" onclick="renderSupplierPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
+            for (var i = 1; i <= totalPages; i++) {
+                html += `<a href="#" onclick="renderSupplierPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+            }
+            html += `<a href="#" onclick="renderSupplierPage(${current + 1}); return false;" class="${current >= totalPages ? 'disabled' : ''}">»</a>`;
+            container.innerHTML = html;
+        }
+
+        function changeSupplierPageSize() {
+            const select = document.getElementById('supplierRowsPerPage');
+            supplierPageSize = parseInt(select.value) || 25;
+            renderSupplierPage(1);
+        }
+
+                function filterSuppliers() {
             const term = (document.getElementById('supplierSearch')?.value || '').toLowerCase().trim();
             const sort = document.getElementById('supplierSort')?.value || 'name';
             const filtered = suppliersData.filter(supplier => [supplier.supplier_name, supplier.address, supplier.contact_number].some(value => (value || '').toLowerCase().includes(term)));
@@ -347,21 +458,57 @@
             renderSuppliers(filtered);
         }
 
-        function updateSupplierAnalytics(filtered) {
+        function clearSupplierFilters() {
+            document.getElementById('supplierSearch').value = '';
+            document.getElementById('supplierSort').value = 'name';
+            filterSuppliers();
+        }
+
+                function updateSupplierAnalytics(filtered) {
             const totalItems = filtered.reduce((sum, supplier) => sum + supplier.item_count, 0);
             const alerts = filtered.reduce((sum, supplier) => sum + supplier.low_stock_count, 0);
             document.getElementById('supplierKpis').innerHTML = [
                 ['Matching suppliers', filtered.length], ['Items supplied', totalItems], ['Low-stock item links', alerts]
-            ].map(([label, value]) => `<article style="padding:14px;background:#fff;border:1px solid #e1e7ef;border-left:4px solid #2563eb;border-radius:9px"><small style="display:block;color:#64748b">${label}</small><strong style="font-size:22px">${value.toLocaleString()}</strong></article>`).join('');
+            ].map(([label, value]) => `<article class="stat-card-supplier"><small>${label}</small><strong>${value.toLocaleString()}</strong></article>`).join('');
             const top = [...filtered].sort((a,b) => b.item_count - a.item_count).slice(0,8); const max = Math.max(...top.map(item => item.item_count), 1);
-            document.getElementById('supplierCoverageChart').innerHTML = '<strong>Inventory items by supplier</strong>' + (top.length ? top.map(supplier => `<div style="display:grid;grid-template-columns:minmax(120px,220px) 1fr 45px;gap:9px;align-items:center"><span>${escapeSupplierHtml(supplier.supplier_name)}</span><div style="height:10px;background:#edf2f7;border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:${supplier.item_count/max*100}%;background:#2563eb"></i></div><b style="text-align:right">${supplier.item_count}</b></div>`).join('') : '<span>No matching supplier data.</span>');
+            const chart = document.getElementById('supplierCoverageChart');
+            if (!top.length) {
+                chart.innerHTML = '<div class="insight-empty">No data matches the current filters.</div>';
+                return;
+            }
+            chart.innerHTML = top.map(supplier => `
+                <div class="insight-bar-row">
+                    <span class="insight-bar-label" title="${escapeSupplierHtml(supplier.supplier_name)}">${escapeSupplierHtml(supplier.supplier_name)}</span>
+                    <span class="insight-bar-track"><span class="insight-bar-fill" style="width:${Math.max(2, supplier.item_count / max * 100)}%;background:#e19a45;"></span></span>
+                    <span class="insight-bar-value">${supplier.item_count}</span>
+                </div>
+            `).join('');
         }
 
         function escapeSupplierHtml(value) {
             return String(value || '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
         }
 
-        function openViewModal(supplierId) {
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Loading...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
+        }
+
+        function openViewModal(supplierId, btn) {
+            if (btn && btn.disabled) return;
+            currentSupplierId = supplierId;
+            setButtonLoading(btn, true, '...');
             fetch(`/api/suppliers/${supplierId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -373,12 +520,19 @@
                     document.getElementById('viewSupplierModal').classList.add('active');
                     document.body.style.overflow = 'hidden';
                 })
-                .catch(error => showError(error.message || 'Unable to load supplier.'));
+                .catch(error => showError(error.message || 'Unable to load supplier.'))
+                .finally(() => setButtonLoading(btn, false));
         }
 
-        function closeViewModal() {
+                function closeViewModal() {
             document.getElementById('viewSupplierModal').classList.remove('active');
             document.body.style.overflow = '';
+        }
+
+        function openEditFromView() {
+            if (!currentSupplierId) return;
+            closeViewModal();
+            openEditModal(currentSupplierId);
         }
 
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
@@ -452,13 +606,13 @@
                     showError(data.message || 'Error saving supplier.');
                 }
             })
-            .catch(error => {
+                        .catch(error => {
                 console.error('Error:', error);
                 showError(error.message || 'Error saving supplier.');
             })
             .finally(() => {
                 submitButton.disabled = false;
-                submitButton.textContent = 'Add Supplier';
+                submitButton.textContent = 'Add';
             });
         }
 
@@ -521,8 +675,9 @@
             })
             .then(response => response.json())
             .then(data => {
-                closeDeleteModal();
+                                closeDeleteModal();
                 if (data.success) {
+                    closeViewModal();
                     closeEditModal();
                     showSuccess(data.message || 'Supplier deleted successfully!');
                     loadSuppliers();
@@ -538,6 +693,8 @@
         }
 
         function updateSupplier() {
+            var btn = document.getElementById('updateSupplierBtn');
+            if (btn && btn.disabled) return;
             var name = document.getElementById('editSupplierName').value.trim();
             var address = document.getElementById('editSupplierAddress').value.trim();
             var contact = document.getElementById('editSupplierContact').value.trim();
@@ -562,6 +719,8 @@
                 contact_number: contact
             };
 
+            setButtonLoading(btn, true, 'Saving...');
+
             fetch(`/api/suppliers/${currentSupplierId}`, {
                 method: 'PATCH',
                 headers: {
@@ -583,7 +742,8 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error updating supplier');
-            });
+            })
+            .finally(() => setButtonLoading(btn, false));
         }
 
         // ─── SUCCESS NOTIFICATION ───
@@ -628,7 +788,7 @@
             if (e.target === this) { closeDeleteModal(); }
         });
 
-        document.addEventListener('click', function(e) {
+                document.addEventListener('click', function(e) {
             if (document.getElementById('successNotification').style.display === 'block') {
                 if (!e.target.closest('.success-notification')) {
                     closeSuccess();
@@ -636,6 +796,7 @@
             }
         });
     </script>
+    <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
 
 </body>
 </html>

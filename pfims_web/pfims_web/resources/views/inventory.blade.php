@@ -107,10 +107,16 @@
             white-space: nowrap;
         }
         
-        .btn-add-transaction:hover {
+                .btn-add-transaction:hover {
             background: #2a3f54;
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(26, 43, 60, 0.3);
+        }
+        
+        .btn-confirm-expense:hover {
+            background: #cf8735;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(225, 154, 69, 0.3);
         }
         
         /* Inventory Tabs */
@@ -199,9 +205,8 @@
         }
         
         .items-table-wrapper table tbody tr:hover {
-            background: #faf8f5;
-            cursor: pointer;
-        }
+    background: #faf8f5;
+}
         
         .items-table-wrapper table tbody tr:last-child td {
             border-bottom: none;
@@ -226,8 +231,12 @@
             justify-content: center;
         }
         
-        .items-table-wrapper .action-cell button:hover {
-            background: rgba(0,0,0,0.06);
+                .items-table-wrapper .action-cell button:hover {
+            background: rgba(225, 154, 69, 0.12);
+        }
+        
+        .table-wrapper .action-cell button:hover {
+            background: rgba(225, 154, 69, 0.12);
         }
         
         .items-table-wrapper .action-cell button img {
@@ -354,7 +363,7 @@
             </div>
             <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
                 <button class="btn-cancel" onclick="closeExpenseConfirmModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
-                <button class="btn-delete" id="confirmExpenseBtn" onclick="confirmExpense()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #c9a96e; color: #fff; transition: 0.3s;">Create Expense</button>
+                <button class="btn-confirm-expense" id="confirmExpenseBtn" onclick="confirmExpense()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #e19a45; color: #fff; transition: 0.3s;">Create Expense</button>
             </div>
         </div>
     </div>
@@ -368,29 +377,28 @@
                 <small>E.V. Catapang Design-Construction & Supply</small>
             </div>
         </div>
-        <div class="right">
+                <div class="right">
             <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
-                <span>Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+                <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
             </a>
-            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                        <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
         </div>
     </header>
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
-                <li class="active"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li class="active"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li><a href="{{ url('/suppliers') }}"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -427,26 +435,7 @@
             </div>
         </div>
 
-        <!-- Stats Cards -->
-        <div class="stats-grid-inv">
-            <div class="stat-card-inv">
-                <div class="stat-label" id="totalItemsLabel">Total Items</div>
-                <div class="stat-value" id="totalItemsCount">0</div>
-                <div class="stat-sub" id="totalItemsSub">Across all transactions</div>
-            </div>
-            <div class="stat-card-inv">
-                <div class="stat-label" id="lowStockLabel">Low Stock Items</div>
-                <div class="stat-value" id="lowStockCount">0</div>
-                <div class="stat-sub" id="lowStockSub">Items for restocking</div>
-            </div>
-            <div class="stat-card-inv">
-                <div class="stat-label" id="categoriesLabel">Categories</div>
-                <div class="stat-value" id="categoriesCount">0</div>
-                <div class="stat-sub" id="categoriesSub">Item categories</div>
-            </div>
-        </div>
-
-        <!-- ─── INVENTORY TABS ─── -->
+                <!-- ─── INVENTORY TABS ─── -->
         <div class="inventory-tabs">
             <span class="tab active" onclick="switchInventoryTab(this, 'items')">Items</span>
             <span class="tab" onclick="switchInventoryTab(this, 'transactions')">
@@ -471,9 +460,28 @@
                     <option value="low_stock">Low Stock</option>
                     <option value="out_of_stock">Out of Stock</option>
                 </select>
-                <button class="btn-add-transaction" onclick="applyItemsFilters()" style="background: #c9a96e;">Apply Filters</button>
-                <button type="button" class="btn-add-transaction" onclick="clearItemsFilters()">Clear Filters</button>
+                <button type="button" class="btn-clear-filters" onclick="clearItemsFilters()">X</button>
             </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid-inv">
+                <div class="stat-card-inv">
+                    <div class="stat-label" id="totalItemsLabel">Total Items</div>
+                    <div class="stat-value" id="totalItemsCount">0</div>
+                    <div class="stat-sub" id="totalItemsSub">Across all transactions</div>
+                </div>
+                <div class="stat-card-inv">
+                    <div class="stat-label" id="lowStockLabel">Low Stock Items</div>
+                    <div class="stat-value" id="lowStockCount">0</div>
+                    <div class="stat-sub" id="lowStockSub">Items for restocking</div>
+                </div>
+                <div class="stat-card-inv">
+                    <div class="stat-label" id="categoriesLabel">Categories</div>
+                    <div class="stat-value" id="categoriesCount">0</div>
+                    <div class="stat-sub" id="categoriesSub">Item categories</div>
+                </div>
+            </div>
+
             <div class="module-insights">
                 <section class="module-insight-card" aria-labelledby="inventoryStockChartTitle">
                     <h3 id="inventoryStockChartTitle">Items by Stock State</h3>
@@ -504,7 +512,7 @@
 
             <!-- Items Pagination -->
             <div class="pagination-wrapper" id="itemsPagination">
-                <div class="rows-info">
+                                <div class="rows-info">
                     Rows per page
                     <select id="itemsRowsPerPage" aria-label="Inventory item rows per page" onchange="changeItemsPageSize()">
                         <option value="10">10</option>
@@ -512,6 +520,7 @@
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
+                    <span id="itemsTotalCount" class="pagination-total">Total: 0</span>
                 </div>
                 <div class="pagination-links" id="itemsPaginationLinks">
                     <!-- Generated by JavaScript -->
@@ -533,8 +542,7 @@
                 <select id="transactionProjectFilter" onchange="filterTable()"><option value="all">All Projects</option></select>
                 <label class="filter-date-label">From <input type="date" class="date-input" id="startDate" value="{{ date('Y-m-d', strtotime('-30 days')) }}" onchange="filterTable()"></label>
                 <label class="filter-date-label">To <input type="date" class="date-input" id="endDate" value="{{ date('Y-m-d') }}" onchange="filterTable()"></label>
-                <button class="btn-add-transaction" onclick="applyFilters()" style="background: #c9a96e;">Apply Filters</button>
-                <button type="button" class="btn-add-transaction" onclick="clearTransactionFilters()">Clear Filters</button>
+                <button type="button" class="btn-clear-filters" onclick="clearTransactionFilters()">X</button>
             </div>
             <div class="module-insights">
                 <section class="module-insight-card" aria-labelledby="inventoryMovementChartTitle">
@@ -570,7 +578,7 @@
 
             <!-- Transactions Pagination -->
             <div class="pagination-wrapper" id="transactionsPagination">
-                <div class="rows-info">
+                                <div class="rows-info">
                     Rows per page
                     <select id="transactionRowsPerPage" aria-label="Inventory transaction rows per page" onchange="changeTransactionPageSize()">
                         <option value="10">10</option>
@@ -578,6 +586,7 @@
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
+                    <span id="transactionsTotalCount" class="pagination-total">Total: 0</span>
                 </div>
                 <div class="pagination-links" id="transactionPaginationLinks">
                     <!-- Generated by JavaScript -->
@@ -670,8 +679,8 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeItemDetailModal()">Close</button>
-                <button class="btn-delete" onclick="deleteItem()">Delete Item</button>
-                <button class="btn-edit-project" onclick="openItemEditModal()">Edit Item</button>
+                <button class="btn-delete" onclick="deleteItem()">Delete</button>
+                <button class="btn-edit-project" onclick="openItemEditModal()">Edit</button>
             </div>
         </div>
     </div>
@@ -1033,6 +1042,23 @@
     <script>
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         var lookupData = { categories: [], suppliers: [], units: [] };
+
+        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Loading...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
+        }
         var inventoryItems = [];
         var allTransactions = [];
         var filteredData = [];
@@ -1053,12 +1079,36 @@
             });
         }
 
-        // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
+                // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.style.display = 'none';
             }
+        }
+
+        function fetchNotifBadge() {
+            fetch('/api/notifications/unread-count', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load unread count.');
+                return response.json();
+            })
+            .then(function(data) {
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                var count = data.unread_count || 0;
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function(error) {
+                console.error('Error loading notification badge:', error);
+            });
         }
 
         function showError(message) {
@@ -1567,14 +1617,8 @@
                 tr.setAttribute('data-supplier-id', item.supplier_id || '');
                 tr.setAttribute('data-unit-id', item.unit_id || '');
 
-                // Click on row opens detail modal
-                tr.onclick = function(e) {
-                    // Don't open if clicking on a button
-                    if (e.target.closest('button')) return;
-                    openItemDetailModal(this);
-                };
+                    tr.innerHTML = `
 
-                tr.innerHTML = `
                     <td><strong>${item.item_name || 'Unknown'}</strong></td>
                     <td>${item.category || '—'}</td>
                     <td>${item.supplier || '—'}</td>
@@ -1590,7 +1634,8 @@
                 tbody.appendChild(tr);
             });
             
-            renderItemsPagination();
+                        renderItemsPagination();
+            if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
         function renderItemsPagination() {
@@ -1598,6 +1643,8 @@
             if (!container) return;
             
             var total = itemsFilteredData.length;
+            var totalEl = document.getElementById('itemsTotalCount');
+            if (totalEl) totalEl.textContent = 'Total: ' + total;
             var totalPages = Math.ceil(total / itemsPageSize);
             var current = itemsCurrentPage;
             
@@ -1674,9 +1721,17 @@
             renderItemsPage(1);
         }
 
-        function applyItemsFilters() {
+                function applyItemsFilters() {
             filterItemsTable();
             showSuccess('Filters applied!');
+        }
+
+        function clearItemsFilters() {
+            document.getElementById('itemsSearchInput').value = '';
+            document.getElementById('itemsCategoryFilter').value = 'all';
+            document.getElementById('itemsSupplierFilter').value = 'all';
+            document.getElementById('itemsStockFilter').value = 'all';
+            filterItemsTable();
         }
 
         // ─── TRANSACTION TAB FUNCTIONS ──────────────────────────────
@@ -1746,7 +1801,8 @@
                 tbody.appendChild(tr);
             });
             
-            renderTransactionPagination();
+                        renderTransactionPagination();
+            if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
         function renderTransactionPagination() {
@@ -1754,6 +1810,8 @@
             if (!container) return;
             
             var total = filteredData.length;
+            var totalEl = document.getElementById('transactionsTotalCount');
+            if (totalEl) totalEl.textContent = 'Total: ' + total;
             var totalPages = Math.ceil(total / inventoryPageSize);
             var current = inventoryCurrentPage;
             
@@ -1833,9 +1891,19 @@
             renderTransactionPage(1);
         }
 
-        function applyFilters() {
+                function applyFilters() {
             filterTable();
             showSuccess('Filters applied!');
+        }
+
+        function clearTransactionFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('typeFilter').value = 'all';
+            document.getElementById('transactionCategoryFilter').value = 'all';
+            document.getElementById('transactionProjectFilter').value = 'all';
+            document.getElementById('startDate').value = '{{ date("Y-m-d", strtotime("-30 days")) }}';
+            document.getElementById('endDate').value = '{{ date("Y-m-d") }}';
+            filterTable();
         }
 
         // ─── ADD ITEM MODAL ──────────────────────────────────────────
@@ -1856,6 +1924,7 @@
         }
 
         function saveNewItem() {
+            var saveBtn = document.querySelector('#addItemModal .btn-save');
             var name = document.getElementById('newItemName').value.trim();
             var categoryId = document.getElementById('newItemCategory').value;
             var unitId = document.getElementById('newItemUnit').value;
@@ -1876,6 +1945,7 @@
                 reorder_level: reorderLevel
             };
 
+            setButtonLoading(saveBtn, true, 'Adding...');
             fetch('/api/inventory/item', {
                 method: 'POST',
                 headers: {
@@ -1899,7 +1969,8 @@
             .catch(function(err) {
                 console.error('Error adding item:', err);
                 showError('Failed to add item.');
-            });
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
         // ─── ITEM DETAIL MODAL FUNCTIONS ─────────────────────────────
@@ -2010,6 +2081,7 @@
         }
 
         function saveEditItem() {
+            var saveBtn = document.querySelector('#editItemModal .btn-save');
             var itemId = document.getElementById('editItemId').value;
             var name = document.getElementById('editItemName').value.trim();
             var categoryId = document.getElementById('editItemCategory').value;
@@ -2030,6 +2102,7 @@
                 reorder_level: reorderLevel
             };
 
+            setButtonLoading(saveBtn, true, 'Saving...');
             fetch('/api/inventory/item/' + itemId, {
                 method: 'PATCH',
                 headers: {
@@ -2053,7 +2126,8 @@
             .catch(function(err) {
                 console.error('Error updating item:', err);
                 showError('Failed to update item.');
-            });
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
         function deleteItem() {
@@ -2062,6 +2136,8 @@
             if (!itemId) { showError('Item ID missing.'); return; }
 
             openDeleteModal('Deleting this item will also delete its inventory transactions. Continue?', function() {
+                var deleteBtn = document.getElementById('confirmDeleteBtn');
+                setButtonLoading(deleteBtn, true, 'Deleting...');
                 fetch('/api/inventory/item/' + itemId, {
                     method: 'DELETE',
                     headers: {
@@ -2083,7 +2159,8 @@
                 .catch(function(err) {
                     console.error('Error deleting item:', err);
                     showError('Failed to delete item.');
-                });
+                })
+                .finally(function() { setButtonLoading(deleteBtn, false); });
             });
         }
 
@@ -2229,6 +2306,7 @@
 
         // ─── SAVE TRANSACTION ────────────────────────────────────────
         function saveTransaction() {
+            var saveBtn = document.querySelector('#step2 .btn-save');
             var itemId = document.getElementById('transactionItemSelect').value;
             var quantity = parseFloat(document.getElementById('transactionQuantity').value);
             var barCode = document.getElementById('transactionItemBarCode').value.trim();
@@ -2256,6 +2334,7 @@
             payload.append('transaction_date', date);
             payload.append('proof_file', proofFile);
 
+            setButtonLoading(saveBtn, true, 'Saving...');
             fetch('/api/inventory/transaction', {
                 method: 'POST',
                 headers: {
@@ -2278,7 +2357,8 @@
             .catch(function(err) {
                 console.error('Error adding transaction:', err);
                 showError('Failed to add transaction.');
-            });
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
         // ─── EXPENSE FROM TRANSACTION ───────────────────────────────
@@ -2341,6 +2421,7 @@
         }
 
         function saveExpenseFromTransaction() {
+            var saveBtn = document.querySelector('#expenseModal .btn-save');
             var desc = document.getElementById('expenseModalDesc').value.trim();
             var amount = parseFloat(document.getElementById('expenseModalAmount').value);
             var categoryId = document.getElementById('expenseModalCategory').value;
@@ -2361,6 +2442,7 @@
                 remarks: remarks || 'Stock-in expense'
             };
             
+            setButtonLoading(saveBtn, true, 'Creating...');
             fetch('/api/expenses', {
                 method: 'POST',
                 headers: {
@@ -2384,7 +2466,8 @@
             .catch(function(err) {
                 console.error('Error creating expense:', err);
                 showError('Failed to create expense.');
-            });
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
         document.getElementById('expenseModal').addEventListener('click', function(e) {
@@ -2514,6 +2597,7 @@
 
         function saveEdit() {
             if (!currentRow) return;
+            var saveBtn = document.getElementById('viewSaveBtn');
             var transactionId = currentRow.dataset.id || '';
             var quantity = parseFloat(document.getElementById('viewQuantityInput').value);
             var barCode = document.getElementById('viewBarCodeInput').value.trim();
@@ -2539,6 +2623,7 @@
                 transaction_date: date
             };
 
+            setButtonLoading(saveBtn, true, 'Saving...');
             fetch('/api/inventory/transaction/' + transactionId, {
                 method: 'PATCH',
                 headers: {
@@ -2575,7 +2660,8 @@
             .catch(function(err) {
                 console.error('Error saving transaction:', err);
                 showError('Failed to save changes.');
-            });
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
         function deleteTransaction() {
@@ -2587,6 +2673,8 @@
             }
 
             openDeleteModal('Are you sure you want to permanently delete this transaction?', function() {
+                var deleteBtn = document.getElementById('confirmDeleteBtn');
+                setButtonLoading(deleteBtn, true, 'Deleting...');
                 fetch('/api/inventory/transaction/' + transactionId, {
                     method: 'DELETE',
                     headers: {
@@ -2608,7 +2696,8 @@
                 .catch(function(err) {
                     console.error('Error deleting transaction:', err);
                     showError('Failed to delete transaction.');
-                });
+                })
+                .finally(function() { setButtonLoading(deleteBtn, false); });
             });
         }
 
@@ -2642,13 +2731,15 @@
             }
         });
 
-        // ─── INIT ───
+                // ─── INIT ───
         document.addEventListener('DOMContentLoaded', function() {
             loadLookupData();
+            fetchNotifBadge();
         });
     </script>
 
-    @include('partials.data-import', ['importModule' => 'inventory'])
+        @include('partials.data-import', ['importModule' => 'inventory'])
     <script src="{{ asset('js/inventory-analytics.js') }}"></script>
+    <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
 </body>
 </html>

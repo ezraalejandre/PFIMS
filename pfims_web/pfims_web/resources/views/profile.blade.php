@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="profile-page">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -37,15 +37,14 @@
                 <small>E.V. Catapang Design-Construction & Supply</small>
             </div>
         </div>
-        <div class="right">
+                <div class="right">
             <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
-                <span>Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+                <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
             </a>
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -53,13 +52,13 @@
     <!-- ─── SIDEBAR ─── -->
 <aside class="sidebar">
     <nav>
-        <ul>
-            <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;">DASHBOARD</a></li>
-            <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
-            <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
-            <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-            <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-            <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
+                <ul>
+            <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+            <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+            <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+            <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+            <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+            <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
         </ul>
     </nav>
     <div class="bottom-nav">
@@ -93,7 +92,11 @@
         </div>
 
         @if(session('status'))
-            <div class="status-message">{{ session('status') }}</div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showSuccess(@json(session('status')));
+                });
+            </script>
         @endif
 
         <!-- Profile Card -->
@@ -151,13 +154,110 @@
     </main>
 
     <script>
-        // ─── HIDE NOTIFICATION BADGE ON CLICK ───
+                // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.style.display = 'none';
             }
             // The link will still navigate to /notifications.
+        }
+
+        // ─── FETCH UNREAD NOTIFICATION COUNT ───
+        function fetchNotifBadge() {
+            fetch('/api/notifications/unread-count', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load unread count.');
+                return response.json();
+            })
+            .then(function(data) {
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                var count = data.unread_count || 0;
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function(error) {
+                console.error('Error loading notification badge:', error);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchNotifBadge);
+
+        // ─── ERROR NOTIFICATION (POP-UP) ───
+        function showError(message) {
+            var notif = document.getElementById('errorNotification');
+            var msgSpan = document.getElementById('errorMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            }
+            notif.style.display = 'block';
+            if (window.errorTimeout) clearTimeout(window.errorTimeout);
+            window.errorTimeout = setTimeout(function() {
+                closeError();
+            }, 5000);
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+            if (window.errorTimeout) {
+                clearTimeout(window.errorTimeout);
+                window.errorTimeout = null;
+            }
+        }
+
+        // ─── SUCCESS NOTIFICATION (POP-UP) ───
+        function showSuccess(message) {
+            var notif = document.getElementById('successNotification');
+            var msgSpan = document.getElementById('successMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'Action completed successfully!';
+            }
+            notif.style.display = 'block';
+            if (window.successTimeout) clearTimeout(window.successTimeout);
+            window.successTimeout = setTimeout(function() {
+                closeSuccess();
+            }, 5000);
+        }
+
+        function closeSuccess() {
+            document.getElementById('successNotification').style.display = 'none';
+            if (window.successTimeout) {
+                clearTimeout(window.successTimeout);
+                window.successTimeout = null;
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (document.getElementById('errorNotification').style.display === 'block') {
+                if (!e.target.closest('.error-notification')) { closeError(); }
+            }
+            if (document.getElementById('successNotification').style.display === 'block') {
+                if (!e.target.closest('.success-notification')) { closeSuccess(); }
+            }
+        });
+
+        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Saving...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
         }
 
         // ─── ENABLE EDIT MODE ───
@@ -180,13 +280,16 @@
 
         // ─── SAVE PROFILE ───
         function saveProfile() {
+            var saveBtn = document.querySelector('.profile-actions .btn-save-profile');
+            if (saveBtn && saveBtn.disabled) return;
+
             var fullName = document.getElementById('editFullName').value.trim();
             var email = document.getElementById('editEmail').value.trim();
             var phone = document.getElementById('editPhone').value.trim();
             var location = document.getElementById('editLocation').value.trim();
 
             if (!fullName || !email || !phone || !location) {
-                alert('Please fill in all fields.');
+                showError('Please fill in all fields.');
                 return;
             }
 
@@ -200,6 +303,7 @@
             var card = document.getElementById('profileCard');
             card.classList.remove('edit-mode');
 
+            setButtonLoading(saveBtn, true, 'Saving...');
             document.getElementById('profileCard').submit();
         }
     </script>

@@ -275,6 +275,7 @@ html.sidebar-collapsed .sidebar nav a::before {
 }
 
 .stat-card,
+.stat-card-inv,
 .kpi-card,
 .chart-card,
 .summary-card,
@@ -297,6 +298,7 @@ html.sidebar-collapsed .sidebar nav a::before {
 }
 
 .stat-card,
+.stat-card-inv,
 .kpi-card,
 .summary-card,
 .total-notif-item {
@@ -305,6 +307,7 @@ html.sidebar-collapsed .sidebar nav a::before {
 }
 
 .stat-card::before,
+.stat-card-inv::before,
 .kpi-card::before,
 .summary-card::before {
     content: "";
@@ -379,7 +382,8 @@ button,
 .btn-action,
 .btn-action-icon,
 .btn-mark-read,
-.btn-clear-all {
+.btn-clear-all,
+.btn-edit-project {
     border-radius: 12px !important;
     font-weight: 800 !important;
     letter-spacing: 0;
@@ -763,10 +767,28 @@ html[data-theme="dark"] :where(
     color: #ffffff !important;
 }
 
-html[data-theme="dark"] :where(.btn-delete, .btn-delete-user, .btn-danger) {
-    background: #b4232d !important;
+.inventory-page .btn-edit-project {
+    background: #e19a45 !important;
+    box-shadow: none !important;
+}
+
+.inventory-page .btn-edit-project:hover {
+    background: #cf8735 !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+html[data-theme="dark"] .inventory-page .btn-edit-project {
+    background: #e19a45 !important;
     color: #ffffff !important;
-    border-color: #e65c65 !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .inventory-page .btn-edit-project:hover {
+    background: #cf8735 !important;
+    box-shadow: none !important;
+    transform: none !important;
 }
 
 html[data-theme="dark"] .reports-page .action-cell button {
@@ -1220,13 +1242,13 @@ html[data-theme="dark"] .inventory-page :where(.filters-bar, .search-bar, .filte
     border-color: #36445a !important;
 }
 
-html[data-theme="dark"] .inventory-page :where(.btn-clear, .btn-clear-search, .clear-btn) {
+html[data-theme="dark"] .inventory-page :where(.btn-clear, .btn-clear-search, .clear-btn, .btn-clear-filters) {
     background: #111827 !important;
     color: #edf2f7 !important;
     border-color: #46546a !important;
 }
 
-html[data-theme="dark"] .inventory-page :where(.btn-clear, .btn-clear-search, .clear-btn):hover {
+html[data-theme="dark"] .inventory-page :where(.btn-clear, .btn-clear-search, .clear-btn, .btn-clear-filters):hover {
     background: #263349 !important;
     color: #ffffff !important;
     border-color: #68768c !important;
@@ -1242,6 +1264,59 @@ html[data-theme="dark"] .inventory-page :where(.inventory-tabs .tab, .filter-tab
     background: #f8fafc !important;
     color: #111827 !important;
     border-color: #f8fafc !important;
+}
+
+/* Import / Add Item / Add Transaction buttons match the "Items" active-tab color. */
+.inventory-page .btn-add-item,
+.inventory-page .btn-add-transaction {
+    background: #1a2b3c !important;
+}
+
+.inventory-page .btn-add-item:hover,
+.inventory-page .btn-add-transaction:hover {
+    background: #2a3f54 !important;
+}
+
+html[data-theme="dark"] .inventory-page .btn-add-item,
+html[data-theme="dark"] .inventory-page .btn-add-transaction {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page .btn-add-item:hover,
+html[data-theme="dark"] .inventory-page .btn-add-transaction:hover {
+    background: #e2e8f0 !important;
+}
+
+/* Inventory: flat low-stock orange instead of the site's gradient accent orange. */
+.inventory-page :where(.btn-save, .btn-continue) {
+    background: #e19a45 !important;
+    box-shadow: none !important;
+}
+
+.inventory-page :where(.btn-save, .btn-continue):hover {
+    background: #cf8735 !important;
+    box-shadow: none !important;
+}
+
+/* Inventory card accent: side bar instead of top bar, matching Suppliers. */
+.inventory-page .stat-card-inv::before {
+    content: none !important;
+    display: none !important;
+}
+
+.inventory-page .stat-card-inv {
+    border-left: 4px solid #e19a45 !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.btn-save, .btn-continue) {
+    background: #e19a45 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.btn-save, .btn-continue):hover {
+    background: #cf8735 !important;
 }
 
 html[data-theme="dark"] .inventory-page :where(.table-wrapper, .items-table-wrapper) {
@@ -1291,6 +1366,46 @@ html[data-theme="dark"] .inventory-page .pagination-links :where(a, button, span
     border-color: #f8fafc !important;
 }
 
+html[data-theme="dark"] .inventory-page .module-insight-card {
+    background: #111827 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .inventory-page .module-insight-card h3 {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page .module-insight-card .insight-caption {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .inventory-page .insight-bar-label {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .inventory-page .insight-bar-track {
+    background: #2a3548 !important;
+}
+
+html[data-theme="dark"] .inventory-page .insight-bar-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(.insight-empty, .insight-error) {
+    background: #182235 !important;
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .inventory-page .insight-error {
+    background: #3a1f1f !important;
+    color: #ff8b91 !important;
+}
+
+html[data-theme="dark"] .inventory-page .filter-date-label {
+    color: #c2cddd !important;
+}
+
 html[data-theme="dark"] .inventory-page .modal-overlay :where(
     .modal-container, .modal-header, .modal-body, .modal-footer,
     form, .form-group, .form-row, .form-row-three, .form-section,
@@ -1321,13 +1436,26 @@ html[data-theme="dark"] .inventory-page .modal-overlay :where(.file-upload-butto
 /* Items and Transactions view/edit modals: remove every remaining light panel. */
 html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) :where(
     .modal-container, .modal-header, .modal-body, .modal-footer,
-    .view-details-grid, .view-item, .form-group, .input-group,
+    .form-group, .input-group,
     form, fieldset
 ) {
     background: #111827 !important;
     background-color: #111827 !important;
     color: #edf2f7 !important;
     border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) .view-details-grid {
+    background: var(--ui-surface-raised) !important;
+    background-color: var(--ui-surface-raised) !important;
+    border: 1px solid #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal, #viewModal) .view-item {
+    background: transparent !important;
+    border: 0 !important;
     box-shadow: none !important;
 }
 
@@ -1403,6 +1531,40 @@ html[data-theme="dark"] .inventory-page #transactionModal .quantity-control butt
     border-color: #b8975a !important;
 }
 
+html[data-theme="dark"] .inventory-page .btn-confirm-expense {
+    background: #e19a45 !important;
+    color: #111827 !important;
+    border-color: #e19a45 !important;
+}
+
+html[data-theme="dark"] .inventory-page .btn-confirm-expense:hover {
+    background: #cf8735 !important;
+    color: #111827 !important;
+}
+
+html[data-theme="dark"] .inventory-page .stat-card-inv {
+    border-left-color: #e19a45 !important;
+}
+
+/* Suppliers: match Inventory's Add button + orange action styling. */
+.suppliers-page .btn-add-supplier {
+    background: #1a2b3c !important;
+}
+
+.suppliers-page .btn-add-supplier:hover {
+    background: #2a3f54 !important;
+}
+
+.suppliers-page .btn-save {
+    background: #e19a45 !important;
+    box-shadow: none !important;
+}
+
+.suppliers-page .btn-save:hover {
+    background: #cf8735 !important;
+    box-shadow: none !important;
+}
+
 /* Suppliers receives the same complete dark treatment as other modules. */
 html[data-theme="dark"] .suppliers-page :where(.stat-card, .stat-card-supplier, .kpi-card) {
     background: #111827 !important;
@@ -1411,8 +1573,43 @@ html[data-theme="dark"] .suppliers-page :where(.stat-card, .stat-card-supplier, 
     box-shadow: var(--ui-shadow-soft) !important;
 }
 
-html[data-theme="dark"] .suppliers-page :where(.stat-card, .stat-card-supplier, .kpi-card) :where(.stat-value, .value) {
+html[data-theme="dark"] .suppliers-page :where(.stat-card, .stat-card-supplier, .kpi-card) :where(.stat-value, .value, strong) {
     color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .stat-card-supplier small {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .module-insight-card {
+    background: #111827 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .suppliers-page .module-insight-card h3 {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .module-insight-card .insight-caption {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .insight-bar-label {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .suppliers-page .insight-bar-track {
+    background: #2a3548 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .insight-bar-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .insight-empty {
+    background: #182235 !important;
+    color: #c2cddd !important;
 }
 
 html[data-theme="dark"] .suppliers-page .filters-bar {
@@ -1427,13 +1624,42 @@ html[data-theme="dark"] .suppliers-page .filters-bar .search-input {
     border-color: #46546a !important;
 }
 
-html[data-theme="dark"] .suppliers-page :where(.btn-clear, .btn-clear-search, .clear-btn) {
+html[data-theme="dark"] .suppliers-page .filters-bar select {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .suppliers-page .btn-add-supplier {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .btn-add-supplier:hover {
+    background: #e2e8f0 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .btn-save {
+    background: #e19a45 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .suppliers-page .btn-save:hover {
+    background: #cf8735 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .stat-card-supplier {
+    border-left-color: #e19a45 !important;
+}
+
+html[data-theme="dark"] .suppliers-page :where(.btn-clear, .btn-clear-search, .clear-btn, .btn-clear-filters) {
     background: #111827 !important;
     color: #edf2f7 !important;
     border-color: #46546a !important;
 }
 
-html[data-theme="dark"] .suppliers-page :where(.btn-clear, .btn-clear-search, .clear-btn):hover {
+html[data-theme="dark"] .suppliers-page :where(.btn-clear, .btn-clear-search, .clear-btn, .btn-clear-filters):hover {
     background: #263349 !important;
     color: #ffffff !important;
 }
@@ -1478,6 +1704,30 @@ html[data-theme="dark"] .suppliers-page .modal-overlay :where(
 
 html[data-theme="dark"] .suppliers-page .modal-overlay :where(h2, h3, h4, label, .add-label, .edit-label, p) {
     color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .supplier-section-title {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .current-label {
+    color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .current-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .view-details-grid {
+    background: var(--ui-surface-raised) !important;
+    background-color: var(--ui-surface-raised) !important;
+    border: 1px solid #2c3749 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .view-item {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
 }
 
 html[data-theme="dark"] .suppliers-page .modal-overlay :where(input, select, textarea) {
@@ -1844,6 +2094,57 @@ html[data-theme="dark"] .settings-page .security-item .btn-change {
 
 html[data-theme="dark"] .settings-page .security-item .btn-change:hover {
     background: linear-gradient(135deg, #f59a31, #c96806) !important;
+    color: #ffffff !important;
+}
+
+/* Profile receives the same complete dark treatment as other modules. */
+html[data-theme="dark"] .profile-page .profile-card {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #2c3749 !important;
+    box-shadow: var(--ui-shadow-soft) !important;
+}
+
+html[data-theme="dark"] .profile-page .profile-header {
+    border-bottom-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .profile-page .profile-info h2 {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .profile-page .profile-info .role {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .profile-page .detail-item label {
+    color: #b7c3d4 !important;
+}
+
+html[data-theme="dark"] .profile-page .detail-item .value {
+    color: #edf2f7 !important;
+}
+
+html[data-theme="dark"] .profile-page .detail-item .edit-input {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .profile-page .detail-item .edit-input:focus {
+    background: #0c1627 !important;
+    border-color: #f6a94f !important;
+    box-shadow: 0 0 0 3px rgba(246, 169, 79, 0.20) !important;
+}
+
+html[data-theme="dark"] .profile-page .btn-cancel-edit {
+    background: #263349 !important;
+    color: #f1f5f9 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .profile-page .btn-cancel-edit:hover {
+    background: #34435b !important;
     color: #ffffff !important;
 }
 

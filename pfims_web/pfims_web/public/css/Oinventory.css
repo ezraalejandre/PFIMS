@@ -293,8 +293,8 @@ body {
 
 .filters-bar .search-input:focus {
     outline: none;
-    border-color: #c9a96e;
-    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+    border-color: #e19a45;
+    box-shadow: 0 0 0 3px rgba(225, 154, 69, 0.2);
     background: #fff;
 }
 
@@ -310,7 +310,26 @@ body {
 
 .filters-bar select:focus {
     outline: none;
+    border-color: #e19a45;
+}
+
+.btn-clear-filters {
+    background: #fff;
+    color: #888;
+    border: 1px solid #ddd;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.3s;
+    white-space: nowrap;
+}
+
+.btn-clear-filters:hover {
+    background: #f5f5f5;
     border-color: #c9a96e;
+    color: #333;
 }
 
 .filters-bar .date-input {
@@ -381,7 +400,7 @@ body {
 }
 
 .table-wrapper table tbody tr {
-    cursor: pointer;
+    cursor: default;
 }
 
 .table-wrapper table tbody tr:hover {
@@ -790,8 +809,8 @@ body {
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #c9a96e;
-    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+    border-color: #e19a45;
+    box-shadow: 0 0 0 3px rgba(225, 154, 69, 0.2);
     background: #fff;
 }
 
@@ -854,8 +873,8 @@ body {
 
 .quantity-control input:focus {
     outline: none;
-    border-color: #c9a96e;
-    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+    border-color: #e19a45;
+    box-shadow: 0 0 0 3px rgba(225, 154, 69, 0.2);
 }
 
 /* ─── RADIO GROUP ─── */
@@ -1038,8 +1057,8 @@ body {
 
 .view-item .view-input:focus {
     outline: none;
-    border-color: #c9a96e;
-    box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+    border-color: #e19a45;
+    box-shadow: 0 0 0 3px rgba(225, 154, 69, 0.2);
 }
 
 .view-item .status-badge {
@@ -1065,7 +1084,7 @@ body {
 }
 
 .btn-edit-project {
-    background: #c9a96e;
+    background: #e65100;
     color: #fff;
     border: none;
     padding: 10px 24px;
@@ -1077,7 +1096,7 @@ body {
 }
 
 .btn-edit-project:hover {
-    background: #b8975a;
+    background: #c34500;
     transform: translateY(-2px);
 }
 
