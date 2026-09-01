@@ -30,6 +30,85 @@
         .report-section { display: none; }
         .report-section.active { display: block; }
 
+        .report-select-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .report-select-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .report-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .report-dropdown-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 240px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 2px solid #1a2b3c;
+            background: #1a2b3c;
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .report-dropdown-arrow {
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+        .report-dropdown.open .report-dropdown-arrow {
+            transform: rotate(180deg);
+        }
+        .report-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            width: 240px;
+            max-height: 340px;
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            z-index: 50;
+        }
+        .report-dropdown.open .report-dropdown-menu {
+            display: block;
+        }
+        .report-dropdown-group-label {
+            padding: 8px 16px 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .report-dropdown-item {
+            padding: 8px 16px;
+            font-size: 0.82rem;
+            color: #333;
+            cursor: pointer;
+        }
+        .report-dropdown-item:hover {
+            background: #f0f0f0;
+        }
+        .report-dropdown-item.active {
+            background: #1a2b3c;
+            color: #fff;
+            font-weight: 600;
+        }
+
         .report-table-wrapper {
             overflow-x: auto;
             margin-top: 15px;
@@ -757,29 +836,63 @@
     <aside class="sidebar">
         <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
-                <li class="active"><a href="{{ url('/finance') }}">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+                <li>
+                    <a href="{{ url('/dashboard') }}">
+                        <img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
+                        DASHBOARD
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url('/projects') }}">
+                        <img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
+                        PROJECTS
+                    </a>
+                </li>
+                <li class="active">
+                    <a href="{{ url('/finance') }}">
+                        <img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
+                        FINANCE
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url('/inventory') }}">
+                        <img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
+                        INVENTORY
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url('/suppliers') }}">
+                        <img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
+                        SUPPLIERS
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url('/reports') }}">
+                        <img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
+                        REPORTS
+                    </a>
+                </li>
             </ul>
         </nav>
         <div class="bottom-nav">
-            <ul>
-                <li><a href="{{ url('/settings') }}" style="display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none;width:100%;">
-                    <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon"> Settings
-                </a></li>
-                <li class="logout">
-                    <form method="POST" action="{{ url('/logout') }}" style="width:100%;margin:0;padding:0;">
-                        @csrf
-                        <button type="submit" style="display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none;width:100%;background:none;border:none;cursor:pointer;padding:0;font:inherit;color:inherit;">
-                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon"> Log out
-                        </button>
-                    </form>
-                </li>
-            </ul>
-        </div>
+        <ul>
+            <li>
+                <a href="{{ url('/asettings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; padding: 10px 16px; border-radius: 8px;">
+                    <img src="{{ asset('images/settings.jpg') }}" alt="" class="nav-icon" style="width: 20px; height: 20px; object-fit: contain;">
+                    Settings
+                </a>
+            </li>
+            <li class="logout">
+                <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                    @csrf
+                    <button type="submit" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font: inherit; cursor: pointer; transition: 0.2s; border-radius: 8px;">
+                        <img src="{{ asset('images/logout.jpg') }}" alt="" class="nav-icon" style="width: 20px; height: 20px; object-fit: contain;">
+                        Log out
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </div>
     </aside>
 
     <!-- ─── MAIN CONTENT ─── -->
@@ -795,35 +908,51 @@
             </div>
         </div>
 
-        <!-- ─── REPORT TABS ─── -->
-        <div class="view-toggle" style="margin-bottom:20px;flex-wrap:wrap;">
-            <button class="toggle-btn active report-tab" data-tab="expenses" onclick="switchReportTab('expenses')">Expenses</button>
-            <button class="toggle-btn report-tab" data-tab="budgets" onclick="switchReportTab('budgets')">Budgets</button>
-            <button class="toggle-btn report-tab" data-tab="expovrall" onclick="switchReportTab('expovrall')">EXPOVRALL</button>
-            <button class="toggle-btn report-tab" data-tab="expdirect" onclick="switchReportTab('expdirect')">EXP DIRECT</button>
-            <button class="toggle-btn report-tab" data-tab="adminexp" onclick="switchReportTab('adminexp')">ADMIN EXP</button>
-            <button class="toggle-btn report-tab" data-tab="directexp" onclick="switchReportTab('directexp')">DIRECT EXP</button>
-            <button class="toggle-btn report-tab" data-tab="overallexp" onclick="switchReportTab('overallexp')">OVERALL EXP</button>
-            <button class="toggle-btn report-tab" data-tab="profit" onclick="switchReportTab('profit')">Profit/Loss</button>
-            <button class="toggle-btn report-tab" data-tab="receivables" onclick="switchReportTab('receivables')">AR/AP</button>
-            <button class="toggle-btn report-tab" data-tab="cash" onclick="switchReportTab('cash')">Cash Asset</button>
-            <button class="toggle-btn report-tab" data-tab="backhoe" onclick="switchReportTab('backhoe')">Backhoe</button>
-            <button class="toggle-btn report-tab" data-tab="bonds" onclick="switchReportTab('bonds')">Bonds</button>
-            <button class="toggle-btn report-tab" data-tab="summary" onclick="switchReportTab('summary')">Summary</button>
+        <!-- ─── REPORT TABS (DROPDOWN) ─── -->
+        <div class="report-select-wrapper">
+            <span class="report-select-label">Report View</span>
+            <div class="report-dropdown" id="reportDropdown">
+                <button type="button" class="report-dropdown-toggle" id="reportDropdownToggle" onclick="toggleReportDropdown()">
+                    <span id="reportDropdownLabel">Expenses</span>
+                    <span class="report-dropdown-arrow">▾</span>
+                </button>
+                <div class="report-dropdown-menu" id="reportDropdownMenu">
+                    <div class="report-dropdown-group">
+                        <div class="report-dropdown-group-label">Overview</div>
+                        <div class="report-dropdown-item active" data-tab="expenses" data-label="Expenses" onclick="selectReportTab(this)">Expenses</div>
+                        <div class="report-dropdown-item" data-tab="budgets" data-label="Budgets" onclick="selectReportTab(this)">Budgets</div>
+                        <div class="report-dropdown-item" data-tab="summary" data-label="Summary" onclick="selectReportTab(this)">Summary</div>
+                    </div>
+                    <div class="report-dropdown-group">
+                        <div class="report-dropdown-group-label">Expense Reports</div>
+                        <div class="report-dropdown-item" data-tab="expovrall" data-label="EXPOVRALL" onclick="selectReportTab(this)">EXPOVRALL</div>
+                        <div class="report-dropdown-item" data-tab="expdirect" data-label="EXP DIRECT" onclick="selectReportTab(this)">EXP DIRECT</div>
+                        <div class="report-dropdown-item" data-tab="adminexp" data-label="ADMIN EXP" onclick="selectReportTab(this)">ADMIN EXP</div>
+                        <div class="report-dropdown-item" data-tab="directexp" data-label="DIRECT EXP" onclick="selectReportTab(this)">DIRECT EXP</div>
+                        <div class="report-dropdown-item" data-tab="overallexp" data-label="OVERALL EXP" onclick="selectReportTab(this)">OVERALL EXP</div>
+                    </div>
+                    <div class="report-dropdown-group">
+                        <div class="report-dropdown-group-label">Financial Reports</div>
+                        <div class="report-dropdown-item" data-tab="profit" data-label="Profit/Loss" onclick="selectReportTab(this)">Profit/Loss</div>
+                        <div class="report-dropdown-item" data-tab="receivables" data-label="AR/AP" onclick="selectReportTab(this)">AR/AP</div>
+                        <div class="report-dropdown-item" data-tab="cash" data-label="Cash Asset" onclick="selectReportTab(this)">Cash Asset</div>
+                    </div>
+                    <div class="report-dropdown-group">
+                        <div class="report-dropdown-group-label">Assets</div>
+                        <div class="report-dropdown-item" data-tab="backhoe" data-label="Backhoe" onclick="selectReportTab(this)">Backhoe</div>
+                        <div class="report-dropdown-item" data-tab="bonds" data-label="Bonds" onclick="selectReportTab(this)">Bonds</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ─── TAB 1: EXPENSES ─── -->
         <div id="tabExpenses" class="report-section active">
-            <div class="stats-row expense-stats" id="expenseStats">
-                <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="totalBudgetValue">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Total Expenses</div><div class="stat-value" id="totalExpensesValue" style="color:#1a2b3c;">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Net Variance</div><div class="stat-value red" id="netVarianceValue">₱0.00</div></div>
-            </div>
             <div class="filter-tabs">
-                <span class="tab" data-period="all" onclick="setActiveTab(this,'all')">All</span>
+                <span class="tab active" data-period="all" onclick="setActiveTab(this,'all')">All</span>
                 <span class="tab" data-period="daily" onclick="setActiveTab(this,'daily')">Daily</span>
                 <span class="tab" data-period="weekly" onclick="setActiveTab(this,'weekly')">Weekly</span>
-                <span class="tab active" data-period="monthly" onclick="setActiveTab(this,'monthly')">Monthly</span>
+                <span class="tab" data-period="monthly" onclick="setActiveTab(this,'monthly')">Monthly</span>
                 <span class="tab" data-period="yearly" onclick="setActiveTab(this,'yearly')">Yearly</span>
             </div>
             <div class="filter-row">
@@ -832,6 +961,11 @@
                 <select id="expenseComponentFilter" onchange="applyFilters()"><option value="all">All Components</option><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="other">Other</option></select>
                 <input type="search" id="projectSearch" class="project-filter" maxlength="150" placeholder="Search project, category, description..." oninput="applyFilters()">
                 <button type="button" class="btn-clear-search" onclick="clearSearch()">✕ Clear Filters</button>
+            </div>
+            <div class="stats-row-budget budget-stats visible" id="expenseStats">
+                <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="totalBudgetValue">₱0.00</div></div>
+                <div class="stat-mini"><div class="stat-label">Total Expenses</div><div class="stat-value" id="totalExpensesValue" style="color:#1a2b3c;">₱0.00</div></div>
+                <div class="stat-mini"><div class="stat-label">Net Variance</div><div class="stat-value red" id="netVarianceValue">₱0.00</div></div>
             </div>
             <div class="module-insights">
                 <section class="module-insight-card" aria-labelledby="expenseCategoryChartTitle">
@@ -859,16 +993,23 @@
 
         <!-- ─── TAB 2: BUDGETS ─── -->
         <div id="tabBudgets" class="report-section">
-            <div class="stats-row-budget budget-stats visible">
-                <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="budgetTotalValue">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Actual Spend</div><div class="stat-value" id="budgetSpentValue">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Remaining</div><div class="stat-value green" id="budgetRemainingValue">₱0.00</div></div>
+            <div class="filter-tabs">
+                <span class="tab active" data-period="all" onclick="setBudgetActiveTab(this,'all')">All</span>
+                <span class="tab" data-period="daily" onclick="setBudgetActiveTab(this,'daily')">Daily</span>
+                <span class="tab" data-period="weekly" onclick="setBudgetActiveTab(this,'weekly')">Weekly</span>
+                <span class="tab" data-period="monthly" onclick="setBudgetActiveTab(this,'monthly')">Monthly</span>
+                <span class="tab" data-period="yearly" onclick="setBudgetActiveTab(this,'yearly')">Yearly</span>
             </div>
             <div class="filter-row">
                 <select id="budgetProjectFilter" onchange="filterBudgetTable()"><option value="all">All Projects</option></select>
                 <select id="budgetStatusFilter" onchange="filterBudgetTable()"><option value="all">All Statuses</option><option value="On Track">On Track</option><option value="Near Limit">Near Limit</option><option value="Over Budget">Over Budget</option><option value="No Budget">No Budget</option></select>
                 <input type="search" id="budgetSearch" maxlength="150" placeholder="Search project name..." oninput="filterBudgetTable()">
                 <button type="button" class="btn-clear-search" onclick="clearBudgetSearch()">✕ Clear Filters</button>
+            </div>
+            <div class="stats-row-budget budget-stats visible" id="budgetStats">
+                <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="budgetTotalValue">₱0.00</div></div>
+                <div class="stat-mini"><div class="stat-label">Total Expenses</div><div class="stat-value" id="budgetSpentValue" style="color:#1a2b3c;">₱0.00</div></div>
+                <div class="stat-mini"><div class="stat-label">Net Variance</div><div class="stat-value red" id="budgetRemainingValue">₱0.00</div></div>
             </div>
             <div class="module-insights">
                 <section class="module-insight-card" aria-labelledby="budgetStatusChartTitle">
@@ -1688,9 +1829,13 @@
         var currentBudgetRow = null;
         var isBudgetEditMode = false;
 
-        var currentPeriod = 'monthly';
+        // ─── CHANGE THIS: Default to 'all' instead of 'monthly' ───
+        var currentPeriod = 'all';
         var currentSearchTerm = '';
         var currentProjectFilter = 'all';
+
+        // ─── BUDGET PERIOD FILTER ──────────────────────────────────────────
+        var budgetPeriod = 'all';
 
         var deleteCallback = null;
         var budgetDeleteCallback = null;
@@ -2022,7 +2167,34 @@
             });
         }
 
+        // ─── BUDGET PERIOD FILTER FUNCTIONS ───────────────────────────
+        function setBudgetActiveTab(el, period) {
+            document.querySelectorAll('#tabBudgets .filter-tabs .tab').forEach(function(tab) {
+                tab.classList.remove('active');
+            });
+            el.classList.add('active');
+            budgetPeriod = period;
+            filterBudgetTable(); // This triggers the filter with the new period
+        }
+
         // ─── TAB SWITCHING ─────────────────────────────────────────────
+        function toggleReportDropdown() {
+            document.getElementById('reportDropdown').classList.toggle('open');
+        }
+        
+        function selectReportTab(el) {
+            document.getElementById('reportDropdownLabel').textContent = el.dataset.label;
+            document.querySelectorAll('.report-dropdown-item').forEach(function(item) {
+                item.classList.toggle('active', item === el);
+            });
+            document.getElementById('reportDropdown').classList.remove('open');
+            switchReportTab(el.dataset.tab);
+        }
+        document.addEventListener('click', function(e) {
+            var dd = document.getElementById('reportDropdown');
+            if (dd && !dd.contains(e.target)) dd.classList.remove('open');
+        });
+
         function switchReportTab(tab) {
             currentReportTab = tab;
             document.querySelectorAll('.report-tab').forEach(function(el) {
@@ -2033,8 +2205,22 @@
             });
 
             switch(tab) {
-                case 'expenses': applyFilters(); break;
-                case 'budgets': fetchBudgetData(); break;
+                case 'expenses': 
+                    applyFilters(); 
+                    break;
+                case 'budgets': 
+                    // Reset period to 'all' when switching to budgets tab
+                    budgetPeriod = 'all';
+                    document.querySelectorAll('#tabBudgets .filter-tabs .tab').forEach(function(tabEl) {
+                        tabEl.classList.toggle('active', tabEl.dataset.period === 'all');
+                    });
+                    // Make sure budget data is loaded
+                    if (budgetData.length === 0) {
+                        fetchBudgetData();
+                    } else {
+                        filterBudgetTable();
+                    }
+                    break;
                 case 'expovrall': loadExpovrall(); break;
                 case 'expdirect': loadExpDirect(); break;
                 case 'adminexp': loadAdminExp(); break;
@@ -2177,6 +2363,9 @@
         }
 
         function filterByPeriod(expenses) {
+            // If period is 'all', return all expenses
+            if (currentPeriod === 'all') return expenses;
+            
             var now = new Date();
             return expenses.filter(function(expense) {
                 if (!expense.expense_date) return false;
@@ -2194,9 +2383,27 @@
             });
         }
 
+        // SINGLE SOURCE OF TRUTH for "Total Budget": every KPI card on every
+        // report tab must call this instead of re-summing budget_amount itself.
+        // This is the fix for the Budgets tab / Expenses tab total mismatch:
+        // previously updateFinanceTotals() summed `budgetData` while
+        // updateBudgetStats() summed `budgetFilteredData`, and those two
+        // arrays could fall out of sync (see deleteBudget() fix below).
+        function calculateBudgetTotal(list) {
+            if (!list || !list.length) return 0;
+            return list.reduce(function(sum, item) {
+                return sum + (parseFloat(item.budget_amount) || 0);
+            }, 0);
+        }
+
         function updateFinanceTotals() {
-            var totalBudget = financeProjects.reduce(function(sum, p) { return sum + (parseFloat(p.budget) || 0); }, 0);
-            var totalExpenses = financeFilteredData.reduce(function(sum, e) { return sum + (parseFloat(e.amount) || 0); }, 0);
+            // Use the SAME source as the Budgets tab - budgetDataCache
+            // This ensures both tabs show identical Total Budget values
+            var totalBudget = calculateBudgetTotal(budgetDataCache || budgetData);
+
+            var totalExpenses = financeFilteredData.reduce(function(sum, e) { 
+                return sum + (parseFloat(e.amount) || 0); 
+            }, 0);
             var netVariance = totalBudget - totalExpenses;
 
             document.getElementById('totalBudgetValue').textContent = formatCurrency(totalBudget);
@@ -2262,12 +2469,19 @@
                 .then(function(data) {
                     financeExpenses = data || [];
                     financeFilteredData = financeExpenses;
+                    
+                    // CRITICAL: Load budget data FIRST before updating UI
+                    return fetchBudgetData();
+                })
+                .then(function() {
                     if (currentReportTab === 'expenses') {
                         renderFinancePage(1);
                         updateFinanceTotals();
                     }
                 })
-                .catch(function(error) { showError(error.message); });
+                .catch(function(error) { 
+                    showError(error.message); 
+                });
         }
 
         function fetchAssets() {
@@ -2316,7 +2530,18 @@
             });
         }
 
+        var budgetDataCache = null;
+
         function fetchBudgetData() {
+            // If we already have cached budget data, use it
+            if (budgetDataCache !== null) {
+                budgetData = budgetDataCache;
+                updateBudgetActualAmounts();
+                filterBudgetTable();
+                updateFinanceTotals();
+                return Promise.resolve(budgetData);
+            }
+
             return fetch(API_BASE + '/budgets', {
                 credentials: 'same-origin',
                 headers: {
@@ -2341,57 +2566,79 @@
                     var projectMap = {};
                     projects.forEach(function(p) { projectMap[p.project_id] = p; });
 
-                    var spendMap = {};
-                    financeExpenses.forEach(function(e) {
-                        if (e.project_id) {
-                            spendMap[e.project_id] = (spendMap[e.project_id] || 0) + (parseFloat(e.amount) || 0);
-                        }
-                    });
-
-                    budgetData = budgets.map(function(b) {
+                    // Build budget data from budgets table - SINGLE SOURCE OF TRUTH
+                    var budgetDataFromBudgets = budgets.map(function(b) {
                         var project = projectMap[b.project_id] || {};
                         var budgetAmount = parseFloat(b.budget_amount) || 0;
-                        var actualSpend = spendMap[b.project_id] || 0;
-                        var remaining = budgetAmount - actualSpend;
                         return {
                             project_id: b.project_id,
                             project_name: project.project_name || 'Unknown Project',
                             budget_amount: budgetAmount,
-                            actual_amount: actualSpend,
-                            remaining: remaining,
+                            actual_amount: 0,
+                            remaining: budgetAmount,
                             budget_id: b.budget_id,
                             proof_file_path: b.proof_file_path || '',
                             proof_file_name: b.proof_file_name || '',
-                            status: budgetAmount === 0 ? 'No Budget' : (actualSpend > budgetAmount ? 'Over Budget' : (actualSpend > budgetAmount * 0.9 ? 'Near Limit' : 'On Track'))
+                            status: 'On Track'
                         };
                     });
 
-                    var existingProjectIds = budgetData.map(function(b) { return b.project_id; });
+                    // Add projects with expenses but no budget
+                    var existingProjectIds = budgetDataFromBudgets.map(function(b) { return b.project_id; });
+                    var projectsWithSpend = [];
                     financeProjects.forEach(function(project) {
                         if (existingProjectIds.indexOf(project.project_id) === -1) {
-                            var actualSpend = spendMap[project.project_id] || 0;
-                            if (actualSpend > 0) {
-                                budgetData.push({
-                                    project_id: project.project_id,
-                                    project_name: project.project_name || 'Unknown Project',
-                                    budget_amount: 0,
-                                    actual_amount: actualSpend,
-                                    remaining: -actualSpend,
-                                    budget_id: null,
-                                    proof_file_path: '',
-                                    proof_file_name: '',
-                                    status: 'No Budget'
-                                });
-                            }
+                            projectsWithSpend.push({
+                                project_id: project.project_id,
+                                project_name: project.project_name || 'Unknown Project',
+                                budget_amount: 0,
+                                actual_amount: 0,
+                                remaining: 0,
+                                budget_id: null,
+                                proof_file_path: '',
+                                proof_file_name: '',
+                                status: 'No Budget'
+                            });
                         }
                     });
 
+                    // Cache the budget data
+                    budgetDataCache = budgetDataFromBudgets.concat(projectsWithSpend);
+                    budgetData = budgetDataCache;
+
+                    updateBudgetActualAmounts();
+
+                    // Reset budget period filter
+                    budgetPeriod = 'all';
+                    document.querySelectorAll('#tabBudgets .filter-tabs .tab').forEach(function(tab) {
+                        tab.classList.toggle('active', tab.dataset.period === 'all');
+                    });
+                    
                     filterBudgetTable();
+                    updateFinanceTotals();
+                    
+                    return budgetData;
                 });
             })
             .catch(function(error) {
                 showError('Error loading budget data: ' + error.message);
                 document.getElementById('budgetTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#d32f2f;">Error loading budget data</td></tr>';
+                throw error;
+            });
+        }
+
+        function updateBudgetActualAmounts() {
+            // Calculate actual spend for each project from financeExpenses (unfiltered)
+            budgetData.forEach(function(item) {
+                var actualSpend = financeExpenses
+                    .filter(function(e) { return e.project_id == item.project_id; })
+                    .reduce(function(sum, e) { return sum + (parseFloat(e.amount) || 0); }, 0);
+                item.actual_amount = actualSpend;
+                item.remaining = item.budget_amount - actualSpend;
+                var budgetAmount = item.budget_amount;
+                item.status = budgetAmount === 0 ? 'No Budget' : 
+                    (actualSpend > budgetAmount ? 'Over Budget' : 
+                    (actualSpend > budgetAmount * 0.9 ? 'Near Limit' : 'On Track'));
             });
         }
 
@@ -2788,27 +3035,114 @@
         }
 
         function updateBudgetStats() {
-            var totalBudget = budgetFilteredData.reduce(function(sum, item) {
-                return sum + (parseFloat(item.budget_amount) || 0);
+            // Use the SAME source as the Expenses tab - budgetDataCache
+            // This ensures both tabs show identical Total Budget values
+            var totalBudget = calculateBudgetTotal(budgetDataCache || budgetData);
+            
+            // Total Expenses on Budgets tab should match the filtered expenses
+            var totalExpenses = budgetFilteredData.reduce(function(sum, item) {
+                return sum + (parseFloat(item.actual_amount) || 0);
             }, 0);
+            var netVariance = totalBudget - totalExpenses;
+
             document.getElementById('budgetTotalValue').textContent = formatCurrency(totalBudget);
+            document.getElementById('budgetSpentValue').textContent = formatCurrency(totalExpenses);
+            var budgetVarianceEl = document.getElementById('budgetRemainingValue');
+            budgetVarianceEl.textContent = formatCurrency(netVariance);
+            budgetVarianceEl.className = 'stat-value ' + (netVariance < 0 ? 'red' : 'green');
         }
 
         function filterBudgetTable() {
             var searchTerm = document.getElementById('budgetSearch').value.toLowerCase().trim();
             var projectFilter = document.getElementById('budgetProjectFilter').value;
+            var statusFilter = document.getElementById('budgetStatusFilter').value;
 
             budgetSearchTerm = searchTerm;
             budgetProjectFilter = projectFilter;
 
-            var projectFiltered = projectFilter === 'all'
-                ? budgetData
-                : budgetData.filter(function(item) { return item.project_name === projectFilter; });
+            // ALWAYS start from the cached budget data (same source for both tabs)
+            var filtered = (budgetDataCache || budgetData).slice();
 
-            budgetFilteredData = searchTerm
-                ? projectFiltered.filter(function(item) { return (item.project_name || '').toLowerCase().includes(searchTerm); })
-                : projectFiltered;
+            // --- Calculate period-specific expenses ---
+            var periodExpenses = budgetPeriod === 'all' 
+                ? financeExpenses 
+                : financeExpenses.filter(function(e) {
+                    if (!e.expense_date) return false;
+                    var expenseDate = new Date(e.expense_date);
+                    var now = new Date();
+                    switch(budgetPeriod) {
+                        case 'daily': 
+                            return expenseDate.toDateString() === now.toDateString();
+                        case 'weekly':
+                            var weekStart = new Date(now);
+                            weekStart.setDate(now.getDate() - now.getDay());
+                            weekStart.setHours(0,0,0,0);
+                            var weekEnd = new Date(weekStart);
+                            weekEnd.setDate(weekStart.getDate() + 6);
+                            weekEnd.setHours(23,59,59,999);
+                            return expenseDate >= weekStart && expenseDate <= weekEnd;
+                        case 'monthly':
+                            return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
+                        case 'yearly':
+                            return expenseDate.getFullYear() === now.getFullYear();
+                        default: 
+                            return true;
+                    }
+                });
+            
+            var periodSpendMap = {};
+            periodExpenses.forEach(function(e) {
+                if (e.project_id) {
+                    periodSpendMap[e.project_id] = (periodSpendMap[e.project_id] || 0) + (parseFloat(e.amount) || 0);
+                }
+            });
 
+            // --- Update each item with period-specific spend ---
+            filtered = filtered.map(function(item) {
+                var actualSpend = periodSpendMap[item.project_id] || 0;
+                var budgetAmount = parseFloat(item.budget_amount) || 0;
+                var remaining = budgetAmount - actualSpend;
+                return {
+                    ...item,
+                    actual_amount: actualSpend,
+                    remaining: remaining,
+                    status: budgetAmount === 0 ? 'No Budget' : 
+                        (actualSpend > budgetAmount ? 'Over Budget' : 
+                        (actualSpend > budgetAmount * 0.9 ? 'Near Limit' : 'On Track'))
+                };
+            });
+
+            // --- Apply project filter ---
+            if (projectFilter !== 'all') {
+                filtered = filtered.filter(function(item) {
+                    return item.project_name === projectFilter;
+                });
+            }
+
+            // --- Apply status filter ---
+            if (statusFilter !== 'all') {
+                filtered = filtered.filter(function(item) {
+                    return item.status === statusFilter;
+                });
+            }
+
+            // --- Apply search filter ---
+            if (searchTerm) {
+                filtered = filtered.filter(function(item) {
+                    return (item.project_name || '').toLowerCase().includes(searchTerm);
+                });
+            }
+
+            // --- Apply period filter ---
+            // Projects with budgets always show; projects without budgets only show if they have expenses
+            if (budgetPeriod !== 'all') {
+                filtered = filtered.filter(function(item) {
+                    if (parseFloat(item.budget_amount) > 0) return true;
+                    return (periodSpendMap[item.project_id] || 0) > 0;
+                });
+            }
+
+            budgetFilteredData = filtered;
             renderBudgetPage(1);
             updateBudgetStats();
         }
@@ -2970,12 +3304,13 @@
                             budgetData = budgetData.filter(function(item) {
                                 return String(item.project_id) !== String(projectId);
                             });
-                            budgetFilteredData = budgetFilteredData.filter(function(item) {
-                                return String(item.project_id) !== String(projectId);
-                            });
+                            // Re-derive budgetFilteredData FROM budgetData via the
+                            // real filter pipeline instead of filtering it separately.
+                            // Filtering both arrays independently is what let them
+                            // drift apart and produce mismatched KPI totals.
+                            filterBudgetTable();
                             closeBudgetDeleteModal();
-                            renderBudgetPage(1);
-                            updateBudgetStats();
+                            updateFinanceTotals();
                             showSuccess('Budget deleted successfully!');
                             currentBudgetRow = null;
                         })
@@ -2984,12 +3319,9 @@
                     budgetData = budgetData.filter(function(item) {
                         return String(item.project_id) !== String(projectId);
                     });
-                    budgetFilteredData = budgetFilteredData.filter(function(item) {
-                        return String(item.project_id) !== String(projectId);
-                    });
+                    filterBudgetTable();
                     closeBudgetDeleteModal();
-                    renderBudgetPage(1);
-                    updateBudgetStats();
+                    updateFinanceTotals();
                     showSuccess('Budget removed from view.');
                     currentBudgetRow = null;
                 }
@@ -3321,7 +3653,7 @@
                 // Refresh all report views
                 loadExpovrall();
                 loadExpDirect();
-                loadAdminExp();  // This ensures admin exp tab updates
+                loadAdminExp();
                 loadDirectExp();
                 loadOverallExp();
             })
@@ -4016,6 +4348,37 @@
             document.body.style.overflow = '';
         }
 
+        function saveBond() {
+            var projectId = document.getElementById('bondProject').value;
+            var date = document.getElementById('bondDate').value;
+            var amount = parseFloat(document.getElementById('bondAmount').value) || 0;
+            var provider = document.getElementById('bondProvider').value.trim();
+            var status = document.getElementById('bondStatus').value;
+            var remarks = document.getElementById('bondRemarks').value.trim();
+
+            if (!projectId || !date || amount <= 0) {
+                showError('Please fill in all required fields.');
+                return;
+            }
+
+            var payload = {
+                project_id: parseInt(projectId),
+                bond_date: date,
+                amount: amount,
+                bond_provider: provider || null,
+                status: status,
+                remarks: remarks || null
+            };
+
+            apiFetch('/construction-bonds', { method: 'POST', body: JSON.stringify(payload) })
+                .then(function() {
+                    closeAddBondModal();
+                    showSuccess('Bond added successfully!');
+                    loadBonds();
+                })
+                .catch(function(error) { showError(error.message); });
+        }
+
         function saveBondDetail() {
             if (!currentBondRow) return;
             var bondId = currentBondRow.getAttribute('data-bond-id');
@@ -4046,7 +4409,7 @@
             if (!currentBondRow) return;
             var bondId = currentBondRow.getAttribute('data-bond-id');
             
-            openDeleteModal('Are you sure you want to permanently delete this bond?', function() {
+            openBondDeleteModal('Are you sure you want to permanently delete this bond?', function() {
                 apiFetch('/construction-bonds/' + bondId, { method: 'DELETE' })
                     .then(function() {
                         closeBondModal();
@@ -4061,59 +4424,6 @@
         document.getElementById('bondDetailModal').addEventListener('click', function(e) {
             if (e.target === this) closeBondModal();
         });
-
-        // ─── DEBUG: Check admin expenses ──────────────────────────────
-        function debugAdminExpenses() {
-            var month = document.getElementById('adminexpMonth').value || '2026-08';
-            var period = month + '-01';
-            
-            console.log('=== DEBUG: Checking Admin Expenses ===');
-            console.log('Period:', period);
-            
-            fetch(API_BASE + '/finance-expenses', {
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                }
-            })
-            .then(function(response) { return response.json(); })
-            .then(function(expenses) {
-                console.log('All expenses count:', expenses.length);
-                
-                var adminCategoryIds = financeCategories
-                    .filter(function(c) {
-                        return ADMIN_CATEGORY_CODES.indexOf(c.category_code) !== -1;
-                    })
-                    .map(function(c) { return c.fin_category_id || c.expense_category_id; });
-                
-                console.log('Admin category IDs:', adminCategoryIds);
-                
-                var adminExpenses = expenses.filter(function(e) {
-                    return adminCategoryIds.indexOf(parseInt(e.fin_category_id || e.expense_category_id)) !== -1;
-                });
-                console.log('All admin expenses:', adminExpenses);
-                
-                var monthExpenses = adminExpenses.filter(function(e) {
-                    return e.expense_date && e.expense_date.startsWith(month);
-                });
-                console.log('Admin expenses for ' + month + ':', monthExpenses);
-                
-                var tbody = document.getElementById('adminexpBody');
-                if (monthExpenses.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:20px;color:#f57c00;">🔍 No admin expenses found for ' + month + '. Check console for details.</td></tr>';
-                    console.warn('No admin expenses found for ' + month);
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:20px;color:#2e7d32;">✅ Found ' + monthExpenses.length + ' admin expenses for ' + month + '. View console for details.</td></tr>';
-                    // Also reload the admin exp view
-                    loadAdminExp();
-                }
-            })
-            .catch(function(error) {
-                console.error('Debug error:', error);
-                showError('Debug error: ' + error.message);
-            });
-        }
 
         // ─── REPORTS ───────────────────────────────────────────────────
         // EXPOVRALL - Load directly from fin_expense_tbl
@@ -4226,7 +4536,6 @@
         }
 
         // HELPER: Centralized function to fetch expenses grouped by project and category for a specific month
-        // Returns an object with direct_data, admin_data, and overall_data structures
         function fetchExpensesGroupedByProject(month, directCats, adminCats) {
             return new Promise(function(resolve, reject) {
                 fetch(API_BASE + '/finance-expenses', {
@@ -4241,7 +4550,6 @@
                     return response.json();
                 })
                 .then(function(expenses) {
-                    // Mapped category IDs
                     var directCategoryIds = financeCategories
                         .filter(function(c) { return directCats.indexOf(c.category_code) !== -1; })
                         .map(function(c) { return c.fin_category_id || c.expense_category_id; });
@@ -4250,24 +4558,20 @@
                         .filter(function(c) { return adminCats.indexOf(c.category_code) !== -1; })
                         .map(function(c) { return c.fin_category_id || c.expense_category_id; });
 
-                    // Filter by month
                     var monthExpenses = expenses.filter(function(e) {
                         return e.expense_date && e.expense_date.startsWith(month);
                     });
 
-                    // Direct expenses for the month
                     var directExpenses = monthExpenses.filter(function(e) {
                         var catId = parseInt(e.fin_category_id || e.expense_category_id || 0);
                         return directCategoryIds.indexOf(catId) !== -1;
                     });
 
-                    // Admin expenses for the month
                     var adminExpenses = monthExpenses.filter(function(e) {
                         var catId = parseInt(e.fin_category_id || e.expense_category_id || 0);
                         return adminCategoryIds.indexOf(catId) !== -1;
                     });
 
-                    // --- Process Direct Expenses ---
                     var directProjects = {};
                     directExpenses.forEach(function(e) {
                         var projectName = e.project_name || 'OFFICE';
@@ -4293,7 +4597,6 @@
                         }
                     });
 
-                    // --- Process Admin Expenses ---
                     var adminProjects = {};
                     adminExpenses.forEach(function(e) {
                         var projectName = e.project_name || 'OFFICE';
@@ -4319,7 +4622,6 @@
                         }
                     });
 
-                    // --- Merge data for "Overall" ---
                     var allProjectNames = new Set(Object.keys(directProjects).concat(Object.keys(adminProjects)));
                     var overallProjects = {};
                     allProjectNames.forEach(function(projectName) {
@@ -4327,7 +4629,6 @@
                         var dProj = directProjects[projectName] || {};
                         var aProj = adminProjects[projectName] || {};
                         
-                        // Copy direct totals
                         directCats.forEach(function(cat) {
                             overallProjects[projectName][cat] = (dProj[cat] || 0);
                         });
@@ -4341,7 +4642,7 @@
                         directProjects: directProjects,
                         adminProjects: adminProjects,
                         overallProjects: overallProjects,
-                        adminTotals: adminExpenses // Keep raw data for fallback
+                        adminTotals: adminExpenses
                     });
                 })
                 .catch(function(error) {
@@ -4350,7 +4651,7 @@
             });
         }
 
-        // EXP DIRECT - Uses centralized logic to ensure Admin Expense matches Admin Exp Tab Totals
+        // EXP DIRECT
         function loadExpDirect() {
             var month = document.getElementById('expdirectMonth').value;
             if (!month) {
@@ -4358,8 +4659,6 @@
                 month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
                 document.getElementById('expdirectMonth').value = month;
             }
-
-            console.log('Loading EXP DIRECT for period:', month);
 
             var directCategoryCodes = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'OTHERS'];
             var adminCategoryCodes = ['RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH'];
@@ -4385,7 +4684,7 @@
 
                     projectNames.forEach(function(projectName) {
                         var p = directProjects[projectName];
-                        var a = adminProjects[projectName]; // Get admin data for same project
+                        var a = adminProjects[projectName];
 
                         var tr = document.createElement('tr');
                         var cells = '<td><strong>' + projectName + '</strong></td>';
@@ -4403,8 +4702,6 @@
                         grandTotal += p['_total'];
                     });
 
-                    // Handle projects with ONLY admin expenses but no direct expenses
-                    // (They should show up as 'OFFICE' or their real name if admin-specific)
                     var onlyAdminProjects = Object.keys(adminProjects).filter(function(pName) {
                         return !directProjects[pName];
                     });
@@ -4442,7 +4739,7 @@
                 });
         }
 
-        // ADMIN EXP - Uses centralized logic
+        // ADMIN EXP
         function loadAdminExp() {
             var month = document.getElementById('adminexpMonth').value;
             if (!month) {
@@ -4450,8 +4747,6 @@
                 month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
                 document.getElementById('adminexpMonth').value = month;
             }
-
-            console.log('Loading ADMIN EXP for period:', month);
 
             var directCategoryCodes = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'OTHERS'];
             var adminCategoryCodes = ['SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH', 'OTHERS'];
@@ -4497,8 +4792,6 @@
                     cells += '<td><strong>' + formatCurrency(grandTotal) + '</strong></td>';
                     tr.innerHTML = cells;
                     tbody.appendChild(tr);
-
-                    console.log('Admin expenses loaded successfully. Grand total:', grandTotal);
                 })
                 .catch(function(error) {
                     console.error('Error loading ADMIN EXP:', error);
@@ -4507,7 +4800,7 @@
                 });
         }
 
-        // DIRECT EXP - Uses centralized logic
+        // DIRECT EXP
         function loadDirectExp() {
             var month = document.getElementById('directexpMonth').value;
             if (!month) {
@@ -4515,8 +4808,6 @@
                 month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
                 document.getElementById('directexpMonth').value = month;
             }
-
-            console.log('Loading DIRECT EXP for period:', month);
 
             var directCategoryCodes = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'OTHERS'];
             var adminCategoryCodes = ['RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH'];
@@ -4597,7 +4888,7 @@
                 });
         }
 
-        // OVERALL EXP - Uses centralized logic
+        // OVERALL EXP
         function loadOverallExp() {
             var month = document.getElementById('overallexpMonth').value;
             if (!month) {
@@ -4605,8 +4896,6 @@
                 month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
                 document.getElementById('overallexpMonth').value = month;
             }
-
-            console.log('Loading OVERALL EXP for period:', month);
 
             var directCategoryCodes = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'OTHERS'];
             var adminCategoryCodes = ['RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH'];
@@ -4684,7 +4973,6 @@
                     var hasData = false;
                     data.forEach(function(row) {
                         var contractPrice = parseFloat(row.original_contract_price) || 0;
-                        // Skip rows with zero contract price and no contract
                         if (contractPrice === 0 && parseInt(row.contract_id) === 0) {
                             return;
                         }
@@ -4743,12 +5031,10 @@
                     var total = 0;
                     data.forEach(function(row) {
                         var tr = document.createElement('tr');
-                        // Get amounts from the individual columns
                         var amt30d = parseFloat(row.amount_30d) || 0;
                         var amt60d = parseFloat(row.amount_31_60d) || 0;
                         var amt90d = parseFloat(row.amount_61_90d) || 0;
                         var amt120d = parseFloat(row.amount_91_120d) || 0;
-                        // Calculate total from the individual amounts
                         var rTotal = amt30d + amt60d + amt90d + amt120d;
                         
                         tr.setAttribute('data-rp-id', row.rp_id);
@@ -4841,22 +5127,18 @@
             currentCashRow = row;
             document.getElementById('cashModalTitle').textContent = 'Cash Position Details';
             
-            // Get data from the row
             var accountName = row.dataset.accountName || '';
             var period = row.dataset.period || '';
             var balance = parseFloat(row.dataset.balance) || 0;
             
-            // Display values (read-only mode)
             document.getElementById('cashDetailAccount').textContent = accountName;
             document.getElementById('cashDetailPeriod').textContent = period ? new Date(period).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' }) : '—';
             document.getElementById('cashDetailBalance').textContent = formatCurrency(balance);
             
-            // Set edit values
             document.getElementById('cashDetailAccountEdit').value = row.dataset.accountId || '';
             document.getElementById('cashDetailPeriodEdit').value = period ? period.substring(0, 7) : '';
             document.getElementById('cashDetailBalanceEdit').value = balance;
             
-            // Store account name for display in edit mode
             document.getElementById('cashDetailAccountDisplay').textContent = accountName;
 
             if (isCashEditMode) toggleCashEdit();
@@ -4865,7 +5147,6 @@
             document.getElementById('cashDetailDeleteBtn').style.display = 'inline-block';
             document.getElementById('cashDetailSaveBtn').style.display = 'none';
             
-            // Reset display/edit visibility
             document.querySelectorAll('#cashDetailModal .detail-edit').forEach(function(el) { 
                 el.style.display = 'none'; 
             });
@@ -4890,10 +5171,7 @@
             var deleteBtn = document.getElementById('cashDetailDeleteBtn');
             var saveBtn = document.getElementById('cashDetailSaveBtn');
             
-            // Editable fields
             var editableFields = ['cashDetailPeriodEdit', 'cashDetailBalanceEdit'];
-            
-            // Display only fields (account is not editable)
             var displayFields = ['cashDetailAccount', 'cashDetailPeriod', 'cashDetailBalance'];
 
             if (isCashEditMode) {
@@ -4901,21 +5179,17 @@
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'inline-block';
                 
-                // Hide display values
                 displayFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = 'none';
                 });
                 
-                // Show edit fields
                 editableFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = '';
                 });
                 
-                // Show account as read-only display
                 document.getElementById('cashDetailAccountDisplay').style.display = '';
-                // Hide account edit select
                 document.getElementById('cashDetailAccountEdit').style.display = 'none';
                 
             } else {
@@ -4923,13 +5197,11 @@
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'none';
                 
-                // Show display values
                 displayFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = '';
                 });
                 
-                // Hide edit fields
                 editableFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = 'none';
@@ -5033,7 +5305,6 @@
                 });
         }
 
-        // ─── REPAIR DETAIL MODAL (Placeholder) ──────────────────────
         function openRepairModal(row) {
             showSuccess('Repair details for: ' + row.dataset.assetName);
         }
@@ -5043,7 +5314,6 @@
             var assetId = document.getElementById('backhoeAsset').value;
             var month = document.getElementById('backhoeMonth').value;
             
-            // Build URL with filters
             var url = '/reports/backhoe-profitability';
             var params = [];
             if (assetId) {
@@ -5066,7 +5336,6 @@
                         return;
                     }
 
-                    // Group by asset and period, with expense type breakdown
                     var assetPeriodData = {};
                     data.forEach(function(row) {
                         var key = row.asset_id + '|' + (row.period_month || '');
@@ -5086,7 +5355,6 @@
                                 net_income: 0
                             };
                         }
-                        // Sum by expense type
                         var expenseType = row.expense_type || '';
                         var amount = parseFloat(row.amount) || 0;
                         if (expenseType === 'gas_diesel') {
@@ -5102,9 +5370,7 @@
                         } else if (expenseType === 'transportation') {
                             assetPeriodData[key].transportation += amount;
                         }
-                        // Update totals
                         assetPeriodData[key].total_expense += amount;
-                        // Rental income and net income from the row
                         if (row.rental_income) {
                             assetPeriodData[key].rental_income = parseFloat(row.rental_income) || 0;
                         }
@@ -5139,7 +5405,6 @@
                         grandNet += net;
                     });
 
-                    // Add grand total row
                     var tr = document.createElement('tr');
                     tr.className = 'total-row';
                     tr.innerHTML = '<td colspan="8"><strong>GRAND TOTAL</strong></td>' +
@@ -5187,7 +5452,6 @@
                         var tr = document.createElement('tr');
                         var statusClass = 'status-' + (row.status || 'active');
                         
-                        // Format date properly
                         var dateFormatted = '—';
                         if (row.bond_date) {
                             var dateObj = new Date(row.bond_date);
@@ -5200,7 +5464,6 @@
                             }
                         }
                         
-                        // Get project name from the relation or fallback
                         var projectName = row.project ? row.project.project_name : (row.project_name || 'Project ' + row.project_id);
                         
                         tr.setAttribute('data-bond-id', row.bond_id);
@@ -5243,7 +5506,6 @@
             currentBondRow = row;
             document.getElementById('bondModalTitle').textContent = 'Bond Details';
             
-            // Get data from the row
             var projectName = row.dataset.projectName || '';
             var date = row.dataset.date || '';
             var amount = parseFloat(row.dataset.amount) || 0;
@@ -5251,7 +5513,6 @@
             var status = row.dataset.status || 'active';
             var remarks = row.dataset.remarks || '';
             
-            // Display values (read-only mode)
             document.getElementById('bondDetailProject').textContent = projectName;
             document.getElementById('bondDetailDate').textContent = date ? new Date(date).toLocaleDateString() : '—';
             document.getElementById('bondDetailAmount').textContent = formatCurrency(amount);
@@ -5259,7 +5520,6 @@
             document.getElementById('bondDetailStatus').textContent = status || 'active';
             document.getElementById('bondDetailRemarks').textContent = remarks || '—';
             
-            // Set edit values
             document.getElementById('bondDetailProjectEdit').value = row.dataset.projectId || '';
             document.getElementById('bondDetailDateEdit').value = date || '';
             document.getElementById('bondDetailAmountEdit').value = amount;
@@ -5267,7 +5527,6 @@
             document.getElementById('bondDetailStatusEdit').value = status || 'active';
             document.getElementById('bondDetailRemarksEdit').value = remarks || '';
             
-            // Store project name for display in edit mode
             document.getElementById('bondDetailProjectDisplay').textContent = projectName;
 
             if (isBondEditMode) toggleBondEdit();
@@ -5276,7 +5535,6 @@
             document.getElementById('bondDetailDeleteBtn').style.display = 'inline-block';
             document.getElementById('bondDetailSaveBtn').style.display = 'none';
             
-            // Reset display/edit visibility
             document.querySelectorAll('#bondDetailModal .detail-edit').forEach(function(el) { 
                 el.style.display = 'none'; 
             });
@@ -5301,11 +5559,8 @@
             var deleteBtn = document.getElementById('bondDetailDeleteBtn');
             var saveBtn = document.getElementById('bondDetailSaveBtn');
             
-            // Editable fields
             var editableFields = ['bondDetailDateEdit', 'bondDetailAmountEdit', 'bondDetailProviderEdit', 
                                   'bondDetailStatusEdit', 'bondDetailRemarksEdit'];
-            
-            // Display only fields (project is not editable)
             var displayFields = ['bondDetailProject', 'bondDetailDate', 'bondDetailAmount', 
                                  'bondDetailProvider', 'bondDetailStatus', 'bondDetailRemarks'];
 
@@ -5314,21 +5569,17 @@
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'inline-block';
                 
-                // Hide display values
                 displayFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = 'none';
                 });
                 
-                // Show edit fields
                 editableFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = '';
                 });
                 
-                // Show project as read-only display
                 document.getElementById('bondDetailProjectDisplay').style.display = '';
-                // Hide project edit select
                 document.getElementById('bondDetailProjectEdit').style.display = 'none';
                 
             } else {
@@ -5336,13 +5587,11 @@
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'none';
                 
-                // Show display values
                 displayFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = '';
                 });
                 
-                // Hide edit fields
                 editableFields.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) el.style.display = 'none';
@@ -5470,7 +5719,6 @@
                     if (currentReportTab === 'budgets') {
                         fetchBudgetData();
                     }
-                    // Load admin exp if on that tab
                     if (currentReportTab === 'adminexp') {
                         loadAdminExp();
                     }
