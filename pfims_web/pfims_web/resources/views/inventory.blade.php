@@ -603,7 +603,17 @@
                 <h2>Add New Item</h2>
                 <button class="modal-close" onclick="closeAddItemModal()">×</button>
             </div>
-            <div class="modal-body">
+
+            <div class="step-indicator">
+                <span class="step active" id="addItemStep1Indicator">
+                    <span class="step-number">1</span> Item Details
+                </span>
+                <span class="step" id="addItemStep2Indicator">
+                    <span class="step-number">2</span> Review
+                </span>
+            </div>
+
+            <div class="modal-step" id="addItemStep1">
                 <div class="form-group">
                     <label>Item Name <span class="required">*</span></label>
                     <input type="text" id="newItemName" placeholder="e.g. Plywood 1/2">
@@ -630,10 +640,34 @@
                     <label>Reorder Level</label>
                     <input type="number" id="newItemReorderLevel" placeholder="e.g. 10" min="0" value="5">
                 </div>
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="btn-cancel" onclick="closeAddItemModal()">Cancel</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="btn-continue" onclick="addItemNextStep()">Continue</button>
+                    </div>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeAddItemModal()">Cancel</button>
-                <button class="btn-save" onclick="saveNewItem()">Add Item</button>
+
+            <div class="modal-step" id="addItemStep2" style="display: none;">
+                <h3>Review item details</h3>
+                <div class="summary-list">
+                    <div class="summary-item"><strong>Item Name</strong><span class="summary-value" id="reviewItemName">—</span></div>
+                    <div class="summary-item"><strong>Category</strong><span class="summary-value" id="reviewItemCategory">—</span></div>
+                    <div class="summary-item"><strong>Unit</strong><span class="summary-value" id="reviewItemUnit">—</span></div>
+                    <div class="summary-item"><strong>Supplier</strong><span class="summary-value" id="reviewItemSupplier">—</span></div>
+                    <div class="summary-item"><strong>Reorder Level</strong><span class="summary-value" id="reviewItemReorder">—</span></div>
+                </div>
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="btn-cancel" onclick="closeAddItemModal()">Cancel</button>
+                        <button class="btn-back" onclick="addItemPrevStep()">Back</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="btn-save" id="saveNewItemBtn" onclick="saveNewItem()">Add Item</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -955,7 +989,7 @@
 
                 <hr style="border: none; border-top: 1px solid #e9ecef; margin: 5px 0 12px;">
 
-                <div class="summary-list" style="border-left-color: #1a2b3c;">
+                    <div class="summary-list">
                     <div class="summary-item">
                         <strong>Transaction Type</strong>
                         <span class="summary-value" id="reviewTransType">—</span>
@@ -1916,6 +1950,7 @@
             document.getElementById('newItemSupplier').value = '';
             document.getElementById('newItemReorderLevel').value = '5';
             populateAddItemDropdowns();
+            addItemGoToStep(1);
         }
 
         function closeAddItemModal() {
@@ -1923,8 +1958,45 @@
             document.body.style.overflow = '';
         }
 
+        function addItemGoToStep(step) {
+            document.querySelectorAll('#addItemModal .modal-step').forEach(function(el) {
+                el.style.display = 'none';
+            });
+            document.getElementById('addItemStep' + step).style.display = 'block';
+            document.querySelectorAll('#addItemModal .step-indicator .step').forEach(function(el, index) {
+                el.classList.toggle('active', index + 1 === step);
+                el.classList.toggle('completed', index + 1 < step);
+            });
+        }
+
+        function addItemNextStep() {
+            var name = document.getElementById('newItemName').value.trim();
+            var categoryId = document.getElementById('newItemCategory').value;
+            var unitId = document.getElementById('newItemUnit').value;
+            var supplierId = document.getElementById('newItemSupplier').value;
+            var reorderLevel = document.getElementById('newItemReorderLevel').value;
+
+            if (!name) { showError('Please enter an item name.'); return; }
+            if (!categoryId) { showError('Please select a category.'); return; }
+            if (!unitId) { showError('Please select a unit.'); return; }
+            if (!supplierId) { showError('Please select a supplier.'); return; }
+
+            document.getElementById('reviewItemName').textContent = name;
+            document.getElementById('reviewItemCategory').textContent = document.getElementById('newItemCategory').selectedOptions[0].text;
+            document.getElementById('reviewItemUnit').textContent = document.getElementById('newItemUnit').selectedOptions[0].text;
+            document.getElementById('reviewItemSupplier').textContent = document.getElementById('newItemSupplier').selectedOptions[0].text;
+            document.getElementById('reviewItemReorder').textContent = reorderLevel || '0';
+
+            addItemGoToStep(2);
+        }
+
+        function addItemPrevStep() {
+            addItemGoToStep(1);
+        }
+
         function saveNewItem() {
-            var saveBtn = document.querySelector('#addItemModal .btn-save');
+            var saveBtn = document.getElementById('saveNewItemBtn');
+            if (saveBtn && saveBtn.disabled) return;
             var name = document.getElementById('newItemName').value.trim();
             var categoryId = document.getElementById('newItemCategory').value;
             var unitId = document.getElementById('newItemUnit').value;
@@ -2082,6 +2154,7 @@
 
         function saveEditItem() {
             var saveBtn = document.querySelector('#editItemModal .btn-save');
+            if (saveBtn && saveBtn.disabled) return;
             var itemId = document.getElementById('editItemId').value;
             var name = document.getElementById('editItemName').value.trim();
             var categoryId = document.getElementById('editItemCategory').value;
@@ -2307,6 +2380,7 @@
         // ─── SAVE TRANSACTION ────────────────────────────────────────
         function saveTransaction() {
             var saveBtn = document.querySelector('#step2 .btn-save');
+            if (saveBtn && saveBtn.disabled) return;
             var itemId = document.getElementById('transactionItemSelect').value;
             var quantity = parseFloat(document.getElementById('transactionQuantity').value);
             var barCode = document.getElementById('transactionItemBarCode').value.trim();
@@ -2422,6 +2496,7 @@
 
         function saveExpenseFromTransaction() {
             var saveBtn = document.querySelector('#expenseModal .btn-save');
+            if (saveBtn && saveBtn.disabled) return;
             var desc = document.getElementById('expenseModalDesc').value.trim();
             var amount = parseFloat(document.getElementById('expenseModalAmount').value);
             var categoryId = document.getElementById('expenseModalCategory').value;

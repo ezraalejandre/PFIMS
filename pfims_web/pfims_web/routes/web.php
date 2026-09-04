@@ -204,7 +204,10 @@ Route::patch('/profile', function (Request $request) {
 
     $user->update($validated);
 
-    return redirect('/profile')->with('status', 'Profile updated successfully.');
+    $role = strtolower($user->role ?? '');
+    $redirectPath = $role === 'accounting' ? '/aprofile' : ($role === 'operations' ? '/oprofile' : '/profile');
+
+    return redirect($redirectPath)->with('status', 'Profile updated successfully.');
 })->middleware('auth');
 
 // Settings page

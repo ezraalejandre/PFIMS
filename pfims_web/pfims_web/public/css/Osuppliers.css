@@ -775,6 +775,121 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     transform: translateY(-1px);
 }
 
+/* ─── MULTI-STEP MODAL (Add Supplier) ─── */
+.required {
+    color: #d32f2f;
+}
+
+.step-indicator {
+    display: flex;
+    gap: 0;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0;
+}
+
+.step-indicator .step {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #aaa;
+    border-bottom: 3px solid transparent;
+    transition: 0.3s;
+    cursor: default;
+}
+
+.step-indicator .step .step-number {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    border-radius: 50%;
+    background: #ddd;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 6px;
+    text-align: center;
+    transition: 0.3s;
+}
+
+.step-indicator .step.active {
+    color: #1a2b3c;
+    border-bottom-color: #e19a45;
+}
+
+.step-indicator .step.active .step-number {
+    background: #e19a45;
+}
+
+.step-indicator .step.completed {
+    color: #2e7d32;
+    border-bottom-color: #2e7d32;
+}
+
+.step-indicator .step.completed .step-number {
+    background: #2e7d32;
+}
+
+.modal-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-list {
+    background: #f8f6f2;
+    padding: 20px 24px;
+    border-radius: 12px;
+    margin: 10px 0 20px;
+    border-left: 4px solid #e19a45;
+}
+
+.summary-item {
+    display: flex;
+    padding: 8px 0;
+    border-bottom: 1px dashed #e9e0d4;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-item strong {
+    width: 150px;
+    flex-shrink: 0;
+    color: #555;
+    font-weight: 600;
+}
+
+.summary-item .summary-value {
+    color: #1a2b3c;
+    font-weight: 500;
+}
+
+.btn-back {
+    background: #e9ecef;
+    color: #555;
+}
+
+.btn-back:hover {
+    background: #ddd;
+}
+
+.btn-continue {
+    background: #e19a45;
+    color: #fff;
+}
+
+.btn-continue:hover {
+    background: #cf8735;
+    transform: translateY(-1px);
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 900px) {
     .sidebar {

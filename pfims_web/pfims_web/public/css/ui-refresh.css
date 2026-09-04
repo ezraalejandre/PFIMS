@@ -1410,7 +1410,7 @@ html[data-theme="dark"] .inventory-page .modal-overlay :where(
     .modal-container, .modal-header, .modal-body, .modal-footer,
     form, .form-group, .form-row, .form-row-three, .form-section,
     .input-group, .step-indicator, .step-content,
-    .summary-section, .summary-item, .view-grid, .view-item
+    .summary-section, .summary-list, .summary-item, .view-grid, .view-item
 ) {
     background: #111827 !important;
     background-color: #111827 !important;
@@ -1496,7 +1496,7 @@ html[data-theme="dark"] .inventory-page :where(#itemDetailModal, #editItemModal,
 
 /* Add New Transaction review step uses one dark surface. */
 html[data-theme="dark"] .inventory-page #transactionModal #step2 :where(
-    .modal-step, .summary-list, .summary-item, .modal-footer,
+    .modal-step, .summary-item, .modal-footer,
     .footer-left, .footer-right
 ) {
     background: #111827 !important;
@@ -1506,12 +1506,37 @@ html[data-theme="dark"] .inventory-page #transactionModal #step2 :where(
     box-shadow: none !important;
 }
 
+html[data-theme="dark"] .inventory-page #transactionModal #step2 .summary-list {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-left: 4px solid #e19a45 !important;
+    box-shadow: none !important;
+}
+
 html[data-theme="dark"] .inventory-page #transactionModal #step2 :where(h3, strong, .summary-value, span) {
     color: #f8fafc !important;
 }
 
-html[data-theme="dark"] .inventory-page #transactionModal #step2 .summary-list {
-    border-left-color: #f08a1a !important;
+html[data-theme="dark"] .inventory-page .modal-overlay .summary-list {
+    border-left-color: #e19a45 !important;
+}
+
+html[data-theme="dark"] .inventory-page #transactionModal .summary-list,
+html[data-theme="dark"] .inventory-page #addItemModal .summary-list {
+    border-left: 4px solid #e19a45 !important;
+}
+
+html[data-theme="dark"] .inventory-page .modal-overlay .summary-item strong {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .inventory-page .modal-overlay .summary-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .inventory-page .modal-overlay .summary-item {
+    border-bottom-color: #2c3749 !important;
 }
 
 html[data-theme="dark"] .inventory-page #transactionModal #step2 hr {
@@ -1693,7 +1718,8 @@ html[data-theme="dark"] .suppliers-page .pagination-links :where(a, button, span
 html[data-theme="dark"] .suppliers-page .modal-overlay :where(
     .modal-container, .modal-header, .modal-body, .modal-footer,
     .add-row, .edit-section, .left-col, .right-col,
-    .footer-left, .footer-right, form, .form-group, .form-row
+    .footer-left, .footer-right, form, .form-group, .form-row,
+    .modal-step, .step-indicator, .summary-list, .summary-item
 ) {
     background: #111827 !important;
     background-color: #111827 !important;
@@ -1704,6 +1730,30 @@ html[data-theme="dark"] .suppliers-page .modal-overlay :where(
 
 html[data-theme="dark"] .suppliers-page .modal-overlay :where(h2, h3, h4, label, .add-label, .edit-label, p) {
     color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .summary-item strong {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .summary-value {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .summary-list {
+    border-left-color: #e19a45 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .step-indicator {
+    border-bottom-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .step-indicator .step {
+    color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .suppliers-page .modal-overlay .step-indicator .step.active {
+    color: #f3a64f !important;
 }
 
 html[data-theme="dark"] .suppliers-page .supplier-section-title {
@@ -2515,16 +2565,22 @@ html[data-theme="dark"] .projects-page :where(
     .modal-body,
     .modal-step,
     .modal-footer,
-    .summary-list,
     .summary-item,
     .project-details-grid,
-    .detail-item,
     .step-indicator
 ) {
     background: #111827 !important;
     background-color: #111827 !important;
     color: #edf2f7 !important;
     border-color: #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .projects-page #projectModal .summary-list {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #edf2f7 !important;
+    border-left: 4px solid #e19a45 !important;
     box-shadow: none !important;
 }
 
@@ -2580,7 +2636,211 @@ html[data-theme="dark"] .projects-page .step-indicator .step.active {
 }
 
 html[data-theme="dark"] .projects-page :where(.phase-badge, .status-badge) {
-    color: #f3a64f !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    color: #edf2f7 !important;
+}
+
+html[data-theme="dark"] .projects-page .status-badge.on-track { color: #2e7d32 !important; }
+html[data-theme="dark"] .projects-page .status-badge.at-risk { color: #e65100 !important; }
+html[data-theme="dark"] .projects-page .status-badge.delayed { color: #d32f2f !important; }
+html[data-theme="dark"] .projects-page .status-badge.completed { color: #5c6bc0 !important; }
+
+html[data-theme="dark"] .projects-page #updateModal .project-details-grid {
+    background: var(--ui-surface-raised) !important;
+    background-color: var(--ui-surface-raised) !important;
+    color: #edf2f7 !important;
+    border: 1px solid #2c3749 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .projects-page .project-details-grid .detail-item span {
+    color: #edf2f7 !important;
+}
+
+html[data-theme="dark"] .projects-page .project-details-grid .detail-item label {
+    color: #b7c3d4 !important;
+}
+
+/* Projects: stat cards get a side accent bar, like Inventory/Suppliers. */
+.projects-page .stat-card-proj {
+    border-left: 4px solid #e19a45 !important;
+}
+
+/* Projects: New Project button matches Inventory/Suppliers' Add button. */
+.projects-page .btn-new-project {
+    background: #1a2b3c !important;
+}
+
+.projects-page .btn-new-project:hover {
+    background: #2a3f54 !important;
+}
+
+html[data-theme="dark"] .projects-page .btn-new-project {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .projects-page .btn-new-project:hover {
+    background: #e2e8f0 !important;
+}
+
+/* Projects: flat orange Continue/Save/Edit buttons instead of the site gradient. */
+.projects-page :where(.btn-save, .btn-continue, .btn-edit-project) {
+    background: #e19a45 !important;
+    box-shadow: none !important;
+}
+
+.projects-page :where(.btn-save, .btn-continue, .btn-edit-project):hover {
+    background: #cf8735 !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .projects-page :where(.btn-save, .btn-continue, .btn-edit-project) {
+    background: #e19a45 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .projects-page :where(.btn-save, .btn-continue, .btn-edit-project):hover {
+    background: #cf8735 !important;
+}
+
+/* Projects: flat red Delete button instead of the site gradient. */
+.projects-page .btn-delete {
+    background: #d32f2f !important;
+    box-shadow: none !important;
+}
+
+.projects-page .btn-delete:hover {
+    background: #b71c1c !important;
+    box-shadow: none !important;
+}
+
+html[data-theme="dark"] .projects-page .btn-delete {
+    background: #d32f2f !important;
+    color: #ffffff !important;
+    border-color: #d32f2f !important;
+}
+
+html[data-theme="dark"] .projects-page .btn-delete:hover {
+    background: #b71c1c !important;
+}
+
+/* Projects: compact clear button matching Suppliers. */
+.projects-page .btn-clear-search {
+    width: 50px !important;
+    min-width: 50px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border: 1px solid #46546a !important;
+    border-radius: 8px !important;
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    cursor: pointer;
+}
+
+.projects-page .btn-clear-search:hover {
+    background: #263349 !important;
+    border-color: #68768c !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .projects-page .btn-clear-search {
+    background: #111827 !important;
+    color: #edf2f7 !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .projects-page .btn-clear-search:hover {
+    background: #263349 !important;
+    color: #ffffff !important;
+}
+
+html[data-theme="dark"] .projects-page .stat-card-proj {
+    border-left-color: #e19a45 !important;
+}
+
+/* Projects: status colors matched to Inventory's status palette. */
+.projects-page .status-badge.on-track { color: #2e7d32 !important; }
+.projects-page .status-badge.on-track .dot { background: #2e7d32 !important; }
+.projects-page .status-badge.at-risk { color: #e65100 !important; }
+.projects-page .status-badge.at-risk .dot { background: #e65100 !important; }
+.projects-page .status-badge.delayed { color: #d32f2f !important; }
+.projects-page .status-badge.delayed .dot { background: #d32f2f !important; }
+
+/* Projects: dark mode for the filter panel and status chart (locally-styled, not covered by shared component rules). */
+html[data-theme="dark"] .projects-page .project-filter-panel {
+    background: #111827 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .projects-page .project-filter-field label {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .projects-page .project-filter-field input,
+html[data-theme="dark"] .projects-page .project-filter-field select {
+    background: #0b1220 !important;
+    color: #f8fafc !important;
+    border-color: #46546a !important;
+}
+
+html[data-theme="dark"] .projects-page .project-chart-card {
+    background: #111827 !important;
+    border-color: #2c3749 !important;
+}
+
+html[data-theme="dark"] .projects-page .project-chart-card h2 {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .projects-page #projectChartScope {
+    color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .projects-page .status-chart-track {
+    background: #2a3548 !important;
+}
+
+html[data-theme="dark"] .projects-page .status-chart-row span:first-child {
+    color: #c2cddd !important;
+}
+
+html[data-theme="dark"] .projects-page .status-chart-row strong {
+    color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .projects-page .status-chart-empty {
+    color: #94a3b8 !important;
+}
+
+.projects-page .project-analytics,
+.projects-page .project-chart-card {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* Projects: column visibility per status filter (declutters the table). */
+.projects-page .table-wrapper.col-hide-est-end table th:nth-child(4),
+.projects-page .table-wrapper.col-hide-est-end table td:nth-child(4) {
+    display: none !important;
+}
+
+.projects-page .table-wrapper.col-hide-actual-end table th:nth-child(5),
+.projects-page .table-wrapper.col-hide-actual-end table td:nth-child(5) {
+    display: none !important;
+}
+
+.projects-page .table-wrapper.col-hide-progress table th:nth-child(8),
+.projects-page .table-wrapper.col-hide-progress table td:nth-child(8) {
+    display: none !important;
 }
 
 /* Header notification/user JPEGs have white canvases; convert them to dark canvases. */
@@ -2645,3 +2905,4 @@ html[data-theme="dark"] .top-header .right a:hover > img:is(
 .dashboard-page .project-item .budget .status-text.over-budget {
     color: #c62828;
 }
+

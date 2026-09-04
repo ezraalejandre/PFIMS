@@ -25,11 +25,11 @@
         .project-filter-field label { font-size:.78rem; font-weight:700; color:#4b5563; }
         .project-filter-field input,.project-filter-field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid #d1d5db; border-radius:8px; background:#fff; }
         .project-analytics { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; margin-bottom:18px; }
-        .project-chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; }
-        .project-chart-card h2 { margin:0 0 12px; font-size:1rem; }
-        .status-chart { display:grid; gap:9px; }
-        .status-chart-row { display:grid; grid-template-columns:90px minmax(0,1fr) 40px; gap:10px; align-items:center; font-size:.82rem; }
-        .status-chart-track { height:16px; border-radius:999px; background:#eef2f7; overflow:hidden; }
+                .project-chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 16px; max-width:none; width:100%; }
+        .project-chart-card h2 { margin:0 0 8px; font-size:0.9rem; }
+        .status-chart { display:grid; gap:5px; }
+        .status-chart-row { display:grid; grid-template-columns:80px minmax(0,1fr) 32px; gap:10px; align-items:center; font-size:.78rem; }
+        .status-chart-track { height:7px; border-radius:999px; background:#eef2f7; overflow:hidden; }
         .status-chart-bar { height:100%; min-width:0; border-radius:999px; transition:width .25s ease; }
         .status-chart-empty { color:#6b7280; font-size:.85rem; }
         @media (max-width:1100px) { .project-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -92,13 +92,13 @@
         <div class="right">
             <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
-                <span>Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+                <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
             </a>
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
+        </div>
         </div>
     </header>
 
@@ -190,7 +190,7 @@
             </div>
             <div class="project-filter-field"><label for="projectDateFrom">Started from</label><input type="date" id="projectDateFrom" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
             <div class="project-filter-field"><label for="projectDateTo">Started to</label><input type="date" id="projectDateTo" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
-            <button type="button" class="btn-clear-search" onclick="clearProjectSearch()">✕ Clear</button>
+            <button type="button" class="btn-clear-search" onclick="clearProjectSearch()">x</button>
         </div>
 
         <div class="project-analytics">
@@ -466,11 +466,12 @@
 
     <script>
         // ─── GLOBAL VARIABLES ───
-        var currentEditData = null;
+                var currentEditData = null;
         var currentProjectRow = null;
         var deleteCallback = null;
         var allProjects = [];
         var projectSearchTerm = '';
+        var isOpeningProjectModal = false;
 
         // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
@@ -1017,9 +1018,21 @@ if (currentStep === 2) {
             renderProjectPage(1);
         }
 
+                function applyColumnVisibility(status) {
+            var wrapper = document.querySelector('.table-wrapper');
+            if (!wrapper) return;
+            wrapper.classList.remove('col-hide-est-end', 'col-hide-actual-end', 'col-hide-progress');
+            if (status === 'Completed') {
+                wrapper.classList.add('col-hide-est-end', 'col-hide-progress');
+            } else if (status === 'On Track' || status === 'Pending' || status === 'At Risk' || status === 'Delayed') {
+                wrapper.classList.add('col-hide-actual-end');
+            }
+        }
+
         function filterProjects() {
             projectSearchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
             var status = document.getElementById('projectStatusFilter').value;
+            applyColumnVisibility(status);
             var phase = document.getElementById('projectPhaseFilter').value;
             var from = document.getElementById('projectDateFrom').value;
             var to = document.getElementById('projectDateTo').value;
@@ -1087,9 +1100,9 @@ if (currentStep === 2) {
             var chart = document.getElementById('projectStatusChart');
             var scope = document.getElementById('projectChartScope');
             var statuses = [
-                { label: 'Pending', color: '#94a3b8' }, { label: 'On Track', color: '#16a34a' },
-                { label: 'At Risk', color: '#f59e0b' }, { label: 'Delayed', color: '#dc2626' },
-                { label: 'Completed', color: '#2563eb' }
+                { label: 'Pending', color: '#9aa5b1' }, { label: 'On Track', color: '#4f8b68' },
+                { label: 'At Risk', color: '#e19a45' }, { label: 'Delayed', color: '#c95c5c' },
+                { label: 'Completed', color: '#547896' }
             ];
             chart.innerHTML = '';
             scope.textContent = '(' + projects.length + ' filtered)';
@@ -1194,6 +1207,8 @@ if (currentStep === 2) {
             row.dataset.budget = project.budget || '';
 
             row.onclick = function() {
+                if (isOpeningProjectModal) return;
+                isOpeningProjectModal = true;
                 openUpdateModal(
                     this,
                     project.id,
@@ -1212,6 +1227,7 @@ if (currentStep === 2) {
                     project.startDate,
                     project.endDate
                 );
+                setTimeout(function() { isOpeningProjectModal = false; }, 400);
             };
 
             var progress = Math.min(100, Math.max(0, parseFloat(project.progress) || 0));
@@ -1655,8 +1671,33 @@ if (actualEnd && new Date(actualEnd) < new Date(start)) {
             }
         });
 
+                function fetchNotifBadge() {
+            fetch('/api/notifications/unread-count', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load unread count.');
+                return response.json();
+            })
+            .then(function(data) {
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                var count = data.unread_count || 0;
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function(error) {
+                console.error('Error loading notification badge:', error);
+            });
+        }
+
         function initializeProjectPage() {
             fetchProjects();
+            fetchNotifBadge();
         }
 
                 if (document.readyState === 'loading') {

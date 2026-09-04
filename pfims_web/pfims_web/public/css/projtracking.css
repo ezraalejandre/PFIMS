@@ -1083,21 +1083,26 @@ body {
     color: #aaa;
 }
 
-.search-bar .btn-clear-search {
-    padding: 8px 16px;
+.project-filter-panel .btn-clear-search {
+    width: 32px;
+    height: 32px;
+    padding: 0;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #fff;
     cursor: pointer;
     color: #888;
-    white-space: nowrap;
     transition: 0.3s;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.search-bar .btn-clear-search:hover {
+.project-filter-panel .btn-clear-search:hover {
     background: #f5f5f5;
-    border-color: #c9a96e;
+    border-color: #e19a45;
     color: #333;
 }
 

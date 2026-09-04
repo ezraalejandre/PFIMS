@@ -214,34 +214,63 @@
                 <button class="modal-close" onclick="closeAddModal()">×</button>
             </div>
 
-                        <div class="modal-body">
+            <div class="step-indicator">
+                <span class="step active" id="addSupplierStep1Indicator">
+                    <span class="step-number">1</span> Supplier Details
+                </span>
+                <span class="step" id="addSupplierStep2Indicator">
+                    <span class="step-number">2</span> Review
+                </span>
+            </div>
+
+            <div class="modal-step" id="addSupplierStep1">
                 <h3 class="supplier-section-title">Supplier Information</h3>
-                <!-- Supplier Name: label + input on same row -->
                 <div class="add-row">
-                    <div class="add-label">Supplier Name</div>
+                    <div class="add-label">Supplier Name <span class="required">*</span></div>
                     <div class="add-input">
-                        <input type="text" placeholder="Item Name" id="addSupplierName">
+                        <input type="text" placeholder="e.g. Prime Hardware Inc." id="addSupplierName">
                     </div>
                 </div>
 
                 <hr class="modal-divider">
 
-                <!-- Supplier Address & Contact side by side -->
                 <div class="add-two-col">
                     <div class="col-group">
-                        <label>Supplier Address</label>
-                        <input type="text" placeholder="Item Name" id="addSupplierAddress">
+                        <label>Supplier Address <span class="required">*</span></label>
+                        <input type="text" placeholder="e.g. 123 Rizal St, Antipolo City" id="addSupplierAddress">
                     </div>
                     <div class="col-group">
-                        <label>Supplier Contact no.</label>
+                        <label>Supplier Contact no. <span class="required">*</span></label>
                         <input type="tel" placeholder="e.g. +63 (912) 345-6789" id="addSupplierContact" inputmode="tel" maxlength="20" oninput="this.value = this.value.replace(/[^0-9+().\s-]/g, '')">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="btn-continue" onclick="addSupplierNextStep()">Continue</button>
                     </div>
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
-                                <button class="btn-save" id="addSupplierSubmitBtn" onclick="saveSupplier()">Add</button>
+            <div class="modal-step" id="addSupplierStep2" style="display: none;">
+                <h3 class="supplier-section-title">Review supplier details</h3>
+                <div class="summary-list">
+                    <div class="summary-item"><strong>Supplier Name</strong><span class="summary-value" id="reviewSupplierName">—</span></div>
+                    <div class="summary-item"><strong>Address</strong><span class="summary-value" id="reviewSupplierAddress">—</span></div>
+                    <div class="summary-item"><strong>Contact no.</strong><span class="summary-value" id="reviewSupplierContact">—</span></div>
+                </div>
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+                        <button class="btn-back" onclick="addSupplierPrevStep()">Back</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="btn-save" id="addSupplierSubmitBtn" onclick="saveSupplier()">Add Supplier</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -551,6 +580,42 @@
             document.getElementById('addSupplierName').value = '';
             document.getElementById('addSupplierAddress').value = '';
             document.getElementById('addSupplierContact').value = '';
+            addSupplierGoToStep(1);
+        }
+
+        function addSupplierGoToStep(step) {
+            document.querySelectorAll('#addSupplierModal .modal-step').forEach(function(el) {
+                el.style.display = 'none';
+            });
+            document.getElementById('addSupplierStep' + step).style.display = 'block';
+            document.querySelectorAll('#addSupplierModal .step-indicator .step').forEach(function(el, index) {
+                el.classList.toggle('active', index + 1 === step);
+                el.classList.toggle('completed', index + 1 < step);
+            });
+        }
+
+        function addSupplierNextStep() {
+            var name = document.getElementById('addSupplierName').value.trim();
+            var address = document.getElementById('addSupplierAddress').value.trim();
+            var contact = document.getElementById('addSupplierContact').value.trim();
+
+            if (!name) { showError('Please enter a supplier name.'); return; }
+            if (!address) { showError('Please enter a supplier address.'); return; }
+            if (!contact) { showError('Please enter a supplier contact number.'); return; }
+            if (!/^(?=.*\d)[0-9+().\s-]+$/.test(contact)) {
+                showError('Contact number may only contain numbers, spaces, +, -, parentheses, and periods.');
+                return;
+            }
+
+            document.getElementById('reviewSupplierName').textContent = name;
+            document.getElementById('reviewSupplierAddress').textContent = address;
+            document.getElementById('reviewSupplierContact').textContent = contact;
+
+            addSupplierGoToStep(2);
+        }
+
+        function addSupplierPrevStep() {
+            addSupplierGoToStep(1);
         }
 
         function closeAddModal() {
@@ -612,7 +677,7 @@
             })
             .finally(() => {
                 submitButton.disabled = false;
-                submitButton.textContent = 'Add';
+                submitButton.textContent = 'Add Supplier';
             });
         }
 
