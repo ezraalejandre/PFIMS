@@ -145,37 +145,53 @@
                             <div class="toggle-slider"></div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- ─── CONFIGURATIONS (Dropdown Management) ─── -->
                 <div id="section-configurations" class="settings-section" style="display: none;">
                     <div class="section-title">Configurations</div>
-                    <div class="section-desc">Manage the live values used by inventory and finance input forms.</div>
+                    <div class="section-desc">Manage operational thresholds and the live values used by inventory and finance forms.</div>
 
                     <div class="config-tabs">
                         <button class="config-tab active" onclick="switchConfigType(this, 'units')">Units</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'inv_categories')">Inventory Categories</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'exp_categories')">Expense Categories</button>
-                        <button class="config-tab" onclick="switchConfigType(this, 'suppliers')">Suppliers</button>
+                        <button class="config-tab" onclick="switchConfigType(this, 'thresholds')">Thresholds</button>
                     </div>
 
-                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-                        <button class="btn-add-user" onclick="openConfigAddModal()">+ Add New</button>
-                        <input type="search" id="configTableSearch" oninput="renderConfigTable()" placeholder="Search configurations..." style="min-width:240px;padding:9px 13px;border:1px solid #ddd;border-radius:8px;">
+                    <div id="configCrudPanel">
+                        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                            <button class="btn-add-user" onclick="openConfigAddModal()">+ Add New</button>
+                            <input type="search" id="configTableSearch" oninput="renderConfigTable()" placeholder="Search configurations..." style="min-width:240px;padding:9px 13px;border:1px solid #ddd;border-radius:8px;">
+                        </div>
+
+                        <div style="overflow-x: auto; margin-top: 15px;">
+                            <table class="user-table" id="configTable">
+                                <thead><tr><th>ID</th><th>Name</th><th style="text-align: center;">Action</th></tr></thead>
+                                <tbody id="configTableBody"></tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <div style="overflow-x: auto; margin-top: 15px;">
-                        <table class="user-table" id="configTable">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th style="text-align: center;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="configTableBody">
-                            </tbody>
-                        </table>
+                    <div id="thresholdsPanel" class="system-limits-panel" style="display:none;padding:20px;border:1px solid #e4e8ef;border-radius:12px;background:#fff;">
+                        <div class="section-title" style="font-size:1.05rem;">Operational thresholds</div>
+                        <div class="section-desc" style="margin-bottom:16px;">Set when stock is considered low and when an active project automatically becomes at risk.</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+                            <label style="display:flex;flex-direction:column;gap:6px;font-weight:600;">Low-stock reorder threshold
+                                <input id="inventoryReorderThreshold" type="number" min="0" max="999999999.99" step="0.01" inputmode="decimal" aria-describedby="inventoryReorderThresholdHelp" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+                                <small id="inventoryReorderThresholdHelp" style="font-weight:400;color:#6b7280;">This is the system-wide minimum. Higher item-specific reorder thresholds are still respected.</small>
+                            </label>
+                            <label style="display:flex;flex-direction:column;gap:6px;font-weight:600;">At-risk lead time (days)
+                                <input id="projectAtRiskDays" type="number" min="0" max="365" step="1" inputmode="numeric" aria-describedby="projectAtRiskDaysHelp" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+                                <small id="projectAtRiskDaysHelp" style="font-weight:400;color:#6b7280;">Active, non-completed projects automatically become At Risk this many days before their estimated end date.</small>
+                            </label>
+                            <label style="display:flex;flex-direction:column;gap:6px;font-weight:600;">Maximum transaction quantity
+                                <input id="inventoryMaxTransactionQuantity" type="number" min="0.01" max="999999999999.99" step="0.01" inputmode="decimal" aria-describedby="inventoryMaxTransactionQuantityHelp" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+                                <small id="inventoryMaxTransactionQuantityHelp" style="font-weight:400;color:#6b7280;">Prevents accidental oversized stock movements.</small>
+                            </label>
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;margin-top:18px;"><button type="button" class="btn-save" id="saveSystemSettings" onclick="saveSystemSettings(this)" style="background:#c9a96e;color:#fff;border:0;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;">Save thresholds</button></div>
                     </div>
                 </div>
 
@@ -633,15 +649,13 @@
         var configData = {
             'units': [],
             'inv_categories': [],
-            'exp_categories': [],
-            'suppliers': []
+            'exp_categories': []
         };
 
         var configFieldMap = {
             'units': { id: 'unit_id', name: 'unit_name' },
             'inv_categories': { id: 'inventory_category_id', name: 'inventory_category_name' },
-            'exp_categories': { id: 'fin_category_id', name: 'category_name' },
-            'suppliers': { id: 'supplier_id', name: 'supplier_name' }
+            'exp_categories': { id: 'fin_category_id', name: 'category_name' }
         };
         var configMeta = {};
 
@@ -654,6 +668,13 @@
             });
             el.classList.add('active');
             currentConfigType = type;
+            var isThresholds = type === 'thresholds';
+            document.getElementById('configCrudPanel').style.display = isThresholds ? 'none' : 'block';
+            document.getElementById('thresholdsPanel').style.display = isThresholds ? 'block' : 'none';
+            if (isThresholds) {
+                loadSystemSettings();
+                return;
+            }
             document.getElementById('configTableSearch').value = '';
             fetchConfigItems(type);
         }
@@ -891,6 +912,43 @@
 
         function closeSuccess() {
             document.getElementById('successNotification').style.display = 'none';
+        }
+
+        function loadSystemSettings() {
+            fetch('/api/settings', { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+                .then(function(result) {
+                    if (!result.ok || !result.data.success) return;
+                    var values = result.data.data || {};
+                    var fields = {
+                        inventory_reorder_threshold: 'inventoryReorderThreshold',
+                        project_at_risk_days_before_end_date: 'projectAtRiskDays',
+                        inventory_max_transaction_quantity: 'inventoryMaxTransactionQuantity'
+                    };
+                    Object.keys(fields).forEach(function(key) {
+                        var input = document.getElementById(fields[key]);
+                        if (input && values[key] !== undefined) input.value = values[key];
+                    });
+                }).catch(function(error) { console.error('Unable to load system settings.', error); });
+        }
+
+        function saveSystemSettings(button) {
+            var payload = {
+                inventory_reorder_threshold: document.getElementById('inventoryReorderThreshold').value,
+                project_at_risk_days_before_end_date: document.getElementById('projectAtRiskDays').value,
+                inventory_max_transaction_quantity: document.getElementById('inventoryMaxTransactionQuantity').value
+            };
+            setButtonLoading(button, true, 'Saving...');
+            fetch('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+                .then(function(result) {
+                    if (result.ok && result.data.success) showSuccess(result.data.message || 'System settings saved successfully.');
+                    else alert(result.data.message || 'Unable to save system settings.');
+                }).catch(function(error) { console.error(error); alert('Unable to save system settings.'); })
+                .finally(function() { setButtonLoading(button, false); });
         }
 
         // ─── ADD USER MODAL ───
@@ -1222,6 +1280,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             resetPasswordToggleButtons();
+            loadSystemSettings();
             var query = new URLSearchParams(window.location.search);
             if (query.get('section') === 'usermanagement') {
                 var userManagementTab = document.querySelector(".settings-nav li[onclick*='usermanagement']");

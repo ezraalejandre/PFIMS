@@ -2,6 +2,7 @@
     'use strict';
 
     var activeInventoryTab = 'items';
+    var movementChart = null;
 
     function byId(id) { return document.getElementById(id); }
     function numeric(value) {
@@ -124,12 +125,11 @@
             setMetric('categoriesLabel', 'Stock Out Quantity', 'categoriesCount', outbound.toLocaleString(), 'categoriesSub', 'Total outbound units in view');
             updateTransactionChart();
         } else {
-            var low = itemsFilteredData.filter(function (item) { return stockState(item) !== 'in_stock'; });
-            var categories = new Set(itemsFilteredData.map(function (item) { return item.category || 'Uncategorized'; }));
+            var low = itemsFilteredData.filter(function (item) { return stockState(item) === 'low_stock'; });
+            var out = itemsFilteredData.filter(function (item) { return stockState(item) === 'out_of_stock'; });
             setMetric('totalItemsLabel', 'Total Items', 'totalItemsCount', itemsFilteredData.length, 'totalItemsSub', 'Matching current item filters');
-            setMetric('lowStockLabel', 'Needs Restocking', 'lowStockCount', low.length, 'lowStockSub', low.length ? 'At or below each item reorder level' : 'All matching items well stocked');
-            setMetric('categoriesLabel', 'Categories', 'categoriesCount', categories.size, 'categoriesSub', 'Categories represented in view');
-            updateItemChart();
+            setMetric('lowStockLabel', 'Low Stock', 'lowStockCount', low.length, 'lowStockSub', 'At or below each item reorder level');
+            setMetric('categoriesLabel', 'Out of Stock', 'categoriesCount', out.length, 'categoriesSub', 'No stock remaining');
         }
         var badge = byId('transactionBadge');
         if (badge) badge.textContent = allTransactions.length;
@@ -138,11 +138,9 @@
     function updateItemChart() {
         var counts = { in_stock: 0, low_stock: 0, out_of_stock: 0 };
         itemsFilteredData.forEach(function (item) { counts[stockState(item)] += 1; });
-        renderBars('inventoryStockChart', [
-            { label: 'In Stock', value: counts.in_stock, className: 'is-success' },
-            { label: 'Low Stock', value: counts.low_stock, className: 'is-warning' },
-            { label: 'Out of Stock', value: counts.out_of_stock, className: 'is-danger' }
-        ].filter(function (entry) { return entry.value > 0; }), function (value) { return String(value); });
+        if (byId('inStockKpi')) byId('inStockKpi').textContent = counts.in_stock;
+        if (byId('lowStockKpi')) byId('lowStockKpi').textContent = counts.low_stock;
+        if (byId('outOfStockKpi')) byId('outOfStockKpi').textContent = counts.out_of_stock;
     }
 
     function updateTransactionChart() {
@@ -154,13 +152,32 @@
             if (row.transaction_type === 'IN') bucket.inbound += numeric(row.quantity);
             if (row.transaction_type === 'OUT') bucket.outbound += numeric(row.quantity);
         });
-        var entries = [];
-        Array.from(dates).sort(function (a, b) { return b[0].localeCompare(a[0]); }).slice(0, 10).reverse().forEach(function (pair) {
-            entries.push({ label: pair[0] + ' IN', value: pair[1].inbound, className: 'is-success' });
-            entries.push({ label: pair[0] + ' OUT', value: pair[1].outbound, className: 'is-danger' });
-        });
-        renderBars('inventoryMovementChart', entries.filter(function (entry) { return entry.value > 0; }), function (value) {
-            return numeric(value).toLocaleString();
+        var pairs = Array.from(dates).sort(function (a, b) { return a[0].localeCompare(b[0]); }).slice(-14);
+        var labels = pairs.map(function (pair) { return pair[0]; });
+        var inbound = pairs.map(function (pair) { return pair[1].inbound; });
+        var outbound = pairs.map(function (pair) { return pair[1].outbound; });
+        var host = byId('inventoryMovementChart');
+        if (!host) return;
+        var canvas = byId('inventoryMovementChartCanvas');
+        if (typeof Chart === 'undefined' || !canvas) {
+            var entries = [];
+            pairs.forEach(function (pair) {
+                entries.push({ label: pair[0] + ' IN', value: pair[1].inbound, className: 'is-success' });
+                entries.push({ label: pair[0] + ' OUT', value: pair[1].outbound, className: 'is-danger' });
+            });
+            renderBars(host.id, entries.filter(function (entry) { return entry.value > 0; }), function (value) { return numeric(value).toLocaleString(); });
+            return;
+        }
+        if (movementChart) movementChart.destroy();
+        movementChart = new Chart(canvas, {
+            type: 'bar',
+            data: { labels: labels, datasets: [
+                { label: 'IN', data: inbound, backgroundColor: 'rgba(46, 125, 50, .78)', borderColor: '#2e7d32', borderWidth: 1, borderRadius: 4 },
+                { label: 'OUT', data: outbound, backgroundColor: 'rgba(211, 47, 47, .78)', borderColor: '#d32f2f', borderWidth: 1, borderRadius: 4 }
+            ] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: function (context) { return context.dataset.label + ': ' + numeric(context.raw).toLocaleString(); } } } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
         });
     }
 

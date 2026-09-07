@@ -882,7 +882,7 @@
 
         <!-- Page Header -->
         <div class="page-header">
-            <h1>BUDGET &amp; FINANCE</h1>
+            <h1>FINANCE</h1>
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
                 <button class="btn-add-data" onclick="openPfimsImport()">Import Expenses</button>
                 <button class="btn-add-expense" onclick="openAddExpenseModal()">+ Add Expense</button>
@@ -904,14 +904,6 @@
                         <div class="report-dropdown-item active" data-tab="expenses" data-label="Expenses" onclick="selectReportTab(this)">Expenses</div>
                         <div class="report-dropdown-item" data-tab="budgets" data-label="Budgets" onclick="selectReportTab(this)">Budgets</div>
                         <div class="report-dropdown-item" data-tab="summary" data-label="Summary" onclick="selectReportTab(this)">Summary</div>
-                    </div>
-                    <div class="report-dropdown-group">
-                        <div class="report-dropdown-group-label">Expense Reports</div>
-                        <div class="report-dropdown-item" data-tab="expovrall" data-label="EXPOVRALL" onclick="selectReportTab(this)">EXPOVRALL</div>
-                        <div class="report-dropdown-item" data-tab="expdirect" data-label="EXP DIRECT" onclick="selectReportTab(this)">EXP DIRECT</div>
-                        <div class="report-dropdown-item" data-tab="adminexp" data-label="ADMIN EXP" onclick="selectReportTab(this)">ADMIN EXP</div>
-                        <div class="report-dropdown-item" data-tab="directexp" data-label="DIRECT EXP" onclick="selectReportTab(this)">DIRECT EXP</div>
-                        <div class="report-dropdown-item" data-tab="overallexp" data-label="OVERALL EXP" onclick="selectReportTab(this)">OVERALL EXP</div>
                     </div>
                     <div class="report-dropdown-group">
                         <div class="report-dropdown-group-label">Financial Reports</div>
@@ -938,23 +930,16 @@
                 <span class="tab" data-period="yearly" onclick="setActiveTab(this,'yearly')">Yearly</span>
             </div>
             <div class="filter-row">
+                <input type="search" id="projectSearch" class="project-filter" maxlength="150" placeholder="Search project, category, description..." oninput="applyFilters()">
                 <select id="projectFilter" class="project-filter" onchange="filterByProject()"><option value="all">All Projects</option></select>
+                <select id="expenseScopeFilter" aria-label="Expense type" onchange="applyFilters()"><option value="all" selected>All Expenses</option><option value="direct" title="Project delivery costs such as construction supplies, site labor, delivery, permits, and transport">Direct Expenses</option><option value="admin" title="Office and overhead costs such as rent, stationery, depreciation, repairs, contributions, penalties, and miscellaneous costs">Administrative Expenses</option><option value="overall" title="Combined direct and administrative expenses">Overall Expenses</option></select>
                 <select id="expenseCategoryFilter" onchange="applyFilters()"><option value="all">All Categories</option></select>
                 <select id="expenseComponentFilter" onchange="applyFilters()"><option value="all">All Components</option><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="other">Other</option></select>
-                <input type="search" id="projectSearch" class="project-filter" maxlength="150" placeholder="Search project, category, description..." oninput="applyFilters()">
                 <button type="button" class="btn-clear-search" onclick="clearSearch()">✕ Clear Filters</button>
             </div>
             <div class="stats-row-budget budget-stats visible" id="expenseStats">
-                <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="totalBudgetValue">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Total Expenses</div><div class="stat-value" id="totalExpensesValue" style="color:#1a2b3c;">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Net Variance</div><div class="stat-value red" id="netVarianceValue">₱0.00</div></div>
-            </div>
-            <div class="module-insights">
-                <section class="module-insight-card" aria-labelledby="expenseCategoryChartTitle">
-                    <h3 id="expenseCategoryChartTitle">Expenses by Category</h3>
-                    <p class="insight-caption">Amounts are calculated only from expenses matching the filters above.</p>
-                    <div id="expenseCategoryChart" class="insight-chart" role="img" aria-label="Filtered expenses by category"></div>
-                </section>
+                <div class="stat-mini"><div class="stat-label">Total Expenses</div><div class="stat-value" id="totalExpensesValue" style="color:#1a2b3c;">₱0.00</div><div class="stat-description">Recorded expenses matching the current filters.</div></div>
+                <div class="stat-mini"><div class="stat-label">Budget Remaining</div><div class="stat-value red" id="netVarianceValue">₱0.00</div><div class="stat-description">Budget left for the filtered project expenses.</div></div>
             </div>
             <div class="table-wrapper expense-table-wrapper">
                 <table id="expenseTable">
@@ -965,7 +950,7 @@
             <div class="pagination-wrapper" id="expensePagination">
                 <div class="rows-info">Rows per page
                     <select id="financeRowsPerPage" aria-label="Finance expense rows per page" onchange="changeFinancePageSize()">
-                        <option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option>
+                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
                     </select>
                     <span id="rowsInfoText">Showing 0 of 0 expenses</span>
                 </div>
@@ -975,30 +960,15 @@
 
         <!-- ─── TAB 2: BUDGETS ─── -->
         <div id="tabBudgets" class="report-section">
-            <div class="filter-tabs">
-                <span class="tab active" data-period="all" onclick="setBudgetActiveTab(this,'all')">All</span>
-                <span class="tab" data-period="daily" onclick="setBudgetActiveTab(this,'daily')">Daily</span>
-                <span class="tab" data-period="weekly" onclick="setBudgetActiveTab(this,'weekly')">Weekly</span>
-                <span class="tab" data-period="monthly" onclick="setBudgetActiveTab(this,'monthly')">Monthly</span>
-                <span class="tab" data-period="yearly" onclick="setBudgetActiveTab(this,'yearly')">Yearly</span>
-            </div>
             <div class="filter-row">
+                <input type="search" id="budgetSearch" maxlength="150" placeholder="Search project name..." oninput="filterBudgetTable()">
                 <select id="budgetProjectFilter" onchange="filterBudgetTable()"><option value="all">All Projects</option></select>
                 <select id="budgetStatusFilter" onchange="filterBudgetTable()"><option value="all">All Statuses</option><option value="On Track">On Track</option><option value="Near Limit">Near Limit</option><option value="Over Budget">Over Budget</option><option value="No Budget">No Budget</option></select>
-                <input type="search" id="budgetSearch" maxlength="150" placeholder="Search project name..." oninput="filterBudgetTable()">
                 <button type="button" class="btn-clear-search" onclick="clearBudgetSearch()">✕ Clear Filters</button>
             </div>
             <div class="stats-row-budget budget-stats visible" id="budgetStats">
-                <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="budgetTotalValue">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Total Expenses</div><div class="stat-value" id="budgetSpentValue" style="color:#1a2b3c;">₱0.00</div></div>
-                <div class="stat-mini"><div class="stat-label">Net Variance</div><div class="stat-value red" id="budgetRemainingValue">₱0.00</div></div>
-            </div>
-            <div class="module-insights">
-                <section class="module-insight-card" aria-labelledby="budgetStatusChartTitle">
-                    <h3 id="budgetStatusChartTitle">Projects by Budget Status</h3>
-                    <p class="insight-caption">Counts are calculated from the filtered budget rows.</p>
-                    <div id="budgetStatusChart" class="insight-chart" role="img" aria-label="Filtered projects by budget status"></div>
-                </section>
+                <div class="stat-mini"><div class="stat-label">Total Budget</div><div class="stat-value blue" id="budgetTotalValue">₱0.00</div><div class="stat-description">Allocated budget for the filtered projects.</div></div>
+                <div class="stat-mini"><div class="stat-label">Budget Remaining</div><div class="stat-value red" id="budgetRemainingValue">₱0.00</div><div class="stat-description">Amount still available after recorded project expenses.</div></div>
             </div>
             <div class="budget-table-wrapper visible">
                 <table id="budgetTable">
@@ -1009,7 +979,7 @@
             <div class="pagination-wrapper" id="budgetPagination">
                 <div class="rows-info">Rows per page
                     <select id="budgetRowsPerPage" aria-label="Finance budget rows per page" onchange="changeBudgetPageSize()">
-                        <option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option>
+                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
                     </select>
                     <span id="budgetRowsInfo">Showing 0 of 0 projects</span>
                 </div>
@@ -1124,7 +1094,9 @@
                         <option value="overall">Overall Expenses</option>
                     </select>
                 </label>
-                <button onclick="loadProfit()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
+                <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Year:
+                    <select id="profitYear" onchange="loadProfit()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;"><option value="">All Years</option></select>
+                </label>
                 <button onclick="openAddContractModal()" class="btn-add-data gold">+ Add Contract</button>
             </div>
             <div class="report-table-wrapper">
@@ -1795,7 +1767,7 @@
         var financeCategories = [];
         var financeExpenses = [];
         var financeFilteredData = [];
-        var financePageSize = 25;
+        var financePageSize = 10;
         var financeCurrentPage = 1;
         var pendingInventoryTransactionId = null;
         var currentDetailRow = null;
@@ -1804,7 +1776,7 @@
 
         var budgetData = [];
         var budgetFilteredData = [];
-        var budgetPageSize = 25;
+        var budgetPageSize = 10;
         var budgetCurrentPage = 1;
         var budgetProjectFilter = 'all';
         var budgetSearchTerm = '';
@@ -1815,9 +1787,6 @@
         var currentPeriod = 'all';
         var currentSearchTerm = '';
         var currentProjectFilter = 'all';
-
-        // ─── BUDGET PERIOD FILTER ──────────────────────────────────────────
-        var budgetPeriod = 'all';
 
         var deleteCallback = null;
         var budgetDeleteCallback = null;
@@ -2149,16 +2118,6 @@
             });
         }
 
-        // ─── BUDGET PERIOD FILTER FUNCTIONS ───────────────────────────
-        function setBudgetActiveTab(el, period) {
-            document.querySelectorAll('#tabBudgets .filter-tabs .tab').forEach(function(tab) {
-                tab.classList.remove('active');
-            });
-            el.classList.add('active');
-            budgetPeriod = period;
-            filterBudgetTable(); // This triggers the filter with the new period
-        }
-
         // ─── TAB SWITCHING ─────────────────────────────────────────────
         function toggleReportDropdown() {
             document.getElementById('reportDropdown').classList.toggle('open');
@@ -2191,11 +2150,6 @@
                     applyFilters(); 
                     break;
                 case 'budgets': 
-                    // Reset period to 'all' when switching to budgets tab
-                    budgetPeriod = 'all';
-                    document.querySelectorAll('#tabBudgets .filter-tabs .tab').forEach(function(tabEl) {
-                        tabEl.classList.toggle('active', tabEl.dataset.period === 'all');
-                    });
                     // Make sure budget data is loaded
                     if (budgetData.length === 0) {
                         fetchBudgetData();
@@ -2300,6 +2254,7 @@
         function clearSearch() {
             document.getElementById('projectSearch').value = '';
             document.getElementById('projectFilter').value = 'all';
+            document.getElementById('expenseScopeFilter').value = 'all';
             document.getElementById('expenseCategoryFilter').value = 'all';
             document.getElementById('expenseComponentFilter').value = 'all';
             currentSearchTerm = '';
@@ -2313,15 +2268,24 @@
             var searchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
             var categoryFilter = document.getElementById('expenseCategoryFilter').value;
             var componentFilter = document.getElementById('expenseComponentFilter').value;
+            var scopeFilter = document.getElementById('expenseScopeFilter').value;
             currentSearchTerm = searchTerm;
 
             var projectFiltered = currentProjectFilter === 'all'
                 ? financeExpenses
                 : financeExpenses.filter(function(expense) { return expense.project_name === currentProjectFilter; });
 
+            var scopeFiltered = scopeFilter === 'all' ? projectFiltered : projectFiltered.filter(function(expense) {
+                var categoryId = String(expense.fin_category_id || expense.expense_category_id || '');
+                var category = financeCategories.find(function(item) { return String(item.fin_category_id || item.expense_category_id || '') === categoryId; });
+                var classification = String(category && category.classification || '').toLowerCase();
+                return (scopeFilter === 'overall' && ['direct', 'admin'].includes(classification))
+                    || (scopeFilter === 'direct' && classification === 'direct')
+                    || (scopeFilter === 'admin' && classification === 'admin');
+            });
             var categoryFiltered = categoryFilter === 'all'
-                ? projectFiltered
-                : projectFiltered.filter(function(expense) { return String(expense.fin_category_id || expense.expense_category_id || '') === String(categoryFilter); });
+                ? scopeFiltered
+                : scopeFiltered.filter(function(expense) { return String(expense.fin_category_id || expense.expense_category_id || '') === String(categoryFilter); });
 
             var componentFiltered = componentFilter === 'all'
                 ? categoryFiltered
@@ -2379,27 +2343,30 @@
         }
 
         function updateFinanceTotals() {
-            // Use the SAME source as the Budgets tab - budgetDataCache
-            // This ensures both tabs show identical Total Budget values
-            var totalBudget = calculateBudgetTotal(budgetDataCache || budgetData);
+            var filteredProjectIds = new Set(financeFilteredData.map(function(e) { return e.project_id == null ? '' : String(e.project_id); }).filter(Boolean));
+            var totalBudget = (budgetDataCache || budgetData).reduce(function(sum, item) {
+                return sum + (filteredProjectIds.has(String(item.project_id)) ? (parseFloat(item.budget_amount) || 0) : 0);
+            }, 0);
 
             var totalExpenses = financeFilteredData.reduce(function(sum, e) { 
                 return sum + (parseFloat(e.amount) || 0); 
             }, 0);
             var netVariance = totalBudget - totalExpenses;
 
-            document.getElementById('totalBudgetValue').textContent = formatCurrency(totalBudget);
-            document.getElementById('totalExpensesValue').textContent = formatCurrency(totalExpenses);
+            if (document.getElementById('totalBudgetValue')) document.getElementById('totalBudgetValue').textContent = formatCurrency(totalBudget);
+            if (document.getElementById('totalExpensesValue')) document.getElementById('totalExpensesValue').textContent = formatCurrency(totalExpenses);
             var varianceEl = document.getElementById('netVarianceValue');
-            varianceEl.textContent = formatCurrency(netVariance);
-            varianceEl.className = 'stat-value ' + (netVariance < 0 ? 'red' : 'green');
+            if (varianceEl) {
+                varianceEl.textContent = formatCurrency(netVariance);
+                varianceEl.className = 'stat-value ' + (netVariance < 0 ? 'red' : 'green');
+            }
         }
 
         function updateRowsInfo(totalCount) {
             var rowsInfo = document.getElementById('rowsInfoText');
             if (!rowsInfo) return;
             var currentPage = financeCurrentPage || 1;
-            var pageSize = financePageSize || 25;
+            var pageSize = financePageSize || 10;
             var start = (currentPage - 1) * pageSize + 1;
             var end = Math.min(start + pageSize - 1, totalCount);
             rowsInfo.textContent = totalCount === 0 ? 'Showing 0 of 0 expenses' : 'Showing ' + start + '-' + end + ' of ' + totalCount + ' expenses';
@@ -2590,12 +2557,6 @@
 
                     updateBudgetActualAmounts();
 
-                    // Reset budget period filter
-                    budgetPeriod = 'all';
-                    document.querySelectorAll('#tabBudgets .filter-tabs .tab').forEach(function(tab) {
-                        tab.classList.toggle('active', tab.dataset.period === 'all');
-                    });
-                    
                     filterBudgetTable();
                     updateFinanceTotals();
                     
@@ -2907,7 +2868,7 @@
         }
 
         function changeFinancePageSize() {
-            financePageSize = parseInt(document.getElementById('financeRowsPerPage').value) || 25;
+            financePageSize = parseInt(document.getElementById('financeRowsPerPage').value) || 10;
             financeCurrentPage = 1;
             renderFinancePage(1);
         }
@@ -3001,7 +2962,7 @@
         }
 
         function changeBudgetPageSize() {
-            budgetPageSize = parseInt(document.getElementById('budgetRowsPerPage').value) || 25;
+            budgetPageSize = parseInt(document.getElementById('budgetRowsPerPage').value) || 10;
             budgetCurrentPage = 1;
             renderBudgetPage(1);
         }
@@ -3010,28 +2971,26 @@
             var rowsInfo = document.getElementById('budgetRowsInfo');
             if (!rowsInfo) return;
             var currentPage = budgetCurrentPage || 1;
-            var pageSize = budgetPageSize || 25;
+            var pageSize = budgetPageSize || 10;
             var start = (currentPage - 1) * pageSize + 1;
             var end = Math.min(start + pageSize - 1, totalCount);
             rowsInfo.textContent = totalCount === 0 ? 'Showing 0 of 0 projects' : 'Showing ' + start + '-' + end + ' of ' + totalCount + ' projects';
         }
 
         function updateBudgetStats() {
-            // Use the SAME source as the Expenses tab - budgetDataCache
-            // This ensures both tabs show identical Total Budget values
-            var totalBudget = calculateBudgetTotal(budgetDataCache || budgetData);
-            
-            // Total Expenses on Budgets tab should match the filtered expenses
+            var totalBudget = budgetFilteredData.reduce(function(sum, item) { return sum + (parseFloat(item.budget_amount) || 0); }, 0);
             var totalExpenses = budgetFilteredData.reduce(function(sum, item) {
                 return sum + (parseFloat(item.actual_amount) || 0);
             }, 0);
             var netVariance = totalBudget - totalExpenses;
 
-            document.getElementById('budgetTotalValue').textContent = formatCurrency(totalBudget);
-            document.getElementById('budgetSpentValue').textContent = formatCurrency(totalExpenses);
+            if (document.getElementById('budgetTotalValue')) document.getElementById('budgetTotalValue').textContent = formatCurrency(totalBudget);
+            if (document.getElementById('budgetSpentValue')) document.getElementById('budgetSpentValue').textContent = formatCurrency(totalExpenses);
             var budgetVarianceEl = document.getElementById('budgetRemainingValue');
-            budgetVarianceEl.textContent = formatCurrency(netVariance);
-            budgetVarianceEl.className = 'stat-value ' + (netVariance < 0 ? 'red' : 'green');
+            if (budgetVarianceEl) {
+                budgetVarianceEl.textContent = formatCurrency(netVariance);
+                budgetVarianceEl.className = 'stat-value ' + (netVariance < 0 ? 'red' : 'green');
+            }
         }
 
         function filterBudgetTable() {
@@ -3045,32 +3004,8 @@
             // ALWAYS start from the cached budget data (same source for both tabs)
             var filtered = (budgetDataCache || budgetData).slice();
 
-            // --- Calculate period-specific expenses ---
-            var periodExpenses = budgetPeriod === 'all' 
-                ? financeExpenses 
-                : financeExpenses.filter(function(e) {
-                    if (!e.expense_date) return false;
-                    var expenseDate = new Date(e.expense_date);
-                    var now = new Date();
-                    switch(budgetPeriod) {
-                        case 'daily': 
-                            return expenseDate.toDateString() === now.toDateString();
-                        case 'weekly':
-                            var weekStart = new Date(now);
-                            weekStart.setDate(now.getDate() - now.getDay());
-                            weekStart.setHours(0,0,0,0);
-                            var weekEnd = new Date(weekStart);
-                            weekEnd.setDate(weekStart.getDate() + 6);
-                            weekEnd.setHours(23,59,59,999);
-                            return expenseDate >= weekStart && expenseDate <= weekEnd;
-                        case 'monthly':
-                            return expenseDate.getMonth() === now.getMonth() && expenseDate.getFullYear() === now.getFullYear();
-                        case 'yearly':
-                            return expenseDate.getFullYear() === now.getFullYear();
-                        default: 
-                            return true;
-                    }
-                });
+            // Budgets are project-level allocations; they are not filtered by expense period.
+            var periodExpenses = financeExpenses;
             
             var periodSpendMap = {};
             periodExpenses.forEach(function(e) {
@@ -3112,15 +3047,6 @@
             if (searchTerm) {
                 filtered = filtered.filter(function(item) {
                     return (item.project_name || '').toLowerCase().includes(searchTerm);
-                });
-            }
-
-            // --- Apply period filter ---
-            // Projects with budgets always show; projects without budgets only show if they have expenses
-            if (budgetPeriod !== 'all') {
-                filtered = filtered.filter(function(item) {
-                    if (parseFloat(item.budget_amount) > 0) return true;
-                    return (periodSpendMap[item.project_id] || 0) > 0;
                 });
             }
 
@@ -4941,6 +4867,8 @@
         function loadProfit() {
             var type = document.getElementById('profitType').value;
             var endpoint = type === 'direct' ? '/reports/profit-direct' : '/reports/profit-overall';
+            var year = document.getElementById('profitYear').value;
+            if (year) endpoint += '?year=' + encodeURIComponent(year);
 
             apiFetch(endpoint)
                 .then(function(data) {
@@ -5693,6 +5621,14 @@
 
         // ─── INIT ─────────────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', function() {
+            var profitYear = document.getElementById('profitYear');
+            var currentYear = new Date().getFullYear();
+            for (var year = currentYear; year >= 2000; year--) {
+                var yearOption = document.createElement('option');
+                yearOption.value = year;
+                yearOption.textContent = year;
+                profitYear.appendChild(yearOption);
+            }
             fetchProjects()
                 .then(function() { return fetchExpenseCategories(); })
                 .then(function() { return fetchExpenses(); })
@@ -5711,5 +5647,6 @@
 
     @include('partials.data-import', ['importModule' => 'finance'])
     <script src="{{ asset('js/finance-analytics.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
 </body>
 </html>

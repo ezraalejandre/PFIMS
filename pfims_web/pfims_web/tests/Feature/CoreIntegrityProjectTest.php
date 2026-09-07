@@ -182,7 +182,7 @@ class CoreIntegrityProjectTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
-    public function test_admin_and_operations_project_views_render_working_filter_kpi_and_chart_hooks(): void
+    public function test_admin_and_operations_project_views_render_working_filter_and_kpi_hooks_without_module_chart(): void
     {
         $adminView = $this->actingAs($this->user('admin'))->get('/projects')->assertOk();
         $operationsView = $this->actingAs($this->user('operations'))->get('/oprojects')->assertOk();
@@ -193,8 +193,8 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('id="projectDateFrom"', false)
                 ->assertSee('id="projectDateTo"', false)
                 ->assertSee('id="activeProjectsCount"', false)
-                ->assertSee('id="avgCompletion"', false)
-                ->assertSee('id="projectStatusChart"', false)
+                ->assertDontSee('id="avgCompletion"', false)
+                ->assertDontSee('id="projectStatusChart"', false)
                 ->assertSee('function filterProjects()', false)
                 ->assertSee('function refreshProjectAnalytics(projects)', false)
                 ->assertSee('function renderStatusChart(projects)', false);
@@ -229,6 +229,7 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('id="projectDetailModal"', false)
                 ->assertSee('class="dashboard-project-row"', false)
                 ->assertSee('function openProjectDetail(project, trigger)', false)
+                ->assertDontSee('data-project-action="view"', false)
                 ->assertSee("['Enter', ' ']", false)
                 ->assertSee('Rows per page', false)
                 ->assertSee("timeZone: 'Asia/Manila'", false)
@@ -246,7 +247,10 @@ class CoreIntegrityProjectTest extends TestCase
                     ->assertSee('Predictive analytics', false);
             } else {
                 $response->assertDontSee('id="predictionTab"', false)
-                    ->assertDontSee('class="predictive-analytics-root embedded-ml-dashboard"', false);
+                    ->assertSee('class="predictive-analytics-root embedded-ml-dashboard"', false)
+                    ->assertSee('Material projection', false)
+                    ->assertDontSee('Predictive analytics</button>', false)
+                    ->assertDontSee('Budget and Spending Comparison</button>', false);
             }
         }
     }
@@ -273,11 +277,26 @@ class CoreIntegrityProjectTest extends TestCase
             $this->assertStringContainsString('pagination-wrapper', $contents, $view);
             $this->assertStringContainsString('Rows per page', $contents, $view);
             $this->assertStringNotContainsString('Rows Displayed:', $contents, $view);
-            $this->assertMatchesRegularExpression('/<option value="10"[^>]*>10<\/option>/', $contents, $view);
-            $this->assertMatchesRegularExpression('/<option value="25" selected>25<\/option>/', $contents, $view);
+            $this->assertMatchesRegularExpression('/<option value="10"(?: selected)?>10<\/option>/', $contents, $view);
+            $this->assertDoesNotMatchRegularExpression('/<option value="25" selected>25<\/option>/', $contents, $view);
             $this->assertMatchesRegularExpression('/<option value="50"[^>]*>50<\/option>/', $contents, $view);
             $this->assertMatchesRegularExpression('/<option value="100"[^>]*>100<\/option>/', $contents, $view);
         }
+    }
+
+    public function test_settings_routes_preserve_the_authenticated_users_portal(): void
+    {
+        $admin = $this->user('admin');
+        $this->actingAs($admin)->get('/asettings')->assertRedirect('/settings');
+        $this->get('/osettings')->assertRedirect('/settings');
+        $this->get('/finance')->assertOk()->assertSee('href="http://localhost/settings"', false);
+        $this->assertSame('admin', $admin->fresh()->role);
+
+        $accounting = $this->user('accounting');
+        $this->actingAs($accounting)->get('/settings')->assertRedirect('/asettings');
+
+        $operations = $this->user('operations');
+        $this->actingAs($operations)->get('/settings')->assertRedirect('/osettings');
     }
 
     private function user(string $role = 'admin', ?string $email = null): User

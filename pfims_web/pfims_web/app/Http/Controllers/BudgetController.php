@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Storage;
 
 class BudgetController extends Controller
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(
+        private NotificationService $notifications,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {

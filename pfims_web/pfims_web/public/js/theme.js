@@ -1,4 +1,10 @@
 (function () {
+    if (!window.PFIMS_SYSTEM_UI_LOADED && !document.querySelector('script[src*="pfims-system-ui.js"]')) {
+        const systemUi = document.createElement('script');
+        systemUi.src = new URL('pfims-system-ui.js', document.currentScript.src).href;
+        systemUi.defer = true;
+        document.head.appendChild(systemUi);
+    }
     // Authenticated pages can be kept as visual snapshots in a browser's
     // back/forward cache. Hide the page before it enters that cache. If the
     // snapshot is restored, keep it hidden while a real request verifies the
@@ -47,7 +53,7 @@
             button.type = 'button';
             button.className = 'sidebar-collapse-toggle';
             button.dataset.sidebarToggle = '';
-            button.innerHTML = '<span aria-hidden="true">‹</span>';
+            button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M9 4v16"/><path class="sidebar-toggle-chevron" d="m15 9-3 3 3 3"/></svg>';
             button.addEventListener('click', function () {
                 const collapsed = !document.documentElement.classList.contains('sidebar-collapsed');
                 localStorage.setItem(sidebarStorageKey, collapsed ? 'true' : 'false');

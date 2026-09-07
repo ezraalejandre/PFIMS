@@ -19,15 +19,19 @@ use Throwable;
 
 class MLService
 {
-    private const MODEL_SCHEMA_VERSION = 7;
+    private const MODEL_SCHEMA_VERSION = 9;
 
     private const MINIMUM_REAL_SAMPLES = 10;
 
     private const K_FOLD_COUNT = 5;
 
+    private const SNAPSHOT_MINIMUM_PROJECTS_PER_STAGE = 10;
+
     private const FIN_FEATURE_IMPROVEMENT_THRESHOLD_PERCENT = 5.0;
 
     private const OVERRUN_RISK_TOLERANCE = 0.05;
+
+    private const MINIMUM_BASELINE_MAPE_IMPROVEMENT_POINTS = 2.0;
 
     private const FORECAST_HORIZON_DAYS = 30;
 
@@ -36,6 +40,16 @@ class MLService
     private const BASE_FEATURE_NAMES = [
         'budget', 'duration_months', 'worker_count',
         'completion_percentage', 'material_cost', 'labor_cost',
+    ];
+
+    /** Inputs that are expected to exist before work starts. */
+    private const PLANNING_FEATURE_NAMES = ['budget', 'duration_months'];
+
+    /** Inputs captured at a real point in time while work is in progress. */
+    private const SNAPSHOT_FEATURE_NAMES = [
+        'budget', 'duration_months', 'worker_count', 'completion_percentage',
+        'fin_total_expense', 'fin_material_expense', 'fin_labor_expense',
+        'fin_equipment_expense', 'fin_other_expense',
     ];
 
     private const FIN_FEATURE_NAMES = [
@@ -64,11 +78,32 @@ class MLService
 
     protected array $lastPredictionWarnings = [];
 
+    protected bool $lastPredictionWasConstrained = false;
+
+    protected array $lastPredictionSupport = [
+        'prediction_usable' => false,
+        'support_level' => 'unavailable',
+        'forecast_context' => 'unknown',
+        'status_reason' => 'No prediction has been produced.',
+    ];
+
     public function __construct(?string $modelPath = null)
     {
-        $this->modelPath = $modelPath ?: storage_path('app/ml_model.phpml');
+        $this->modelPath = $modelPath ?: $this->defaultModelPath();
         $this->metadataPath = $this->modelPath.'.meta.json';
         $this->loadOrTrainModel();
+    }
+
+    /** Keep automated-test artifacts isolated from the model served by the application. */
+    protected function defaultModelPath(): string
+    {
+        if (app()->environment('testing')) {
+            $process = (string) (getenv('TEST_TOKEN') ?: getmypid());
+
+            return storage_path("framework/testing/ml-model-{$process}.phpml");
+        }
+
+        return storage_path('app/ml_model.phpml');
     }
 
     protected function loadOrTrainModel(): void
@@ -108,38 +143,47 @@ class MLService
             if (! flock($lockHandle, LOCK_EX)) {
                 throw new RuntimeException('Unable to acquire the model training lock.');
             }
-            $realData = $this->getTrainingData()
-                ->unique(fn ($row) => (string) $row->project_id)
-                ->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])
-                ->values();
+            $cohortSelection = $this->selectTrainingCohort();
+            $trainingCohort = $cohortSelection['records'];
+            $featureNames = $cohortSelection['feature_names'];
+            $strategy = $cohortSelection['strategy'];
+            $sampleCount = $trainingCohort->where('data_source', 'company_inspired_sample')->count();
+            $realSampleCount = $trainingCohort->count() - $sampleCount;
+            $usesSampleData = $sampleCount > 0;
 
-            if ($realData->count() < self::MINIMUM_REAL_SAMPLES) {
+            if ($trainingCohort->pluck('project_id')->unique()->count() < self::MINIMUM_REAL_SAMPLES) {
                 $this->createFallbackModel(
-                    $realData->count(),
-                    'At least '.self::MINIMUM_REAL_SAMPLES.' verified completed projects are required; '.$realData->count().' are available.'
+                    $realSampleCount,
+                    'At least '.self::MINIMUM_REAL_SAMPLES.' eligible completed projects are required; '
+                    .$trainingCohort->pluck('project_id')->unique()->count().' are available.'
                 );
 
                 return false;
             }
 
-            $featureSelection = $this->selectTrainingFeatureSet($realData);
-            $featureNames = $featureSelection['selected_feature_names'];
-            $splitSelection = $this->selectChronologicalSplit($realData, $featureNames);
+            $featureSelection = $this->trainingFeatureSetMetadata($trainingCohort, $featureNames, $strategy);
+            $splitSelection = $this->selectChronologicalSplit($trainingCohort, $featureNames);
             $trainingData = $splitSelection['training_data'];
             $testData = $splitSelection['test_data'];
             $evaluation = $splitSelection['selected']['evaluation'];
             $comparison = $this->compareRegressionModels($trainingData, $testData, $featureNames);
+            $baselineComparison = $this->budgetBaselineComparison($testData, $evaluation);
 
             // Deploy on all verified records after independent chronological evaluation.
-            [$this->model, $productionTransformer] = $this->buildLeastSquaresModel($realData, $featureNames);
-            $this->metadata = [
+            [$candidateModel, $productionTransformer] = $this->buildLeastSquaresModel($trainingCohort, $featureNames);
+            $candidateMetadata = [
                 'schema_version' => self::MODEL_SCHEMA_VERSION,
                 'trained_at' => now()->toIso8601String(),
                 'model_type' => 'least_squares_linear_regression',
-                'model_source' => 'real_trained_model',
-                'uses_synthetic_data' => false,
-                'real_samples_available' => $realData->count(),
-                'samples_trained' => $realData->count(),
+                'model_source' => $usesSampleData ? 'sample_trained_model' : 'real_trained_model',
+                'prediction_strategy' => $strategy,
+                'prediction_target' => $strategy === 'progress_snapshot_model'
+                    ? 'remaining_cost_then_add_recorded_spend'
+                    : 'final_cost',
+                'uses_synthetic_data' => $usesSampleData,
+                'real_samples_available' => $realSampleCount,
+                'sample_samples_available' => $sampleCount,
+                'samples_trained' => $trainingCohort->count(),
                 'training_samples_evaluated' => $trainingData->count(),
                 'test_samples' => $testData->count(),
                 'evaluation_method' => $splitSelection['selected']['method'],
@@ -148,30 +192,40 @@ class MLService
                 'cross_validation' => $featureSelection['cross_validation'],
                 'feature_set' => $featureSelection,
                 'model_comparison' => $comparison,
+                'budget_baseline_comparison' => $baselineComparison,
+                'snapshot_readiness' => $cohortSelection['snapshot_readiness'],
                 'data_capture_policy' => $this->dataCapturePolicy(),
                 'retraining_policy' => $this->retrainingPolicy(),
                 'risk_business_actions' => $this->riskBusinessActions(),
                 'transformer' => $productionTransformer,
-                'feature_ranges' => $this->featureRanges($realData, $featureNames),
-                'sample_sufficiency' => $this->sampleSufficiency($realData->count()),
+                'feature_ranges' => $this->featureRanges($trainingCohort, $featureNames),
+                'sample_sufficiency' => $this->sampleSufficiency($trainingCohort->count(), $usesSampleData),
                 'training_criteria' => [
+                    'fixed_newest_20_percent_project_holdout', 'all_snapshots_for_a_project_stay_in_one_partition',
+                    $strategy === 'progress_snapshot_model' ? 'genuine_timestamped_progress_snapshots' : 'planning_inputs_only',
                     'status_is_completed', 'completion_is_100_percent',
                     'actual_end_date_is_present', 'start_date_is_not_after_actual_end_date',
-                    'budget_and_final_actual_amount_are_positive',
-                    'one_latest_budget_record_per_project',
+                    'persisted_budget_and_final_actual_amount_are_positive',
+                    'persisted_budget_history_is_not_claimed_as_immutable_initial_budget',
+                    $usesSampleData ? 'company_inspired_sample_not_verified_company_performance' : 'operational_company_records',
                 ],
             ];
+            $this->model = $candidateModel;
+            $this->metadata = $candidateMetadata;
             $this->saveModelAndMetadata();
             Log::info('Real-data ML model trained successfully.', [
-                'samples' => $realData->count(), 'holdout_samples' => $testData->count(),
+                'samples' => $trainingCohort->count(), 'holdout_samples' => $testData->count(),
+                'sample_records' => $sampleCount, 'real_records' => $realSampleCount,
                 'evaluation_method' => $splitSelection['selected']['method'],
             ]);
 
             return true;
         } catch (Throwable $exception) {
-            Log::error('ML training failed; activating the transparent synthetic fallback model.', ['message' => $exception->getMessage()]);
-            $realSampleCount = isset($realData) ? $realData->count() : 0;
-            $this->createFallbackModel($realSampleCount, 'Real-data training failed: '.$exception->getMessage());
+            Log::error('ML training candidate failed validation.', ['message' => $exception->getMessage()]);
+            $realSampleCount = isset($realSampleCount) ? $realSampleCount : 0;
+            if (! $this->restoreStoredModel()) {
+                $this->createFallbackModel($realSampleCount, 'Real-data training failed: '.$exception->getMessage());
+            }
 
             return false;
         } finally {
@@ -192,6 +246,7 @@ class MLService
             'uses_synthetic_data' => true,
             'fallback_reason' => $reason,
             'real_samples_available' => $realSampleCount,
+            'sample_samples_available' => 0,
             'samples_trained' => $fallbackData->count(),
             'training_samples_evaluated' => 0,
             'test_samples' => 0,
@@ -232,6 +287,7 @@ class MLService
                 ? 'COALESCE(budgets_tbl.actual_amount, 0)'
                 : 'COALESCE(NULLIF(fin_actuals.fin_total_expense, 0), budgets_tbl.actual_amount, 0)';
             $projectTypeSelect = $this->projectTypeSelect();
+            $hasDataSource = Schema::hasColumn('project_tbl', 'data_source');
             $query = DB::table('project_tbl')
                 ->joinSub($latestBudgetIds, 'latest_budget', fn ($join) => $join->on('project_tbl.project_id', '=', 'latest_budget.project_id'))
                 ->join('budgets_tbl', 'latest_budget.budget_id', '=', 'budgets_tbl.budget_id');
@@ -246,8 +302,12 @@ class MLService
             return $query
                 ->select(
                     'project_tbl.project_id', 'project_tbl.project_name', 'project_tbl.start_date',
+                    'project_tbl.estimated_end_date',
                     'project_tbl.actual_end_date as completed_at', 'project_tbl.worker_count',
                     'project_tbl.completion_percentage', 'project_tbl.status',
+                    DB::raw($hasDataSource
+                        ? "COALESCE(project_tbl.data_source, 'operational') as data_source"
+                        : "'operational' as data_source"),
                     DB::raw($projectTypeSelect.' as raw_project_type'),
                     'budgets_tbl.budget_amount as budget', DB::raw("{$actualCost} as actual_cost"),
                     DB::raw($finExpenses === null ? '0 as material_cost' : 'COALESCE(fin_expenses.fin_material_expense, 0) as material_cost'),
@@ -261,11 +321,13 @@ class MLService
                 ->where('project_tbl.status', 'Completed')
                 ->where('project_tbl.completion_percentage', '>=', 100)
                 ->whereNotNull('project_tbl.start_date')
+                ->whereNotNull('project_tbl.estimated_end_date')
                 ->whereNotNull('project_tbl.actual_end_date')
                 ->where('budgets_tbl.budget_amount', '>', 0)
                 ->whereRaw("{$actualCost} > 0")
                 ->where('project_tbl.worker_count', '>=', 1)
                 ->whereColumn('project_tbl.actual_end_date', '>=', 'project_tbl.start_date')
+                ->whereColumn('project_tbl.estimated_end_date', '>=', 'project_tbl.start_date')
                 // Cap the newest verified cohort first, then restore chronological order for evaluation.
                 ->orderByDesc('project_tbl.actual_end_date')->orderByDesc('project_tbl.project_id')->limit(500)->get()
                 ->filter(function ($row) {
@@ -279,8 +341,8 @@ class MLService
                 })
                 ->map(function ($row) {
                     $start = Carbon::parse($row->start_date)->startOfDay();
-                    $completed = Carbon::parse($row->completed_at)->startOfDay();
-                    $row->duration_months = max(1, (float) $start->diffInMonths($completed));
+                    $plannedEnd = Carbon::parse($row->estimated_end_date)->startOfDay();
+                    $row->duration_months = max(1, (int) $start->diffInMonths($plannedEnd));
                     $row->project_type = $this->normalizeProjectType($row->raw_project_type ?? null, $row->project_name ?? null);
                     $row->project_type_source = blank($row->raw_project_type ?? null)
                         ? 'normalized_project_name'
@@ -296,6 +358,99 @@ class MLService
 
             return collect();
         }
+    }
+
+    /**
+     * Prefer genuine progress observations only after every progress stage has
+     * enough finalized projects. Until then, train on the planning fields that
+     * are represented consistently at prediction time.
+     */
+    protected function selectTrainingCohort(): array
+    {
+        $snapshots = $this->getSnapshotTrainingData();
+        $operationalSnapshots = $snapshots->where('data_source', 'operational')->values();
+        $stageProjectCounts = [];
+        foreach (['early', 'middle', 'late'] as $stage) {
+            $stageProjectCounts[$stage] = $operationalSnapshots
+                ->filter(fn ($row) => $this->progressStage((float) $row->completion_percentage) === $stage)
+                ->pluck('project_id')->unique()->count();
+        }
+        $snapshotProjects = $operationalSnapshots->pluck('project_id')->unique()->count();
+        $ready = $snapshotProjects >= self::MINIMUM_REAL_SAMPLES
+            && collect($stageProjectCounts)->every(fn ($count) => $count >= self::SNAPSHOT_MINIMUM_PROJECTS_PER_STAGE);
+        $readiness = [
+            'eligible' => $ready,
+            'finalized_snapshot_rows' => $snapshots->count(),
+            'finalized_projects' => $snapshotProjects,
+            'minimum_projects_per_stage' => self::SNAPSHOT_MINIMUM_PROJECTS_PER_STAGE,
+            'projects_by_stage' => $stageProjectCounts,
+            'activation_rule' => 'At least 10 finalized projects represented in each early, middle, and late progress stage.',
+            'note' => 'Only snapshots captured by the application at the time of a real data change are eligible; no history is reconstructed.',
+        ];
+
+        if ($ready) {
+            return [
+                'records' => $operationalSnapshots,
+                'feature_names' => self::SNAPSHOT_FEATURE_NAMES,
+                'strategy' => 'progress_snapshot_model',
+                'snapshot_readiness' => $readiness,
+            ];
+        }
+
+        return [
+            'records' => $this->getTrainingData()
+                ->unique(fn ($row) => (string) $row->project_id)
+                ->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])->values(),
+            'feature_names' => self::PLANNING_FEATURE_NAMES,
+            'strategy' => 'planning_only_baseline',
+            'snapshot_readiness' => $readiness,
+        ];
+    }
+
+    protected function getSnapshotTrainingData(): Collection
+    {
+        if (! Schema::hasTable('ml_project_cost_snapshots')) {
+            return collect();
+        }
+
+        return DB::table('ml_project_cost_snapshots as snapshot')
+            ->join('project_tbl as project', 'project.project_id', '=', 'snapshot.project_id')
+            ->select(
+                'snapshot.snapshot_id', 'snapshot.project_id', 'snapshot.captured_at',
+                'project.actual_end_date as completed_at', 'snapshot.planned_budget as budget',
+                'snapshot.planned_duration_months as duration_months', 'snapshot.elapsed_duration_months',
+                'snapshot.worker_count', 'snapshot.phase',
+                'snapshot.completion_percentage',
+                'snapshot.cumulative_material_expense as material_cost',
+                'snapshot.cumulative_labor_expense as labor_cost',
+                'snapshot.cumulative_total_expense as fin_total_expense',
+                'snapshot.cumulative_material_expense as fin_material_expense',
+                'snapshot.cumulative_labor_expense as fin_labor_expense',
+                'snapshot.cumulative_equipment_expense as fin_equipment_expense',
+                'snapshot.cumulative_other_expense as fin_other_expense',
+                'snapshot.final_actual_cost as actual_cost', 'snapshot.data_source',
+                'project.project_name'
+            )
+            ->whereNotNull('snapshot.final_actual_cost')
+            ->whereNotNull('snapshot.finalized_at')
+            ->whereColumn('snapshot.captured_at', '<=', 'snapshot.finalized_at')
+            ->where('snapshot.finalized_at', '<=', now())
+            ->where('snapshot.final_actual_cost', '>', 0)
+            ->where('snapshot.planned_budget', '>', 0)
+            ->where('snapshot.completion_percentage', '>=', 0)
+            ->where('snapshot.completion_percentage', '<', 100)
+            ->where('project.status', 'Completed')
+            ->where('project.completion_percentage', '>=', 100)
+            ->whereNotNull('project.actual_end_date')
+            ->orderBy('project.actual_end_date')->orderBy('snapshot.project_id')->orderBy('snapshot.captured_at')
+            ->get()
+            ->map(function ($row) {
+                $row->actual_cost = max(0.0, (float) $row->actual_cost - (float) $row->fin_total_expense);
+                $row->project_type = $this->normalizeProjectType(null, $row->project_name ?? null);
+                $row->project_type_source = 'normalized_project_name';
+
+                return $row;
+            });
     }
 
     /**
@@ -413,6 +568,8 @@ class MLService
             WHEN '.$this->finCategoryLikeClause(['material', 'materials', 'supply', 'supplies', 'cement', 'steel', 'sand', 'gravel', 'aggregate', 'lumber', 'hardware'])." THEN 'material'
             WHEN ".$this->finCategoryLikeClause(['labor', 'labour', 'salary', 'salaries', 'wage', 'wages', 'payroll', 'worker', 'manpower'])." THEN 'labor'
             WHEN ".$this->finCategoryLikeClause(['equipment', 'machine', 'machinery', 'backhoe', 'rental', 'repair', 'maintenance', 'fuel', 'diesel', 'gasoline'])." THEN 'equipment'
+            WHEN LOWER(COALESCE(fin_expense.project_cost_component, '')) IN ('material', 'labor', 'equipment', 'other')
+                THEN LOWER(fin_expense.project_cost_component)
             ELSE 'other'
         END";
     }
@@ -511,6 +668,27 @@ class MLService
         ];
     }
 
+    protected function trainingFeatureSetMetadata(Collection $records, array $featureNames, string $strategy): array
+    {
+        $crossValidation = $this->kFoldCrossValidation($records, $featureNames);
+
+        return [
+            'selected_feature_names' => array_values($featureNames),
+            'candidate_fin_feature_names' => self::FIN_FEATURE_NAMES,
+            'included_fin_features' => array_values(array_intersect($featureNames, self::FIN_FEATURE_NAMES)),
+            'decision' => $strategy === 'progress_snapshot_model'
+                ? 'genuine_progress_snapshot_features_selected'
+                : 'planning_only_features_selected_until_snapshot_stage_coverage_is_sufficient',
+            'cross_validation' => $crossValidation,
+            'leakage_controls' => [
+                'No reconstructed historical progress is used.',
+                'Planning duration uses start_date to estimated_end_date, never actual duration.',
+                'Completion and cumulative expense fields are used only from timestamped snapshots.',
+                'Every snapshot for one project remains in the same evaluation partition.',
+            ],
+        ];
+    }
+
     protected function hasAnyFinanceFeatureValue(object $row): bool
     {
         foreach (array_diff(self::FINANCE_ENRICHED_FEATURE_NAMES, self::BASE_FEATURE_NAMES) as $name) {
@@ -549,26 +727,44 @@ class MLService
 
     protected function selectChronologicalSplit(Collection $realData, array $featureNames): array
     {
-        $selection = $this->bestChronologicalSplit($realData, $featureNames);
+        $selection = $this->evaluateChronologicalSplit(
+            $realData,
+            $featureNames,
+            0.20,
+            'fixed_grouped_chronological_80_20_holdout'
+        );
 
         return [
-            'selected' => $selection['selected'],
+            'selected' => $selection,
             'summary' => [
-                'selected_method' => $selection['selected']['method'],
-                'selection_metric' => 'lowest_mean_absolute_error_then_lowest_mape_then_more_training_samples',
-                'scoring_rule' => 'Choose the chronological split with the lowest MAE; break ties by lower MAPE, then more training samples.',
-                'options' => array_map(fn ($option) => $this->splitSummary($option), $selection['options']),
+                'selected_method' => $selection['method'],
+                'selection_metric' => 'predeclared_not_selected_from_test_performance',
+                'scoring_rule' => 'The newest 20% of projects are always the untouched holdout.',
+                'options' => [$this->splitSummary($selection)],
             ],
-            'training_data' => $selection['selected']['training_data'],
-            'test_data' => $selection['selected']['test_data'],
+            'training_data' => $selection['training_data'],
+            'test_data' => $selection['test_data'],
         ];
     }
 
     protected function evaluateChronologicalSplit(Collection $realData, array $featureNames, float $testRatio, string $method): array
     {
-        $testCount = max(1, (int) ceil($realData->count() * $testRatio));
-        $trainingData = $realData->slice(0, $realData->count() - $testCount)->values();
-        $testData = $realData->slice($realData->count() - $testCount)->values();
+        $projects = $this->chronologicalSort($realData)
+            ->groupBy(fn ($row) => (string) $row->project_id)
+            ->map(fn (Collection $rows, string $projectId) => (object) [
+                'project_id' => $projectId,
+                'completed_at' => $rows->max('completed_at'),
+            ]);
+        $projects = $this->chronologicalSort($projects)->values();
+        $testProjectCount = max(1, (int) ceil($projects->count() * $testRatio));
+        $testProjectIds = $projects->slice($projects->count() - $testProjectCount)
+            ->pluck('project_id')->map(fn ($id) => (string) $id)->all();
+        $testLookup = array_fill_keys($testProjectIds, true);
+        $trainingData = $realData->filter(fn ($row) => ! isset($testLookup[(string) $row->project_id]))->values();
+        $testData = $realData->filter(fn ($row) => isset($testLookup[(string) $row->project_id]))->values();
+        if ($trainingData->count() < 2 || $testData->isEmpty()) {
+            throw new RuntimeException('The grouped chronological holdout does not contain enough training and test records.');
+        }
         [$model, $transformer] = $this->buildLeastSquaresModel($trainingData, $featureNames);
         $evaluation = $this->evaluateModel($model, $transformer, $testData);
 
@@ -577,11 +773,24 @@ class MLService
             'test_ratio' => $testRatio,
             'training_samples' => $trainingData->count(),
             'test_samples' => $testData->count(),
+            'training_projects' => $trainingData->pluck('project_id')->unique()->count(),
+            'test_projects' => $testData->pluck('project_id')->unique()->count(),
             'feature_names' => array_values($featureNames),
             'evaluation' => $evaluation,
             'training_data' => $trainingData,
             'test_data' => $testData,
         ];
+    }
+
+    protected function chronologicalSort(Collection $records): Collection
+    {
+        return $records->sort(function ($left, $right): int {
+            $dateOrder = strcmp((string) ($left->completed_at ?? ''), (string) ($right->completed_at ?? ''));
+
+            return $dateOrder !== 0
+                ? $dateOrder
+                : ((int) ($left->project_id ?? 0) <=> (int) ($right->project_id ?? 0));
+        })->values();
     }
 
     protected function splitSummary(array $split): array
@@ -600,11 +809,14 @@ class MLService
 
     protected function kFoldCrossValidation(Collection $records, array $featureNames): array
     {
-        $foldCount = min(self::K_FOLD_COUNT, $records->count());
+        $projectIds = $records->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])
+            ->pluck('project_id')->map(fn ($id) => (string) $id)->unique()->values();
+        $foldCount = min(self::K_FOLD_COUNT, $projectIds->count());
         $folds = [];
         for ($fold = 0; $fold < $foldCount; $fold++) {
-            $testData = $records->values()->filter(fn ($row, $index) => $index % $foldCount === $fold)->values();
-            $trainingData = $records->values()->filter(fn ($row, $index) => $index % $foldCount !== $fold)->values();
+            $testIds = $projectIds->filter(fn ($id, $index) => $index % $foldCount === $fold)->flip()->all();
+            $testData = $records->filter(fn ($row) => isset($testIds[(string) $row->project_id]))->values();
+            $trainingData = $records->filter(fn ($row) => ! isset($testIds[(string) $row->project_id]))->values();
             if ($trainingData->count() < 2 || $testData->isEmpty()) {
                 continue;
             }
@@ -627,7 +839,7 @@ class MLService
             'method' => $foldCount.'-fold_cross_validation',
             'folds_requested' => self::K_FOLD_COUNT,
             'folds_run' => count($folds),
-            'folding' => 'deterministic_chronological_round_robin_with_project_id_tie_break',
+            'folding' => 'deterministic_grouped_by_project_chronological_round_robin',
             'feature_names' => array_values($featureNames),
             'average_mean_absolute_error' => $maes === [] ? null : round(array_sum($maes) / count($maes), 2),
             'average_mean_absolute_percentage_error' => $mapes === [] ? null : round(array_sum($mapes) / count($mapes), 4),
@@ -685,6 +897,33 @@ class MLService
         return $comparison;
     }
 
+    protected function budgetBaselineComparison(Collection $testData, array $modelEvaluation): array
+    {
+        $isRemainingCostTarget = $testData->contains(fn ($row) => isset($row->snapshot_id));
+        $actuals = $testData->map(fn ($row) => (float) $row->actual_cost
+            + ($isRemainingCostTarget ? (float) ($row->fin_total_expense ?? 0) : 0.0))->values()->all();
+        $budgets = $testData->map(fn ($row) => (float) $row->budget)->values()->all();
+        $baseline = $this->calculateMetrics($budgets, $actuals, $budgets, $testData);
+        $modelMape = $modelEvaluation['mean_absolute_percentage_error'] ?? null;
+        $baselineMape = $baseline['mean_absolute_percentage_error'] ?? null;
+        $improvementPoints = is_numeric($modelMape) && is_numeric($baselineMape)
+            ? (float) $baselineMape - (float) $modelMape
+            : null;
+        $outperforms = is_numeric($modelMape) && is_numeric($baselineMape)
+            && $improvementPoints >= self::MINIMUM_BASELINE_MAPE_IMPROVEMENT_POINTS;
+
+        return [
+            'baseline' => 'recorded_budget_as_final_cost_estimate',
+            'untouched_holdout' => true,
+            'baseline_evaluation' => $baseline,
+            'model_evaluation' => $modelEvaluation,
+            'minimum_mape_improvement_points' => self::MINIMUM_BASELINE_MAPE_IMPROVEMENT_POINTS,
+            'mape_improvement_points' => $improvementPoints === null ? null : round($improvementPoints, 4),
+            'model_outperforms_budget_baseline' => $outperforms,
+            'serving_support' => $outperforms ? 'supported_by_holdout_comparison' : 'insufficient_evidence_over_budget_baseline',
+        ];
+    }
+
     protected function dataCapturePolicy(): array
     {
         return [
@@ -699,9 +938,13 @@ class MLService
                 'budgets_tbl.budget_amount',
                 'project_tbl.worker_count',
                 'project_tbl.start_date',
+                'project_tbl.estimated_end_date',
                 'project_tbl.actual_end_date',
+                'ml_project_cost_snapshots.captured_at',
+                'ml_project_cost_snapshots.completion_percentage',
+                'ml_project_cost_snapshots.cumulative_total_expense',
             ],
-            'recommendation' => 'Record finance expenses in fin_expense_tbl against active fin_expense_category_tbl rows before project completion. ML preparation derives material, labor, equipment, or other buckets from finance category code/name.',
+            'recommendation' => 'Keep planned schedules, completion, and dated finance expenses current. PFIMS records genuine append-only progress snapshots and never reconstructs historical progress.',
             'finance_fields_considered' => [
                 'fin_expense_tbl.amount grouped by fin_expense_category_tbl category_code/category_name inference.',
                 'fin_expense_category_tbl is the authoritative finance expense category source; expense_category_tbl is not used for ML preparation.',
@@ -717,7 +960,7 @@ class MLService
             'scheduled_command' => 'ml:retrain',
             'cadence' => 'weekly',
             'schedule' => 'Mondays at 02:00 application time',
-            'data_window' => 'Newest 500 verified completed projects, sorted chronologically by actual_end_date.',
+            'data_window' => 'Newest 500 verified completed projects, or genuine finalized snapshots when every progress stage has sufficient project coverage.',
             'minimum_real_samples' => self::MINIMUM_REAL_SAMPLES,
         ];
     }
@@ -928,8 +1171,9 @@ class MLService
             if (! is_finite($prediction)) {
                 throw new RuntimeException('Holdout evaluation produced a non-finite prediction.');
             }
-            $predictions[] = $prediction;
-            $actuals[] = (float) $row->actual_cost;
+            $recordedSpend = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
+            $predictions[] = $prediction + $recordedSpend;
+            $actuals[] = (float) $row->actual_cost + $recordedSpend;
             $budgets[] = (float) $row->budget;
         }
 
@@ -1006,9 +1250,19 @@ class MLService
         return [
             'by_project_size' => $this->metricsBySegment($rows, $predictions, $actuals, $budgets, fn ($row) => $this->projectSizeBucket((float) $row->budget)),
             'by_project_type' => $this->metricsBySegment($rows, $predictions, $actuals, $budgets, fn ($row) => (string) ($row->project_type ?? 'General Construction')),
+            'by_progress_stage' => $this->metricsBySegment($rows, $predictions, $actuals, $budgets, fn ($row) => $this->progressStage((float) ($row->completion_percentage ?? 0))),
             'project_type_source' => $rows->pluck('project_type_source')->filter()->unique()->values()->all() ?: ['not_available'],
             'note' => 'Project type uses project_tbl project_type/type/category when populated; otherwise it is a normalized project name (with a trailing " - Site N" removed) and keyword categories such as Roadwork or Building when evident.',
         ];
+    }
+
+    protected function progressStage(float $completion): string
+    {
+        return match (true) {
+            $completion <= 33.0 => 'early',
+            $completion <= 66.0 => 'middle',
+            default => 'late',
+        };
     }
 
     protected function metricsBySegment(Collection $rows, array $predictions, array $actuals, array $budgets, callable $segmenter): array
@@ -1050,6 +1304,7 @@ class MLService
         $features = $this->normalizePredictionFeatures($features);
         $this->validateFeatureVector($features);
         $this->lastPredictionWarnings = $this->predictionWarnings($features);
+        $this->lastPredictionWasConstrained = false;
         if (! $this->model) {
             throw new RuntimeException('Model not trained. Please train the model first.');
         }
@@ -1060,7 +1315,7 @@ class MLService
             }
             $featureNames = $transformer['feature_names'] ?? self::BASE_FEATURE_NAMES;
             $transformed = $this->transformFeatureVector(
-                array_slice(array_map('floatval', $features), 0, count($featureNames)),
+                $this->predictionFeatureVector($features, $featureNames),
                 $transformer['selected_feature_indexes'],
                 $transformer['ranges']
             );
@@ -1069,15 +1324,42 @@ class MLService
                 throw new RuntimeException('Model returned an invalid project cost.');
             }
             $this->lastPredictionSource = $this->metadata['model_source'] ?? 'trained_model';
-
-            return $prediction;
+            if (($this->metadata['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend') {
+                $prediction += $this->recordedSpend($features);
+            }
         } catch (Throwable $exception) {
             Log::error('Trained-model prediction failed; applying the rule-based estimate.', ['message' => $exception->getMessage()]);
             $this->lastPredictionSource = 'rule_based_fallback';
             $this->lastPredictionWarnings[] = 'The trained estimator failed, so this result uses the rule-based fallback formula.';
 
-            return $this->fallbackPrediction($features);
+            $prediction = $this->fallbackPrediction($features);
         }
+
+        $recordedSpend = $this->recordedSpend($features);
+        if ($prediction < $recordedSpend) {
+            $prediction = $recordedSpend;
+            $this->lastPredictionWasConstrained = true;
+            $this->lastPredictionWarnings[] = 'The raw estimate was below recorded spending. The displayed value was raised to the recorded-spend floor and must not be treated as an on-track forecast.';
+        }
+        $this->lastPredictionSupport = $this->predictionSupport($features);
+
+        return $prediction;
+    }
+
+    protected function recordedSpend(array $features): float
+    {
+        return max(
+            (float) ($features[6] ?? 0),
+            (float) ($features[4] ?? 0) + (float) ($features[5] ?? 0),
+            array_sum(array_map('floatval', array_slice($features, 7, 4)))
+        );
+    }
+
+    protected function predictionFeatureVector(array $features, array $featureNames): array
+    {
+        $byName = array_combine(self::FEATURE_NAMES, array_map('floatval', $features));
+
+        return array_map(fn (string $name) => (float) ($byName[$name] ?? 0), $featureNames);
     }
 
     protected function normalizePredictionFeatures(array $features): array
@@ -1159,6 +1441,94 @@ class MLService
         return array_values(array_unique($this->lastPredictionWarnings));
     }
 
+    public function wasLastPredictionConstrained(): bool
+    {
+        return $this->lastPredictionWasConstrained;
+    }
+
+    public function getLastPredictionSupport(): array
+    {
+        return $this->lastPredictionSupport;
+    }
+
+    protected function predictionSupport(array $features): array
+    {
+        $source = $this->metadata['model_source'] ?? 'unknown';
+        $strategy = $this->metadata['prediction_strategy'] ?? 'unknown';
+        $completion = (float) $features[3];
+        $recordedSpend = max((float) $features[6], (float) $features[4] + (float) $features[5]);
+        $context = $completion <= 0 && $recordedSpend <= 0 ? 'pre_start_planning' : 'ongoing_progress';
+        $baselineSupported = (bool) ($this->metadata['budget_baseline_comparison']['model_outperforms_budget_baseline'] ?? false);
+        $productionModelIsBest = (bool) ($this->metadata['model_comparison']['production_model_is_best_option'] ?? false);
+        $snapshotReady = (bool) ($this->metadata['snapshot_readiness']['eligible'] ?? false);
+
+        if ($source !== 'real_trained_model') {
+            return [
+                'prediction_usable' => false,
+                'support_level' => $source === 'sample_trained_model' ? 'demo_only' : 'insufficient_evidence',
+                'forecast_context' => $context,
+                'status_reason' => $source === 'sample_trained_model'
+                    ? 'Company-inspired sample data is not validated company performance.'
+                    : 'Verified company training evidence is insufficient.',
+            ];
+        }
+        if ($this->lastPredictionWasConstrained) {
+            return [
+                'prediction_usable' => false,
+                'support_level' => 'safeguard_only',
+                'forecast_context' => $context,
+                'status_reason' => 'The raw model estimate failed the recorded-spend floor.',
+            ];
+        }
+        if (collect($this->lastPredictionWarnings)->contains(fn ($warning) => str_contains($warning, 'outside the'))) {
+            return [
+                'prediction_usable' => false,
+                'support_level' => 'out_of_range',
+                'forecast_context' => $context,
+                'status_reason' => 'One or more active inputs are outside the verified training range.',
+            ];
+        }
+        if (! $baselineSupported) {
+            return [
+                'prediction_usable' => false,
+                'support_level' => 'insufficient_evidence',
+                'forecast_context' => $context,
+                'status_reason' => 'The model has not outperformed the original-budget baseline on the untouched holdout.',
+            ];
+        }
+        if (! $productionModelIsBest) {
+            return [
+                'prediction_usable' => false,
+                'support_level' => 'candidate_model_not_best',
+                'forecast_context' => $context,
+                'status_reason' => 'The served estimator was not the best evaluated candidate on the untouched holdout.',
+            ];
+        }
+        if ($strategy === 'progress_snapshot_model' && ! $snapshotReady) {
+            return [
+                'prediction_usable' => false,
+                'support_level' => 'insufficient_stage_history',
+                'forecast_context' => $context,
+                'status_reason' => 'Genuine progress snapshots do not yet meet the required stage coverage.',
+            ];
+        }
+        if ($strategy === 'planning_only_baseline' && $context !== 'pre_start_planning') {
+            return [
+                'prediction_usable' => false,
+                'support_level' => 'planning_only',
+                'forecast_context' => $context,
+                'status_reason' => 'Progress-stage history is not yet sufficient; the active model supports planning estimates only.',
+            ];
+        }
+
+        return [
+            'prediction_usable' => true,
+            'support_level' => $strategy === 'progress_snapshot_model' ? 'stage_validated' : 'planning_validated',
+            'forecast_context' => $context,
+            'status_reason' => 'The estimate is within its validated input and evaluation scope.',
+        ];
+    }
+
     public function businessActionForRiskLevel(string $riskLevel): string
     {
         return $this->riskBusinessActions()[$riskLevel]
@@ -1171,6 +1541,8 @@ class MLService
         $source = $this->metadata['model_source'] ?? 'unknown';
         if ($source === 'synthetic_fallback_model') {
             $warnings[] = 'Insufficient verified company data: this prediction uses a synthetic fallback model and is experimental.';
+        } elseif ($source === 'sample_trained_model') {
+            $warnings[] = 'This prediction uses a company-inspired sample dataset; evaluation metrics are demo sample results, not company-validated accuracy.';
         }
         $sufficiency = $this->metadata['sample_sufficiency'] ?? null;
         if (is_array($sufficiency) && ($sufficiency['level'] ?? null) !== 'adequate') {
@@ -1189,7 +1561,11 @@ class MLService
             }
             $value = (float) $features[$index];
             if ($value < $range['min'] || $value > $range['max']) {
-                $rangeSource = $source === 'real_trained_model' ? 'verified training projects' : 'synthetic fallback examples';
+                $rangeSource = match ($source) {
+                    'real_trained_model' => 'verified training projects',
+                    'sample_trained_model' => 'company-inspired sample projects',
+                    default => 'synthetic fallback examples',
+                };
                 $warnings[] = sprintf('%s (%s) is outside the %s range of %s to %s.',
                     ucwords(str_replace('_', ' ', $name)), $this->plainNumber($value), $rangeSource,
                     $this->plainNumber((float) $range['min']), $this->plainNumber((float) $range['max'])
@@ -1305,13 +1681,23 @@ class MLService
         $mae = $metrics['mean_absolute_error'] ?? null;
         $sufficiency = $this->metadata['sample_sufficiency'] ?? $this->sampleSufficiency(0);
 
+        $provenanceWarnings = match ($source) {
+            'sample_trained_model' => ['Company-inspired sample data is active. Reported metrics are sample evaluation only and are not validated company-performance accuracy.'],
+            'synthetic_fallback_model' => ['Synthetic fallback examples are active. No unseen-project evaluation metrics are reported.'],
+            default => [],
+        };
+
         return [
-            'status' => $source === 'real_trained_model'
-                ? 'Model is trained on verified completed projects' : 'Synthetic fallback model is active',
+            'status' => match ($source) {
+                'real_trained_model' => 'Model is trained on verified completed projects',
+                'sample_trained_model' => 'Model is trained on a company-inspired sample dataset',
+                default => 'Synthetic fallback model is active',
+            },
             'model_source' => $source,
             'uses_synthetic_data' => (bool) ($this->metadata['uses_synthetic_data'] ?? false),
             'samples_trained' => (int) ($this->metadata['samples_trained'] ?? 0),
             'real_samples_available' => (int) ($this->metadata['real_samples_available'] ?? 0),
+            'sample_samples_available' => (int) ($this->metadata['sample_samples_available'] ?? 0),
             'training_samples' => (int) ($this->metadata['training_samples_evaluated'] ?? 0),
             'test_samples' => (int) ($this->metadata['test_samples'] ?? 0),
             'evaluation_method' => $this->metadata['evaluation_method'] ?? 'unavailable',
@@ -1324,14 +1710,22 @@ class MLService
             'f1_score' => $metrics['f1_score'] ?? null,
             'overrun_classification_accuracy' => $metrics['overrun_classification_accuracy'] ?? null,
             'mae_formatted' => $mae === null ? 'Unavailable' : '₱'.number_format((float) $mae, 2),
-            'metric_scope' => $source === 'real_trained_model'
-                ? 'newest chronological holdout projects using the selected 80/20 or 70/30 split' : 'unavailable for synthetic fallback data',
+            'metric_scope' => match ($source) {
+                'real_trained_model' => 'fixed newest-20-percent grouped chronological project holdout',
+                'sample_trained_model' => 'company-inspired sample chronological holdout; sample evaluation only, not company-validated accuracy',
+                default => 'unavailable for synthetic fallback data',
+            },
+            'warnings' => $provenanceWarnings,
             'classification_definition' => 'Precision, recall and F1 classify project-overrun risk when cost exceeds budget by more than 5%. Values are percentages and are unavailable when the holdout has no applicable positive cases.',
             'monitoring_segments' => $metrics['monitoring_segments'] ?? null,
             'split_selection' => $this->metadata['split_selection'] ?? null,
             'cross_validation' => $this->metadata['cross_validation'] ?? null,
             'feature_set' => $this->metadata['feature_set'] ?? null,
             'model_comparison' => $this->metadata['model_comparison'] ?? null,
+            'budget_baseline_comparison' => $this->metadata['budget_baseline_comparison'] ?? null,
+            'snapshot_readiness' => $this->metadata['snapshot_readiness'] ?? null,
+            'prediction_strategy' => $this->metadata['prediction_strategy'] ?? 'unavailable',
+            'prediction_target' => $this->metadata['prediction_target'] ?? 'unavailable',
             'data_capture_policy' => $this->metadata['data_capture_policy'] ?? $this->dataCapturePolicy(),
             'retraining_policy' => $this->metadata['retraining_policy'] ?? $this->retrainingPolicy(),
             'risk_business_actions' => $this->metadata['risk_business_actions'] ?? $this->riskBusinessActions(),
@@ -1347,15 +1741,17 @@ class MLService
     {
         return [
             'status' => $status, 'model_source' => 'unavailable', 'uses_synthetic_data' => false,
-            'samples_trained' => 0, 'real_samples_available' => 0, 'training_samples' => 0,
+            'samples_trained' => 0, 'real_samples_available' => 0, 'sample_samples_available' => 0, 'training_samples' => 0,
             'test_samples' => 0, 'evaluation_method' => 'unavailable', 'accuracy' => null,
             'mean_absolute_error' => null, 'mean_absolute_percentage_error' => null,
             'r_squared' => null, 'precision' => null, 'recall' => null, 'f1_score' => null,
             'overrun_classification_accuracy' => null, 'mae_formatted' => 'Unavailable',
-            'metric_scope' => 'unavailable',
+            'metric_scope' => 'unavailable', 'warnings' => [],
             'classification_definition' => 'Precision, recall and F1 are 5% overrun-risk classification metrics.',
             'monitoring_segments' => null, 'split_selection' => null, 'cross_validation' => null,
             'feature_set' => null, 'model_comparison' => null,
+            'budget_baseline_comparison' => null, 'snapshot_readiness' => null,
+            'prediction_strategy' => 'unavailable', 'prediction_target' => 'unavailable',
             'data_capture_policy' => $this->dataCapturePolicy(),
             'retraining_policy' => $this->retrainingPolicy(),
             'risk_business_actions' => $this->riskBusinessActions(),
@@ -1364,24 +1760,25 @@ class MLService
         ];
     }
 
-    protected function sampleSufficiency(int $realSamples): array
+    protected function sampleSufficiency(int $samples, bool $usesSampleData = false): array
     {
-        if ($realSamples < self::MINIMUM_REAL_SAMPLES) {
-            return ['level' => 'insufficient', 'message' => "Only {$realSamples} verified completed projects are available; at least ".self::MINIMUM_REAL_SAMPLES.' are required to train and hold out real data.'];
+        $description = $usesSampleData ? 'company-inspired sample projects' : 'verified completed projects';
+        if ($samples < self::MINIMUM_REAL_SAMPLES) {
+            return ['level' => 'insufficient', 'message' => "Only {$samples} {$description} are available; at least ".self::MINIMUM_REAL_SAMPLES.' are required for training and holdout evaluation.'];
         }
-        if ($realSamples < 30) {
-            return ['level' => 'experimental', 'message' => "The model uses only {$realSamples} verified completed projects; treat its results as experimental."];
+        if ($samples < 30) {
+            return ['level' => 'experimental', 'message' => "The model uses only {$samples} {$description}; treat its results as experimental."];
         }
-        if ($realSamples < 100) {
-            return ['level' => 'limited', 'message' => "The model uses {$realSamples} verified completed projects; continue collecting varied completed-project data."];
+        if ($samples < 100) {
+            return ['level' => 'limited', 'message' => "The model uses {$samples} {$description}; continue collecting varied completed-project data."];
         }
 
-        return ['level' => 'adequate', 'message' => "The model uses {$realSamples} verified completed projects and has an adequate initial sample size."];
+        return ['level' => 'adequate', 'message' => "The model uses {$samples} {$description} and has an adequate initial sample size."];
     }
 
     protected function getInterpretation(array $metrics, array $sufficiency, string $source): string
     {
-        if ($source !== 'real_trained_model') {
+        if ($source === 'synthetic_fallback_model') {
             return 'No unseen-project performance is reported because the active model uses synthetic fallback examples.';
         }
         $accuracy = $metrics['accuracy'] ?? null;
@@ -1390,9 +1787,13 @@ class MLService
             return 'Holdout performance is unavailable; do not use this model for financial decisions.';
         }
 
+        $scope = $source === 'sample_trained_model'
+            ? 'company-inspired sample project(s); this is sample evaluation, not company-validated accuracy'
+            : 'verified completed project(s)';
+
         return sprintf(
-            'On the newest %d unseen completed project(s), average percentage closeness was %.2f%% and MAE was ₱%s. Data sufficiency is %s.',
-            (int) ($this->metadata['test_samples'] ?? 0), $accuracy, number_format($mae, 2),
+            'On the newest %d unseen %s, average percentage closeness was %.2f%% and MAE was ₱%s. Data sufficiency is %s.',
+            (int) ($this->metadata['test_samples'] ?? 0), $scope, $accuracy, number_format($mae, 2),
             $sufficiency['level'] ?? 'unknown'
         );
     }
@@ -1404,7 +1805,9 @@ class MLService
 
         return [
             'message' => $realModelTrained
-                ? 'Model retrained on verified completed projects.'
+                ? ($metrics['model_source'] === 'sample_trained_model'
+                    ? 'Model retrained on a company-inspired sample dataset; metrics are sample evaluation only.'
+                    : 'Model retrained on verified completed projects.')
                 : 'Retraining completed, but the transparent synthetic fallback remains active.',
             'model_source' => $metrics['model_source'], 'metrics' => $metrics,
         ];
@@ -1415,15 +1818,84 @@ class MLService
         return $this->metadata;
     }
 
+    protected function restoreStoredModel(): bool
+    {
+        if (! File::exists($this->modelPath) || ! File::exists($this->metadataPath)) {
+            return false;
+        }
+
+        try {
+            $metadata = json_decode((string) File::get($this->metadataPath), true, 512, JSON_THROW_ON_ERROR);
+            if (($metadata['schema_version'] ?? null) !== self::MODEL_SCHEMA_VERSION) {
+                return false;
+            }
+            $model = (new ModelManager)->restoreFromFile($this->modelPath);
+            if (! $model instanceof LeastSquares) {
+                return false;
+            }
+            $this->model = $model;
+            $this->metadata = $metadata;
+
+            return true;
+        } catch (Throwable $exception) {
+            Log::warning('Stored ML model could not be restored.', ['message' => $exception->getMessage()]);
+
+            return false;
+        }
+    }
+
     protected function saveModelAndMetadata(): void
     {
         if (! $this->model) {
             throw new RuntimeException('Cannot save an empty model.');
         }
-        (new ModelManager)->saveToFile($this->model, $this->modelPath);
+
+        File::ensureDirectoryExists(dirname($this->modelPath));
+        $suffix = '.candidate.'.bin2hex(random_bytes(8));
+        $candidateModelPath = $this->modelPath.$suffix;
+        $candidateMetadataPath = $this->metadataPath.$suffix;
+        $backupModelPath = $this->modelPath.'.backup.'.bin2hex(random_bytes(8));
+        $backupMetadataPath = $this->metadataPath.'.backup.'.bin2hex(random_bytes(8));
         $json = json_encode($this->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-        if (file_put_contents($this->metadataPath, $json, LOCK_EX) === false) {
-            throw new RuntimeException('Unable to save model metadata.');
+
+        try {
+            (new ModelManager)->saveToFile($this->model, $candidateModelPath);
+            if (file_put_contents($candidateMetadataPath, $json, LOCK_EX) === false) {
+                throw new RuntimeException('Unable to save candidate model metadata.');
+            }
+            $candidate = (new ModelManager)->restoreFromFile($candidateModelPath);
+            if (! $candidate instanceof LeastSquares) {
+                throw new RuntimeException('Candidate model validation failed.');
+            }
+            json_decode((string) File::get($candidateMetadataPath), true, 512, JSON_THROW_ON_ERROR);
+
+            $hadModel = File::exists($this->modelPath);
+            $hadMetadata = File::exists($this->metadataPath);
+            if ($hadModel && ! @rename($this->modelPath, $backupModelPath)) {
+                throw new RuntimeException('Unable to back up the active model.');
+            }
+            if ($hadMetadata && ! @rename($this->metadataPath, $backupMetadataPath)) {
+                if ($hadModel) {
+                    @rename($backupModelPath, $this->modelPath);
+                }
+                throw new RuntimeException('Unable to back up active model metadata.');
+            }
+
+            if (! @rename($candidateModelPath, $this->modelPath)
+                || ! @rename($candidateMetadataPath, $this->metadataPath)) {
+                File::delete([$this->modelPath, $this->metadataPath]);
+                if ($hadModel) {
+                    @rename($backupModelPath, $this->modelPath);
+                }
+                if ($hadMetadata) {
+                    @rename($backupMetadataPath, $this->metadataPath);
+                }
+                throw new RuntimeException('Unable to atomically activate the candidate model and metadata.');
+            }
+
+            File::delete([$backupModelPath, $backupMetadataPath]);
+        } finally {
+            File::delete([$candidateModelPath, $candidateMetadataPath]);
         }
     }
 
@@ -1447,6 +1919,7 @@ class MLService
             }
 
             return $query
+                ->whereNotIn('project_tbl.status', ['Completed', 'Pending'])
                 ->select(
                     'project_tbl.project_id', 'project_tbl.project_name',
                     'budgets_tbl.budget_amount as budget', 'project_tbl.status',

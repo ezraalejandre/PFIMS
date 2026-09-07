@@ -136,12 +136,41 @@ body.embedded-ml-dashboard {
     font-size: 0.78rem !important;
 }
 
-.embedded-ml-dashboard .main-grid {
-    display: contents !important;
+.embedded-ml-dashboard .analytics-tab-content {
+    grid-column: 1 / -1;
+    box-sizing: border-box;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
 }
 
-.embedded-ml-dashboard .main-grid > div {
-    display: contents;
+/* `display: contents` must not override the native hidden state used by the
+   dashboard tabs. Exactly one analytics section is visible at a time. */
+.embedded-ml-dashboard [data-analytics-content][hidden] {
+    display: none !important;
+}
+
+/* This row must live in the shared stylesheet because the dashboard renders
+   the analytics view as a fragment and omits its standalone <head> styles. */
+.embedded-ml-dashboard .prediction-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 18px;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+}
+
+.embedded-ml-dashboard .prediction-row > div {
+    display: flex;
+    min-width: 0;
+}
+
+.embedded-ml-dashboard .prediction-row .prediction-workspace {
+    flex: 1 1 0;
+    height: 100%;
 }
 
 .embedded-ml-dashboard .analytics-panel {
@@ -303,7 +332,8 @@ body.embedded-ml-dashboard {
     background: #fff5f5 !important;
 }
 
-.embedded-ml-dashboard .table-responsive {
+.embedded-ml-dashboard .table-responsive,
+.embedded-ml-dashboard .table-wrapper {
     width: 100%;
     min-width: 0;
     max-width: 100%;
@@ -314,7 +344,8 @@ body.embedded-ml-dashboard {
 
 .embedded-ml-dashboard .analytics-table {
     width: 100%;
-    min-width: 620px;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .embedded-ml-dashboard .analytics-table th,
@@ -326,6 +357,102 @@ body.embedded-ml-dashboard {
     margin-top: 20px;
     padding-top: 18px;
     border-top: 1px solid #e5eaf0;
+}
+
+.embedded-ml-dashboard .pagination-wrapper {
+    width: 100%;
+    padding-inline: 0 !important;
+}
+
+.embedded-ml-dashboard .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, .58);
+}
+
+.embedded-ml-dashboard .modal-overlay[hidden] {
+    display: none;
+}
+
+.embedded-ml-dashboard .modal-container {
+    width: min(460px, 100%);
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--analytics-border);
+    border-radius: 12px;
+    background: var(--analytics-surface);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .24);
+}
+
+.embedded-ml-dashboard .modal-header,
+.embedded-ml-dashboard .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+}
+
+.embedded-ml-dashboard .modal-header {
+    border-bottom: 1px solid #e5eaf0;
+}
+
+.embedded-ml-dashboard .modal-header h2 {
+    margin: 0;
+    color: var(--analytics-text);
+    font-size: 1rem;
+}
+
+.embedded-ml-dashboard .modal-body {
+    padding: 20px;
+    color: var(--analytics-muted);
+    line-height: 1.55;
+}
+
+.embedded-ml-dashboard .modal-body p {
+    margin: 0;
+}
+
+.embedded-ml-dashboard .modal-footer {
+    justify-content: flex-end;
+    border-top: 1px solid #e5eaf0;
+}
+
+.embedded-ml-dashboard .modal-close {
+    border: 0;
+    background: transparent;
+    color: var(--analytics-muted);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.embedded-ml-dashboard .modal-footer .btn-cancel,
+.embedded-ml-dashboard .modal-footer .btn-primary {
+    min-height: 38px;
+    padding: 8px 16px;
+    border-radius: 7px;
+    font: inherit;
+    font-size: .84rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.embedded-ml-dashboard .modal-footer .btn-cancel {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+}
+
+.embedded-ml-dashboard .modal-footer .btn-primary {
+    border: 1px solid var(--analytics-primary);
+    background: var(--analytics-primary);
+    color: #fff;
 }
 
 .embedded-ml-dashboard .metric-section-title {
@@ -451,6 +578,35 @@ body.embedded-ml-dashboard {
     cursor: pointer;
 }
 
+.pfims-prediction-notice {
+    position: fixed;
+    top: 88px;
+    right: 24px;
+    z-index: 2100;
+    display: flex;
+    width: auto;
+    max-width: min(420px, calc(100vw - 32px));
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .16);
+}
+
+.pfims-prediction-notice.success { background: linear-gradient(135deg, #22a06b, #147a48); }
+.pfims-prediction-notice.error { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.pfims-prediction-notice .notification-close {
+    flex: 0 0 auto;
+    padding: 2px 7px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
 .embedded-ml-dashboard .spinner {
     display: inline-block;
     width: 18px;
@@ -514,6 +670,10 @@ html[data-theme="dark"] .embedded-ml-dashboard .prediction-result {
 }
 
 @media (max-width: 760px) {
+    .embedded-ml-dashboard .prediction-row {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
     .embedded-ml-dashboard .analytics-toolbar,
     .embedded-ml-dashboard .analytics-panel .card-header {
         align-items: stretch;

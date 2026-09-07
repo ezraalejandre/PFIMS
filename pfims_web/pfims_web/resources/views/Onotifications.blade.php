@@ -251,12 +251,8 @@
         <div class="page-header">
             <div>
                 <h1>NOTIFICATIONS</h1>
-                <div class="subtitle">alerts &amp; system updates</div>
             </div>
                         <div class="notif-actions">
-                <button class="btn-action-icon" id="refreshNotifBtn" onclick="refreshNotifications(this)" title="Refresh">
-                    <img src="{{ asset('images/refresh.jpg') }}" alt="Refresh">
-                </button>
                 <button class="btn-mark-read" onclick="markAllRead()">✓ Mark all read</button>
                 <button class="btn-clear-all" onclick="openClearAllModal()">✕ Clear all</button>
             </div>
@@ -280,7 +276,7 @@
                 Rows per page
                 <select id="notifRowsPerPage" aria-label="Notification rows per page" onchange="changeNotifPageSize()">
                     <option value="10">10</option>
-                    <option value="25" selected>25</option>
+                    <option value="25">25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
                 </select>
@@ -298,7 +294,7 @@
         var allNotifications = [];
         var currentTab = 'all';
         var showOnlyTotals = false;
-        var notifPageSize = 25;
+        var notifPageSize = 10;
         var notifCurrentPage = 1;
 
         var MUTABLE_TYPES = {
@@ -741,7 +737,7 @@
 
         function changeNotifPageSize() {
             var select = document.getElementById('notifRowsPerPage');
-            notifPageSize = parseInt(select.value) || 25;
+            notifPageSize = parseInt(select.value) || 10;
             notifCurrentPage = 1;
             renderNotifications();
         }
@@ -861,5 +857,6 @@
         });
     </script>
 
+    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
 </body>
 </html>

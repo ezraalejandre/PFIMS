@@ -481,8 +481,15 @@ html.sidebar-collapsed .reports-page .main-content {
 
 .chart {
     display: grid;
-    min-height: 120px;
+    min-height: 320px;
+    height: 320px;
     gap: 14px;
+}
+
+.chart canvas {
+    display: block;
+    width: 100% !important;
+    height: 300px !important;
 }
 
 .chart-group {
@@ -555,14 +562,20 @@ html.sidebar-collapsed .reports-page .main-content {
 }
 
 .export-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
     width: min(760px, calc(100vw - 28px));
-    max-height: 90vh;
+    max-height: min(90vh, 760px);
+    margin: 0;
     padding: 0;
+    overflow: hidden;
     border: 1px solid var(--reports-border);
     border-radius: 20px;
     background: var(--reports-surface);
     color: var(--reports-text);
     box-shadow: 0 24px 80px rgba(15, 23, 42, 0.34);
+    transform: translate(-50%, -50%);
 }
 
 .export-dialog::backdrop {
@@ -574,7 +587,12 @@ html.sidebar-collapsed .reports-page .main-content {
     max-height: 90vh;
     gap: 16px;
     padding: 24px;
-    overflow: auto;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.export-dialog form::-webkit-scrollbar {
+    display: none;
 }
 
 .dialog-heading h2 {

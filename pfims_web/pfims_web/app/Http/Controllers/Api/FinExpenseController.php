@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\AutomaticModelRetraining;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,10 @@ class FinExpenseController extends Controller
 {
     private const PROJECT_COST_COMPONENTS = ['material', 'labor', 'equipment', 'other'];
 
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(
+        private NotificationService $notifications,
+        private AutomaticModelRetraining $modelRetraining,
+    ) {}
 
     private function mapExpense($item)
     {
@@ -142,7 +146,6 @@ class FinExpenseController extends Controller
                     ->leftJoin('project_tbl as project', 'project.project_id', '=', 'transaction.project_id')
                     ->leftJoin('fin_expense_tbl as expense', 'expense.inventory_transaction_id', '=', 'transaction.inventory_transaction_id')
                     ->where('transaction.transaction_type', 'IN')
-                    ->whereNotNull('transaction.project_id')
                     ->whereNull('expense.fin_expense_id');
 
                 if (! empty($filters['project_id'])) {
@@ -254,7 +257,10 @@ class FinExpenseController extends Controller
                 ]);
             });
 
-            return response()->json($this->mapExpense($this->findWithJoins($id)), 201);
+            $createdExpense = $this->findWithJoins($id);
+            $this->modelRetraining->afterDataChange($createdExpense?->project_id === null ? [] : [(int) $createdExpense->project_id]);
+
+            return response()->json($this->mapExpense($createdExpense), 201);
         } catch (\Throwable $e) {
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
@@ -323,6 +329,8 @@ class FinExpenseController extends Controller
                 referenceId: (int) $expense->fin_expense_id,
             );
 
+            $this->modelRetraining->afterDataChange($expense->project_id === null ? [] : [(int) $expense->project_id]);
+
             return response()->json($this->mapExpense($expense), 201);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -354,6 +362,7 @@ class FinExpenseController extends Controller
             }
 
             $validated = $validator->validated();
+            $oldProjectId = $existing->project_id === null ? null : (int) $existing->project_id;
             if ($errors = $this->projectComponentErrors($validated)) {
                 return response()->json(['errors' => $errors], 422);
             }
@@ -388,6 +397,8 @@ class FinExpenseController extends Controller
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->update($data);
             $expense = $this->findWithJoins($id);
+            $projectIds = array_values(array_filter([$oldProjectId, $expense->project_id === null ? null : (int) $expense->project_id]));
+            $this->modelRetraining->afterDataChange($projectIds);
 
             return response()->json($this->mapExpense($expense));
         } catch (\Exception $e) {
@@ -408,6 +419,7 @@ class FinExpenseController extends Controller
             }
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->delete();
+            $this->modelRetraining->afterDataChange($existing->project_id === null ? [] : [(int) $existing->project_id]);
 
             return response()->json(['success' => true, 'message' => 'Expense deleted successfully']);
         } catch (\Exception $e) {

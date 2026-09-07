@@ -6,6 +6,7 @@ use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use App\Models\Supplier;
+use App\Models\SystemSetting;
 use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class InventoryController extends Controller
             'stock_state' => ['nullable', 'in:in_stock,low_stock,out_of_stock'],
         ]);
 
+        $defaultThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
         $query = InventoryItem::with(['category', 'supplier', 'unit']);
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);
@@ -44,9 +46,9 @@ class InventoryController extends Controller
             $query->where('supplier_id', $filters['supplier_id']);
         }
         if (($filters['stock_state'] ?? null) === 'in_stock') {
-            $query->whereColumn('current_stock', '>', 'reorder_level');
+            $query->whereRaw('current_stock > CASE WHEN reorder_level IS NULL OR reorder_level < ? THEN ? ELSE reorder_level END', [$defaultThreshold, $defaultThreshold]);
         } elseif (($filters['stock_state'] ?? null) === 'low_stock') {
-            $query->where('current_stock', '>', 0)->whereColumn('current_stock', '<=', 'reorder_level');
+            $query->where('current_stock', '>', 0)->whereRaw('current_stock <= CASE WHEN reorder_level IS NULL OR reorder_level < ? THEN ? ELSE reorder_level END', [$defaultThreshold, $defaultThreshold]);
         } elseif (($filters['stock_state'] ?? null) === 'out_of_stock') {
             $query->where('current_stock', '<=', 0);
         }
@@ -54,7 +56,7 @@ class InventoryController extends Controller
         $items = $query
             ->orderBy('item_name')
             ->get()
-            ->map(function ($item) {
+            ->map(function ($item) use ($defaultThreshold) {
                 return [
                     'item_id' => $item->item_id,
                     'item_name' => $item->item_name,
@@ -66,7 +68,7 @@ class InventoryController extends Controller
                     'quantity' => $item->current_stock,
                     'supplier' => $item->supplier?->supplier_name ?? 'N/A',
                     'current_stock' => $item->current_stock,
-                    'reorder_level' => $item->reorder_level,
+                    'reorder_level' => max((float) ($item->reorder_level ?? 0), $defaultThreshold),
                 ];
             });
 
@@ -101,11 +103,12 @@ class InventoryController extends Controller
      */
     public function addTransaction(Request $request): JsonResponse
     {
+        $maxQuantity = (float) SystemSetting::value('inventory_max_transaction_quantity', 999999999999.99);
         $validated = $request->validate([
             'item_id' => 'required|integer|exists:inventory_item_tbl,item_id',
             'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'transaction_type' => 'required|in:IN,OUT',
-            'quantity' => 'required|numeric|min:0.01|max:999999999999.99',
+            'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
             'bar_code' => 'nullable|integer|min:0|max:2147483647',
             'transaction_date' => 'required|date|before_or_equal:today',
             'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
@@ -216,13 +219,14 @@ class InventoryController extends Controller
             'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date', 'before_or_equal:2100-12-31'],
         ]);
 
+        $defaultThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
         $transactions = InventoryTransaction::with(['item.category', 'item.unit', 'item.supplier', 'project'])
             ->orderBy('transaction_date')
             ->orderBy('inventory_transaction_id')
             ->get();
 
         $runningStock = [];
-        $rows = $transactions->map(function ($transaction) use (&$runningStock) {
+        $rows = $transactions->map(function ($transaction) use (&$runningStock, $defaultThreshold) {
             $itemId = $transaction->item_id;
             if (! isset($runningStock[$itemId])) {
                 $runningStock[$itemId] = 0;
@@ -251,7 +255,7 @@ class InventoryController extends Controller
                 'transaction_type' => $transaction->transaction_type,
                 'transaction_date' => $transaction->transaction_date,
                 'current_stock' => $runningStock[$itemId],
-                'reorder_level' => $transaction->item?->reorder_level ?? 0,
+                'reorder_level' => max((float) ($transaction->item?->reorder_level ?? 0), $defaultThreshold),
                 'proof_file_path' => $transaction->proof_file_path,
                 'proof_file_name' => $transaction->proof_file_name,
             ];
@@ -301,8 +305,9 @@ class InventoryController extends Controller
 
     public function updateTransaction(Request $request, $id): JsonResponse
     {
+        $maxQuantity = (float) SystemSetting::value('inventory_max_transaction_quantity', 999999999999.99);
         $validated = $request->validate([
-            'quantity' => 'required|numeric|min:0.01|max:999999999999.99',
+            'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
             'bar_code' => 'nullable|integer|min:0|max:2147483647',
             'transaction_date' => 'required|date|before_or_equal:today',
         ]);

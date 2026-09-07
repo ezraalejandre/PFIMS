@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body data-status-message="{{ session('status', '') }}">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -89,13 +89,12 @@
         <!-- Page Header -->
         <div class="page-header">
             <h1>PROFILE</h1>
-            <div class="subtitle">account &amp; settings management</div>
         </div>
 
         @if(session('status'))
             <script>
                 document.addEventListener('DOMContentLoaded', function() {
-                    showSuccess(@json(session('status')));
+                    showSuccess(document.body.dataset.statusMessage);
                 });
             </script>
         @endif

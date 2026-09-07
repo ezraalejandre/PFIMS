@@ -143,7 +143,11 @@ class FinanceImportService
             }
         });
 
-        return ['imported' => count($prepared), 'type' => 'finance_expenses'];
+        return [
+            'imported' => count($prepared),
+            'type' => 'finance_expenses',
+            'project_ids' => collect($prepared)->pluck('data.project_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all(),
+        ];
     }
 
     private function validateHeaders(array $headers): void

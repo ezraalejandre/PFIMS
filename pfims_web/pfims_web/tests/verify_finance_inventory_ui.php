@@ -5,7 +5,7 @@ $contracts = [
     'resources/views/finance.blade.php' => [
         'projectFilter', 'projectSearch', 'expenseCategoryFilter', 'expenseComponentFilter', 'expenseCostComponent',
         'detailCostComponentEdit', 'Project Cost Component', "setActiveTab(this,'all')",
-        'budgetProjectFilter', 'budgetStatusFilter', 'budgetSearch', 'expenseCategoryChart', 'budgetStatusChart',
+        'budgetProjectFilter', 'budgetStatusFilter', 'budgetSearch',
         'expovrallMonth', 'loadExpovrall()', 'expdirectMonth', 'loadExpDirect()', 'adminexpMonth', 'loadAdminExp()',
         'directexpMonth', 'loadDirectExp()', 'overallexpMonth', 'loadOverallExp()', 'profitType', 'loadProfit()',
         'receivableType', 'loadReceivables()', 'cashMonth', 'loadCashAsset()', 'backhoeAsset', 'backhoeMonth',
@@ -15,7 +15,7 @@ $contracts = [
     'resources/views/Afinance.blade.php' => [
         'projectFilter', 'projectSearch', 'expenseCategoryFilter', 'expenseComponentFilter', 'expenseCostComponent',
         'detailCostComponentEdit', 'Project Cost Component', "setActiveTab(this,'all')",
-        'budgetProjectFilter', 'budgetStatusFilter', 'budgetSearch', 'expenseCategoryChart', 'budgetStatusChart',
+        'budgetProjectFilter', 'budgetStatusFilter', 'budgetSearch',
         'expovrallMonth', 'loadExpovrall()', 'expdirectMonth', 'loadExpDirect()', 'adminexpMonth', 'loadAdminExp()',
         'directexpMonth', 'loadDirectExp()', 'overallexpMonth', 'loadOverallExp()', 'profitType', 'loadProfit()',
         'receivableType', 'loadReceivables()', 'cashMonth', 'loadCashAsset()', 'backhoeAsset', 'backhoeMonth',
@@ -25,14 +25,14 @@ $contracts = [
     'resources/views/inventory.blade.php' => [
         'itemsSearchInput', 'itemsCategoryFilter', 'itemsSupplierFilter', 'itemsStockFilter', 'clearItemsFilters()',
         'searchInput', 'typeFilter', 'transactionCategoryFilter', 'transactionProjectFilter', 'startDate', 'endDate',
-        'clearTransactionFilters()', 'totalItemsCount', 'lowStockCount', 'categoriesCount', 'inventoryStockChart',
-        'inventoryMovementChart', 'partials.data-import', 'inventory-analytics.js',
+        'clearTransactionFilters()', 'totalItemsCount', 'lowStockCount', 'categoriesCount',
+        'partials.data-import', 'inventory-analytics.js',
     ],
     'resources/views/Oinventory.blade.php' => [
         'itemsSearchInput', 'itemsCategoryFilter', 'itemsSupplierFilter', 'itemsStockFilter', 'clearItemsFilters()',
         'searchInput', 'typeFilter', 'transactionCategoryFilter', 'transactionProjectFilter', 'startDate', 'endDate',
-        'clearTransactionFilters()', 'totalItemsCount', 'lowStockCount', 'categoriesCount', 'inventoryStockChart',
-        'inventoryMovementChart', 'partials.data-import', 'inventory-analytics.js',
+        'clearTransactionFilters()', 'totalItemsCount', 'lowStockCount', 'categoriesCount',
+        'partials.data-import', 'inventory-analytics.js',
     ],
     'public/js/finance-analytics.js' => [
         'window.applyFilters', 'window.filterBudgetTable', 'window.updateFinanceTotals', 'updateExpenseCategoryChart',
@@ -65,4 +65,4 @@ if ($failures !== []) {
     exit(1);
 }
 
-echo 'Finance/inventory UI contracts verified (4 role views, shared filters, filtered KPIs, real-data charts, imports preserved).'.PHP_EOL;
+echo 'Finance/inventory UI contracts verified (4 role views, shared filters, filtered KPIs, and imports preserved).'.PHP_EOL;

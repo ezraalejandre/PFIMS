@@ -51,8 +51,9 @@ class FinReportController extends Controller
      * Uses budget from budgets_tbl as contract price
      * Shows ONLY projects that have a contract record
      */
-    public function getProfitDirect()
+    public function getProfitDirect(Request $request)
     {
+        $year = $request->validate(['year' => ['nullable', 'integer', 'between:2000,2100']])['year'] ?? null;
         try {
             $results = DB::table('fin_project_contract_tbl as c')
                 ->join('project_tbl as p', 'p.project_id', '=', 'c.project_id')
@@ -82,7 +83,7 @@ class FinReportController extends Controller
                     DB::raw('(COALESCE(b.budget_amount, c.original_contract_price, 0) + COALESCE(c.additional_works_contract, 0)) - (COALESCE(c.original_payment_received, 0) + COALESCE(c.additional_works_payment, 0)) as accounts_receivable'),
                     DB::raw('(COALESCE(c.original_payment_received, 0) + COALESCE(c.additional_works_payment, 0)) - COALESCE(all_exp.total_expense, 0) as profit_loss_payment_basis'),
                     DB::raw('(COALESCE(b.budget_amount, c.original_contract_price, 0) + COALESCE(c.additional_works_contract, 0)) - COALESCE(all_exp.total_expense, 0) as profit_loss_contract_basis')
-                )
+                )->when($year, fn ($query) => $query->whereYear('p.start_date', $year))
                 ->orderBy('p.project_name')
                 ->get();
 
@@ -97,8 +98,9 @@ class FinReportController extends Controller
      * Uses budget from budgets_tbl as contract price
      * Shows ONLY projects that have a contract record
      */
-    public function getProfitOverall()
+    public function getProfitOverall(Request $request)
     {
+        $year = $request->validate(['year' => ['nullable', 'integer', 'between:2000,2100']])['year'] ?? null;
         try {
             $results = DB::table('fin_project_contract_tbl as c')
                 ->join('project_tbl as p', 'p.project_id', '=', 'c.project_id')
@@ -128,7 +130,7 @@ class FinReportController extends Controller
                     DB::raw('(COALESCE(b.budget_amount, c.original_contract_price, 0) + COALESCE(c.additional_works_contract, 0)) - (COALESCE(c.original_payment_received, 0) + COALESCE(c.additional_works_payment, 0)) as accounts_receivable'),
                     DB::raw('(COALESCE(c.original_payment_received, 0) + COALESCE(c.additional_works_payment, 0)) - COALESCE(all_exp.total_expense, 0) as profit_loss_payment_basis'),
                     DB::raw('(COALESCE(b.budget_amount, c.original_contract_price, 0) + COALESCE(c.additional_works_contract, 0)) - COALESCE(all_exp.total_expense, 0) as profit_loss_contract_basis')
-                )
+                )->when($year, fn ($query) => $query->whereYear('p.start_date', $year))
                 ->orderBy('p.project_name')
                 ->get();
 

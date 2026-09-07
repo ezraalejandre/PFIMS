@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SystemSetting;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,7 +85,10 @@ class InventoryTransactionController extends Controller
                     'item_id' => (int) $item->item_id,
                     'item_name' => $item->item_name,
                     'old_stock' => (float) $item->current_stock,
-                    'reorder_level' => (float) ($item->reorder_level ?? 0),
+                    'reorder_level' => max(
+                        (float) ($item->reorder_level ?? 0),
+                        (float) SystemSetting::value('inventory_reorder_threshold', 5)
+                    ),
                 ];
             });
         } catch (\Throwable $e) {

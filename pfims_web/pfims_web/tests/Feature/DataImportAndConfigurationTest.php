@@ -97,6 +97,7 @@ class DataImportAndConfigurationTest extends TestCase
         ])->assertStatus(409);
 
         $this->actingAs($this->user('operations'))->getJson('/api/config/units')->assertForbidden();
+        $this->actingAs($admin)->getJson('/api/config/suppliers')->assertNotFound();
     }
 
     public function test_direct_finance_expenses_require_project_and_cost_component(): void

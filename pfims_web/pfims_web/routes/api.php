@@ -20,6 +20,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SystemSettingsController;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,9 @@ Route::middleware(['web', 'auth'])->group(function () {
                 ->get()
         );
     });
+
+    Route::get('/settings', [SystemSettingsController::class, 'show']);
+    Route::put('/settings', [SystemSettingsController::class, 'update']);
 
     // ─── INVENTORY & SUPPLIER ROUTES ────────────────────────────────
     Route::get('/inventory', [InventoryController::class, 'index']);

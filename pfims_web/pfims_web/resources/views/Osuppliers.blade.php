@@ -152,7 +152,7 @@
     <main class="main-content">
 
         <div class="page-header">
-            <h1>ITEM SUPPLIERS</h1>
+            <h1>SUPPLIERS</h1>
             <button class="btn-add-supplier" onclick="openAddModal()">+ Add Supplier</button>
         </div>
 
@@ -163,14 +163,6 @@
         </div>
 
         <div id="supplierKpis" class="stats-grid-supplier"></div>
-
-        <div class="module-insights">
-            <section class="module-insight-card" aria-labelledby="supplierCoverageChartTitle">
-                <h3 id="supplierCoverageChartTitle">Inventory Items by Supplier</h3>
-                <p class="insight-caption">Top suppliers by number of items currently linked to them.</p>
-                <div id="supplierCoverageChart" class="insight-chart" role="img" aria-label="Inventory items by supplier"></div>
-            </section>
-        </div>
 
         <div class="table-wrapper">
             <table>
@@ -192,8 +184,8 @@
             <div class="rows-info">
                 Rows per page
                 <select id="supplierRowsPerPage" aria-label="Supplier rows per page" onchange="changeSupplierPageSize()">
-                    <option value="10">10</option>
-                    <option value="25" selected>25</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
                 </select>
@@ -359,7 +351,7 @@
                 // Global state
         let currentSupplierId = null;
         let suppliersData = [];
-        var supplierPageSize = 25;
+        var supplierPageSize = 10;
         var supplierCurrentPage = 1;
         var supplierFilteredData = [];
 
@@ -439,7 +431,8 @@
                     <td>${supplier.address}</td>
                     <td>${supplier.contact_number}</td>
                     <td style="text-align: center;">
-                    <button class="btn-edit" onclick="openViewModal(${supplier.supplier_id}, this)" title="View Details" aria-label="View supplier details"><img src="{{ asset('images/edit.jpg') }}" alt="View"></button>
+                    <button class="pfims-row-action" onclick="openViewModal(${supplier.supplier_id}, this)" title="View supplier" aria-label="View supplier"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
+                    <button class="pfims-row-action" onclick="openEditModal(${supplier.supplier_id})" title="Edit supplier" aria-label="Edit supplier"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -475,7 +468,7 @@
 
         function changeSupplierPageSize() {
             const select = document.getElementById('supplierRowsPerPage');
-            supplierPageSize = parseInt(select.value) || 25;
+            supplierPageSize = parseInt(select.value) || 10;
             renderSupplierPage(1);
         }
 
@@ -497,10 +490,13 @@
             const totalItems = filtered.reduce((sum, supplier) => sum + supplier.item_count, 0);
             const alerts = filtered.reduce((sum, supplier) => sum + supplier.low_stock_count, 0);
             document.getElementById('supplierKpis').innerHTML = [
-                ['Matching suppliers', filtered.length], ['Items supplied', totalItems], ['Low-stock item links', alerts]
-            ].map(([label, value]) => `<article class="stat-card-supplier"><small>${label}</small><strong>${value.toLocaleString()}</strong></article>`).join('');
+                ['Matching suppliers', filtered.length, 'Suppliers shown by the current filters'],
+                ['Items supplied', totalItems, 'Inventory items linked to matching suppliers'],
+                ['Low-stock item links', alerts, 'Linked items that need replenishment']
+            ].map(([label, value, info]) => `<article class="stat-card-supplier kpi-card"><small>${label}</small><strong>${value.toLocaleString()}</strong><span class="kpi-sub">${info}</span></article>`).join('');
             const top = [...filtered].sort((a,b) => b.item_count - a.item_count).slice(0,8); const max = Math.max(...top.map(item => item.item_count), 1);
             const chart = document.getElementById('supplierCoverageChart');
+            if (!chart) return;
             if (!top.length) {
                 chart.innerHTML = '<div class="insight-empty">No data matches the current filters.</div>';
                 return;
@@ -862,6 +858,7 @@
         });
     </script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
 
 </body>
 </html>

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\AutomaticModelRetraining;
 use App\Services\MLService;
+use App\Services\ProjectCostSnapshotService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Collection;
@@ -60,22 +62,22 @@ class MLImprovementTest extends TestCase
             ->assertSee('embedded-ml-dashboard', false)
             ->assertSee('css/centralized-predictive-analytics.css', false)
             ->assertSee('Predictive Analytics', false)
-            ->assertSee('DECISION SUPPORT', false)
+            ->assertDontSee('DECISION SUPPORT', false)
             ->assertSee('Project Cost Prediction', false)
+            ->assertSee('class="prediction-row"', false)
             ->assertSee('id="predictionProject"', false)
             ->assertDontSee('id="budget"', false)
             ->assertDontSee('id="statsGrid"', false)
-            ->assertSee('Model Accuracy (holdout)', false)
-            ->assertSee('id="retrainConfirmModal"', false)
-            ->assertSee('Retrain prediction model?', false)
+            ->assertDontSee('Model Accuracy (holdout)', false)
+            ->assertDontSee('id="retrainConfirmModal"', false)
+            ->assertDontSee('Retrain prediction model?', false)
             ->assertDontSee("confirm('Retraining", false)
-            ->assertSee('Prediction quality', false)
-            ->assertSee('Validation and governance', false);
+            ->assertSee('model-performance-card" hidden', false);
 
         $adminDashboard->assertSeeInOrder([
             'Project Cost Prediction',
             '30-Day Material Stock Projection',
-            'Budget Variance Analysis',
+            'Budget-Spending Comparison',
             'Model Performance',
         ]);
 
@@ -113,10 +115,14 @@ class MLImprovementTest extends TestCase
             ->assertJsonStructure([
                 'success', 'predicted_cost', 'formatted', 'variance', 'variance_percentage',
                 'status', 'risk_level', 'business_action', 'prediction_source', 'model_accuracy',
-                'model_accuracy_scope', 'warnings', 'input_features',
+                'model_accuracy_scope', 'warnings', 'input_features', 'prediction_usable',
+                'support_level', 'forecast_context', 'status_reason',
             ]);
 
         $this->assertSame('synthetic_fallback_model', $response->json('prediction_source'));
+        $this->assertFalse($response->json('prediction_usable'));
+        $this->assertSame('Insufficient evidence', $response->json('risk_level'));
+        $this->assertNotSame('On track', $response->json('status'));
         $this->assertIsString($response->json('business_action'));
         $this->assertNotEmpty($response->json('warnings'));
 
@@ -183,6 +189,150 @@ class MLImprovementTest extends TestCase
             ->assertJsonPath('input_features.fin_total_expense', 400000);
     }
 
+    public function test_snapshot_capture_is_append_only_and_uses_the_planned_schedule(): void
+    {
+        Carbon::setTestNow('2025-04-10 09:30:00.123456');
+        $projectId = $this->insertProject([
+            'project_name' => 'Genuine progress history',
+            'start_date' => '2025-01-01',
+            'estimated_end_date' => '2025-07-01',
+            'actual_end_date' => null,
+            'worker_count' => 12,
+            'completion_percentage' => 25,
+            'status' => 'In Progress',
+        ], 1000000, 0);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $projectId,
+            'fin_category_id' => 1,
+            'amount' => 120000,
+            'project_cost_component' => 'material',
+            'expense_date' => '2025-04-01',
+        ]);
+
+        $snapshots = new ProjectCostSnapshotService;
+        $this->assertTrue($snapshots->capture($projectId, 'first_observation'));
+
+        DB::table('project_tbl')->where('project_id', $projectId)->update([
+            'completion_percentage' => 40,
+            // A later actual completion date must never replace planned duration.
+            'actual_end_date' => '2025-10-01',
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $projectId,
+            'fin_category_id' => 2,
+            'amount' => 80000,
+            'project_cost_component' => 'labor',
+            'expense_date' => '2025-04-10',
+        ]);
+        Carbon::setTestNow('2025-04-10 15:45:00.654321');
+        $this->assertTrue($snapshots->capture($projectId, 'second_observation'));
+
+        $rows = DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)
+            ->orderBy('snapshot_id')->get();
+
+        $this->assertCount(2, $rows, 'Multiple genuine observations on one date must be appended, not overwritten.');
+        $this->assertSame('first_observation', $rows[0]->capture_reason);
+        $this->assertSame(25.0, (float) $rows[0]->completion_percentage);
+        $this->assertSame(120000.0, (float) $rows[0]->cumulative_total_expense);
+        $this->assertSame(120000.0, (float) $rows[0]->cumulative_material_expense);
+        $this->assertSame('second_observation', $rows[1]->capture_reason);
+        $this->assertSame(40.0, (float) $rows[1]->completion_percentage);
+        $this->assertSame(200000.0, (float) $rows[1]->cumulative_total_expense);
+        $this->assertSame(6, (int) $rows[0]->planned_duration_months);
+        $this->assertSame(6, (int) $rows[1]->planned_duration_months);
+        $this->assertNotSame($rows[0]->captured_at, $rows[1]->captured_at);
+    }
+
+    public function test_automatic_retraining_hook_captures_each_affected_project_before_coalescing_retraining(): void
+    {
+        $projectId = $this->insertProject([
+            'project_name' => 'Hooked Project',
+            'start_date' => '2026-01-01',
+            'estimated_end_date' => '2026-07-01',
+            'worker_count' => 8,
+            'completion_percentage' => 20,
+            'status' => 'On Track',
+        ], 500000, 0);
+
+        $service = app(AutomaticModelRetraining::class);
+        $service->afterDataChange([$projectId, $projectId]);
+
+        $this->assertSame(1, DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)->count());
+    }
+
+    public function test_completion_labels_only_existing_genuine_snapshots_without_inventing_history(): void
+    {
+        Carbon::setTestNow('2025-02-01 08:00:00');
+        $projectId = $this->insertProject([
+            'project_name' => 'Observed project',
+            'start_date' => '2025-01-01',
+            'estimated_end_date' => '2025-05-01',
+            'actual_end_date' => null,
+            'worker_count' => 8,
+            'completion_percentage' => 20,
+            'status' => 'In Progress',
+        ], 500000, 0);
+        $snapshots = new ProjectCostSnapshotService;
+        $this->assertTrue($snapshots->capture($projectId, 'progress_recorded'));
+
+        DB::table('project_tbl')->where('project_id', $projectId)->update([
+            'completion_percentage' => 100,
+            'status' => 'Completed',
+            'actual_end_date' => '2025-06-15',
+        ]);
+        DB::table('budgets_tbl')->where('project_id', $projectId)->update(['actual_amount' => 575000]);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $projectId,
+            'fin_category_id' => 1,
+            'amount' => 560000,
+            'project_cost_component' => 'labor',
+            'expense_date' => '2025-06-15',
+        ]);
+        Carbon::setTestNow('2025-06-16 10:00:00');
+        $this->assertTrue($snapshots->capture($projectId, 'project_completed'));
+
+        $rows = DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)
+            ->orderBy('snapshot_id')->get();
+
+        $this->assertCount(2, $rows, 'Completion may add the current observation but must not synthesize intermediate history.');
+        $this->assertSame(20.0, (float) $rows[0]->completion_percentage);
+        $this->assertSame(0.0, (float) $rows[0]->cumulative_total_expense);
+        $this->assertSame(560000.0, (float) $rows[0]->final_actual_cost, 'Authoritative expenses must win over stale budget actuals.');
+        $this->assertSame(560000.0, (float) $rows[1]->final_actual_cost);
+        $this->assertSame(560000.0, (float) $rows[1]->cumulative_material_expense, 'Category mapping must stay consistent with training even when the legacy component disagrees.');
+        $this->assertNotNull($rows[0]->finalized_at);
+        $this->assertNotNull($rows[1]->finalized_at);
+
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $projectId,
+            'fin_category_id' => 2,
+            'amount' => 40000,
+            'project_cost_component' => 'material',
+            'expense_date' => '2025-06-17',
+        ]);
+        Carbon::setTestNow('2025-06-17 12:00:00');
+        $this->assertTrue($snapshots->capture($projectId, 'closeout_corrected'));
+        $corrected = DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)
+            ->orderBy('snapshot_id')->get();
+        $this->assertCount(3, $corrected);
+        $this->assertSame([600000.0], $corrected->pluck('final_actual_cost')->map(fn ($cost) => (float) $cost)->unique()->values()->all());
+        $this->assertSame(0.0, (float) $corrected[0]->cumulative_total_expense, 'Relabeling must not rewrite the historical feature values.');
+        $this->assertSame(560000.0, (float) $corrected[1]->cumulative_total_expense);
+        $this->assertSame(600000.0, (float) $corrected[2]->cumulative_total_expense);
+
+        $unobservedProjectId = $this->insertProject([
+            'project_name' => 'Never observed before completion',
+            'start_date' => '2025-01-01',
+            'estimated_end_date' => '2025-05-01',
+            'actual_end_date' => '2025-06-01',
+            'worker_count' => 8,
+            'completion_percentage' => 100,
+            'status' => 'Completed',
+        ], 400000, 450000);
+        $this->assertTrue($snapshots->capture($unobservedProjectId, 'project_completed'));
+        $this->assertSame(1, DB::table('ml_project_cost_snapshots')->where('project_id', $unobservedProjectId)->count());
+    }
+
     public function test_training_uses_only_deduplicated_verified_completed_projects_and_holdout_metrics(): void
     {
         for ($index = 1; $index <= 12; $index++) {
@@ -221,9 +371,9 @@ class MLImprovementTest extends TestCase
         $this->assertFalse($metrics['uses_synthetic_data']);
         $this->assertSame(12, $metrics['real_samples_available']);
         $this->assertSame(12, $metrics['samples_trained']);
-        $this->assertContains($metrics['training_samples'], [8, 9]);
-        $this->assertContains($metrics['test_samples'], [3, 4]);
-        $this->assertContains($metrics['evaluation_method'], ['chronological_80_20_holdout', 'chronological_70_30_holdout']);
+        $this->assertSame(9, $metrics['training_samples']);
+        $this->assertSame(3, $metrics['test_samples']);
+        $this->assertSame('fixed_grouped_chronological_80_20_holdout', $metrics['evaluation_method']);
         $this->assertIsNumeric($metrics['accuracy']);
         $this->assertIsNumeric($metrics['mean_absolute_error']);
         $this->assertArrayHasKey('precision', $metrics);
@@ -231,10 +381,36 @@ class MLImprovementTest extends TestCase
         $this->assertArrayHasKey('f1_score', $metrics);
         $this->assertStringContainsString('5%', $metrics['classification_definition']);
         $this->assertSame('experimental', $metrics['sample_sufficiency']['level']);
-        $this->assertCount(14, $service->analyzeBudgetVariance());
+        $comparison = $service->analyzeBudgetVariance();
+        $this->assertCount(1, $comparison);
+        $this->assertSame('Active project', $comparison->first()->project_name);
 
         $service->predictProjectCost(999999999, 500, 90000, 20, 500000000, 300000000);
         $this->assertNotEmpty($service->getLastPredictionWarnings());
+    }
+
+    public function test_planning_training_uses_estimated_duration_and_excludes_progress_and_expense_inputs(): void
+    {
+        for ($index = 1; $index <= 10; $index++) {
+            $projectId = $this->insertCompletedProject($index);
+            DB::table('project_tbl')->where('project_id', $projectId)->update([
+                'start_date' => '2024-01-01',
+                'estimated_end_date' => '2024-07-01',
+                'actual_end_date' => '2025-01-01',
+            ]);
+        }
+
+        $service = (new \ReflectionClass(MLService::class))->newInstanceWithoutConstructor();
+        $cohort = $this->invokeProtected($service, 'selectTrainingCohort');
+
+        $this->assertSame('planning_only_baseline', $cohort['strategy']);
+        $this->assertSame(['budget', 'duration_months'], $cohort['feature_names']);
+        $this->assertSame([6.0], $cohort['records']->pluck('duration_months')->map(fn ($months) => (float) $months)->unique()->values()->all());
+        $this->assertNotEmpty($cohort['records']->pluck('fin_total_expense')->filter(fn ($amount) => (float) $amount > 0));
+        $this->assertSame([], array_values(array_intersect(
+            ['completion_percentage', 'material_cost', 'labor_cost', 'fin_total_expense'],
+            $cohort['feature_names']
+        )));
     }
 
     public function test_model_metadata_compares_splits_models_cv_and_gates_finance_features(): void
@@ -249,11 +425,11 @@ class MLImprovementTest extends TestCase
         $metadata = $service->getModelMetadata();
 
         $this->assertSame('least_squares_linear_regression', $metadata['model_type']);
-        $this->assertContains($metrics['evaluation_method'], ['chronological_80_20_holdout', 'chronological_70_30_holdout']);
-        $this->assertStringContainsString('mean_absolute_error', $metrics['split_selection']['selection_metric']);
-        $this->assertStringContainsString('MAPE', $metrics['split_selection']['scoring_rule']);
-        $this->assertEqualsCanonicalizing(
-            ['chronological_80_20_holdout', 'chronological_70_30_holdout'],
+        $this->assertSame('fixed_grouped_chronological_80_20_holdout', $metrics['evaluation_method']);
+        $this->assertSame('predeclared_not_selected_from_test_performance', $metrics['split_selection']['selection_metric']);
+        $this->assertStringContainsString('always', $metrics['split_selection']['scoring_rule']);
+        $this->assertSame(
+            ['fixed_grouped_chronological_80_20_holdout'],
             array_column($metrics['split_selection']['options'], 'method')
         );
 
@@ -261,14 +437,13 @@ class MLImprovementTest extends TestCase
         $this->assertSame(5, $metrics['cross_validation']['folds_run']);
         $this->assertIsNumeric($metrics['cross_validation']['average_mean_absolute_error']);
 
-        $this->assertNotEmpty($metrics['feature_set']['candidate_fin_feature_names']);
-        if ($metrics['feature_set']['included_fin_features'] === []) {
-            $this->assertLessThan(2, $metrics['feature_set']['mape_improvement_points']);
-            $this->assertSame('finance_features_rejected_below_significance_threshold', $metrics['feature_set']['decision']);
-        } else {
-            $this->assertGreaterThanOrEqual(2, $metrics['feature_set']['mape_improvement_points']);
-            $this->assertSame('finance_features_selected_significant_cross_validated_mape_improvement', $metrics['feature_set']['decision']);
-        }
+        $this->assertSame(['budget', 'duration_months'], $metrics['feature_set']['selected_feature_names']);
+        $this->assertSame([], $metrics['feature_set']['included_fin_features']);
+        $this->assertSame(
+            'planning_only_features_selected_until_snapshot_stage_coverage_is_sufficient',
+            $metrics['feature_set']['decision']
+        );
+        $this->assertFalse($metrics['snapshot_readiness']['eligible']);
 
         $this->assertSame('least_squares_linear_regression', $metrics['model_comparison']['production_model']);
         $this->assertArrayHasKey('support_vector_regression_rbf', $metrics['model_comparison']['models']);
@@ -288,6 +463,107 @@ class MLImprovementTest extends TestCase
         $this->assertContains('fin_expense_category_tbl.category_code', $metrics['data_capture_policy']['required_fields']);
         $this->assertSame('ml:retrain', $metrics['retraining_policy']['scheduled_command']);
         $this->assertArrayHasKey('Critical risk', $metrics['risk_business_actions']);
+    }
+
+    public function test_snapshot_training_is_stage_aware_targets_remaining_cost_and_keeps_projects_out_of_both_partitions(): void
+    {
+        $projectIds = [];
+        for ($index = 1; $index <= 10; $index++) {
+            $projectIds[] = $this->insertCompletedProject($index, withFinanceBaseline: false);
+        }
+
+        foreach ($projectIds as $index => $projectId) {
+            $finalCost = 200000 + ($index * 10000);
+            $finalizedAt = Carbon::create(2025, 1, 1)->addDays($index);
+            foreach ([10 => 20000, 50 => 90000, 90 => 170000] as $completion => $spent) {
+                DB::table('ml_project_cost_snapshots')->insert([
+                    'project_id' => $projectId,
+                    'captured_at' => $finalizedAt->copy()->subDays(100 - $completion),
+                    'capture_reason' => 'progress_recorded',
+                    'planned_budget' => $finalCost * 0.95,
+                    'planned_duration_months' => 8,
+                    'worker_count' => 10,
+                    'completion_percentage' => $completion,
+                    'phase' => null,
+                    'elapsed_duration_months' => $completion / 10,
+                    'finance_as_of_date' => $finalizedAt->copy()->subDays(100 - $completion)->toDateString(),
+                    'cumulative_total_expense' => $spent,
+                    'cumulative_material_expense' => $spent * 0.6,
+                    'cumulative_labor_expense' => $spent * 0.3,
+                    'cumulative_equipment_expense' => $spent * 0.1,
+                    'cumulative_other_expense' => 0,
+                    'final_actual_cost' => $finalCost,
+                    'finalized_at' => $finalizedAt,
+                    'data_source' => 'operational',
+                ]);
+            }
+        }
+
+        $service = (new \ReflectionClass(MLService::class))->newInstanceWithoutConstructor();
+        $cohort = $this->invokeProtected($service, 'selectTrainingCohort');
+
+        $this->assertSame('progress_snapshot_model', $cohort['strategy']);
+        $this->assertTrue($cohort['snapshot_readiness']['eligible']);
+        $this->assertSame(['early' => 10, 'middle' => 10, 'late' => 10], $cohort['snapshot_readiness']['projects_by_stage']);
+        $this->assertSame(30, $cohort['records']->count());
+        $earlyFirstProject = $cohort['records']->first(fn ($row) => (int) $row->project_id === $projectIds[0] && (float) $row->completion_percentage === 10.0);
+        $lateFirstProject = $cohort['records']->first(fn ($row) => (int) $row->project_id === $projectIds[0] && (float) $row->completion_percentage === 90.0);
+        $this->assertSame(180000.0, (float) $earlyFirstProject->actual_cost);
+        $this->assertSame(30000.0, (float) $lateFirstProject->actual_cost);
+
+        $split = $this->invokeProtected($service, 'selectChronologicalSplit', $cohort['records'], $cohort['feature_names']);
+        $trainingProjectIds = $split['training_data']->pluck('project_id')->map(fn ($id) => (int) $id)->unique()->values();
+        $testProjectIds = $split['test_data']->pluck('project_id')->map(fn ($id) => (int) $id)->unique()->values();
+        $chronologicalProjectIds = DB::table('project_tbl')->whereIn('project_id', $projectIds)
+            ->orderBy('actual_end_date')->orderBy('project_id')->pluck('project_id')->map(fn ($id) => (int) $id)->all();
+        $this->assertSame([], $trainingProjectIds->intersect($testProjectIds)->all());
+        $this->assertSame(array_slice($chronologicalProjectIds, 0, 8), $trainingProjectIds->all());
+        $this->assertSame(array_slice($chronologicalProjectIds, 8, 2), $testProjectIds->all());
+        $this->assertLessThanOrEqual(
+            $split['test_data']->min('completed_at'),
+            $split['training_data']->max('completed_at'),
+            'Every held-out project must be chronologically newer than every training project.'
+        );
+
+        $trained = new MLService($this->modelPath);
+        $metadata = $trained->getModelMetadata();
+        $this->assertSame('progress_snapshot_model', $metadata['prediction_strategy']);
+        $this->assertSame('remaining_cost_then_add_recorded_spend', $metadata['prediction_target']);
+        $prediction = $trained->predictProjectCost(190000, 8, 10, 10, 12000, 6000, 20000, 12000, 6000, 2000, 0);
+        $this->assertGreaterThanOrEqual(20000, $prediction);
+        $this->assertSame('real_trained_model', $trained->getLastPredictionSource());
+        $this->assertArrayHasKey('prediction_usable', $trained->getLastPredictionSupport());
+        $this->assertSame([], glob($this->modelPath.'.candidate.*') ?: []);
+        $this->assertSame([], glob($this->modelPath.'.backup.*') ?: []);
+    }
+
+    public function test_company_inspired_sample_projects_train_with_explicit_non_company_provenance(): void
+    {
+        for ($index = 1; $index <= 12; $index++) {
+            $projectId = $this->insertCompletedProject($index);
+            DB::table('project_tbl')->where('project_id', $projectId)->update([
+                'data_source' => 'company_inspired_sample',
+            ]);
+        }
+
+        $service = new MLService($this->modelPath);
+        $metrics = $service->getModelMetrics();
+
+        $this->assertSame('sample_trained_model', $metrics['model_source']);
+        $this->assertTrue($metrics['uses_synthetic_data']);
+        $this->assertSame(0, $metrics['real_samples_available']);
+        $this->assertSame(12, $metrics['sample_samples_available']);
+        $this->assertSame(12, $metrics['samples_trained']);
+        $this->assertIsNumeric($metrics['accuracy']);
+        $this->assertStringContainsString('sample evaluation', $metrics['metric_scope']);
+        $this->assertStringContainsString('not company-validated accuracy', $metrics['interpretation']);
+        $this->assertNotEmpty($metrics['warnings']);
+
+        $service->predictProjectCost(100000, 6, 10, 100, 60000, 30000);
+        $this->assertStringContainsString(
+            'company-inspired sample dataset',
+            implode(' ', $service->getLastPredictionWarnings())
+        );
     }
 
     public function test_retrain_console_command_and_schedule_are_registered(): void
@@ -340,6 +616,7 @@ class MLImprovementTest extends TestCase
         $projectId = $this->insertProject([
             'project_name' => 'Finance Category Source',
             'start_date' => '2024-01-01',
+            'estimated_end_date' => '2024-06-01',
             'actual_end_date' => '2024-06-01',
             'worker_count' => 12,
             'completion_percentage' => 100,
@@ -405,6 +682,7 @@ class MLImprovementTest extends TestCase
             $this->insertProject([
                 'project_name' => "Cohort {$index} - Site {$index}",
                 'start_date' => $completedAt->copy()->subMonth()->toDateString(),
+                'estimated_end_date' => $completedAt->toDateString(),
                 'actual_end_date' => $completedAt->toDateString(),
                 'worker_count' => 10,
                 'completion_percentage' => 100,
@@ -428,6 +706,7 @@ class MLImprovementTest extends TestCase
             $this->insertProject([
                 'project_name' => $projectName,
                 'start_date' => $completedAt->copy()->subMonth()->toDateString(),
+                'estimated_end_date' => $completedAt->toDateString(),
                 'actual_end_date' => $completedAt->toDateString(),
                 'worker_count' => 10,
                 'completion_percentage' => 100,
@@ -504,6 +783,7 @@ class MLImprovementTest extends TestCase
         $projectId = $this->insertProject([
             'project_name' => "Completed {$index}",
             'start_date' => $start->toDateString(),
+            'estimated_end_date' => $start->copy()->addMonths($duration)->toDateString(),
             'actual_end_date' => $start->copy()->addMonths($duration)->addDays($index)->toDateString(),
             'worker_count' => 4 + ($index * 2) + ($index % 4),
             'completion_percentage' => 100,
@@ -580,12 +860,15 @@ class MLImprovementTest extends TestCase
     /** @return Collection<int, object> */
     protected function trainingData(MLService $service): Collection
     {
-        $method = new ReflectionMethod($service, 'getTrainingData');
-
         /** @var Collection<int, object> $records */
-        $records = $method->invoke($service);
+        $records = $this->invokeProtected($service, 'getTrainingData');
 
         return $records;
+    }
+
+    protected function invokeProtected(object $object, string $method, mixed ...$arguments): mixed
+    {
+        return (new ReflectionMethod($object, $method))->invoke($object, ...$arguments);
     }
 
     protected function insertProject(array $project, float $budget, float $actual): int
@@ -631,7 +914,9 @@ class MLImprovementTest extends TestCase
             $table->date('actual_end_date')->nullable();
             $table->integer('worker_count')->nullable();
             $table->decimal('completion_percentage', 5, 2)->nullable();
+            $table->string('phase')->nullable();
             $table->string('status')->nullable();
+            $table->string('data_source', 64)->default('operational');
         });
         Schema::create('budgets_tbl', function (Blueprint $table) {
             $table->increments('budget_id');
@@ -659,6 +944,27 @@ class MLImprovementTest extends TestCase
             $table->decimal('amount', 12, 2);
             $table->string('project_cost_component')->nullable();
             $table->date('expense_date');
+        });
+        Schema::create('ml_project_cost_snapshots', function (Blueprint $table) {
+            $table->bigIncrements('snapshot_id');
+            $table->unsignedInteger('project_id');
+            $table->dateTime('captured_at', 6);
+            $table->string('capture_reason', 32);
+            $table->decimal('planned_budget', 14, 2);
+            $table->unsignedInteger('planned_duration_months');
+            $table->unsignedInteger('worker_count');
+            $table->decimal('completion_percentage', 5, 2);
+            $table->string('phase')->nullable();
+            $table->decimal('elapsed_duration_months', 8, 2);
+            $table->date('finance_as_of_date')->nullable();
+            $table->decimal('cumulative_total_expense', 14, 2)->default(0);
+            $table->decimal('cumulative_material_expense', 14, 2)->default(0);
+            $table->decimal('cumulative_labor_expense', 14, 2)->default(0);
+            $table->decimal('cumulative_equipment_expense', 14, 2)->default(0);
+            $table->decimal('cumulative_other_expense', 14, 2)->default(0);
+            $table->decimal('final_actual_cost', 14, 2)->nullable();
+            $table->dateTime('finalized_at', 6)->nullable();
+            $table->string('data_source', 64)->default('operational');
         });
         Schema::create('inventory_item_tbl', function (Blueprint $table) {
             $table->increments('item_id');

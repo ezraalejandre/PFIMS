@@ -138,6 +138,39 @@ class MLController extends Controller
                 default => 'Critical risk',
             };
             $modelMetrics = $this->ml->getModelMetrics();
+            $predictionSource = $this->ml->getLastPredictionSource();
+            // Reliability is a service-owned decision. Missing/invalid support metadata fails closed.
+            $support = method_exists($this->ml, 'getLastPredictionSupport')
+                ? $this->ml->getLastPredictionSupport()
+                : [];
+            $predictionUsable = is_array($support) && ($support['prediction_usable'] ?? false) === true;
+            $supportLevel = is_array($support) && is_string($support['support_level'] ?? null)
+                ? $support['support_level'] : 'insufficient_evidence';
+            $forecastContext = is_array($support) && is_string($support['forecast_context'] ?? null)
+                ? $support['forecast_context'] : ($selectedProject === null ? 'planning_estimate' : 'ongoing_project_snapshot');
+            $statusReason = is_array($support) && is_string($support['status_reason'] ?? null)
+                ? $support['status_reason'] : match ($predictionSource) {
+                    'synthetic_fallback_model' => 'Experimental estimate only: insufficient verified completed-project data is available for a company-validated model.',
+                    'sample_trained_model' => 'Experimental estimate only: the model uses company-inspired sample data, not validated company performance.',
+                    'rule_based_fallback' => 'Unsupported estimate: the trained estimator was unavailable and a rule-based fallback formula was used.',
+                    'clamped_prediction' => 'Unsupported estimate: the prediction was clamped to a safety bound and is not validated for decision use.',
+                    default => 'Insufficient evidence: this estimate is not supported by a validated production model.',
+                };
+            $contextExplanation = $forecastContext === 'planning_estimate'
+                ? 'This is a planning estimate based on manually supplied inputs.'
+                : 'This is an ongoing-project snapshot based on current project and finance records; it is not a completed-project outcome.';
+            if (! $predictionUsable && (! is_array($support) || ! isset($support['status_reason']))) {
+                $statusReason = $contextExplanation.' '.$statusReason;
+            }
+            if (! $predictionUsable) {
+                $riskLevel = 'Insufficient evidence';
+            }
+            $businessAction = $predictionUsable
+                ? $this->ml->businessActionForRiskLevel($riskLevel)
+                : 'Do not treat this estimate as evidence that the project is on track. Verify current costs, schedule, and remaining work with the project team.';
+            $status = $predictionUsable
+                ? ($variance > 0 ? 'Warning: Predicted cost exceeds budget' : 'On track')
+                : 'Experimental estimate - insufficient evidence';
 
             return response()->json([
                 'success' => true,
@@ -145,10 +178,14 @@ class MLController extends Controller
                 'formatted' => '₱'.number_format($prediction, 2),
                 'variance' => round($variance, 2),
                 'variance_percentage' => round($variancePercentage, 2),
-                'status' => $variance > 0 ? 'Warning: Predicted cost exceeds budget' : 'On track',
+                'status' => $status,
                 'risk_level' => $riskLevel,
-                'business_action' => $this->ml->businessActionForRiskLevel($riskLevel),
-                'prediction_source' => $this->ml->getLastPredictionSource(),
+                'business_action' => $businessAction,
+                'prediction_source' => $predictionSource,
+                'prediction_usable' => $predictionUsable,
+                'support_level' => $supportLevel,
+                'forecast_context' => $forecastContext,
+                'status_reason' => $statusReason,
                 'model_accuracy' => $modelMetrics['accuracy'] ?? null,
                 'model_accuracy_scope' => $modelMetrics['metric_scope'] ?? 'unavailable',
                 'warnings' => $this->ml->getLastPredictionWarnings(),
@@ -255,17 +292,21 @@ class MLController extends Controller
     public function budgetVariance()
     {
         try {
-            $analysis = $this->ml->analyzeBudgetVariance();
+            $analysis = $this->ml->analyzeBudgetVariance()
+                ->filter(function ($row) {
+                    return strtolower(trim((string) ($row->status ?? ''))) !== 'completed';
+                })
+                ->values();
 
             return response()->json([
                 'success' => true,
                 'data' => $analysis,
-                'message' => 'Budget variance analysis completed',
+                'message' => 'Budget and spending comparison completed',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to analyze budget variance: '.$e->getMessage(),
+                'message' => 'Failed to compare budget and spending: '.$e->getMessage(),
             ], 500);
         }
     }

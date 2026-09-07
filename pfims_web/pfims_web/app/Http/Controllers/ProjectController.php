@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SystemSetting;
+use App\Services\AutomaticModelRetraining;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,10 +17,14 @@ class ProjectController extends Controller
 
     private const STATUSES = ['Pending', 'On Track', 'At Risk', 'Delayed', 'Completed'];
 
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(
+        private NotificationService $notifications,
+        private AutomaticModelRetraining $modelRetraining,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
+        $this->flagProjectsNearDeadline();
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:150'],
             'status' => ['nullable', 'in:'.implode(',', self::STATUSES)],
@@ -67,6 +73,7 @@ class ProjectController extends Controller
 
     public function list(): JsonResponse
     {
+        $this->flagProjectsNearDeadline();
         return response()->json(
             DB::table('project_tbl')
                 ->select('project_id', 'project_name', 'client_name', 'project_manager', 'start_date',
@@ -110,6 +117,8 @@ class ProjectController extends Controller
 
             return $projectId;
         });
+
+        $this->modelRetraining->afterDataChange([(int) $projectId]);
 
         return response()->json($this->findPresented($projectId), 201);
     }
@@ -163,6 +172,7 @@ class ProjectController extends Controller
         if ($newStatus !== $oldStatus) {
             $this->notifyStatusChange($project, $newStatus);
         }
+        $this->modelRetraining->afterDataChange([(int) $id]);
 
         return response()->json($project);
     }
@@ -280,5 +290,17 @@ class ProjectController extends Controller
             type: $type[0], kind: $type[2], filter: 'alerts',
             referenceType: 'project', referenceId: (int) $project->project_id,
         );
+    }
+
+    private function flagProjectsNearDeadline(): void
+    {
+        $leadDays = max(0, min(365, (int) SystemSetting::value('project_at_risk_days_before_end_date', 7)));
+
+        DB::table('project_tbl')
+            ->whereNotNull('estimated_end_date')
+            ->where('status', '!=', 'Completed')
+            ->whereDate('estimated_end_date', '>=', now()->toDateString())
+            ->whereDate('estimated_end_date', '<=', now()->addDays($leadDays)->toDateString())
+            ->update(['status' => 'At Risk']);
     }
 }

@@ -427,7 +427,7 @@
 
         <!-- Page Header -->
         <div class="page-header">
-            <h1>INVENTORY RECORDS</h1>
+            <h1>INVENTORY</h1>
             <div class="btn-group">
                 <button class="btn-add-transaction" onclick="openPfimsImport()">Import CSV/XLSX</button>
                 <button class="btn-add-item" onclick="openAddItemModal()">+ Add Item</button>
@@ -464,30 +464,22 @@
             </div>
 
             <!-- Stats Cards -->
-            <div class="stats-grid-inv">
+            <div class="stats-grid-inv" aria-label="Inventory stock KPIs">
                 <div class="stat-card-inv">
                     <div class="stat-label" id="totalItemsLabel">Total Items</div>
                     <div class="stat-value" id="totalItemsCount">0</div>
-                    <div class="stat-sub" id="totalItemsSub">Across all transactions</div>
+                    <div class="stat-sub" id="totalItemsSub">Matching current item filters</div>
                 </div>
                 <div class="stat-card-inv">
-                    <div class="stat-label" id="lowStockLabel">Low Stock Items</div>
+                    <div class="stat-label" id="lowStockLabel">Low Stock</div>
                     <div class="stat-value" id="lowStockCount">0</div>
-                    <div class="stat-sub" id="lowStockSub">Items for restocking</div>
+                    <div class="stat-sub" id="lowStockSub">At or below reorder level</div>
                 </div>
                 <div class="stat-card-inv">
-                    <div class="stat-label" id="categoriesLabel">Categories</div>
+                    <div class="stat-label" id="categoriesLabel">Out of Stock</div>
                     <div class="stat-value" id="categoriesCount">0</div>
-                    <div class="stat-sub" id="categoriesSub">Item categories</div>
+                    <div class="stat-sub" id="categoriesSub">No stock remaining</div>
                 </div>
-            </div>
-
-            <div class="module-insights">
-                <section class="module-insight-card" aria-labelledby="inventoryStockChartTitle">
-                    <h3 id="inventoryStockChartTitle">Items by Stock State</h3>
-                    <p class="insight-caption">Uses each item's configured reorder level and the current item filters.</p>
-                    <div id="inventoryStockChart" class="insight-chart" role="img" aria-label="Filtered inventory items by stock state"></div>
-                </section>
             </div>
 
             <!-- Items Table -->
@@ -516,7 +508,7 @@
                     Rows per page
                     <select id="itemsRowsPerPage" aria-label="Inventory item rows per page" onchange="changeItemsPageSize()">
                         <option value="10">10</option>
-                        <option value="25" selected>25</option>
+                        <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
@@ -540,18 +532,10 @@
                 </select>
                 <select id="transactionCategoryFilter" onchange="filterTable()"><option value="all">All Categories</option></select>
                 <select id="transactionProjectFilter" onchange="filterTable()"><option value="all">All Projects</option></select>
-                <label class="filter-date-label">From <input type="date" class="date-input" id="startDate" value="{{ date('Y-m-d', strtotime('-30 days')) }}" onchange="filterTable()"></label>
-                <label class="filter-date-label">To <input type="date" class="date-input" id="endDate" value="{{ date('Y-m-d') }}" onchange="filterTable()"></label>
+                <label class="filter-date-label">From <input type="date" class="date-input" id="startDate" onchange="filterTable()"></label>
+                <label class="filter-date-label">To <input type="date" class="date-input" id="endDate" onchange="filterTable()"></label>
                 <button type="button" class="btn-clear-filters" onclick="clearTransactionFilters()">X</button>
             </div>
-            <div class="module-insights">
-                <section class="module-insight-card" aria-labelledby="inventoryMovementChartTitle">
-                    <h3 id="inventoryMovementChartTitle">Stock Movement by Date</h3>
-                    <p class="insight-caption">Inbound and outbound quantities for the latest 10 matching transaction dates.</p>
-                    <div id="inventoryMovementChart" class="insight-chart" role="img" aria-label="Filtered stock movement quantities by date"></div>
-                </section>
-            </div>
-
             <!-- Transactions Table -->
             <div class="table-wrapper">
                 <table>
@@ -582,7 +566,7 @@
                     Rows per page
                     <select id="transactionRowsPerPage" aria-label="Inventory transaction rows per page" onchange="changeTransactionPageSize()">
                         <option value="10">10</option>
-                        <option value="25" selected>25</option>
+                        <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
@@ -1096,13 +1080,13 @@
         var inventoryItems = [];
         var allTransactions = [];
         var filteredData = [];
-        var inventoryPageSize = 25;
+        var inventoryPageSize = 10;
         var inventoryCurrentPage = 1;
         
         // Items tab variables
         var itemsData = [];
         var itemsFilteredData = [];
-        var itemsPageSize = 25;
+        var itemsPageSize = 10;
         var itemsCurrentPage = 1;
         var currentExpenseRow = null;
         var currentItemDetailRow = null;
@@ -1660,9 +1644,8 @@
                     <td>${stock}</td>
                     <td><span class="status-badge ${statusClass}"><span class="dot"></span> ${statusText}</span></td>
                     <td style="text-align: center;">
-                        <button onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr'));" title="View Details" style="background: transparent; border: none; cursor: pointer; padding: 4px 8px; border-radius: 4px;">
-                            <img src="{{ asset('images/edit.jpg') }}" alt="View" style="width: 18px; height: 18px; opacity: 0.7; transition: 0.2s;">
-                        </button>
+                        <button class="pfims-row-action" onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr'));" title="View item" aria-label="View item"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
+                        <button class="pfims-row-action" onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr')); setTimeout(openItemEditModal, 0);" title="Edit item" aria-label="Edit item"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1721,7 +1704,7 @@
 
         function changeItemsPageSize() {
             var select = document.getElementById('itemsRowsPerPage');
-            itemsPageSize = parseInt(select.value) || 25;
+            itemsPageSize = parseInt(select.value) || 10;
             itemsCurrentPage = 1;
             renderItemsPage(1);
         }
@@ -1826,9 +1809,8 @@
                     <td>${proofFile}</td>
                     <td style="text-align: center;">
                         <div class="action-cell" style="display: flex; gap: 4px; justify-content: center; align-items: center;">
-                            <button onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" title="View/Edit" style="background: transparent; border: none; cursor: pointer; padding: 4px 6px; border-radius: 4px;">
-                                <img src="{{ asset('images/edit.jpg') }}" alt="Edit" style="width: 18px; height: 18px; opacity: 0.7; transition: 0.2s;" onmouseover="this.querySelector('img').style.opacity='1'" onmouseout="this.querySelector('img').style.opacity='0.7'">
-                            </button>
+                            <button class="pfims-row-action" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" title="View transaction" aria-label="View transaction"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
+                            <button class="pfims-row-action" onclick="event.stopPropagation(); openViewModal(this.closest('tr')); setTimeout(enableEditMode, 0);" title="Edit transaction" aria-label="Edit transaction"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
                         </div>
                     </td>
                 `;
@@ -1888,7 +1870,7 @@
 
         function changeTransactionPageSize() {
             var select = document.getElementById('transactionRowsPerPage');
-            inventoryPageSize = parseInt(select.value) || 25;
+            inventoryPageSize = parseInt(select.value) || 10;
             inventoryCurrentPage = 1;
             renderTransactionPage(1);
         }
@@ -1935,8 +1917,8 @@
             document.getElementById('typeFilter').value = 'all';
             document.getElementById('transactionCategoryFilter').value = 'all';
             document.getElementById('transactionProjectFilter').value = 'all';
-            document.getElementById('startDate').value = '{{ date("Y-m-d", strtotime("-30 days")) }}';
-            document.getElementById('endDate').value = '{{ date("Y-m-d") }}';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
             filterTable();
         }
 
@@ -2814,7 +2796,9 @@
     </script>
 
         @include('partials.data-import', ['importModule' => 'inventory'])
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="{{ asset('js/inventory-analytics.js') }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
 </body>
 </html>

@@ -32,13 +32,15 @@
         .status-chart-track { height:7px; border-radius:999px; background:#eef2f7; overflow:hidden; }
         .status-chart-bar { height:100%; min-width:0; border-radius:999px; transition:width .25s ease; }
         .status-chart-empty { color:#6b7280; font-size:.85rem; }
+        .project-pie-wrap { position:relative; height:260px; max-width:520px; margin:0 auto; }
         @media (max-width:1100px) { .project-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
         @media (max-width:640px) { .project-filter-panel { grid-template-columns:1fr; } }
     </style>
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
-<body class="projects-page">
+<body class="projects-page" data-project-view-icon="{{ asset('images/view.jpg') }}" data-project-edit-icon="{{ asset('images/edit.jpg') }}">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -139,40 +141,8 @@
     <main class="main-content">
 
         <div class="page-header-with-btn">
-            <h1>PROJECT TRACKING</h1>
+            <h1>PROJECTS</h1>
             <button class="btn-new-project" onclick="openModal()">+ New Project</button>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="stats-grid-proj">
-            <div class="stat-card-proj">
-                <div class="stat-info">
-                    <div class="stat-label">Active Projects</div>
-                    <div class="stat-value" id="activeProjectsCount">0</div>
-                    <div class="stat-sub" id="activeProjectsSub">Loading...</div>
-                </div>
-            </div>
-            <div class="stat-card-proj">
-                <div class="stat-info">
-                    <div class="stat-label">On Schedule</div>
-                    <div class="stat-value" id="onScheduleCount">0</div>
-                    <div class="stat-sub" id="onScheduleSub">0% of active</div>
-                </div>
-            </div>
-            <div class="stat-card-proj">
-                <div class="stat-info">
-                    <div class="stat-label">Delayed</div>
-                    <div class="stat-value" id="delayedCount">0</div>
-                    <div class="stat-sub" id="delayedSub">Needs attention</div>
-                </div>
-            </div>
-            <div class="stat-card-proj">
-                <div class="stat-info">
-                    <div class="stat-label">Avg Completion</div>
-                    <div class="stat-value" id="avgCompletion">0%</div>
-                    <div class="stat-sub" id="avgCompletionSub">Across all projects</div>
-                </div>
-            </div>
         </div>
 
         <div class="project-filter-panel" aria-label="Project filters">
@@ -193,11 +163,11 @@
             <button type="button" class="btn-clear-search" onclick="clearProjectSearch()">x</button>
         </div>
 
-        <div class="project-analytics">
-            <section class="project-chart-card" aria-labelledby="projectStatusChartTitle">
-                <h2 id="projectStatusChartTitle">Project status distribution <small id="projectChartScope" style="font-weight:400;color:#6b7280"></small></h2>
-                <div id="projectStatusChart" class="status-chart" role="img" aria-label="Filtered projects grouped by status"></div>
-            </section>
+        <!-- Stats Cards -->
+        <div class="stats-grid-proj kpis">
+            <article class="stat-card-proj kpi-card"><div class="stat-info"><div class="stat-label">Active Projects</div><div class="stat-value" id="activeProjectsCount">0</div><div class="stat-sub" id="activeProjectsSub">Loading...</div></div></article>
+            <article class="stat-card-proj kpi-card"><div class="stat-info"><div class="stat-label">On Schedule</div><div class="stat-value" id="onScheduleCount">0</div><div class="stat-sub" id="onScheduleSub">0% of active</div></div></article>
+            <article class="stat-card-proj kpi-card"><div class="stat-info"><div class="stat-label">Delayed</div><div class="stat-value" id="delayedCount">0</div><div class="stat-sub" id="delayedSub">Needs attention</div></div></article>
         </div>
 
         <!-- Table with Progress Bar -->
@@ -212,8 +182,9 @@
                         <th>Actual End Date</th>
                         <th>Duration</th>
                         <th>Phase</th>
-                        <th>Progress</th>
+                        <th>Overall Performance</th>
                         <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="projectTableBody"></tbody>
@@ -226,7 +197,7 @@
                 Rows per page
                 <select id="projectRowsPerPage" aria-label="Project rows per page" onchange="changeProjectPageSize()">
                     <option value="10">10</option>
-                    <option value="25" selected>25</option>
+                    <option value="25">25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
                 </select>
@@ -922,7 +893,7 @@ if (currentStep === 2) {
         }
 
         // ─── PAGINATION VARIABLES ───
-        var projectPageSize = 25;
+        var projectPageSize = 10;
         var projectCurrentPage = 1;
         var projectFilteredData = [];
 
@@ -1013,7 +984,7 @@ if (currentStep === 2) {
         // ─── CHANGE PROJECT PAGE SIZE ───
         function changeProjectPageSize() {
             var select = document.getElementById('projectRowsPerPage');
-            projectPageSize = parseInt(select.value) || 25;
+            projectPageSize = parseInt(select.value) || 10;
             projectCurrentPage = 1;
             renderProjectPage(1);
         }
@@ -1091,37 +1062,24 @@ if (currentStep === 2) {
         document.getElementById('delayedCount').textContent = delayed.length;
         document.getElementById('delayedSub').textContent = delayed.length > 0 ? 'Needs attention' : 'All projects on track';
         
-        document.getElementById('avgCompletion').textContent = avgProgress + '%';
-        document.getElementById('avgCompletionSub').textContent = 'Across ' + projects.length + ' filtered projects';
         renderStatusChart(projects);
         }
 
         function renderStatusChart(projects) {
             var chart = document.getElementById('projectStatusChart');
             var scope = document.getElementById('projectChartScope');
+            if (!chart || !scope) return;
             var statuses = [
                 { label: 'Pending', color: '#9aa5b1' }, { label: 'On Track', color: '#4f8b68' },
-                { label: 'At Risk', color: '#e19a45' }, { label: 'Delayed', color: '#c95c5c' },
-                { label: 'Completed', color: '#547896' }
+                { label: 'At Risk', color: '#e19a45' }, { label: 'Delayed', color: '#c95c5c' }
             ];
-            chart.innerHTML = '';
-            scope.textContent = '(' + projects.length + ' filtered)';
-            if (!projects.length) {
-                chart.innerHTML = '<div class="status-chart-empty">No chart data for the selected filters.</div>';
-                return;
-            }
-            statuses.forEach(function(item) {
-                var count = projects.filter(function(project) { return project.status === item.label; }).length;
-                var row = document.createElement('div');
-                row.className = 'status-chart-row';
-                var label = document.createElement('span'); label.textContent = item.label;
-                var track = document.createElement('div'); track.className = 'status-chart-track';
-                var bar = document.createElement('div'); bar.className = 'status-chart-bar';
-                bar.style.background = item.color; bar.style.width = ((count / projects.length) * 100) + '%';
-                track.appendChild(bar);
-                var value = document.createElement('strong'); value.textContent = count;
-                row.append(label, track, value); chart.appendChild(row);
-            });
+            var active = projects.filter(function(project) { return project.status !== 'Completed'; });
+            scope.textContent = '(' + active.length + ' active)';
+            if (window.projectStatusPie) window.projectStatusPie.destroy();
+            window.projectStatusPie = new Chart(chart, { type: 'pie', data: {
+                labels: statuses.map(function(item) { return item.label; }),
+                datasets: [{ data: statuses.map(function(item) { return active.filter(function(project) { return project.status === item.label; }).length; }), backgroundColor: statuses.map(function(item) { return item.color; }), hoverOffset: 12 }]
+            }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' }, tooltip: { enabled: true } } } });
         }
 
                 // ─── FETCH PROJECTS (modified) ───
@@ -1170,6 +1128,7 @@ if (currentStep === 2) {
                             targetProject.startDate,
                             targetProject.endDate
                         );
+                        if (params.get('edit') === '1') setTimeout(openEditProjectModal, 0);
                     }
                 }
             })
@@ -1206,11 +1165,11 @@ if (currentStep === 2) {
             row.dataset.status = project.status || 'On Track';
             row.dataset.budget = project.budget || '';
 
-            row.onclick = function() {
+            function openProjectFromAction(editMode) {
                 if (isOpeningProjectModal) return;
                 isOpeningProjectModal = true;
                 openUpdateModal(
-                    this,
+                    row,
                     project.id,
                     project.name,
                     project.client,
@@ -1227,8 +1186,11 @@ if (currentStep === 2) {
                     project.startDate,
                     project.endDate
                 );
+                if (editMode) setTimeout(openEditProjectModal, 0);
                 setTimeout(function() { isOpeningProjectModal = false; }, 400);
-            };
+            }
+            row.onclick = null;
+            row.style.cursor = 'default';
 
             var progress = Math.min(100, Math.max(0, parseFloat(project.progress) || 0));
             row.innerHTML = '' +
@@ -1244,7 +1206,11 @@ if (currentStep === 2) {
                         '<div class="mini-bar"><div class="fill" style="width:' + progress + '%;"></div></div>' +
                     '</div>' +
                 '</td>' +
-                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'On Track' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>';
+                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'On Track' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>' +
+                '<td class="action-cell"><button type="button" class="pfims-row-action" title="View project" aria-label="View project"><img src="' + escapeHtml(document.body.dataset.projectViewIcon) + '" alt=""></button><button type="button" class="pfims-row-action" title="Edit project" aria-label="Edit project"><img src="' + escapeHtml(document.body.dataset.projectEditIcon) + '" alt=""></button></td>';
+            var actionButtons = row.querySelectorAll('.pfims-row-action');
+            actionButtons[0].onclick = function(event) { event.stopPropagation(); openProjectFromAction(false); };
+            actionButtons[1].onclick = function(event) { event.stopPropagation(); openProjectFromAction(true); };
         }
 
         function createProjectRow(project) {
@@ -1707,6 +1673,7 @@ if (actualEnd && new Date(actualEnd) < new Date(start)) {
         }
     </script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
 
 </body>
 </html>

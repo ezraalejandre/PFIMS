@@ -1,0 +1,40 @@
+# EVC workbook source analysis
+
+Read-only review of the three supplied workbooks. Amounts are Philippine pesos unless a workbook says otherwise. Blank or formula-error cells are not treated as facts.
+
+## Project names and localities
+
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `STRUCTURAL!A2:A5`: the inventory is for **LIPA MAIN**, titled “Supply Inventory as of December 31, 2024,” with category `STRUCTURAL`.
+- `SAMPLE-REPORT.xlsx`, `B. HOE KOMATSU!A6` and `B. HOE SUMITOMO!A6`: equipment activity identifies **M. NA KAHOY & BATANGAS** and **TAAL & CAVINTI**. The same sheets list operating/rental sites including Malvar, Amparo, Penullar, Rosario, P. Garcia, Summit Point, and Taysan (`B. HOE KOMATSU!A14:A32` and rental-site labels in `K8:K16`). These are source locality names, not confirmed project addresses.
+- `SAMPLE-REPORT.xlsx`, `EXPOVRALL!A7:A30`: project/site labels include ILANG-ILANG, JASMINE, IRIS, B, LAVENDER, DAISY, C, D, E, LILY, MAGNOLIA, GUMAMELA, LOTUS, F, G, H, I, ROSAL, ROSES, J, SAMPAGITA, K, SANTAN, and SUNFLOWER. Most are coded names and have no locality field.
+
+## Project budget and cost scale
+
+- `SAMPLE-REPORT.xlsx`, `PROFIT!D8:M27`: most listed projects use a PHP 1,000,000 contract price, PHP 500,000 original payment, and project expense around PHP 515,500–637,710. Exceptions include payment of PHP 600,000–750,000 for SANTAN, JASMINE, and SAMPAGUITA (`G20`, `G23`, `G27`), and corresponding receivable/profit changes.
+- `SAMPLE-REPORT.xlsx`, `PROFIT!D28:M28`: total contract price is PHP 19,000,000, total payment PHP 10,500,000, project expense PHP 12,195,000, receivables PHP 8,500,000, and estimated profit/loss based on payment is -PHP 1,695,000. Contract-based estimated profit is PHP 6,805,000. These are workbook totals, not recommended targets.
+- `SAMPLE-REPORT.xlsx`, `OVERALLEXP!A7:K31`: overall project expense totals PHP 14,295,000, comprising construction supply PHP 6,823,600, salaries/wages PHP 4,332,720, permits/taxes/licenses PHP 369,000, transport PHP 61,200, utilities PHP 74,480, delivery PHP 88,000, other/construction bond PHP 483,000, and administrative expense PHP 2,063,000.
+- `SAMPLE-REPORT.xlsx`, `DIRECT EXP!A5:J12`: May 2026 direct-expense examples range from PHP 15,000 for ILANG-ILANG to PHP 30,000 for OFFICE; categories are construction supply, salaries/wages, permits/taxes/licenses, transport, utilities, delivery, and others.
+- `SAMPLE-REPORT.xlsx`, `CONST BOND!A5:C8`: two bond records are PHP 10,000 (AAAA, July 29 2024) and PHP 15,000 (BBBB, May 14 2025), total PHP 25,000. The names are sample labels.
+
+## Inventory specifications, units, prices, and supplier/brand evidence
+
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `STRUCTURAL!A7:E15`: gravel 8 at PHP 1,600 (description says per cubic), white sand 10 at PHP 1,500, S1 sand 8 cu.m. at PHP 1,250, cement 258 bags at PHP 173, tile adhesive 172 bags at PHP 250.80, skimcoat 5 bags at PHP 418, Boral 3 bags at PHP 803.60, and 9mm round steel bar 200 pcs at PHP 92.40.
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `ELECTRICAL!A4:E15`: Panasonic 1/2/3-gang plates (118/58/148 pcs at PHP 42.41), 1-way switches (29 pcs at PHP 48.77), outlets (70 pcs at PHP 52.30), and Royu wide plates (63/47/74 pcs at PHP 19.29). Panasonic and Royu are brand/manufacturer labels, not supplier names.
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `SANITARY FITTINGS!A6:E15`: Atlanta Pipe #2 (36 pcs at PHP 254.15), Pipe #4 (23 pcs at PHP 260.10), and Neltex S600 orange pipe rows including #2 (17 pcs at PHP 244.78), #3 (18 pcs at PHP 503.68), and #4 (19 pcs at PHP 671.25). Atlanta/Neltex are brands.
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `PAINTS AND CHEMICALS!A3:E12`: Davies Flat Latex 4 tins at PHP 2,242 and 32 liters at PHP 128; Semi Gloss 14 tins at PHP 2,480; QDE White 18 gallons at PHP 675 and 1 liter at PHP 230. Davies is a brand.
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `CONSUMABELS AND SMALL ITEMS!A4:E14`: welding rods include 85 unlabeled units at PHP 1,350, stainless rods 5 boxes at PHP 588 and 13 boxes at PHP 509.60, 3M #100 sandpaper 2.5 rolls at PHP 8,139.60, and Omega #60 sandpaper 158 pcs at PHP 10. 3M/Omega are brands.
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `ACCESSORIES!A3:E12`: Henry door hardware includes tubular locks (11 pcs at PHP 629.84; 19 pcs at PHP 598.34), Henry hinges (27 pcs at PHP 201.44; 5 pcs at PHP 358.94), and Stanley loose-pin hinges (106 pcs at PHP 80). Henry/Stanley are brands.
+- `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx`, `MODULAR!A4:G13`: particle board 72 pcs at PHP 1,657.10, warm-white PB 51 pcs at PHP 1,657.10, marine board 44 pcs at PHP 2,645.50, warm-white MDF 7 pcs at PHP 941.70, foot plinth 175 pcs at PHP 92, and end flange 6 pcs at PHP 35.20. Category subtotal shown at `G8` is PHP 326,817.20.
+- `INVENTORY-2.xlsx`, `INVENTORY!A1:E15`: dated December 31, 2025. Plain White Quartz is 3 sets / quantity 14.85 at computed unit cost PHP 3,360.89; Smokey White Quartz is 8 sets / quantity 39.6 at PHP 3,360.88; combined total `E6` is PHP 183,000.06. Hornitex ceiling panels are 150 pcs at PHP 290 each (two product rows), 7-type mouldings 100 pcs at PHP 125 each (two rows), subtotal `E12` PHP 112,000. Sistema suspension fittings are 100 pcs at PHP 71.20 and Rofen flange 20 pcs at PHP 104.80 (`A14:E15`). No supplier/vendor column or supplier names appear in either inventory workbook; retain brands as product attributes and synthesize supplier IDs separately if needed.
+
+## Finance categories, amounts, and timelines
+
+- `SAMPLE-REPORT.xlsx`, `SUMMARYEXP!A6:H12`: monthly expense timeline is December 2025 through May 2026. Categories include salaries/wages, employer SSS/PhilHealth, delivery, permits/taxes/licenses, rent, and staff-apartment rent. December entries are PHP 1,000,000 per shown category; January–April are generally PHP 500,000 per shown category. Treat these as source workbook values despite their unusual scale.
+- `SAMPLE-REPORT.xlsx`, `EXPOVRALL!A5:O6` and `ADMINEXP!A6:O12`: May 2026 categories include construction supply, salaries/wages, permits/taxes/licenses, transport, utilities, delivery, rent, stationery, depreciation, repair/maintenance, SSS/PhilHealth, and other. OFFICE May overall expense is PHP 63,000 (`EXPOVRALL!O6`); example administrative rows use salaries PHP 10,000, permits PHP 3,000, transport PHP 1,000, utilities PHP 10,000, rent PHP 10,000, depreciation PHP 10,000, repair PHP 9,500, SSS/PhilHealth PHP 3,000, and other PHP 5,000 (`ADMINEXP!B6:N6`).
+- `SAMPLE-REPORT.xlsx`, `CASHASSET!E6:J16`: cash balances are monthly December 2025–May 2026. Total cash asset is PHP 770,500 from December through April and PHP 859,000 in May.
+- `SAMPLE-REPORT.xlsx`, `B. HOE KOMATSU!A7:H34`: Komatsu PC56 is valued at PHP 860,000 (`A4`); cumulative equipment expense at `H34` is PHP 440,809, with gas/diesel PHP 107,205, operator payroll PHP 87,325, repair PHP 227,904, other PHP 10,375, delivery PHP 8,000, and transport PHP 0. Activity spans February 2025–April 2026 and names sites such as Malvar, Amparo, Penullar, Rosario, P. Garcia, Summit Point, and Taysan.
+- `SAMPLE-REPORT.xlsx`, `B. HOE SUMITOMO!A7:H32`: Sumitomo is valued at PHP 1,075,000 (`A4`); cumulative expense at `H32` is PHP 312,238.40, with gas/diesel PHP 117,235, operator payroll PHP 104,450, repair PHP 56,235, other PHP 21,756.40, delivery PHP 6,000, and transport PHP 6,562. Activity spans May 2024–April 2026.
+
+## Safe synthetic extrapolation boundary
+
+The workbooks do not provide a clean project master, confirmed localities for coded names, supplier identities, or a consistent historical series beginning in 2019. For a replacement dataset, use the facts above as calibration anchors, then explicitly label generated rows as synthetic: create projects from 2019 onward with 3–6 month start/end dates, vary contract values around the observed PHP 1,000,000 scale, generate monthly expense/payment records using the observed categories, and create enough repeated project-month/item observations for ML. Do not copy personal preparer/noted-by names from `CONST BOND!A10:A12`, `PROFIT!A30:A33`, or other signature cells into application data.

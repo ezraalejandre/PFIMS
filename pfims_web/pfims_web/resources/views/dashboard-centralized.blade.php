@@ -58,7 +58,9 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <link rel="stylesheet" href="{{ asset('css/centralized-predictive-analytics.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}" defer></script>
 </head>
 <body class="dashboard-page">
     <header class="top-header">
@@ -72,7 +74,7 @@
         <div class="right">
             <a href="{{ url($links['notifications']) }}">
                 <img src="{{ asset('images/notif.jpg') }}" alt="" aria-hidden="true">
-                <span>Notifications</span>
+                <span class="sr-only">Open alerts</span>
             </a>
             <a href="{{ url($links['profile']) }}">
                 <img class="profile-avatar" src="{{ asset('images/user.jpg') }}" alt="" aria-hidden="true">
@@ -120,33 +122,32 @@
     <main class="main-content">
         <section class="dashboard-page-header">
             <div class="dashboard-title-block">
-                <p class="eyebrow">BUSINESS OVERVIEW</p>
                 <h1>{{ strtoupper($portalTitle) }} DASHBOARD</h1>
-                <p class="page-description">Monitor project delivery, financial performance, and operational activity in one place.</p>
             </div>
             <div class="dashboard-heading-actions">
                 <div class="dashboard-clock" aria-label="Current Philippine date and time">
-                    <span class="clock-zone">PHILIPPINE STANDARD TIME</span>
                     <div class="clock-reading">
-                        <time id="dashboardTime" datetime="">--:--:-- --</time>
+                        <time id="dashboardTime" datetime="">--:--:-- -- PST</time>
                         <span id="dashboardDate">Loading date…</span>
                     </div>
                 </div>
-                <button id="refresh" class="btn-refresh btn-primary" type="button">
-                    <span aria-hidden="true">↻</span>
-                    Refresh data
-                </button>
             </div>
         </section>
 
-        @if(in_array($portal, ['admin', 'accounting'], true))
+        @if(in_array($portal, ['admin', 'accounting', 'operations'], true))
             <nav class="dashboard-tabs" aria-label="Dashboard sections" role="tablist">
                 <button class="dashboard-tab active" id="overviewTab" type="button" role="tab" aria-selected="true" aria-controls="overviewPanel" data-dashboard-tab="overviewPanel">
                     Business overview
                 </button>
-                <button class="dashboard-tab" id="predictionTab" type="button" role="tab" aria-selected="false" aria-controls="predictionPanel" data-dashboard-tab="predictionPanel">
-                    Predictive analytics
-                </button>
+                @if(in_array($portal, ['admin', 'accounting'], true))
+                    <button class="dashboard-tab" id="predictionTab" type="button" role="tab" aria-selected="false" aria-controls="predictionPanel" data-dashboard-tab="predictionPanel" data-analytics-section="costPredictionSection">Predictive analytics</button>
+                @endif
+                @if(in_array($portal, ['admin', 'operations'], true))
+                    <button class="dashboard-tab" type="button" role="tab" aria-selected="false" aria-controls="predictionPanel" data-dashboard-tab="predictionPanel" data-analytics-section="materialProjectionSection">Material projection</button>
+                @endif
+                @if(in_array($portal, ['admin', 'accounting'], true))
+                    <button class="dashboard-tab" type="button" role="tab" aria-selected="false" aria-controls="predictionPanel" data-dashboard-tab="predictionPanel" data-analytics-section="budgetComparisonSection">Budget-Spending Comparison</button>
+                @endif
             </nav>
         @endif
 
@@ -177,23 +178,20 @@
             <button id="clear" class="btn-secondary" type="button">Clear filters</button>
         </section>
 
+        <h2 class="dashboard-section-title">Projects Performance</h2>
+
         <section class="kpis" id="kpis" aria-label="Dashboard key performance indicators"></section>
 
         <section class="chart-grid" aria-label="Dashboard charts">
             <article class="panel chart-card">
                 <h2>Completion trend</h2>
                 <p>Average current completion of projects started in each month.</p>
-                <div class="chart" id="completionChart"></div>
-            </article>
-            <article class="panel chart-card">
-                <h2>Project status distribution</h2>
-                <p>Matching projects grouped by current status.</p>
-                <div class="chart" id="statusChart"></div>
+                <div class="chart"><canvas id="completionChart"></canvas></div>
             </article>
             <article class="panel chart-card budget-panel">
                 <h2>Budget vs recorded expenses</h2>
                 <p>Cumulative allocation and finance-ledger spending.</p>
-                <div class="chart" id="budgetChart"></div>
+                <div class="chart"><canvas id="budgetChart"></canvas></div>
             </article>
         </section>
 
@@ -231,7 +229,7 @@
                     Rows per page
                     <select id="pageSize" aria-label="Dashboard rows per page">
                         <option value="10">10</option>
-                        <option value="25" selected>25</option>
+                        <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
@@ -242,7 +240,7 @@
         </section>
         </section>
 
-        @if(in_array($portal, ['admin', 'accounting'], true))
+        @if(in_array($portal, ['admin', 'accounting', 'operations'], true))
             <section id="predictionPanel" class="dashboard-tab-panel" role="tabpanel" aria-labelledby="predictionTab" hidden>
                 @include('ml-dashboard-test', ['fragment' => true])
             </section>
@@ -271,7 +269,7 @@
                 <div class="dashboard-detail-item"><span>Assigned workers</span><strong id="detailWorkers">—</strong></div>
                 <div class="dashboard-detail-item"><span>Budget</span><strong id="detailBudget">—</strong></div>
                 <div class="dashboard-detail-item"><span>Recorded actual</span><strong id="detailActual">—</strong></div>
-                <div class="dashboard-detail-item"><span>Budget variance</span><strong id="detailVariance">—</strong></div>
+                <div class="dashboard-detail-item"><span>Budget difference</span><strong id="detailVariance">—</strong></div>
             </div>
             <footer class="dashboard-modal-footer">
                 <button class="btn-secondary" id="closeProjectDetailFooter" type="button">Close</button>
@@ -319,7 +317,7 @@
                     day: 'numeric'
                 });
 
-                time.textContent = timeFormatter.format(now);
+                time.textContent = timeFormatter.format(now) + ' PST';
                 time.dateTime = now.toISOString();
                 date.textContent = dateFormatter.format(now);
             }
@@ -338,9 +336,6 @@
             }
 
             async function loadDashboard() {
-                const refresh = document.getElementById('refresh');
-                refresh.disabled = true;
-
                 try {
                     const query = new URLSearchParams(activeFilters());
                     const response = await fetch('/api/dashboard?' + query, {
@@ -364,8 +359,6 @@
                     renderDashboard();
                 } catch (error) {
                     showError(error.message);
-                } finally {
-                    refresh.disabled = false;
                 }
             }
 
@@ -386,42 +379,30 @@
                     </article>
                 `).join('');
 
-                renderChart('completionChart', state.data.completion_trend.months, [
+                renderChart('completionChart', 'line', state.data.completion_trend.months, [
                     { label: 'Completion %', values: state.data.completion_trend.values }
                 ]);
-                renderChart('budgetChart', state.data.budget_vs_expense.months, [
+                renderChart('budgetChart', 'bar', state.data.budget_vs_expense.months, [
                     { label: 'Budget', values: state.data.budget_vs_expense.allocated_budget },
                     { label: 'Expenses', values: state.data.budget_vs_expense.expenses }
-                ]);
-                renderChart('statusChart', state.data.project_status.labels, [
-                    { label: 'Projects', values: state.data.project_status.values }
                 ]);
                 renderTable();
             }
 
-            function renderChart(id, labels, series) {
-                const element = document.getElementById(id);
-                const allValues = series.flatMap(item => item.values.map(Number));
-                const maximum = Math.max(...allValues, 1);
-
-                element.innerHTML = labels.length ? labels.map((label, index) => `
-                    <div class="chart-group">
-                        <div class="chart-label">${escapeHtml(label)}</div>
-                        <div>
-                            ${series.map((item, seriesIndex) => {
-                                const value = Number(item.values[index] || 0);
-                                const width = Math.max((value / maximum) * 100, value ? 2 : 0);
-                                return `
-                                    <div class="bar-row">
-                                        <span>${escapeHtml(item.label)}</span>
-                                        <div class="track"><i class="tone-${seriesIndex}" style="width:${width}%"></i></div>
-                                        <b>${escapeHtml(new Intl.NumberFormat('en-PH', { maximumFractionDigits: 1 }).format(value))}</b>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `).join('') : '<div class="empty">No matching chart data.</div>';
+            const dashboardCharts = {};
+            function renderChart(id, type, labels, series) {
+                if (dashboardCharts[id]) dashboardCharts[id].destroy();
+                const colors = ['#f08a1a', '#2563eb', '#16a34a', '#9333ea'];
+                dashboardCharts[id] = new Chart(document.getElementById(id), {
+                    type,
+                    data: { labels, datasets: series.map((item, index) => ({
+                        label: item.label, data: item.values.map(Number), borderColor: colors[index],
+                        backgroundColor: type === 'line' ? colors[index] + '28' : colors[index],
+                        fill: type === 'line', tension: .35, pointRadius: 4, pointHoverRadius: 7, borderWidth: 2
+                    })) },
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                        plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } }, scales: { y: { beginAtZero: true } } }
+                });
             }
 
             function renderTable() {
@@ -437,7 +418,7 @@
                             <td><strong>${escapeHtml(project.name)}</strong></td>
                             <td>${escapeHtml(project.client_name || '—')}</td>
                             <td>${escapeHtml(project.project_manager || '—')}</td>
-                            <td>${escapeHtml(project.phase || '—')}</td>
+                            <td>${escapeHtml(project.status === 'Completed' ? '—' : (project.phase || '—'))}</td>
                             <td><span class="project-status">${escapeHtml(project.status || '—')}</span></td>
                             <td>${escapeHtml(project.start_date || '—')}</td>
                             <td>${escapeHtml(project.estimated_end_date || '—')}</td>
@@ -545,7 +526,6 @@
                     state.timer = window.setTimeout(loadDashboard, key === 'search' ? 300 : 0);
                 });
             });
-            document.getElementById('refresh').addEventListener('click', loadDashboard);
             document.getElementById('clear').addEventListener('click', () => {
                 Object.values(controls).forEach(element => { element.value = ''; });
                 loadDashboard();
@@ -597,6 +577,10 @@
                         panel.hidden = !selected;
                     });
 
+                    document.querySelectorAll('[data-analytics-content]').forEach(section => {
+                        section.hidden = section.id !== tab.dataset.analyticsSection;
+                    });
+
                     if (panelId === 'predictionPanel') window.dispatchEvent(new Event('resize'));
                 });
             });
@@ -604,6 +588,7 @@
             updateClock();
             window.setInterval(updateClock, 1000);
             loadDashboard();
+            window.setInterval(loadDashboard, 30000);
         })();
     </script>
 </body>

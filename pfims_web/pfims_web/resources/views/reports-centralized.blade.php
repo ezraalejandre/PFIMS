@@ -58,6 +58,7 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body class="reports-page">
     <header class="top-header">
@@ -119,9 +120,8 @@
     <main class="main-content">
         <section class="page-heading">
             <div>
-                <p class="eyebrow">CENTRALIZED ANALYTICS</p>
                 <h1>REPORTS</h1>
-                <p>Review live operational data, apply focused filters, and generate traceable exports.</p>
+                <p>Review filtered operational records and generate consistent system reports.</p>
             </div>
             <button type="button" class="btn btn-primary" id="openExport">Configure export</button>
         </section>
@@ -152,6 +152,16 @@
 
         <section class="kpi-grid" id="kpiGrid" aria-label="Report KPIs"></section>
 
+        <section class="panel content-card chart-panel">
+            <div class="panel-heading">
+                <div>
+                    <h2 id="chartTitle">Report chart</h2>
+                    <p>Calculated from all records matching the active filters.</p>
+                </div>
+            </div>
+            <div id="chart" class="chart" role="img" aria-label="Report chart"><canvas id="reportChartCanvas"></canvas></div>
+        </section>
+
         <section class="panel content-card live-data-panel">
             <div class="panel-heading">
                 <div>
@@ -170,7 +180,7 @@
                     Rows per page
                     <select id="dataPageSize" aria-label="Live report rows per page">
                         <option value="10">10</option>
-                        <option value="25" selected>25</option>
+                        <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
@@ -178,16 +188,6 @@
                 </div>
                 <div class="pagination-links" id="dataPaginationLinks" aria-label="Live report pagination"></div>
             </div>
-        </section>
-
-        <section class="panel content-card chart-panel">
-            <div class="panel-heading">
-                <div>
-                    <h2 id="chartTitle">Report chart</h2>
-                    <p>Calculated from all records matching the active filters.</p>
-                </div>
-            </div>
-            <div id="chart" class="chart" role="img" aria-label="Report chart"></div>
         </section>
 
         <section class="panel content-card history-panel">
@@ -201,7 +201,6 @@
                 <input id="historySearch" type="search" maxlength="100" placeholder="Search report ID, title, filename, or user">
                 <input id="historyStart" type="date" aria-label="History from date">
                 <input id="historyEnd" type="date" aria-label="History to date">
-                <button type="button" class="btn btn-secondary" id="refreshHistory">Refresh history</button>
             </div>
             <div class="table-wrap table-wrapper">
                 <table>
@@ -216,7 +215,7 @@
                     Rows per page
                     <select id="historyPageSize" aria-label="Export history rows per page">
                         <option value="10">10</option>
-                        <option value="25" selected>25</option>
+                        <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
@@ -256,9 +255,10 @@
                 dataTimer: null,
                 historyTimer: null,
                 dataPage: 1,
-                dataPerPage: 25,
+                dataPerPage: 10,
                 historyPage: 1,
-                historyPerPage: 25
+                historyPerPage: 10,
+                chartInstance: null
             };
             const filterInputs = {
                 search: document.getElementById('filterSearch'),
@@ -429,32 +429,53 @@
             function renderChart() {
                 const chart = state.payload.chart;
                 document.getElementById('chartTitle').textContent = chart.title;
-                const values = chart.series.flatMap(series => series.values.map(Number));
-                const maximum = Math.max(...values, 1);
+                const host = document.getElementById('chart');
+                const canvas = document.getElementById('reportChartCanvas');
 
                 if (!chart.labels.length) {
-                    document.getElementById('chart').innerHTML = '<p class="empty-state">No chart data for these filters.</p>';
+                    if (state.chartInstance) state.chartInstance.destroy();
+                    state.chartInstance = null;
+                    host.innerHTML = '<canvas id="reportChartCanvas"></canvas><p class="empty-state">No chart data for these filters.</p>';
                     return;
                 }
-
-                document.getElementById('chart').innerHTML = chart.labels.map((label, index) => `
-                    <div class="chart-group">
-                        <div class="chart-label">${escapeHtml(label)}</div>
-                        <div class="chart-series">
-                            ${chart.series.map((series, seriesIndex) => {
-                                const value = Number(series.values[index] || 0);
-                                const width = Math.max((value / maximum) * 100, value > 0 ? 2 : 0);
-                                return `
-                                    <div class="bar-row">
-                                        <span>${escapeHtml(series.label)}</span>
-                                        <div class="bar-track"><div class="bar tone-${seriesIndex % 3}" style="width:${width}%"></div></div>
-                                        <b>${escapeHtml(new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 }).format(value))}</b>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `).join('');
+                if (typeof Chart === 'undefined' || !canvas) return;
+                if (state.chartInstance) state.chartInstance.destroy();
+                const palette = ['#c9a96e', '#547896', '#4f8b68', '#c95c5c', '#8d6cab', '#dd8b57', '#5d9b9b', '#a8a054'];
+                const semanticColors = {
+                    project: { Pending: '#9aa5b1', 'On Track': '#4f8b68', 'At Risk': '#e19a45', Delayed: '#c95c5c' },
+                    budget: { 'On Track': '#4f8b68', 'Near Limit': '#e19a45', 'Over Budget': '#c95c5c', 'No Budget': '#9aa5b1' }
+                };
+                const isPie = chart.type === 'pie';
+                const isHorizontal = chart.type === 'horizontalBar';
+                const sliceColors = chart.labels.map((label, colorIndex) => semanticColors[state.dataset]?.[label] || palette[colorIndex % palette.length]);
+                state.chartInstance = new Chart(canvas, {
+                    type: isPie ? 'pie' : 'bar',
+                    data: {
+                        labels: chart.labels,
+                        datasets: chart.series.map((series, index) => ({
+                            label: series.label,
+                            data: series.values.map(Number),
+                            backgroundColor: isPie ? sliceColors : palette[index % palette.length] + 'C7',
+                            borderColor: isPie ? '#ffffff' : palette[index % palette.length],
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            hoverOffset: isPie ? 12 : 0,
+                            maxBarThickness: 48
+                        }))
+                    },
+                    options: {
+                        indexAxis: isHorizontal ? 'y' : 'x',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: {
+                            label: context => `${context.dataset.label}: ${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 }).format(Number(context.raw || 0))}`
+                        } } },
+                        scales: isPie ? {} : (isHorizontal
+                            ? { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                            : { y: { beginAtZero: true, ticks: { precision: 0 } } })
+                    }
+                });
             }
 
             function paginationItems(current, last) {
@@ -584,7 +605,6 @@
                 loadHistory();
             }
 
-            document.getElementById('refreshHistory').addEventListener('click', refreshHistoryFromStart);
             document.getElementById('historySearch').addEventListener('input', () => {
                 state.historyPage = 1;
                 window.clearTimeout(state.historyTimer);
@@ -675,5 +695,6 @@
             initialize();
         })();
     </script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
 </body>
 </html>

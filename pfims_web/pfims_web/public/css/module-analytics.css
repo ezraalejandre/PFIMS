@@ -79,6 +79,105 @@
     white-space: nowrap;
 }
 
+.insight-pie-layout {
+    display: grid;
+    grid-template-columns: minmax(160px, 220px) minmax(220px, 1fr);
+    gap: 24px;
+    align-items: center;
+    padding-inline: 200px;
+}
+
+.insight-pie {
+    position: relative;
+    width: min(100%, 220px);
+    aspect-ratio: 1;
+    justify-self: center;
+    border-radius: 50%;
+}
+
+.insight-pie svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 2px 4px rgba(26, 43, 60, .12));
+}
+
+.insight-pie-slice {
+    cursor: help;
+    stroke: #fff;
+    stroke-width: .7;
+    transition: opacity .15s ease, transform .15s ease;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.insight-pie-slice:hover,
+.insight-pie-slice:focus {
+    opacity: .82;
+    outline: none;
+    transform: scale(1.025);
+}
+
+.insight-pie-tooltip {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    width: max-content;
+    max-width: 190px;
+    padding: 7px 9px;
+    border-radius: 6px;
+    background: rgba(26, 43, 60, .94);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 600;
+    line-height: 1.35;
+    opacity: 0;
+    pointer-events: none;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    transition: opacity .15s ease;
+}
+
+.insight-pie-tooltip.is-visible {
+    opacity: 1;
+}
+
+.insight-pie-legend {
+    display: grid;
+    gap: 9px;
+    min-width: 0;
+}
+
+.insight-pie-legend-row {
+    display: grid;
+    grid-template-columns: 10px minmax(80px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.insight-pie-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
+
+.insight-pie-label {
+    overflow: hidden;
+    color: #44505b;
+    font-size: .76rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.insight-pie-value {
+    color: #1a2b3c;
+    font-size: .74rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .insight-empty,
 .insight-error {
     display: flex;
@@ -109,4 +208,8 @@
 @media (max-width: 680px) {
     .module-insights { grid-template-columns: 1fr; }
     .insight-bar-row { grid-template-columns: 88px minmax(60px, 1fr) auto; }
+    .insight-pie-layout {
+        grid-template-columns: 1fr;
+        padding-inline: 20px;
+    }
 }

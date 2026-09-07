@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Report;
+use App\Models\SystemSetting;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
@@ -26,12 +27,12 @@ class ReportController extends Controller
                 'project_manager' => 'Project Manager', 'phase' => 'Phase', 'status' => 'Status',
                 'start_date' => 'Start Date', 'estimated_end_date' => 'Estimated End',
                 'completion_percentage' => 'Completion (%)', 'worker_count' => 'Workers',
-                'budget_amount' => 'Budget', 'actual_amount' => 'Actual Cost', 'variance' => 'Budget Variance',
+                'budget_amount' => 'Budget', 'actual_amount' => 'Actual Cost', 'variance' => 'Budget Difference',
             ],
             'filters' => ['search', 'project_id', 'status', 'start_date', 'end_date'],
         ],
         'finance' => [
-            'title' => 'Finance', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
+            'title' => 'Expenses', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
             'columns' => [
                 'fin_expense_id' => 'Expense ID', 'expense_date' => 'Expense Date',
                 'project_name' => 'Project / Cost Center', 'category_name' => 'Category',
@@ -322,7 +323,9 @@ class ReportController extends Controller
     {
         $lastMovement = DB::table('inventory_transaction_tbl')
             ->select('item_id', DB::raw('MAX(transaction_date) as last_transaction_date'))->groupBy('item_id');
-        $statusSql = "CASE WHEN COALESCE(i.current_stock, 0) <= 0 THEN 'Out of Stock' WHEN COALESCE(i.current_stock, 0) <= COALESCE(i.reorder_level, 0) THEN 'Reorder Needed' ELSE 'Sufficient' END";
+        $defaultThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
+        $effectiveThresholdSql = "CASE WHEN i.reorder_level IS NULL OR i.reorder_level < {$defaultThreshold} THEN {$defaultThreshold} ELSE i.reorder_level END";
+        $statusSql = "CASE WHEN COALESCE(i.current_stock, 0) <= 0 THEN 'Out of Stock' WHEN COALESCE(i.current_stock, 0) <= {$effectiveThresholdSql} THEN 'Reorder Needed' ELSE 'Sufficient' END";
         $query = DB::table('inventory_item_tbl as i')
             ->leftJoin('inventory_category_tbl as c', 'c.inventory_category_id', '=', 'i.inventory_category_id')
             ->leftJoin('supplier_tbl as s', 's.supplier_id', '=', 'i.supplier_id')
@@ -333,7 +336,7 @@ class ReportController extends Controller
                 DB::raw("COALESCE(s.supplier_name, 'Unassigned') as supplier_name"),
                 DB::raw("COALESCE(u.unit_name, '') as unit_name"),
                 DB::raw('COALESCE(i.current_stock, 0) as current_stock'),
-                DB::raw('COALESCE(i.reorder_level, 0) as reorder_level'), DB::raw("{$statusSql} as stock_status"),
+                DB::raw("{$effectiveThresholdSql} as reorder_level"), DB::raw("{$statusSql} as stock_status"),
                 'movement.last_transaction_date']);
         if (! empty($filters['category_id'])) {
             $query->where('i.inventory_category_id', $filters['category_id']);
@@ -429,9 +432,8 @@ class ReportController extends Controller
                 ['label' => 'Remaining', 'value' => $money((float) $rows->sum('remaining_amount'))],
             ],
             'inventory' => [
-                ['label' => 'Items', 'value' => (string) $rows->count()],
-                ['label' => 'Total Units in Stock', 'value' => number_format((float) $rows->sum('current_stock'), 2)],
-                ['label' => 'Reorder Needed', 'value' => (string) $rows->where('stock_status', 'Reorder Needed')->count()],
+                ['label' => 'Total Items', 'value' => (string) $rows->count()],
+                ['label' => 'Low Stock', 'value' => (string) $rows->where('stock_status', 'Reorder Needed')->count()],
                 ['label' => 'Out of Stock', 'value' => (string) $rows->where('stock_status', 'Out of Stock')->count()],
             ],
             'supplier' => [
@@ -446,24 +448,54 @@ class ReportController extends Controller
     private function datasetChart(string $dataset, Collection $rows): array
     {
         return match ($dataset) {
-            'project' => $this->groupedChart($rows, 'status', null, 'Projects by Status'),
-            'finance' => $this->groupedChart($rows, 'classification', 'amount', 'Expenses by Classification'),
-            'budget' => ['title' => 'Budget vs Actual by Project', 'labels' => $rows->take(12)->pluck('project_name')->values(),
-                'series' => [['label' => 'Budget', 'values' => $rows->take(12)->pluck('budget_amount')->values()],
-                    ['label' => 'Actual', 'values' => $rows->take(12)->pluck('actual_amount')->values()]]],
-            'inventory' => $this->groupedChart($rows, 'stock_status', null, 'Items by Stock Status'),
-            'supplier' => ['title' => 'Items per Supplier', 'labels' => $rows->take(12)->pluck('supplier_name')->values(),
+            'project' => $this->groupedChart($rows->where('status', '!=', 'Completed'), 'status', null, 'Project Status Across Active Projects', 'pie'),
+            'finance' => $this->groupedChart($rows, 'category_name', 'amount', 'Expenses by Category', 'pie'),
+            'budget' => $this->budgetStatusChart($rows),
+            'inventory' => $this->inventoryMovementChart($rows),
+            'supplier' => ['title' => 'Items per Supplier', 'type' => 'pie', 'labels' => $rows->take(12)->pluck('supplier_name')->values(),
                 'series' => [['label' => 'Items', 'values' => $rows->take(12)->pluck('item_count')->values()]]],
         };
     }
 
-    private function groupedChart(Collection $rows, string $group, ?string $sum, string $title): array
+    private function groupedChart(Collection $rows, string $group, ?string $sum, string $title, string $type = 'bar'): array
     {
         $grouped = $rows->groupBy(fn ($row) => $row[$group] ?: 'Unspecified')
             ->map(fn (Collection $items) => $sum ? (float) $items->sum($sum) : $items->count());
 
-        return ['title' => $title, 'labels' => $grouped->keys()->values(),
+        return ['title' => $title, 'type' => $type, 'labels' => $grouped->keys()->values(),
             'series' => [['label' => $sum ? 'Amount' : 'Count', 'values' => $grouped->values()]]];
+    }
+
+    private function budgetStatusChart(Collection $rows): array
+    {
+        $statuses = $rows->map(function (array $row): string {
+            $budget = (float) ($row['budget_amount'] ?? 0);
+            $actual = (float) ($row['actual_amount'] ?? 0);
+            if ($budget <= 0) return 'No Budget';
+            if ($actual > $budget) return 'Over Budget';
+            return ($actual / $budget) >= 0.8 ? 'Near Limit' : 'On Track';
+        })->countBy();
+        $labels = collect(['On Track', 'Near Limit', 'Over Budget', 'No Budget'])
+            ->filter(fn (string $status) => ($statuses[$status] ?? 0) > 0)->values();
+
+        return ['title' => 'Projects by Budget Status', 'type' => 'pie', 'labels' => $labels,
+            'series' => [['label' => 'Projects', 'values' => $labels->map(fn (string $status) => $statuses[$status])]]];
+    }
+
+    private function inventoryMovementChart(Collection $rows): array
+    {
+        $movements = DB::table('inventory_transaction_tbl')
+            ->whereIn('item_id', $rows->pluck('item_id')->filter()->all())
+            ->select('transaction_date', 'transaction_type', DB::raw('SUM(quantity) as quantity'))
+            ->groupBy('transaction_date', 'transaction_type')
+            ->orderByDesc('transaction_date')->get()->groupBy('transaction_date')->take(14)->reverse();
+        $labels = $movements->keys()->values();
+
+        return ['title' => 'Stock Movement by Date', 'type' => 'horizontalBar', 'labels' => $labels,
+            'series' => [
+                ['label' => 'IN', 'values' => $labels->map(fn ($date) => (float) optional($movements[$date]->firstWhere('transaction_type', 'IN'))->quantity)],
+                ['label' => 'OUT', 'values' => $labels->map(fn ($date) => (float) optional($movements[$date]->firstWhere('transaction_type', 'OUT'))->quantity)],
+            ]];
     }
 
     private function buildCsv(string $title, array $definition, array $columns, array $sections, array $filters, Collection $rows, array $kpis, array $chart): string

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ImportValidationException;
+use App\Services\AutomaticModelRetraining;
 use App\Services\FinanceImportService;
 use App\Services\InventoryImportService;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +13,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DataImportController extends Controller
 {
+    public function __construct(private AutomaticModelRetraining $modelRetraining) {}
+
     public function finance(Request $request, FinanceImportService $service): JsonResponse
     {
         $this->authorizeRole($request, ['admin', 'accounting']);
@@ -82,6 +85,10 @@ class DataImportController extends Controller
     {
         try {
             $result = $callback();
+            $projectIds = array_values(array_filter(array_map('intval', $result['project_ids'] ?? [])));
+            if ($projectIds !== []) {
+                $this->modelRetraining->afterDataChange($projectIds);
+            }
 
             return response()->json([
                 'success' => true,

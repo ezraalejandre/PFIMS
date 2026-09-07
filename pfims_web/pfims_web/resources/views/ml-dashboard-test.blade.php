@@ -183,13 +183,28 @@
         /* Main Grid */
         .main-grid {
             display: grid;
-            grid-template-columns: minmax(0, 1fr);
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 18px;
             margin-bottom: 18px;
         }
 
+        .prediction-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            align-items: stretch;
+            margin-bottom: 18px;
+        }
+
+        .prediction-row > div,
+        .prediction-row .prediction-workspace {
+            min-width: 0;
+            height: 100%;
+        }
+
         @media (max-width: 1024px) {
-            .main-grid {
+            .main-grid,
+            .prediction-row {
                 grid-template-columns: 1fr;
             }
         }
@@ -924,26 +939,16 @@
 
     <div id="predictiveAnalyticsRoot" class="predictive-analytics-root embedded-ml-dashboard" data-api-base="{{ url('/api/ml') }}">
     <div class="dashboard-container analytics-shell">
-        <section class="header analytics-toolbar">
-            <div class="analytics-heading">
-                <span class="analytics-eyebrow">DECISION SUPPORT</span>
-                <h1>Predictive Analytics</h1>
-                <p>Review project cost forecasts, material demand, budget variance, and model reliability.</p>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-outline analytics-button" type="button" onclick="refreshData()">
-                    Refresh data
-                </button>
-                @if(auth()->check() && strtolower((string) auth()->user()->role) === 'admin')
-                    <button class="btn btn-primary analytics-button" type="button" onclick="openRetrainConfirmation()">
-                        Retrain model
-                    </button>
-                @endif
-            </div>
-        </section>
+        @unless($fragment ?? false)
+            <section class="header analytics-toolbar">
+                <div class="analytics-heading">
+                    <h1>Predictive Analytics</h1>
+                </div>
+            </section>
+        @endunless
 
         <!-- Main Grid -->
-        <div class="main-grid">
+        <div class="prediction-row analytics-tab-content" id="costPredictionSection" data-analytics-content>
             <!-- Left Column: Prediction -->
             <div>
                 <section class="card analytics-panel prediction-workspace">
@@ -952,7 +957,6 @@
                             <div class="card-title">Project Cost Prediction</div>
                             <p class="analytics-panel-description">Select an eligible project to forecast its final cost from current system records.</p>
                         </div>
-                        <span class="badge badge-info">Linear regression</span>
                     </div>
 
                     <form id="predictionForm" onsubmit="return false;">
@@ -963,7 +967,7 @@
                                     <option value="">Loading eligible projects…</option>
                                 </select>
                             </div>
-                            <p class="project-selection-note" id="predictionProjectNote">Only incomplete projects with a recorded budget, schedule, and workforce are available. Prediction inputs come directly from current project and finance records.</p>
+                            <p class="project-selection-note" id="predictionProjectNote">Choose an active project with complete budget and schedule details.</p>
                             <div class="project-snapshot-grid" id="predictionProjectSnapshot" hidden>
                                 <div class="snapshot-item"><span>Status</span><strong id="snapshotStatus">-</strong></div>
                                 <div class="snapshot-item"><span>Budget</span><strong id="snapshotBudget">-</strong></div>
@@ -986,12 +990,17 @@
                         </div>
                     </form>
 
-                    <div id="predictionResult" class="prediction-result">
-                        <h4>Prediction Result</h4>
-                        <div id="resultContent"></div>
-                    </div>
                 </section>
+            </div>
+            <div>
+                <section class="card analytics-panel prediction-workspace">
+                    <div class="card-header"><div class="card-title">Prediction Result</div></div>
+                    <div id="predictionResult" class="prediction-result"><div id="resultContent"></div></div>
+                </section>
+            </div>
+        </div>
 
+            <div class="analytics-tab-content" id="materialProjectionSection" data-analytics-content hidden>
                 <!-- Material Forecast -->
                 <section class="card analytics-panel">
                     <div class="card-header">
@@ -999,11 +1008,8 @@
                             <div class="card-title">30-Day Material Stock Projection</div>
                             <p class="analytics-panel-description">Expected demand based on recent dated inventory usage.</p>
                         </div>
-                        <button class="btn btn-outline analytics-button analytics-button-small" type="button" onclick="loadMaterialForecast()">
-                            Refresh
-                        </button>
                     </div>
-                    <div class="table-responsive">
+                    <div class="table-wrapper">
                         <table class="analytics-table">
                             <thead>
                                 <tr>
@@ -1025,26 +1031,23 @@
             </div>
 
             <!-- Right Column: Financial Analytics -->
-            <div>
+            <div class="analytics-tab-content" id="budgetComparisonSection" data-analytics-content hidden>
                 <!-- Budget Variance -->
                 <section class="card analytics-panel">
                     <div class="card-header">
                         <div>
-                            <div class="card-title">Budget Variance Analysis</div>
+                    <div class="card-title">Budget-Spending Comparison</div>
                             <p class="analytics-panel-description">Latest recorded spending compared with project budgets.</p>
                         </div>
-                        <button class="btn btn-outline analytics-button analytics-button-small" type="button" onclick="loadBudgetVariance()">
-                            Refresh
-                        </button>
                     </div>
-                    <div class="table-responsive">
+                    <div class="table-wrapper">
                         <table class="analytics-table">
                             <thead>
                                 <tr>
                                     <th>Project</th>
                                     <th>Budget</th>
                                     <th>Actual</th>
-                                    <th>Variance</th>
+                                    <th>Budget Difference</th>
                                 </tr>
                             </thead>
                             <tbody id="budgetVarianceBody">
@@ -1054,12 +1057,24 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="pagination-wrapper" id="budgetVariancePagination">
+                        <div class="rows-info">
+                            <span>Rows per page</span>
+                            <select id="budgetVariancePageSize" aria-label="Budget-Spending Comparison rows per page">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span id="budgetVarianceRange" class="pagination-info">Showing 0–0 of 0</span>
+                        </div>
+                        <div class="pagination-links" id="budgetVariancePaginationLinks" aria-label="Budget-Spending Comparison pages"></div>
+                    </div>
                 </section>
             </div>
-        </div>
 
-        <!-- Full-width model performance section -->
-        <section class="card analytics-panel model-performance-card">
+        <!-- Internal model diagnostics are intentionally hidden from end users. -->
+        <section class="card analytics-panel model-performance-card" hidden aria-hidden="true">
             <div class="card-header">
                 <div>
                     <div class="card-title">Model Performance</div>
@@ -1108,18 +1123,6 @@
         <footer class="analytics-footer">Last updated <span id="lastUpdated">-</span></footer>
     </div>
 
-    @if(auth()->check() && strtolower((string) auth()->user()->role) === 'admin')
-        <div class="ml-confirm-overlay" id="retrainConfirmModal" hidden>
-            <section class="ml-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="retrainConfirmTitle" aria-describedby="retrainConfirmDescription">
-                <h2 id="retrainConfirmTitle">Retrain prediction model?</h2>
-                <p id="retrainConfirmDescription">PFIMS will rebuild and evaluate the model using the latest eligible completed-project records. This can take a few moments.</p>
-                <div class="ml-confirm-actions">
-                    <button class="btn btn-outline" id="cancelRetrainButton" type="button" onclick="closeRetrainConfirmation()">Cancel</button>
-                    <button class="btn btn-primary" id="confirmRetrainButton" type="button" onclick="confirmRetrainModel()">Retrain model</button>
-                </div>
-            </section>
-        </div>
-    @endif
     </div>
 
     <script>
@@ -1127,21 +1130,16 @@
     const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
     let predictionProjects = [];
+    let budgetVarianceRows = [];
+    let budgetVariancePage = 1;
     const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     })[character]);
 
     // ─── NOTIFICATION SYSTEM ──────────────────────────────────────
     function showNotification(message, type = 'info', duration = 5000) {
-        const colors = {
-            success: '#43a047',
-            error: '#ef5350',
-            info: '#1e88e5'
-        };
-
         const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.style.background = colors[type] || colors.info;
+        notification.className = `pfims-prediction-notice ${type}`;
         notification.innerHTML = `
             <span>${message}</span>
             <button class="notification-close" onclick="this.parentElement.remove()">×</button>
@@ -1315,8 +1313,12 @@
                 const variance = parseFloat(result.variance) || 0;
                 const variancePercentage = parseFloat(result.variance_percentage) || 0;
                 const isOverBudget = variance > 0;
-                
-                resultDiv.className = `prediction-result show ${isOverBudget ? 'warning' : 'success'}`;
+                const predictionUsable = result.prediction_usable === true;
+                const resultTone = predictionUsable ? (isOverBudget ? 'warning' : 'success') : 'warning';
+                const displayedStatus = predictionUsable
+                    ? (result.risk_level || result.status || 'Unknown')
+                    : 'Insufficient evidence';
+                resultDiv.className = `prediction-result show ${resultTone}`;
                 
                 contentDiv.innerHTML = `
                     <div class="result-row">
@@ -1325,10 +1327,10 @@
                     </div>
                     <div class="result-row">
                         <span class="result-label">Predicted Cost</span>
-                        <span class="result-value">${result.formatted || '₱0'}</span>
+                        <span class="result-value">${escapeHtml(result.formatted || '₱0')}</span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Budget Variance</span>
+                        <span class="result-label">Budget Difference</span>
                         <span class="result-value ${isOverBudget ? 'negative' : 'positive'}">
                             ${isOverBudget ? '+ ' : '- '}₱${Math.abs(variance).toLocaleString()}
                             (${variancePercentage.toFixed(1)}%)
@@ -1336,19 +1338,11 @@
                     </div>
                     <div class="result-row">
                         <span class="result-label">Status</span>
-                        <span class="result-value">${result.risk_level || result.status || 'Unknown'}</span>
+                        <span class="result-value">${escapeHtml(displayedStatus)}</span>
                     </div>
                     <div class="result-row">
                         <span class="result-label">Business Action</span>
-                        <span class="result-value" style="font-size:13px;">${result.business_action || 'Review forecast inputs and continue monitoring.'}</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">Prediction Source</span>
-                        <span class="result-value">${String(result.prediction_source || 'unknown').replaceAll('_', ' ')}</span>
-                    </div>
-                    <div class="result-row">
-                        <span class="result-label">Model Accuracy (holdout)</span>
-                        <span class="result-value">${result.model_accuracy === null || result.model_accuracy === undefined ? 'Unavailable' : `${Number(result.model_accuracy).toFixed(2)}%`}</span>
+                        <span class="result-value" style="font-size:13px;">${escapeHtml(result.business_action || 'Review forecast inputs and continue monitoring.')}</span>
                     </div>
                     <div class="result-row" style="border-bottom: none; margin-top: 8px; font-size: 13px; color: #666;">
                         <span class="result-label">Inputs</span>
@@ -1358,19 +1352,21 @@
                     </div>
                     ${(result.warnings || []).length ? `
                         <div style="margin-top:12px; padding:10px; background:#fff3e0; color:#8a4b08; border-radius:6px; font-size:12px;">
-                            <strong>Reliability notes:</strong><br>${result.warnings.map(warning => `• ${warning}`).join('<br>')}
+                            <strong>Reliability notes:</strong><br>${result.warnings.map(warning => `• ${escapeHtml(warning)}`).join('<br>')}
                         </div>` : ''}
                 `;
-                showNotification('Prediction completed successfully!', 'success');
+                showNotification(predictionUsable
+                    ? 'Prediction completed successfully.'
+                    : 'Estimate generated with insufficient evidence; review before relying on it.', predictionUsable ? 'success' : 'info');
             } else {
                 resultDiv.className = 'prediction-result show danger';
                 const errors = result.errors ? Object.values(result.errors).flat().join('<br>') : '';
-                contentDiv.innerHTML = `<p style="color:#c62828;">❌ ${errors || result.message || 'Prediction failed'}</p>`;
+                contentDiv.innerHTML = `<p style="color:#c62828;">❌ ${escapeHtml(errors || result.message || 'Prediction failed')}</p>`;
                 showNotification('Prediction failed: ' + (result.message || 'Unknown error'), 'error');
             }
         } catch (error) {
             resultDiv.className = 'prediction-result show danger';
-            contentDiv.innerHTML = `<p style="color:#c62828;">❌ Error: ${error.message}</p>`;
+            contentDiv.innerHTML = `<p style="color:#c62828;">❌ Error: ${escapeHtml(error.message)}</p>`;
             showNotification('Error: ' + error.message, 'error');
         }
     }
@@ -1452,11 +1448,11 @@
                 const varianceData = data.data || [];
                 updateBudgetVariance(varianceData);
             } else {
-                showNotification('Failed to load budget variance: ' + (data.message || 'Unknown error'), 'error');
+                showNotification('Failed to load the budget comparison: ' + (data.message || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Budget variance error:', error);
-            showNotification('Error loading budget variance: ' + error.message, 'error');
+            showNotification('Error loading the budget comparison: ' + error.message, 'error');
             const tbody = document.getElementById('budgetVarianceBody');
             tbody.innerHTML = `<tr><td colspan="4" class="text-center">Error loading data</td></tr>`;
         }
@@ -1465,14 +1461,21 @@
     // ─── UPDATE BUDGET VARIANCE ────────────────────────────────────
     function updateBudgetVariance(varianceData) {
         const tbody = document.getElementById('budgetVarianceBody');
-        
-        if (!varianceData || varianceData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center">No budget variance data available</td></tr>`;
+        budgetVarianceRows = Array.isArray(varianceData) ? varianceData : [];
+        const pageSize = Number(document.getElementById('budgetVariancePageSize')?.value || 10);
+        const totalPages = Math.max(Math.ceil(budgetVarianceRows.length / pageSize), 1);
+        budgetVariancePage = Math.min(budgetVariancePage, totalPages);
+        const visibleRows = budgetVarianceRows.slice((budgetVariancePage - 1) * pageSize, budgetVariancePage * pageSize);
+
+        if (visibleRows.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center">No budget comparison data available</td></tr>`;
+            document.getElementById('budgetVarianceRange').textContent = 'Showing 0–0 of 0';
+            renderBudgetVariancePagination(totalPages);
             return;
         }
 
         let html = '';
-        varianceData.slice(0, 5).forEach(item => {
+        visibleRows.forEach(item => {
             const budget = parseFloat(item.budget) || 0;
             const actualCost = parseFloat(item.actual_cost) || 0;
             const variance = parseFloat(item.variance) || 0;
@@ -1483,7 +1486,7 @@
             
             html += `
                 <tr>
-                    <td><strong>${item.project_name || 'Unnamed'}</strong></td>
+                    <td><strong>${escapeHtml(item.project_name || 'Unnamed')}</strong></td>
                     <td>₱${budget.toLocaleString()}</td>
                     <td>₱${actualCost.toLocaleString()}</td>
                     <td style="color:${statusColor}; font-weight:600;">
@@ -1495,6 +1498,23 @@
         });
 
         tbody.innerHTML = html;
+        const start = (budgetVariancePage - 1) * pageSize + 1;
+        const end = Math.min(budgetVariancePage * pageSize, budgetVarianceRows.length);
+        document.getElementById('budgetVarianceRange').textContent = `Showing ${start}–${end} of ${budgetVarianceRows.length}`;
+        renderBudgetVariancePagination(totalPages);
+    }
+
+    function renderBudgetVariancePagination(totalPages) {
+        const links = document.getElementById('budgetVariancePaginationLinks');
+        if (!links) return;
+        const button = (label, page, active = false, disabled = false) =>
+            `<button type="button" data-budget-page="${page}" class="${active ? 'active' : ''}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+        let html = button('Previous', budgetVariancePage - 1, false, budgetVariancePage <= 1);
+        for (let page = 1; page <= totalPages; page += 1) {
+            html += button(String(page), page, page === budgetVariancePage);
+        }
+        html += button('Next', budgetVariancePage + 1, false, budgetVariancePage >= totalPages);
+        links.innerHTML = html;
     }
 
     // ─── RETRAIN MODEL ────────────────────────────────────────────
@@ -1546,14 +1566,12 @@
 
     // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeRetrainConfirmation();
+        if (e.key === 'Escape') {
+            closeRetrainConfirmation();
+        }
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
             predictCost();
-        }
-        if (e.ctrlKey && e.key === 'r') {
-            e.preventDefault();
-            refreshData();
         }
     });
 
@@ -1565,12 +1583,25 @@
         loadBudgetVariance();
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
         document.getElementById('predictionProject').addEventListener('change', updatePredictionProjectSnapshot);
+        document.getElementById('budgetVariancePageSize').addEventListener('change', () => {
+            budgetVariancePage = 1;
+            updateBudgetVariance(budgetVarianceRows);
+        });
+        document.getElementById('budgetVariancePaginationLinks').addEventListener('click', event => {
+            const button = event.target.closest('[data-budget-page]');
+            if (!button || button.disabled) return;
+            budgetVariancePage = Number(button.dataset.budgetPage);
+            updateBudgetVariance(budgetVarianceRows);
+        });
         document.getElementById('retrainConfirmModal')?.addEventListener('click', event => {
             if (event.target.id === 'retrainConfirmModal') closeRetrainConfirmation();
         });
 
         setInterval(() => {
             loadDashboard();
+            loadPredictionProjects(false);
+            loadMaterialForecast();
+            loadBudgetVariance();
         }, 60000);
 
         if (document.body.classList.contains('embedded-ml-dashboard')) {
@@ -1586,6 +1617,7 @@
 </script>
 
 @unless($fragment)
+<script src="{{ asset('js/pfims-system-ui.js') }}"></script>
 </body>
 </html>
 @endunless

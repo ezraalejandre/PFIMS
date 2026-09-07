@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -51,13 +52,15 @@ class DashboardController extends Controller
         $totalSpent = $this->totalExpenses($projectIds->all());
         $remaining = $totalBudget - $totalSpent;
         $utilization = $totalBudget > 0 ? round($totalSpent / $totalBudget * 100, 1) : 0;
-        $lowStock = DB::table('inventory_item_tbl')->whereColumn('current_stock', '<=', 'reorder_level')->count();
+        $minimumThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
+        $lowStock = DB::table('inventory_item_tbl')
+            ->whereRaw('current_stock <= CASE WHEN reorder_level IS NULL OR reorder_level < ? THEN ? ELSE reorder_level END', [$minimumThreshold, $minimumThreshold])
+            ->count();
+        $averageCompletion = round((float) ($allProjects->avg('completion_percentage') ?? 0), 1);
 
         return [
             ['label' => 'Matching Projects', 'value' => (string) $allProjects->count(), 'subtitle' => $activeProjects->count().' active', 'badge' => $delayedCount.' delayed', 'badge_type' => $delayedCount ? 'warning' : 'positive'],
-            ['label' => 'Total Budget', 'value' => $this->currency($totalBudget), 'subtitle' => $this->currency($remaining).' remaining', 'badge' => $utilization.'% used', 'badge_type' => $utilization >= 90 ? 'warning' : 'positive'],
-            ['label' => 'Recorded Expenses', 'value' => $this->currency($totalSpent), 'subtitle' => 'Primary finance ledger', 'badge' => $totalSpent > $totalBudget && $totalBudget > 0 ? 'Over budget' : 'Within budget', 'badge_type' => $totalSpent > $totalBudget && $totalBudget > 0 ? 'negative' : 'positive'],
-            ['label' => 'Assigned Workforce', 'value' => number_format((float) $activeProjects->sum('worker_count')), 'subtitle' => 'Across matching active projects', 'badge' => null, 'badge_type' => 'positive'],
+            ['label' => 'Average Completion', 'value' => $averageCompletion.'%', 'subtitle' => 'Across matching projects', 'badge' => null, 'badge_type' => 'positive'],
             ['label' => 'Inventory Alerts', 'value' => (string) $lowStock, 'subtitle' => 'Items at or below reorder level', 'badge' => $lowStock ? 'Action needed' : 'Stocked', 'badge_type' => $lowStock ? 'warning' : 'positive'],
         ];
     }

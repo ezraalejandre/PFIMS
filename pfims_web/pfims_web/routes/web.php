@@ -63,6 +63,10 @@ Route::get('/aprofile', function () {
 Route::get('/asettings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
+    $role = strtolower((string) $currentUser->role);
+    if ($role !== 'accounting') {
+        return redirect($role === 'operations' ? '/osettings' : '/settings');
+    }
     $users = User::orderBy('name')->get();
 
     return view('Asettings', [
@@ -101,6 +105,10 @@ Route::get('/oprofile', function () {
 Route::get('/osettings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
+    $role = strtolower((string) $currentUser->role);
+    if ($role !== 'operations') {
+        return redirect($role === 'accounting' ? '/asettings' : '/settings');
+    }
     $users = User::orderBy('name')->get();
 
     return view('Osettings', [
@@ -214,6 +222,10 @@ Route::patch('/profile', function (Request $request) {
 Route::get('/settings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
+    $role = strtolower((string) $currentUser->role);
+    if ($role !== 'admin') {
+        return redirect($role === 'accounting' ? '/asettings' : '/osettings');
+    }
     $users = User::orderBy('name')->get();
 
     return view('settings', [

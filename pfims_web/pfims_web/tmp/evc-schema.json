@@ -1,0 +1,34 @@
+{
+  "source": "live MySQL information_schema on 2026-09-07",
+  "tables": {
+    "project_tbl": ["project_id","project_name","client_name","project_manager","start_date","estimated_end_date","actual_end_date","worker_count","phase","completion_percentage","status"],
+    "budgets_tbl": ["budget_id","project_id","budget_amount","actual_amount","proof_file_path","proof_file_name"],
+    "expense_category_tbl": ["expense_category_id","category_name"],
+    "expense_tbl": ["expense_id","project_id","expense_category_id","inventory_transaction_id","unit_id","expense_description","labor_amount","material_amount","equipment_amount","other_amount","expense_date","remarks","proof_file_path","proof_file_name"],
+    "inventory_category_tbl": ["inventory_category_id","inventory_category_name"],
+    "supplier_tbl": ["supplier_id","supplier_name","address","contact_number"],
+    "unit_tbl": ["unit_id","unit_name"],
+    "inventory_item_tbl": ["item_id","inventory_category_id","supplier_id","unit_id","item_name","current_stock","reorder_level"],
+    "inventory_transaction_tbl": ["inventory_transaction_id","item_id","project_id","transaction_type","quantity","bar_code","transaction_date","proof_file_path","proof_file_name"],
+    "fin_expense_category_tbl": ["fin_category_id","category_code","category_name","classification","is_active"],
+    "fin_expense_tbl": ["fin_expense_id","project_id","project_cost_component","fin_category_id","expense_description","source_expense_id","inventory_transaction_id","amount","expense_date","remarks","proof_file_path","proof_file_name","created_at","updated_at"],
+    "fin_construction_bond_tbl": ["bond_id","project_id","bond_date","amount","bond_provider","status","remarks"],
+    "fin_receivable_payable_tbl": ["rp_id","entry_type","project_id","counterparty_name","entry_date","amount_30d","amount_31_60d","amount_61_90d","amount_91_120d","status","remarks"],
+    "company_asset_tbl": ["asset_id","asset_name","asset_type","asset_code","acquisition_cost","status"],
+    "fin_equipment_expense_tbl": ["equip_expense_id","asset_id","project_id","expense_type","amount","expense_date","remarks"],
+    "fin_equipment_rental_income_tbl": ["rental_income_id","asset_id","project_id","period_month","amount","remarks"],
+    "company_bank_account_tbl": ["account_id","account_name","account_type"],
+    "fin_cash_position_tbl": ["cash_position_id","account_id","period_month","balance_amount"],
+    "fin_project_contract_tbl": ["contract_id","project_id","original_contract_price","additional_works_contract","original_payment_received","additional_works_payment","remarks"]
+  },
+  "enums": {
+    "fin_expense_category_tbl.classification":["direct","admin"],
+    "fin_construction_bond_tbl.status":["active","released","forfeited"],
+    "fin_receivable_payable_tbl.entry_type":["accounts_receivable","accounts_payable","cash_advance_site","advance_employee"],
+    "fin_receivable_payable_tbl.status":["outstanding","settled"],
+    "company_asset_tbl.asset_type":["vehicle","heavy_equipment","tool"],
+    "company_asset_tbl.status":["active","sold","disposed"],
+    "company_bank_account_tbl.account_type":["cash_on_hand","cash_on_hand_field","treasury"],
+    "fin_equipment_expense_tbl.expense_type":["gas_diesel","payroll_operator","repair","delivery","transportation","other"]
+  }
+}

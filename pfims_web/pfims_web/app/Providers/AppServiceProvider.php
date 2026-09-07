@@ -2,12 +2,17 @@
 
 namespace App\Providers;
 
-use App\Models\InventoryItem; 
+use App\Models\Budget;
+use App\Models\FinExpense;
+use App\Models\InventoryItem;
 use App\Models\Project;
+use App\Observers\BudgetSnapshotObserver;
+use App\Observers\FinExpenseSnapshotObserver;
 use App\Observers\ItemObserver;
+use App\Observers\ProjectCostSnapshotObserver;
 use App\Observers\ProjectObserver;
-use Illuminate\Support\ServiceProvider;
 use App\Services\MLService;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,5 +27,8 @@ class AppServiceProvider extends ServiceProvider
     {
         InventoryItem::observe(ItemObserver::class);
         Project::observe(ProjectObserver::class);
+        Project::observe(ProjectCostSnapshotObserver::class);
+        Budget::observe(BudgetSnapshotObserver::class);
+        FinExpense::observe(FinExpenseSnapshotObserver::class);
     }
 }

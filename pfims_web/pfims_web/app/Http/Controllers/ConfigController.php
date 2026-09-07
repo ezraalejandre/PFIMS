@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\FinExpenseCategory;
 use App\Models\InventoryCategory;
-use App\Models\Supplier;
 use App\Models\Unit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -43,17 +42,6 @@ class ConfigController extends Controller
                 'category_name' => ['label' => 'Category name', 'type' => 'text', 'required' => true, 'max' => 100],
                 'classification' => ['label' => 'Classification', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Administrative']],
                 'is_active' => ['label' => 'Status', 'type' => 'select', 'required' => true, 'options' => ['1' => 'Active', '0' => 'Inactive']],
-            ],
-        ],
-        'suppliers' => [
-            'model' => Supplier::class,
-            'table' => 'supplier_tbl',
-            'id' => 'supplier_id',
-            'name' => 'supplier_name',
-            'fields' => [
-                'supplier_name' => ['label' => 'Supplier name', 'type' => 'text', 'required' => true, 'max' => 100],
-                'address' => ['label' => 'Address', 'type' => 'text', 'required' => true, 'max' => 255],
-                'contact_number' => ['label' => 'Contact number', 'type' => 'text', 'required' => true, 'max' => 20],
             ],
         ],
     ];
@@ -112,7 +100,6 @@ class ConfigController extends Controller
             'units' => DB::table('inventory_item_tbl')->where('unit_id', $id)->exists() ? 'inventory items' : null,
             'inv_categories' => DB::table('inventory_item_tbl')->where('inventory_category_id', $id)->exists() ? 'inventory items' : null,
             'exp_categories' => DB::table('fin_expense_tbl')->where('fin_category_id', $id)->exists() ? 'finance expenses' : null,
-            'suppliers' => DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists() ? 'inventory items' : null,
             default => null,
         };
         if ($dependency) {

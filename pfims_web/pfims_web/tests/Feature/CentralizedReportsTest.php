@@ -51,7 +51,7 @@ class CentralizedReportsTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'datasets')
             ->assertJsonPath('datasets.0.key', 'finance')
-            ->assertJsonPath('datasets.0.title', 'Finance')
+            ->assertJsonPath('datasets.0.title', 'Expenses')
             ->assertJsonPath('datasets.1.key', 'budget')
             ->assertJsonPath('datasets.1.title', 'Budget');
 
@@ -61,7 +61,7 @@ class CentralizedReportsTest extends TestCase
             ->assertOk()
             ->assertJsonCount(5, 'datasets')
             ->assertJsonPath('datasets.0.title', 'Project')
-            ->assertJsonPath('datasets.1.title', 'Finance')
+            ->assertJsonPath('datasets.1.title', 'Expenses')
             ->assertJsonPath('datasets.2.title', 'Budget')
             ->assertJsonPath('datasets.3.title', 'Inventory')
             ->assertJsonPath('datasets.4.title', 'Supplier');
@@ -217,7 +217,7 @@ class CentralizedReportsTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('filters.status', 'On Track')
             ->assertJsonPath('stat_cards.0.value', '1')
-            ->assertJsonPath('stat_cards.2.value', '₱25,000.00')
+            ->assertJsonPath('stat_cards.2.value', '0')
             ->assertJsonCount(1, 'projects')
             ->assertJsonPath('projects.0.name', 'Filtered Project')
             ->assertJsonPath('project_status.labels.0', 'On Track')
