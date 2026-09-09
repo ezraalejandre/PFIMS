@@ -1,3 +1,4 @@
+@php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,11 +37,11 @@
         @media (max-width:1100px) { .project-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
         @media (max-width:640px) { .project-filter-panel { grid-template-columns:1fr; } }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
-<body class="projects-page" data-project-view-icon="{{ asset('images/view.jpg') }}" data-project-edit-icon="{{ asset('images/edit.jpg') }}">
+<body class="projects-page" data-portal="{{ $portal }}" data-project-view-icon="{{ asset('images/view.jpg') }}" data-project-edit-icon="{{ asset('images/edit.jpg') }}">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -112,7 +113,6 @@
                 <li class="active"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
                 <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
@@ -150,11 +150,11 @@
                 <label for="projectSearch">Search</label>
                 <input type="search" id="projectSearch" maxlength="150" placeholder="Project, client, manager..." oninput="filterProjects()">
             </div>
-            <div class="project-filter-field">
-                <label for="projectStatusFilter">Status</label>
+            <div class="project-filter-field" hidden>
+                <label for="projectStatusFilter">Project Status</label>
                 <select id="projectStatusFilter" onchange="filterProjects()"><option value="">All statuses</option><option>Pending</option><option>On Track</option><option>At Risk</option><option>Delayed</option><option>Completed</option></select>
             </div>
-            <div class="project-filter-field">
+            <div class="project-filter-field" hidden>
                 <label for="projectPhaseFilter">Phase</label>
                 <select id="projectPhaseFilter" onchange="filterProjects()"><option value="">All phases</option><option>Planning</option><option>Foundation</option><option>Structure</option><option>Finishing</option><option>Complete</option></select>
             </div>
@@ -196,6 +196,7 @@
                         <div class="rows-info">
                 Rows per page
                 <select id="projectRowsPerPage" aria-label="Project rows per page" onchange="changeProjectPageSize()">
+                    <option value="5" selected>5</option>
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="50">50</option>
@@ -367,8 +368,6 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeUpdateModal()">Close</button>
-                <button class="btn-delete" id="deleteProjectBtn" onclick="deleteProject()">Delete</button>
-                <button class="btn-edit-project" id="editProjectBtn" onclick="openEditProjectModal()">Edit Project</button>
             </div>
         </div>
     </div>
@@ -430,6 +429,7 @@
             </div>
             <div class="modal-footer" style="justify-content: flex-end;">
                 <button class="btn-cancel" onclick="closeEditProjectModal()">Cancel</button>
+                <button class="btn-delete" id="deleteProjectBtn" onclick="deleteProject()">Delete</button>
                 <button class="btn-save" onclick="saveEditProject()">Save Changes</button>
             </div>
         </div>
@@ -893,7 +893,7 @@ if (currentStep === 2) {
         }
 
         // ─── PAGINATION VARIABLES ───
-        var projectPageSize = 10;
+        var projectPageSize = 5;
         var projectCurrentPage = 1;
         var projectFilteredData = [];
 
@@ -1399,6 +1399,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                     });
                     updateStats(allProjects);
                     closeUpdateModal();
+                    closeEditProjectModal();
                     showSuccess('Project deleted successfully!');
                     currentProjectRow = null;
                     return;
@@ -1434,6 +1435,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                     });
                     updateStats(allProjects);
                     closeUpdateModal();
+                    closeEditProjectModal();
                     showSuccess('Project deleted successfully!');
                     currentProjectRow = null;
                 })
@@ -1673,7 +1675,7 @@ if (actualEnd && new Date(actualEnd) < new Date(start)) {
         }
     </script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 
 </body>
 </html>

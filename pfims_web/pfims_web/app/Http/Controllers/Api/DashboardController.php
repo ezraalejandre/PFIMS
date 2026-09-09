@@ -19,8 +19,8 @@ class DashboardController extends Controller
     {
         $filters = array_filter($request->validate([
             'search' => 'nullable|string|max:100',
-            'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'status' => 'nullable|string|max:50|exists:project_tbl,status',
+            'stock_status' => 'nullable|in:In stock,Low stock,Out of stock',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]), fn ($value) => $value !== null && $value !== '');
@@ -28,13 +28,14 @@ class DashboardController extends Controller
         return response()->json([
             'filters' => $filters,
             'filter_options' => [
-                'projects' => DB::table('project_tbl')->orderBy('project_name')->get(['project_id as value', 'project_name as label']),
                 'statuses' => DB::table('project_tbl')->whereNotNull('status')->distinct()->orderBy('status')->pluck('status'),
+                'stock_statuses' => ['In stock', 'Low stock', 'Out of stock'],
             ],
             'stat_cards' => $this->statCards($filters),
             'completion_trend' => $this->completionTrend($filters),
             'budget_vs_expense' => $this->budgetVsExpense($filters),
             'project_status' => $this->projectStatus($filters),
+            'stock_status' => $this->stockStatus($filters['stock_status'] ?? null),
             'project_total' => $this->projectQuery($filters)->count(),
             'projects' => $this->projects($filters),
         ]);
@@ -52,16 +53,23 @@ class DashboardController extends Controller
         $totalSpent = $this->totalExpenses($projectIds->all());
         $remaining = $totalBudget - $totalSpent;
         $utilization = $totalBudget > 0 ? round($totalSpent / $totalBudget * 100, 1) : 0;
-        $minimumThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
-        $lowStock = DB::table('inventory_item_tbl')
-            ->whereRaw('current_stock <= CASE WHEN reorder_level IS NULL OR reorder_level < ? THEN ? ELSE reorder_level END', [$minimumThreshold, $minimumThreshold])
-            ->count();
+        $stockGroups = $this->inventoryStockGroups();
+        $selectedStockStatus = $filters['stock_status'] ?? null;
+        $inventoryCount = $selectedStockStatus
+            ? (int) ($stockGroups[$selectedStockStatus] ?? 0)
+            : (int) (($stockGroups['Low stock'] ?? 0) + ($stockGroups['Out of stock'] ?? 0));
         $averageCompletion = round((float) ($allProjects->avg('completion_percentage') ?? 0), 1);
 
         return [
             ['label' => 'Matching Projects', 'value' => (string) $allProjects->count(), 'subtitle' => $activeProjects->count().' active', 'badge' => $delayedCount.' delayed', 'badge_type' => $delayedCount ? 'warning' : 'positive'],
             ['label' => 'Average Completion', 'value' => $averageCompletion.'%', 'subtitle' => 'Across matching projects', 'badge' => null, 'badge_type' => 'positive'],
-            ['label' => 'Inventory Alerts', 'value' => (string) $lowStock, 'subtitle' => 'Items at or below reorder level', 'badge' => $lowStock ? 'Action needed' : 'Stocked', 'badge_type' => $lowStock ? 'warning' : 'positive'],
+            [
+                'label' => $selectedStockStatus ? 'Inventory Items' : 'Inventory Alerts',
+                'value' => (string) $inventoryCount,
+                'subtitle' => $selectedStockStatus ? $selectedStockStatus.' items' : 'Low-stock and out-of-stock items',
+                'badge' => $inventoryCount ? ($selectedStockStatus ?: 'Action needed') : 'None',
+                'badge_type' => $inventoryCount && $selectedStockStatus !== 'In stock' ? 'warning' : 'positive',
+            ],
         ];
     }
 
@@ -106,6 +114,30 @@ class DashboardController extends Controller
         return ['labels' => $groups->keys()->values(), 'values' => $groups->values()];
     }
 
+    private function stockStatus(?string $selectedStatus = null): array
+    {
+        $groups = $this->inventoryStockGroups();
+        if ($selectedStatus !== null) {
+            $groups = [$selectedStatus => $groups[$selectedStatus] ?? 0];
+        }
+
+        return ['labels' => array_keys($groups), 'values' => array_values($groups)];
+    }
+
+    private function inventoryStockGroups(): array
+    {
+        $minimumThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
+        $items = DB::table('inventory_item_tbl')->get(['current_stock', 'reorder_level']);
+        $groups = ['In stock' => 0, 'Low stock' => 0, 'Out of stock' => 0];
+        foreach ($items as $item) {
+            $stock = (float) $item->current_stock;
+            $reorder = max((float) ($item->reorder_level ?? 0), $minimumThreshold);
+            $groups[$stock <= 0 ? 'Out of stock' : ($stock <= $reorder ? 'Low stock' : 'In stock')]++;
+        }
+
+        return $groups;
+    }
+
     private function projects(array $filters): array
     {
         return $this->projectQuery($filters)->leftJoin('budgets_tbl as b', 'b.project_id', '=', 'project_tbl.project_id')
@@ -124,9 +156,6 @@ class DashboardController extends Controller
     private function projectQuery(array $filters): Builder
     {
         $query = Project::query();
-        if (! empty($filters['project_id'])) {
-            $query->where('project_tbl.project_id', $filters['project_id']);
-        }
         if (! empty($filters['status'])) {
             $query->where('project_tbl.status', $filters['status']);
         }

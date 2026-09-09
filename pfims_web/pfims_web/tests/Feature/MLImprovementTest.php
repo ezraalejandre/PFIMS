@@ -47,6 +47,7 @@ class MLImprovementTest extends TestCase
 
         $operations = $this->user('operations');
         $this->actingAs($operations)->get('/ml-dashboard-test')->assertForbidden();
+        $this->actingAs($operations)->get('/ml-dashboard-test?section=material-projection')->assertOk();
         $this->actingAs($operations)
             ->postJson('/api/ml/retrain')
             ->assertForbidden()
@@ -56,15 +57,20 @@ class MLImprovementTest extends TestCase
         $this->actingAs($operations)->getJson('/api/ml/predict/cost')->assertMethodNotAllowed();
         $this->getJson('/ml-debug')->assertNotFound();
 
-        $adminDashboard = $this->actingAs($this->user('admin'))
+        $admin = $this->user('admin');
+        $adminDashboard = $this->actingAs($admin)
             ->get('/ml-dashboard-test?embedded=1')
             ->assertOk()
             ->assertSee('embedded-ml-dashboard', false)
+            ->assertSee('class="projects-page analytics-module-page"', false)
+            ->assertSee('class="top-header"', false)
+            ->assertSee('class="sidebar"', false)
+            ->assertDontSee('<h1>PROJECTS</h1>', false)
+            ->assertDontSee('data-auto-refresh="false"', false)
             ->assertSee('css/centralized-predictive-analytics.css', false)
-            ->assertSee('Predictive Analytics', false)
             ->assertDontSee('DECISION SUPPORT', false)
             ->assertSee('Project Cost Prediction', false)
-            ->assertSee('class="prediction-row"', false)
+            ->assertSee('class="prediction-row analytics-tab-content"', false)
             ->assertSee('id="predictionProject"', false)
             ->assertDontSee('id="budget"', false)
             ->assertDontSee('id="statsGrid"', false)
@@ -72,7 +78,11 @@ class MLImprovementTest extends TestCase
             ->assertDontSee('id="retrainConfirmModal"', false)
             ->assertDontSee('Retrain prediction model?', false)
             ->assertDontSee("confirm('Retraining", false)
-            ->assertSee('model-performance-card" hidden', false);
+            ->assertSee('model-performance-card" hidden', false)
+            ->assertSee('Management diagnostic', false)
+            ->assertSee('Recommended action', false)
+            ->assertSee('Prediction completed. The business diagnostic is ready.', false)
+            ->assertDontSee('function refreshData()', false);
 
         $adminDashboard->assertSeeInOrder([
             'Project Cost Prediction',
@@ -86,6 +96,23 @@ class MLImprovementTest extends TestCase
             ->assertOk()
             ->assertSee('Project Cost Prediction', false)
             ->assertDontSee('id="retrainConfirmModal"', false);
+
+        $this->actingAs($admin)->get('/ml-dashboard-test?section=budget-comparison')
+            ->assertOk()
+            ->assertSee('class="finance-page analytics-module-page"', false)
+            ->assertSee('data-parent-module="finance"', false)
+            ->assertDontSee('<h1>FINANCE</h1>', false)
+            ->assertSee('id="budgetVarianceProject"', false)
+            ->assertDontSee('Import Expenses', false)
+            ->assertDontSee('Report View', false);
+
+        $this->actingAs($this->user('operations'))->get('/ml-dashboard-test?section=material-projection')
+            ->assertOk()
+            ->assertSee('class="inventory-page analytics-module-page"', false)
+            ->assertSee('data-parent-module="inventory"', false)
+            ->assertDontSee('<h1>INVENTORY</h1>', false)
+            ->assertDontSee('Import CSV/XLSX', false)
+            ->assertDontSee('class="inventory-tabs"', false);
     }
 
     public function test_cost_prediction_validates_every_input_and_keeps_compatible_response_fields(): void

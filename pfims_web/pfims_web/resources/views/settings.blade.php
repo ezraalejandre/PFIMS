@@ -1,3 +1,4 @@
+@php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,10 +7,10 @@
     <title>Settings - PFIMS</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/settings.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body class="settings-page">
+<body class="settings-page" data-portal="{{ $portal }}" data-config-api-base="{{ request()->getBaseUrl() }}/api/config">
 
     <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none; z-index: 4000;">
@@ -37,7 +38,7 @@
             </a>
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -50,13 +51,12 @@
                 <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
                 <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
             <ul>
-                <li>
+                <li class="active">
                     <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                         <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
                         Settings
@@ -157,6 +157,8 @@
                         <button class="config-tab active" onclick="switchConfigType(this, 'units')">Units</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'inv_categories')">Inventory Categories</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'exp_categories')">Expense Categories</button>
+                        <button class="config-tab" onclick="switchConfigType(this, 'project_phases')">Project Phases</button>
+                        <button class="config-tab" onclick="switchConfigType(this, 'finance_components')">Finance Components</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'thresholds')">Thresholds</button>
                     </div>
 
@@ -650,16 +652,19 @@
             'units': [],
             'inv_categories': [],
             'exp_categories': []
+            , 'project_phases': [], 'finance_components': []
         };
 
         var configFieldMap = {
             'units': { id: 'unit_id', name: 'unit_name' },
             'inv_categories': { id: 'inventory_category_id', name: 'inventory_category_name' },
             'exp_categories': { id: 'fin_category_id', name: 'category_name' }
+            , 'project_phases': { id: 'phase_id', name: 'phase_name' }, 'finance_components': { id: 'component_id', name: 'component_name' }
         };
         var configMeta = {};
 
         var currentConfigType = 'units';
+        var configApiBase = document.body.dataset.configApiBase;
 
         function switchConfigType(el, type) {
             var btns = document.querySelectorAll('.config-tab');
@@ -683,8 +688,10 @@
             var tbody = document.getElementById('configTableBody');
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px;">Loading...</td></tr>';
 
-            fetch('/api/config/' + type, {
+            fetch(configApiBase + '/' + type, {
+                credentials: 'same-origin',
                 headers: {
+                    'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
@@ -820,7 +827,7 @@
             });
             if (invalid) { alert('Complete every required configuration field.'); return; }
 
-            var url = '/api/config/' + currentConfigType;
+            var url = configApiBase + '/' + currentConfigType;
             var method = 'POST';
             if (id) {
                 url += '/' + id;
@@ -830,6 +837,7 @@
             setButtonLoading(btn, true, 'Saving...');
 
             fetch(url, {
+                credentials: 'same-origin',
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
@@ -870,7 +878,8 @@
             var btn = document.getElementById('deleteConfigBtn');
             setButtonLoading(btn, true, 'Deleting...');
 
-            fetch('/api/config/' + currentConfigType + '/' + id, {
+            fetch(configApiBase + '/' + currentConfigType + '/' + id, {
+                credentials: 'same-origin',
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -1292,6 +1301,6 @@
             }
         });
     </script>
-
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 </body>
 </html>

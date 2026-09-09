@@ -148,7 +148,10 @@ class CentralizedReportsTest extends TestCase
             $response = $this->actingAs($this->user($page['role']))
                 ->get($page['path'])
                 ->assertOk()
-                ->assertSee('<body class="reports-page">', false)
+                ->assertSee('<body class="reports-page" data-portal="'.$page['role'].'" data-reports-api-base=', false)
+                ->assertSee('data-reports-api-base="/api/reports"', false)
+                ->assertSee('id="reportCatalogBootstrap"', false)
+                ->assertDontSee('apiJson(`${reportsApiBase}/catalog`)', false)
                 ->assertSee('class="top-header"', false)
                 ->assertSee('class="sidebar"', false)
                 ->assertSee('class="bottom-nav"', false)
@@ -222,6 +225,26 @@ class CentralizedReportsTest extends TestCase
             ->assertJsonPath('projects.0.name', 'Filtered Project')
             ->assertJsonPath('project_status.labels.0', 'On Track')
             ->assertJsonPath('project_status.values.0', 1);
+    }
+
+    public function test_dashboard_stock_status_filter_updates_the_inventory_kpi(): void
+    {
+        $admin = $this->user('admin');
+        DB::table('inventory_item_tbl')->insert([
+            ['item_id' => 1, 'item_name' => 'Healthy Stock', 'current_stock' => 25, 'reorder_level' => 5],
+            ['item_id' => 2, 'item_name' => 'Low Stock', 'current_stock' => 3, 'reorder_level' => 5],
+            ['item_id' => 3, 'item_name' => 'No Stock', 'current_stock' => 0, 'reorder_level' => 5],
+        ]);
+
+        $this->actingAs($admin)->getJson('/api/dashboard?stock_status=Low%20stock')
+            ->assertOk()
+            ->assertJsonPath('filters.stock_status', 'Low stock')
+            ->assertJsonPath('stat_cards.2.label', 'Inventory Items')
+            ->assertJsonPath('stat_cards.2.value', '1')
+            ->assertJsonPath('stock_status.labels.0', 'Low stock')
+            ->assertJsonPath('stock_status.values.0', 1);
+
+        $this->getJson('/api/dashboard?stock_status=Unknown')->assertUnprocessable();
     }
 
     public function test_finance_report_uses_finance_expense_categories_and_ignores_outdated_expense_rows(): void

@@ -162,15 +162,19 @@ class MLController extends Controller
             if (! $predictionUsable && (! is_array($support) || ! isset($support['status_reason']))) {
                 $statusReason = $contextExplanation.' '.$statusReason;
             }
-            if (! $predictionUsable) {
+            $sampleEstimate = $predictionSource === 'sample_trained_model';
+            if (! $predictionUsable && ! $sampleEstimate) {
                 $riskLevel = 'Insufficient evidence';
             }
-            $businessAction = $predictionUsable
+            $businessAction = ($predictionUsable || $sampleEstimate)
                 ? $this->ml->businessActionForRiskLevel($riskLevel)
                 : 'Do not treat this estimate as evidence that the project is on track. Verify current costs, schedule, and remaining work with the project team.';
-            $status = $predictionUsable
+            $status = ($predictionUsable || $sampleEstimate)
                 ? ($variance > 0 ? 'Warning: Predicted cost exceeds budget' : 'On track')
                 : 'Experimental estimate - insufficient evidence';
+            $interpretation = $sampleEstimate
+                ? $businessAction.' This sample-based diagnostic is suitable for demonstrating the workflow; validate it against operational company history before using it for a business decision.'
+                : $businessAction;
 
             return response()->json([
                 'success' => true,
@@ -181,6 +185,7 @@ class MLController extends Controller
                 'status' => $status,
                 'risk_level' => $riskLevel,
                 'business_action' => $businessAction,
+                'interpretation' => $interpretation,
                 'prediction_source' => $predictionSource,
                 'prediction_usable' => $predictionUsable,
                 'support_level' => $supportLevel,

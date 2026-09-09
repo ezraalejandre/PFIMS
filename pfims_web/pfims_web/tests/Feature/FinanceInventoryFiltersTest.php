@@ -52,6 +52,28 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->getJson('/api/reports/backhoe-profitability?period=2026-01-02')->assertUnprocessable();
     }
 
+    public function test_expense_overall_summary_aggregates_source_rows_without_a_database_view(): void
+    {
+        $this->getJson('/api/reports/expovrall?period=2026-01-01')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonFragment([
+                'project_name' => 'Alpha Project',
+                'category_code' => 'CONST_SUPPLY',
+                'category_total' => 100,
+            ])
+            ->assertJsonFragment([
+                'project_name' => 'Beta Project',
+                'category_code' => 'SALARIES_WAGES',
+                'category_total' => 300,
+            ]);
+
+        $this->getJson('/api/reports/expovrall?period=2026-01-01&project_id=1')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.project_name', 'Alpha Project');
+    }
+
     public function test_inventory_item_filters_use_configured_reorder_levels(): void
     {
         $this->getJson('/api/inventory?category_id=1&stock_state=low_stock')

@@ -1,3 +1,4 @@
+@php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Inventory - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/Inventory.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/inventory.css') }}">
     <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
     <style>
         #deleteConfirmModal { z-index: 9999 !important; }
@@ -117,48 +118,6 @@
             background: #cf8735;
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(225, 154, 69, 0.3);
-        }
-        
-        /* Inventory Tabs */
-        .inventory-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 10px;
-        }
-        
-        .inventory-tabs .tab {
-            padding: 8px 20px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            background: #fff;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #888;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        
-        .inventory-tabs .tab:hover {
-            border-color: #c9a96e;
-            color: #333;
-        }
-        
-        .inventory-tabs .tab.active {
-            background: #1a2b3c;
-            color: #fff;
-            border-color: #1a2b3c;
-        }
-        
-        .inventory-tabs .tab .badge {
-            display: inline-block;
-            background: #d32f2f;
-            color: #fff;
-            font-size: 0.6rem;
-            padding: 1px 6px;
-            border-radius: 10px;
-            margin-left: 4px;
         }
         
         .tab-content {
@@ -290,21 +249,12 @@
             .modal-expense .form-row {
                 grid-template-columns: 1fr;
             }
-            .inventory-tabs {
-                flex-wrap: wrap;
-            }
-            .inventory-tabs .tab {
-                flex: 1;
-                text-align: center;
-                font-size: 0.8rem;
-                padding: 6px 12px;
-            }
         }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body class="inventory-page">
+<body class="inventory-page" data-portal="{{ $portal }}">
 
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -397,7 +347,6 @@
                 <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li class="active"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
                 <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
@@ -433,14 +382,6 @@
                 <button class="btn-add-item" onclick="openAddItemModal()">+ Add Item</button>
                 <button class="btn-add-transaction" onclick="openTransactionModal()">+ Add Transaction</button>
             </div>
-        </div>
-
-                <!-- ─── INVENTORY TABS ─── -->
-        <div class="inventory-tabs">
-            <span class="tab active" onclick="switchInventoryTab(this, 'items')">Items</span>
-            <span class="tab" onclick="switchInventoryTab(this, 'transactions')">
-                Transactions
-            </span>
         </div>
 
         <!-- ─── TAB 1: ITEMS ─── -->
@@ -697,8 +638,6 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeItemDetailModal()">Close</button>
-                <button class="btn-delete" onclick="deleteItem()">Delete</button>
-                <button class="btn-edit-project" onclick="openItemEditModal()">Edit</button>
             </div>
         </div>
     </div>
@@ -741,6 +680,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeEditItemModal()">Cancel</button>
+                <button class="btn-delete" onclick="deleteItem()">Delete</button>
                 <button class="btn-save" onclick="saveEditItem()">Save Changes</button>
             </div>
         </div>
@@ -816,8 +756,7 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeViewModal()">Close</button>
-                <button class="btn-delete" id="viewDeleteBtn" onclick="deleteTransaction()">Delete</button>
-                <button class="btn-edit-project" id="viewEditBtn" onclick="enableEditMode()">Edit</button>
+                <button class="btn-delete" id="viewDeleteBtn" style="display: none;" onclick="deleteTransaction()">Delete</button>
                 <button class="btn-save" id="viewSaveBtn" style="display: none;" onclick="saveEdit()">Save Changes</button>
             </div>
         </div>
@@ -1229,12 +1168,6 @@
 
         // ─── INVENTORY TABS ──────────────────────────────────────────
         function switchInventoryTab(el, tab) {
-            var tabs = document.querySelectorAll('.inventory-tabs .tab');
-            tabs.forEach(function(t) {
-                t.classList.remove('active');
-            });
-            el.classList.add('active');
-
             document.getElementById('tabItems').classList.remove('active');
             document.getElementById('tabTransactions').classList.remove('active');
 
@@ -2205,6 +2138,7 @@
                 .then(function(data) {
                     if (data.success) {
                         closeItemDetailModal();
+                        closeEditItemModal();
                         showSuccess(data.message || 'Item deleted successfully!');
                         loadInventoryItems();
                     } else {
@@ -2633,8 +2567,7 @@
                 document.getElementById('viewProjectInput').style.display = 'none';
             }
             
-            document.getElementById('viewEditBtn').style.display = 'none';
-            document.getElementById('viewDeleteBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
             document.getElementById('viewSaveBtn').style.display = 'inline-block';
         }
 
@@ -2642,8 +2575,7 @@
             isEditMode = false;
             document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
             document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
-            document.getElementById('viewEditBtn').style.display = 'inline-block';
-            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
             document.getElementById('viewSaveBtn').style.display = 'none';
             var projectRow = document.getElementById('viewProjectRow');
             if (projectRow.style.display !== 'none') {
@@ -2792,6 +2724,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadLookupData();
             fetchNotifBadge();
+            var requestedSection = new URLSearchParams(window.location.search).get('section');
+            switchInventoryTab(null, requestedSection === 'transactions' ? 'transactions' : 'items');
         });
     </script>
 
@@ -2799,6 +2733,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="{{ asset('js/inventory-analytics.js') }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 </body>
 </html>

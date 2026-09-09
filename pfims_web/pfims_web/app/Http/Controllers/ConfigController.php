@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\FinExpenseCategory;
+use App\Models\FinanceComponent;
 use App\Models\InventoryCategory;
+use App\Models\ProjectPhase;
 use App\Models\Unit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +44,24 @@ class ConfigController extends Controller
                 'category_name' => ['label' => 'Category name', 'type' => 'text', 'required' => true, 'max' => 100],
                 'classification' => ['label' => 'Classification', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Administrative']],
                 'is_active' => ['label' => 'Status', 'type' => 'select', 'required' => true, 'options' => ['1' => 'Active', '0' => 'Inactive']],
+            ],
+        ],
+        'project_phases' => [
+            'model' => ProjectPhase::class,
+            'table' => 'project_phase_tbl',
+            'id' => 'phase_id',
+            'name' => 'phase_name',
+            'fields' => [
+                'phase_name' => ['label' => 'Project phase', 'type' => 'text', 'required' => true, 'max' => 100],
+            ],
+        ],
+        'finance_components' => [
+            'model' => FinanceComponent::class,
+            'table' => 'fin_component_tbl',
+            'id' => 'component_id',
+            'name' => 'component_name',
+            'fields' => [
+                'component_name' => ['label' => 'Finance component', 'type' => 'text', 'required' => true, 'max' => 100],
             ],
         ],
     ];
@@ -100,6 +120,8 @@ class ConfigController extends Controller
             'units' => DB::table('inventory_item_tbl')->where('unit_id', $id)->exists() ? 'inventory items' : null,
             'inv_categories' => DB::table('inventory_item_tbl')->where('inventory_category_id', $id)->exists() ? 'inventory items' : null,
             'exp_categories' => DB::table('fin_expense_tbl')->where('fin_category_id', $id)->exists() ? 'finance expenses' : null,
+            'project_phases' => DB::table('project_tbl')->whereRaw('LOWER(TRIM(phase)) = ?', [Str::lower(trim((string) $item->phase_name))])->exists() ? 'projects' : null,
+            'finance_components' => DB::table('fin_expense_tbl')->whereRaw('LOWER(TRIM(project_cost_component)) = ?', [Str::lower(trim((string) $item->component_name))])->exists() ? 'finance expenses' : null,
             default => null,
         };
         if ($dependency) {

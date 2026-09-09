@@ -1,3 +1,4 @@
+@php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,10 +51,10 @@
             margin: 0 0 12px;
         }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body class="suppliers-page">
+<body class="suppliers-page" data-portal="{{ $portal }}">
     
     <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -123,8 +124,7 @@
                 <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
                 <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li class="active"><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
+                <li class="active"><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
                 <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
@@ -282,10 +282,6 @@
             </div>
                         <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeViewModal()">Close</button>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
-                    <button class="btn-save" onclick="openEditFromView()" type="button">Edit</button>
-                </div>
             </div>
         </div>
     </div>
@@ -343,6 +339,7 @@
 
                         <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
                 <button class="btn-save" onclick="updateSupplier()">Save Changes</button>
             </div>
         </div>
@@ -357,13 +354,16 @@
         function setButtonLoading(button, isLoading, loadingText) {
             if (!button) return;
             if (isLoading) {
-                button.dataset.originalText = button.textContent;
+                button.dataset.originalHtml = button.innerHTML;
                 button.textContent = loadingText || 'Loading...';
                 button.disabled = true;
                 button.style.opacity = '0.7';
                 button.style.cursor = 'not-allowed';
             } else {
-                button.textContent = button.dataset.originalText || button.textContent;
+                if (Object.prototype.hasOwnProperty.call(button.dataset, 'originalHtml')) {
+                    button.innerHTML = button.dataset.originalHtml;
+                    delete button.dataset.originalHtml;
+                }
                 button.disabled = false;
                 button.style.opacity = '';
                 button.style.cursor = '';
@@ -862,7 +862,7 @@
         });
         </script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 
 </body>
 </html>

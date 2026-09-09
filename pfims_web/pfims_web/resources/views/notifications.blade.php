@@ -1,3 +1,4 @@
+@php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -149,10 +150,10 @@
             max-width: 95%;
         }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body class="notifications-page">
+<body class="notifications-page" data-portal="{{ $portal }}">
 
         <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -224,7 +225,6 @@
                 <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon">SUPPLIERS</a></li>
                 <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
@@ -434,20 +434,6 @@
                         .catch(function(error) {
                 console.error('Error loading notifications:', error);
                 loadMockNotifications();
-            });
-        }
-
-        // ─── REFRESH BUTTON ───
-        function refreshNotifications(btn) {
-            if (btn) {
-                btn.disabled = true;
-                btn.style.opacity = '0.6';
-            }
-            Promise.resolve(loadNotifications()).finally(function() {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.style.opacity = '';
-                }
             });
         }
 
@@ -833,6 +819,6 @@
         });
     </script>
 
-    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 </body>
 </html>

@@ -16,12 +16,36 @@ class FinReportController extends Controller
         ]);
         $period = $filters['period'] ?? date('Y-m-01');
         $projectId = $filters['project_id'] ?? null;
+        $monthExpression = DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m-01', fe.expense_date)"
+            : "DATE_FORMAT(fe.expense_date, '%Y-%m-01')";
 
-        $query = DB::table('v_fin_expovrall')
-            ->where('period_month', $period);
+        // Query the source tables directly. Some installations still have an
+        // older copy of v_fin_expovrall whose GROUP BY definition is rejected
+        // by MySQL's ONLY_FULL_GROUP_BY mode, causing the Summary screen to
+        // fail even though the underlying expense data is valid.
+        $query = DB::table('fin_expense_tbl as fe')
+            ->join('fin_expense_category_tbl as fc', 'fc.fin_category_id', '=', 'fe.fin_category_id')
+            ->leftJoin('project_tbl as p', 'p.project_id', '=', 'fe.project_id')
+            ->whereRaw("{$monthExpression} = ?", [$period])
+            ->select([
+                DB::raw("COALESCE(p.project_name, 'OFFICE') as project_name"),
+                'fe.project_id',
+                DB::raw("{$monthExpression} as period_month"),
+                'fc.category_code',
+                'fc.classification',
+                DB::raw('SUM(fe.amount) as category_total'),
+            ])
+            ->groupBy([
+                'fe.project_id',
+                'p.project_name',
+                'fc.category_code',
+                'fc.classification',
+            ])
+            ->groupByRaw($monthExpression);
 
         if ($projectId) {
-            $query->where('project_id', $projectId);
+            $query->where('fe.project_id', $projectId);
         }
 
         return response()->json($query->get());

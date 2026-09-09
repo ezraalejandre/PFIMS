@@ -13,6 +13,21 @@
     max-width: 100%;
 }
 
+.analytics-module-page .predictive-analytics-root {
+    margin: 0;
+}
+
+.analytics-module-page .analytics-top-spacer {
+    display: block;
+    width: 100%;
+    height: 32px;
+    flex: 0 0 32px;
+}
+
+.analytics-module-page :where(.page-header, .page-header-with-btn) {
+    min-height: 44px;
+}
+
 html.embedded-ml-document,
 body.embedded-ml-dashboard {
     width: 100% !important;

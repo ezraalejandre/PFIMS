@@ -1,4 +1,23 @@
-@php($fragment = $fragment ?? false)
+@php
+    $fragment = $fragment ?? false;
+    $portal = $portal ?? 'admin';
+    $analyticsSection = request()->query('section', 'predictive');
+    $parentModule = match ($analyticsSection) {
+        'budget-comparison' => 'finance',
+        'material-projection' => 'inventory',
+        default => 'projects',
+    };
+    $moduleStylesheet = match ($parentModule) {
+        'finance' => 'finance.css',
+        'inventory' => 'inventory.css',
+        default => 'projtracking.css',
+    };
+    $modulePageClass = match ($parentModule) {
+        'finance' => 'finance-page',
+        'inventory' => 'inventory-page',
+        default => 'projects-page',
+    };
+@endphp
 @unless($fragment)
 <!DOCTYPE html>
 <html lang="en" class="{{ request()->boolean('embedded') ? 'embedded-ml-document' : '' }}">
@@ -7,6 +26,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>ML Dashboard - Test Preview</title>
+    <link rel="stylesheet" href="{{ asset('css/'.$moduleStylesheet) }}">
     <style>
         * {
             margin: 0;
@@ -930,25 +950,66 @@
             color: #edf2f7;
         }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/centralized-predictive-analytics.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/centralized-predictive-analytics.css') }}?v={{ filemtime(public_path('css/centralized-predictive-analytics.css')) }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body class="{{ request()->boolean('embedded') ? 'embedded-ml-dashboard' : '' }}">
+<body class="{{ $modulePageClass }} analytics-module-page" data-portal="{{ $portal }}" data-parent-module="{{ $parentModule }}">
+@endunless
+
+@unless($fragment)
+    <header class="top-header">
+        <div class="left">
+            <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
+            <div class="brand-text">PFIMS<small>E.V. Catapang Design-Construction &amp; Supply</small></div>
+        </div>
+        <div class="right">
+            <a href="{{ url('/notifications') }}" aria-label="Open alerts">
+                <img src="{{ asset('images/notif.jpg') }}" alt="" style="height: 22px; width: auto; cursor: pointer;">
+            </a>
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                <img src="{{ asset('images/user.jpg') }}" alt="" style="height: 30px; width: 30px; border-radius: 50%; object-fit: cover;">
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
+            </a>
+        </div>
+    </header>
+
+    <aside class="sidebar">
+        <nav aria-label="Primary navigation">
+            <ul>
+                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li class="{{ $parentModule === 'projects' ? 'active' : '' }}"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li class="{{ $parentModule === 'finance' ? 'active' : '' }}"><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li class="{{ $parentModule === 'inventory' ? 'active' : '' }}"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+            </ul>
+        </nav>
+        <div class="bottom-nav">
+            <ul>
+                <li><a href="{{ url('/settings') }}"><img src="{{ asset('images/settings.jpg') }}" alt="" class="nav-icon">Settings</a></li>
+                <li class="logout">
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="" class="nav-icon">Log out
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </aside>
+
+    <main class="main-content">
+@endunless
+
+@unless($fragment)
+    <div class="analytics-top-spacer" aria-hidden="true"></div>
 @endunless
 
     <div id="predictiveAnalyticsRoot" class="predictive-analytics-root embedded-ml-dashboard" data-api-base="{{ url('/api/ml') }}">
     <div class="dashboard-container analytics-shell">
-        @unless($fragment ?? false)
-            <section class="header analytics-toolbar">
-                <div class="analytics-heading">
-                    <h1>Predictive Analytics</h1>
-                </div>
-            </section>
-        @endunless
-
         <!-- Main Grid -->
-        <div class="prediction-row analytics-tab-content" id="costPredictionSection" data-analytics-content>
+        <div class="prediction-row analytics-tab-content" id="costPredictionSection" data-analytics-content @if($analyticsSection !== 'predictive') hidden @endif>
             <!-- Left Column: Prediction -->
             <div>
                 <section class="card analytics-panel prediction-workspace">
@@ -958,7 +1019,6 @@
                             <p class="analytics-panel-description">Select an eligible project to forecast its final cost from current system records.</p>
                         </div>
                     </div>
-
                     <form id="predictionForm" onsubmit="return false;">
                         <div class="project-selection">
                             <div class="form-group">
@@ -1000,7 +1060,7 @@
             </div>
         </div>
 
-            <div class="analytics-tab-content" id="materialProjectionSection" data-analytics-content hidden>
+            <div class="analytics-tab-content" id="materialProjectionSection" data-analytics-content @if($analyticsSection !== 'material-projection') hidden @endif>
                 <!-- Material Forecast -->
                 <section class="card analytics-panel">
                     <div class="card-header">
@@ -1008,6 +1068,11 @@
                             <div class="card-title">30-Day Material Stock Projection</div>
                             <p class="analytics-panel-description">Expected demand based on recent dated inventory usage.</p>
                         </div>
+                    </div>
+                    <div class="filters-grid" aria-label="Material Projection filters">
+                        <label class="filter-control">Search<input id="materialForecastSearch" type="search" maxlength="100" placeholder="Material name"></label>
+                        <label class="filter-control">Stock status<select id="materialForecastStatus"><option value="">All stock states</option><option>Healthy</option><option>Low Stock</option><option>Reorder Needed</option></select></label>
+                        <button type="button" id="clearMaterialForecastFilters">Clear</button>
                     </div>
                     <div class="table-wrapper">
                         <table class="analytics-table">
@@ -1027,11 +1092,25 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="pagination-wrapper" id="materialForecastPagination">
+                        <div class="rows-info">
+                            <span>Rows per page</span>
+                            <select id="materialForecastPageSize" aria-label="Material Projection rows per page">
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span id="materialForecastRange" class="pagination-info">Showing 0–0 of 0</span>
+                        </div>
+                        <div class="pagination-links" id="materialForecastPaginationLinks" aria-label="Material Projection pages"></div>
+                    </div>
                 </section>
             </div>
 
             <!-- Right Column: Financial Analytics -->
-            <div class="analytics-tab-content" id="budgetComparisonSection" data-analytics-content hidden>
+            <div class="analytics-tab-content" id="budgetComparisonSection" data-analytics-content @if($analyticsSection !== 'budget-comparison') hidden @endif>
                 <!-- Budget Variance -->
                 <section class="card analytics-panel">
                     <div class="card-header">
@@ -1039,6 +1118,12 @@
                     <div class="card-title">Budget-Spending Comparison</div>
                             <p class="analytics-panel-description">Latest recorded spending compared with project budgets.</p>
                         </div>
+                    </div>
+                    <div class="filters-grid" aria-label="Budget comparison filters">
+                        <label class="filter-control">Search<input id="budgetVarianceSearch" type="search" maxlength="100" placeholder="Project name"></label>
+                        <label class="filter-control">Project<select id="budgetVarianceProject"><option value="">All projects</option></select></label>
+                        <label class="filter-control">Position<select id="budgetVarianceStatus"><option value="">All positions</option><option value="within">Within budget</option><option value="over">Over budget</option></select></label>
+                        <button type="button" id="clearBudgetVarianceFilters">Clear</button>
                     </div>
                     <div class="table-wrapper">
                         <table class="analytics-table">
@@ -1061,7 +1146,8 @@
                         <div class="rows-info">
                             <span>Rows per page</span>
                             <select id="budgetVariancePageSize" aria-label="Budget-Spending Comparison rows per page">
-                                <option value="10" selected>10</option>
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
                                 <option value="25">25</option>
                                 <option value="50">50</option>
                                 <option value="100">100</option>
@@ -1125,11 +1211,18 @@
 
     </div>
 
+@unless($fragment)
+    </main>
+@endunless
+
     <script>
     // ─── CONFIGURATION ─────────────────────────────────────────────
     const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+    const requestedAnalyticsSection = new URLSearchParams(window.location.search).get('section');
     let predictionProjects = [];
+    let materialForecastRows = [];
+    let materialForecastPage = 1;
     let budgetVarianceRows = [];
     let budgetVariancePage = 1;
     const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
@@ -1138,6 +1231,10 @@
 
     // ─── NOTIFICATION SYSTEM ──────────────────────────────────────
     function showNotification(message, type = 'info', duration = 5000) {
+        if (typeof window.showPfimsAlert === 'function') {
+            window.showPfimsAlert(message, type, duration);
+            return;
+        }
         const notification = document.createElement('div');
         notification.className = `pfims-prediction-notice ${type}`;
         notification.innerHTML = `
@@ -1313,11 +1410,20 @@
                 const variance = parseFloat(result.variance) || 0;
                 const variancePercentage = parseFloat(result.variance_percentage) || 0;
                 const isOverBudget = variance > 0;
-                const predictionUsable = result.prediction_usable === true;
-                const resultTone = predictionUsable ? (isOverBudget ? 'warning' : 'success') : 'warning';
-                const displayedStatus = predictionUsable
-                    ? (result.risk_level || result.status || 'Unknown')
-                    : 'Insufficient evidence';
+                const resultTone = isOverBudget ? 'warning' : 'success';
+                const predictedCost = parseFloat(result.predicted_cost || 0);
+                const recordedExpenses = parseFloat(result.input_features?.fin_total_expense || 0);
+                const completion = parseFloat(result.input_features?.completion_percentage || 0);
+                const remainingForecastCost = Math.max(predictedCost - recordedExpenses, 0);
+                const displayedStatus = isOverBudget
+                    ? (variancePercentage > 10 ? 'Critical cost exposure' : (variancePercentage > 5 ? 'High cost exposure' : 'Manageable cost exposure'))
+                    : 'Within approved budget';
+                const businessDiagnostic = isOverBudget
+                    ? `The project is forecast to exceed its approved budget by ${variancePercentage.toFixed(1)}%. Without corrective action, this reduces the expected project margin and may require additional funding approval.`
+                    : `The forecast remains ${Math.abs(variancePercentage).toFixed(1)}% within the approved budget, leaving a cost buffer that management should protect through the remaining work.`;
+                const managementAction = isOverBudget
+                    ? 'Review remaining commitments, validate high-cost work packages, and agree on a recovery plan before approving further discretionary spending.'
+                    : 'Maintain current cost controls, confirm outstanding commitments, and monitor the remaining forecast against progress at the next management review.';
                 resultDiv.className = `prediction-result show ${resultTone}`;
                 
                 contentDiv.innerHTML = `
@@ -1326,38 +1432,34 @@
                         <span class="result-value">${escapeHtml(result.input_features?.project_name || 'Selected project')}</span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Predicted Cost</span>
+                        <span class="result-label">Forecast final cost</span>
                         <span class="result-value">${escapeHtml(result.formatted || '₱0')}</span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Budget Difference</span>
+                        <span class="result-label">Budget exposure</span>
                         <span class="result-value ${isOverBudget ? 'negative' : 'positive'}">
                             ${isOverBudget ? '+ ' : '- '}₱${Math.abs(variance).toLocaleString()}
                             (${variancePercentage.toFixed(1)}%)
                         </span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Status</span>
+                        <span class="result-label">Business position</span>
                         <span class="result-value">${escapeHtml(displayedStatus)}</span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Business Action</span>
-                        <span class="result-value" style="font-size:13px;">${escapeHtml(result.business_action || 'Review forecast inputs and continue monitoring.')}</span>
+                        <span class="result-label">Management diagnostic</span>
+                        <span class="result-value" style="font-size:13px;">${escapeHtml(businessDiagnostic)}</span>
                     </div>
-                    <div class="result-row" style="border-bottom: none; margin-top: 8px; font-size: 13px; color: #666;">
-                        <span class="result-label">Inputs</span>
-                        <span>Budget: ₱${parseFloat(result.input_features?.budget || 0).toLocaleString()} | 
-                              Duration: ${parseFloat(result.input_features?.duration_months || 0)}mo | 
-                              Workers: ${parseFloat(result.input_features?.worker_count || 0)}</span>
+                    <div class="result-row">
+                        <span class="result-label">Remaining forecast cost</span>
+                        <span class="result-value">₱${remainingForecastCost.toLocaleString()} after ₱${recordedExpenses.toLocaleString()} recorded expenses at ${completion.toFixed(1)}% completion</span>
                     </div>
-                    ${(result.warnings || []).length ? `
-                        <div style="margin-top:12px; padding:10px; background:#fff3e0; color:#8a4b08; border-radius:6px; font-size:12px;">
-                            <strong>Reliability notes:</strong><br>${result.warnings.map(warning => `• ${escapeHtml(warning)}`).join('<br>')}
-                        </div>` : ''}
+                    <div class="result-row" style="border-bottom: none;">
+                        <span class="result-label">Recommended action</span>
+                        <span class="result-value" style="font-size:13px;">${escapeHtml(managementAction)}</span>
+                    </div>
                 `;
-                showNotification(predictionUsable
-                    ? 'Prediction completed successfully.'
-                    : 'Estimate generated with insufficient evidence; review before relying on it.', predictionUsable ? 'success' : 'info');
+                showNotification('Prediction completed. The business diagnostic is ready.', 'success');
             } else {
                 resultDiv.className = 'prediction-result show danger';
                 const errors = result.errors ? Object.values(result.errors).flat().join('<br>') : '';
@@ -1403,15 +1505,23 @@
     // ─── UPDATE MATERIAL FORECAST ─────────────────────────────────
     function updateMaterialForecast(predictions) {
         const tbody = document.getElementById('materialForecastBody');
-        
-        if (!predictions || Object.keys(predictions).length === 0) {
+        if (predictions !== materialForecastRows) materialForecastRows = predictions ? Object.values(predictions) : [];
+        const query = (document.getElementById('materialForecastSearch')?.value || '').trim().toLowerCase();
+        const status = document.getElementById('materialForecastStatus')?.value || '';
+        const filteredRows = materialForecastRows.filter(item => (!query || String(item.item_name || '').toLowerCase().includes(query)) && (!status || item.status === status));
+        const pageSize = Number(document.getElementById('materialForecastPageSize')?.value || 5);
+        const totalPages = Math.max(Math.ceil(filteredRows.length / pageSize), 1);
+        materialForecastPage = Math.min(materialForecastPage, totalPages);
+        const items = filteredRows.slice((materialForecastPage - 1) * pageSize, materialForecastPage * pageSize);
+
+        if (items.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="text-center">No material forecast data available</td></tr>`;
+            document.getElementById('materialForecastRange').textContent = 'Showing 0–0 of 0';
+            renderMaterialForecastPagination(totalPages);
             return;
         }
 
         let html = '';
-        const items = Object.values(predictions).slice(0, 10);
-        
         items.forEach(item => {
             const statusClass = item.status === 'Reorder Needed' ? 'badge-danger' :
                                item.status === 'Low Stock' ? 'badge-warning' : 'badge-success';
@@ -1422,7 +1532,7 @@
             
             html += `
                 <tr>
-                    <td><strong>${item.item_name || 'Unknown'}</strong></td>
+                    <td><strong>${escapeHtml(item.item_name || 'Unknown')}</strong></td>
                     <td>${currentStock.toFixed(2)}</td>
                     <td>${avgUsage.toFixed(2)}</td>
                     <td>${projectedDemand.toFixed(2)}</td>
@@ -1432,6 +1542,37 @@
         });
 
         tbody.innerHTML = html;
+        const start = (materialForecastPage - 1) * pageSize + 1;
+        const end = Math.min(materialForecastPage * pageSize, filteredRows.length);
+        document.getElementById('materialForecastRange').textContent = `Total: ${filteredRows.length}`;
+        renderMaterialForecastPagination(totalPages);
+    }
+
+    function compactPaginationItems(current, total) {
+        if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+        const items = [1];
+        const from = Math.max(2, current - 1);
+        const to = Math.min(total - 1, current + 1);
+        if (from > 2) items.push('ellipsis-start');
+        for (let page = from; page <= to; page += 1) items.push(page);
+        if (to < total - 1) items.push('ellipsis-end');
+        items.push(total);
+        return items;
+    }
+
+    function renderMaterialForecastPagination(totalPages) {
+        const links = document.getElementById('materialForecastPaginationLinks');
+        if (!links) return;
+        const button = (label, page, active = false, disabled = false) =>
+            `<button type="button" data-material-page="${page}" class="${active ? 'active' : ''}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+        let html = button('Previous', materialForecastPage - 1, false, materialForecastPage <= 1);
+        compactPaginationItems(materialForecastPage, totalPages).forEach(item => {
+            html += typeof item === 'number'
+                ? button(String(item), item, item === materialForecastPage)
+                : '<span class="ellipsis" aria-hidden="true">…</span>';
+        });
+        html += button('Next', materialForecastPage + 1, false, materialForecastPage >= totalPages);
+        links.innerHTML = html;
     }
 
     // ─── LOAD BUDGET VARIANCE ────────────────────────────────────
@@ -1461,11 +1602,36 @@
     // ─── UPDATE BUDGET VARIANCE ────────────────────────────────────
     function updateBudgetVariance(varianceData) {
         const tbody = document.getElementById('budgetVarianceBody');
-        budgetVarianceRows = Array.isArray(varianceData) ? varianceData : [];
-        const pageSize = Number(document.getElementById('budgetVariancePageSize')?.value || 10);
-        const totalPages = Math.max(Math.ceil(budgetVarianceRows.length / pageSize), 1);
+        if (varianceData !== budgetVarianceRows) {
+            budgetVarianceRows = Array.isArray(varianceData) ? varianceData : [];
+            const projectFilter = document.getElementById('budgetVarianceProject');
+            const selectedProject = projectFilter?.value || '';
+            if (projectFilter) {
+                const names = [...new Set(budgetVarianceRows.map(item => String(item.project_name || '').trim()).filter(Boolean))].sort();
+                projectFilter.innerHTML = '<option value="">All projects</option>';
+                names.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    projectFilter.appendChild(option);
+                });
+                if (names.includes(selectedProject)) projectFilter.value = selectedProject;
+            }
+        }
+        const query = (document.getElementById('budgetVarianceSearch')?.value || '').trim().toLowerCase();
+        const project = document.getElementById('budgetVarianceProject')?.value || '';
+        const position = document.getElementById('budgetVarianceStatus')?.value || '';
+        const filteredRows = budgetVarianceRows.filter(item => {
+            const projectName = String(item.project_name || '');
+            const matchesSearch = !query || projectName.toLowerCase().includes(query);
+            const matchesProject = !project || projectName === project;
+            const overBudget = Number(item.variance || 0) < 0;
+            return matchesSearch && matchesProject && (!position || (position === 'over' ? overBudget : !overBudget));
+        });
+        const pageSize = Number(document.getElementById('budgetVariancePageSize')?.value || 5);
+        const totalPages = Math.max(Math.ceil(filteredRows.length / pageSize), 1);
         budgetVariancePage = Math.min(budgetVariancePage, totalPages);
-        const visibleRows = budgetVarianceRows.slice((budgetVariancePage - 1) * pageSize, budgetVariancePage * pageSize);
+        const visibleRows = filteredRows.slice((budgetVariancePage - 1) * pageSize, budgetVariancePage * pageSize);
 
         if (visibleRows.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="text-center">No budget comparison data available</td></tr>`;
@@ -1499,8 +1665,8 @@
 
         tbody.innerHTML = html;
         const start = (budgetVariancePage - 1) * pageSize + 1;
-        const end = Math.min(budgetVariancePage * pageSize, budgetVarianceRows.length);
-        document.getElementById('budgetVarianceRange').textContent = `Showing ${start}–${end} of ${budgetVarianceRows.length}`;
+        const end = Math.min(budgetVariancePage * pageSize, filteredRows.length);
+        document.getElementById('budgetVarianceRange').textContent = `Total: ${filteredRows.length}`;
         renderBudgetVariancePagination(totalPages);
     }
 
@@ -1510,9 +1676,11 @@
         const button = (label, page, active = false, disabled = false) =>
             `<button type="button" data-budget-page="${page}" class="${active ? 'active' : ''}" ${disabled ? 'disabled' : ''}>${label}</button>`;
         let html = button('Previous', budgetVariancePage - 1, false, budgetVariancePage <= 1);
-        for (let page = 1; page <= totalPages; page += 1) {
-            html += button(String(page), page, page === budgetVariancePage);
-        }
+        compactPaginationItems(budgetVariancePage, totalPages).forEach(item => {
+            html += typeof item === 'number'
+                ? button(String(item), item, item === budgetVariancePage)
+                : '<span class="ellipsis" aria-hidden="true">…</span>';
+        });
         html += button('Next', budgetVariancePage + 1, false, budgetVariancePage >= totalPages);
         links.innerHTML = html;
     }
@@ -1555,15 +1723,6 @@
         }
     }
 
-    // ─── REFRESH DATA ─────────────────────────────────────────────
-    function refreshData() {
-        showNotification('🔄 Refreshing dashboard data...', 'info', 2000);
-        loadDashboard();
-        loadPredictionProjects();
-        loadMaterialForecast();
-        loadBudgetVariance();
-    }
-
     // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
@@ -1577,12 +1736,27 @@
 
     // ─── INIT ─────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
+        const sectionMap = { predictive: 'costPredictionSection', 'material-projection': 'materialProjectionSection', 'budget-comparison': 'budgetComparisonSection' };
+        const targetSection = sectionMap[requestedAnalyticsSection] || 'costPredictionSection';
+        document.querySelectorAll('[data-analytics-content]').forEach(section => { section.hidden = section.id !== targetSection; });
         loadDashboard();
         loadPredictionProjects(false);
         loadMaterialForecast();
         loadBudgetVariance();
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
         document.getElementById('predictionProject').addEventListener('change', updatePredictionProjectSnapshot);
+        document.getElementById('materialForecastPageSize').addEventListener('change', () => {
+            materialForecastPage = 1;
+            updateMaterialForecast(materialForecastRows);
+        });
+        ['materialForecastSearch', 'materialForecastStatus'].forEach(id => document.getElementById(id).addEventListener('input', () => { materialForecastPage = 1; updateMaterialForecast(materialForecastRows); }));
+        document.getElementById('clearMaterialForecastFilters').addEventListener('click', () => { document.getElementById('materialForecastSearch').value = ''; document.getElementById('materialForecastStatus').value = ''; materialForecastPage = 1; updateMaterialForecast(materialForecastRows); });
+        document.getElementById('materialForecastPaginationLinks').addEventListener('click', event => {
+            const button = event.target.closest('[data-material-page]');
+            if (!button || button.disabled) return;
+            materialForecastPage = Number(button.dataset.materialPage);
+            updateMaterialForecast(materialForecastRows);
+        });
         document.getElementById('budgetVariancePageSize').addEventListener('change', () => {
             budgetVariancePage = 1;
             updateBudgetVariance(budgetVarianceRows);
@@ -1593,17 +1767,17 @@
             budgetVariancePage = Number(button.dataset.budgetPage);
             updateBudgetVariance(budgetVarianceRows);
         });
+        ['budgetVarianceSearch', 'budgetVarianceProject', 'budgetVarianceStatus'].forEach(id => document.getElementById(id).addEventListener('input', () => { budgetVariancePage = 1; updateBudgetVariance(budgetVarianceRows); }));
+        document.getElementById('clearBudgetVarianceFilters').addEventListener('click', () => {
+            document.getElementById('budgetVarianceSearch').value = '';
+            document.getElementById('budgetVarianceProject').value = '';
+            document.getElementById('budgetVarianceStatus').value = '';
+            budgetVariancePage = 1;
+            updateBudgetVariance(budgetVarianceRows);
+        });
         document.getElementById('retrainConfirmModal')?.addEventListener('click', event => {
             if (event.target.id === 'retrainConfirmModal') closeRetrainConfirmation();
         });
-
-        setInterval(() => {
-            loadDashboard();
-            loadPredictionProjects(false);
-            loadMaterialForecast();
-            loadBudgetVariance();
-        }, 60000);
-
         if (document.body.classList.contains('embedded-ml-dashboard')) {
             const reportHeight = () => window.parent.postMessage({
                 type: 'pfims-ml-height',
@@ -1617,7 +1791,7 @@
 </script>
 
 @unless($fragment)
-<script src="{{ asset('js/pfims-system-ui.js') }}"></script>
+<script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 </body>
 </html>
 @endunless

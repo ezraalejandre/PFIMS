@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
@@ -107,9 +108,23 @@ class ReportController extends Controller
         return response()->json($query->latest('generated_at')->paginate((int) ($validated['per_page'] ?? 20)));
     }
 
-    public function catalog(): JsonResponse
+    public function page(): View
     {
         $role = $this->role();
+
+        return view('reports', [
+            'portal' => in_array($role, ['admin', 'accounting', 'operations'], true) ? $role : 'admin',
+            'reportCatalog' => $this->catalogPayload($role),
+        ]);
+    }
+
+    public function catalog(): JsonResponse
+    {
+        return response()->json($this->catalogPayload($this->role()));
+    }
+
+    private function catalogPayload(string $role): array
+    {
         $datasets = collect(self::DATASETS)
             ->filter(fn (array $definition) => in_array($role, $definition['roles'], true))
             ->map(fn (array $definition, string $key) => [
@@ -117,7 +132,7 @@ class ReportController extends Controller
                 'columns' => $definition['columns'], 'filters' => $definition['filters'],
             ])->values();
 
-        return response()->json([
+        return [
             'datasets' => $datasets,
             'options' => [
                 'projects' => DB::table('project_tbl')->orderBy('project_name')->get(['project_id as value', 'project_name as label']),
@@ -134,7 +149,7 @@ class ReportController extends Controller
                     ['value' => 'data', 'label' => 'Detailed rows'],
                 ],
             ],
-        ]);
+        ];
     }
 
     public function data(Request $request, string $dataset): JsonResponse

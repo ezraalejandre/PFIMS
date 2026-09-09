@@ -1,3 +1,17 @@
+@php
+    $portal = $portal ?? 'admin';
+    $financeSection = request()->query('section');
+    $financeTab = match ($financeSection) {
+        'budgets' => 'budgets',
+        'contracts' => 'profit',
+        'ar-ap' => 'receivables',
+        'cash-position' => 'cash',
+        'equipment' => 'backhoe',
+        'bonds' => 'bonds',
+        'summary' => 'summary',
+        default => 'expenses',
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,101 +27,8 @@
         #deleteBudgetConfirmModal { z-index: 9999 !important; }
         #deleteBondConfirmModal { z-index: 9999 !important; }
 
-        /* ─── REPORT TABS ─── */
-        .report-tab {
-            cursor: pointer;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: 0.3s;
-            border: 2px solid transparent;
-        }
-        .report-tab:hover { background: #f0f0f0; }
-        .report-tab.active {
-            background: #1a2b3c;
-            color: #fff;
-            border-color: #1a2b3c;
-        }
         .report-section { display: none; }
         .report-section.active { display: block; }
-
-        .report-select-wrapper {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .report-select-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #555;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-        .report-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-        .report-dropdown-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            width: 240px;
-            padding: 10px 16px;
-            border-radius: 8px;
-            border: 2px solid #1a2b3c;
-            background: #1a2b3c;
-            color: #fff;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .report-dropdown-arrow {
-            font-size: 0.7rem;
-            transition: transform 0.2s;
-        }
-        .report-dropdown.open .report-dropdown-arrow {
-            transform: rotate(180deg);
-        }
-        .report-dropdown-menu {
-            display: none;
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            width: 240px;
-            max-height: 340px;
-            overflow-y: auto;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-            padding: 8px 0;
-            z-index: 50;
-        }
-        .report-dropdown.open .report-dropdown-menu {
-            display: block;
-        }
-        .report-dropdown-group-label {
-            padding: 8px 16px 4px;
-            font-size: 0.65rem;
-            font-weight: 700;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-        .report-dropdown-item {
-            padding: 8px 16px;
-            font-size: 0.82rem;
-            color: #333;
-            cursor: pointer;
-        }
-        .report-dropdown-item:hover {
-            background: #f0f0f0;
-        }
-        .report-dropdown-item.active {
-            background: #1a2b3c;
-            color: #fff;
-            font-weight: 600;
-        }
 
         .report-table-wrapper {
             overflow-x: auto;
@@ -735,10 +656,10 @@
             .dynamic-amount-fields { grid-template-columns: 1fr; }
         }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body class="finance-page">
+<body class="finance-page" data-portal="{{ $portal }}" data-finance-tab="{{ $financeTab }}">
 
     <!-- ─── ERROR NOTIFICATION ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
@@ -827,7 +748,7 @@
             </a>
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
         </div>
     </header>
@@ -858,12 +779,6 @@
                     <a href="{{ url('/inventory') }}">
                         <img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
                         INVENTORY
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ url('/suppliers') }}">
-                        <img src="{{ asset('images/suppliers.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
-                        SUPPLIERS
                     </a>
                 </li>
                 <li>
@@ -908,38 +823,8 @@
             </div>
         </div>
 
-        <!-- ─── REPORT TABS (DROPDOWN) ─── -->
-        <div class="report-select-wrapper">
-            <span class="report-select-label">Report View</span>
-            <div class="report-dropdown" id="reportDropdown">
-                <button type="button" class="report-dropdown-toggle" id="reportDropdownToggle" onclick="toggleReportDropdown()">
-                    <span id="reportDropdownLabel">Expenses</span>
-                    <span class="report-dropdown-arrow">▾</span>
-                </button>
-                <div class="report-dropdown-menu" id="reportDropdownMenu">
-                    <div class="report-dropdown-group">
-                        <div class="report-dropdown-group-label">Overview</div>
-                        <div class="report-dropdown-item active" data-tab="expenses" data-label="Expenses" onclick="selectReportTab(this)">Expenses</div>
-                        <div class="report-dropdown-item" data-tab="budgets" data-label="Budgets" onclick="selectReportTab(this)">Budgets</div>
-                        <div class="report-dropdown-item" data-tab="summary" data-label="Summary" onclick="selectReportTab(this)">Summary</div>
-                    </div>
-                    <div class="report-dropdown-group">
-                        <div class="report-dropdown-group-label">Financial Reports</div>
-                        <div class="report-dropdown-item" data-tab="profit" data-label="Profit/Loss" onclick="selectReportTab(this)">Profit/Loss</div>
-                        <div class="report-dropdown-item" data-tab="receivables" data-label="AR/AP" onclick="selectReportTab(this)">AR/AP</div>
-                        <div class="report-dropdown-item" data-tab="cash" data-label="Cash Asset" onclick="selectReportTab(this)">Cash Asset</div>
-                    </div>
-                    <div class="report-dropdown-group">
-                        <div class="report-dropdown-group-label">Assets</div>
-                        <div class="report-dropdown-item" data-tab="backhoe" data-label="Backhoe" onclick="selectReportTab(this)">Backhoe</div>
-                        <div class="report-dropdown-item" data-tab="bonds" data-label="Bonds" onclick="selectReportTab(this)">Bonds</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- ─── TAB 1: EXPENSES ─── -->
-        <div id="tabExpenses" class="report-section active">
+        <div id="tabExpenses" class="report-section {{ $financeTab === 'expenses' ? 'active' : '' }}">
             <div class="filter-tabs">
                 <span class="tab active" data-period="all" onclick="setActiveTab(this,'all')">All</span>
                 <span class="tab" data-period="daily" onclick="setActiveTab(this,'daily')">Daily</span>
@@ -970,14 +855,14 @@
                     <select id="financeRowsPerPage" aria-label="Finance expense rows per page" onchange="changeFinancePageSize()">
                         <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
                     </select>
-                    <span id="rowsInfoText">Showing 0 of 0 expenses</span>
+                    <span id="rowsInfoText">Total: 0 expenses</span>
                 </div>
                 <div class="pagination-links" id="financePaginationLinks"></div>
             </div>
         </div>
 
         <!-- ─── TAB 2: BUDGETS ─── -->
-        <div id="tabBudgets" class="report-section">
+        <div id="tabBudgets" class="report-section {{ $financeTab === 'budgets' ? 'active' : '' }}">
             <div class="filter-row">
                 <input type="search" id="budgetSearch" maxlength="150" placeholder="Search project name..." oninput="filterBudgetTable()">
                 <select id="budgetProjectFilter" onchange="filterBudgetTable()"><option value="all">All Projects</option></select>
@@ -999,7 +884,7 @@
                     <select id="budgetRowsPerPage" aria-label="Finance budget rows per page" onchange="changeBudgetPageSize()">
                         <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
                     </select>
-                    <span id="budgetRowsInfo">Showing 0 of 0 projects</span>
+                    <span id="budgetRowsInfo">Total: 0 projects</span>
                 </div>
                 <div class="pagination-links" id="budgetPaginationLinks"></div>
             </div>
@@ -1011,7 +896,6 @@
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="expovrallMonth" value="{{ date('Y-m') }}" onchange="loadExpovrall()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadExpovrall()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="expovrallTable">
@@ -1027,7 +911,6 @@
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="expdirectMonth" value="{{ date('Y-m') }}" onchange="loadExpDirect()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadExpDirect()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="expdirectTable">
@@ -1043,7 +926,6 @@
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="adminexpMonth" value="{{ date('Y-m') }}" onchange="loadAdminExp()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadAdminExp()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="adminexpTable">
@@ -1077,7 +959,6 @@
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="directexpMonth" value="{{ date('Y-m') }}" onchange="loadDirectExp()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadDirectExp()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="directexpTable">
@@ -1093,7 +974,6 @@
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="overallexpMonth" value="{{ date('Y-m') }}" onchange="loadOverallExp()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadOverallExp()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="overallexpTable">
@@ -1104,7 +984,7 @@
         </div>
 
         <!-- ─── TAB 8: PROFIT/LOSS ─── -->
-        <div id="tabProfit" class="report-section">
+        <div id="tabProfit" class="report-section {{ $financeTab === 'profit' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Report Type:
                     <select id="profitType" onchange="loadProfit()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
@@ -1126,7 +1006,7 @@
         </div>
 
         <!-- ─── TAB 9: AR/AP ─── -->
-        <div id="tabReceivables" class="report-section">
+        <div id="tabReceivables" class="report-section {{ $financeTab === 'receivables' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Type:
                     <select id="receivableType" onchange="loadReceivables()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
@@ -1136,7 +1016,6 @@
                         <option value="advance_employee">Advances to Employees</option>
                     </select>
                 </label>
-                <button onclick="loadReceivables()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
                 <button onclick="openAddReceivableModal()" class="btn-add-data gold">+ Add Entry</button>
             </div>
             <div class="report-table-wrapper">
@@ -1148,12 +1027,11 @@
         </div>
 
         <!-- ─── TAB 10: CASH ASSET ─── -->
-        <div id="tabCash" class="report-section">
+        <div id="tabCash" class="report-section {{ $financeTab === 'cash' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="cashMonth" value="{{ date('Y-m') }}" onchange="loadCashAsset()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadCashAsset()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
                 <button onclick="openAddCashModal()" class="btn-add-data gold">+ Add Cash Position</button>
             </div>
             <div class="report-table-wrapper">
@@ -1165,7 +1043,7 @@
         </div>
 
         <!-- ─── TAB 12: BACKHOE ─── -->
-        <div id="tabBackhoe" class="report-section">
+        <div id="tabBackhoe" class="report-section {{ $financeTab === 'backhoe' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Asset:
                     <select id="backhoeAsset" onchange="loadBackhoe()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
@@ -1175,7 +1053,6 @@
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="backhoeMonth" value="{{ date('Y-m') }}" onchange="loadBackhoe()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadBackhoe()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
                 <button onclick="openAddBackhoeExpenseModal()" class="btn-add-data">+ Add Expense</button>
                 <button onclick="openAddBackhoeRentalModal()" class="btn-add-data gold">+ Add Rental Income</button>
             </div>
@@ -1188,7 +1065,7 @@
         </div>
 
         <!-- ─── TAB 13: BONDS ─── -->
-        <div id="tabBonds" class="report-section">
+        <div id="tabBonds" class="report-section {{ $financeTab === 'bonds' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">
                     Project:
@@ -1205,7 +1082,6 @@
                         <option value="forfeited">Forfeited</option>
                     </select>
                 </label>
-                <button onclick="loadBonds()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
                 <button onclick="openAddBondModal()" class="btn-add-data gold">+ Add Bond</button>
             </div>
             <div class="report-table-wrapper">
@@ -1217,12 +1093,11 @@
         </div>
 
         <!-- ─── TAB 14: SUMMARY ─── -->
-        <div id="tabSummary" class="report-section">
+        <div id="tabSummary" class="report-section {{ $financeTab === 'summary' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="summaryMonth" value="{{ date('Y-m') }}" onchange="loadSummary()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
-                <button onclick="loadSummary()" style="padding:6px 16px;background:#1a2b3c;color:#fff;border:none;border-radius:6px;cursor:pointer;">Refresh</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="summaryTable">
@@ -1234,7 +1109,7 @@
 
     </main>
 
-    <div id="inventoryExpenseModal" class="modal-overlay">
+    <div id="inventoryExpenseModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container" style="max-width:420px;">
             <div class="modal-header"><h2>Add Stock-In Expense</h2><button class="modal-close" onclick="closeInventoryExpenseModal()">×</button></div>
             <div class="modal-body">
@@ -1245,7 +1120,7 @@
     </div>
 
     <!-- ─── ADD EXPENSE MODAL (Unified - Handles ALL Expense Types) ─── -->
-    <div id="addExpenseModal" class="modal-overlay">
+    <div id="addExpenseModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2 id="addExpenseModalTitle">Add Expense</h2><button class="modal-close" onclick="closeAddExpenseModal()">×</button></div>
             <div class="modal-body">
@@ -1312,7 +1187,7 @@
     </div>
 
     <!-- ─── ADD BUDGET MODAL ─── -->
-    <div id="addBudgetModal" class="modal-overlay">
+    <div id="addBudgetModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Budget</h2><button class="modal-close" onclick="closeAddBudgetModal()">×</button></div>
             <div class="modal-body">
@@ -1336,7 +1211,7 @@
     </div>
 
     <!-- ─── ADD CONTRACT MODAL ─── -->
-    <div id="addContractModal" class="modal-overlay">
+    <div id="addContractModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container" style="width:600px;max-width:95%;">
             <div class="modal-header">
                 <h2 id="contractModalTitle">Add/Edit Contract</h2>
@@ -1377,13 +1252,14 @@
             <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
                 <button class="btn-cancel" onclick="closeAddContractModal()">Cancel</button>
                 <button class="btn-delete" id="contractDeleteBtn" onclick="deleteContract()" style="display:none;">Delete</button>
+                <button class="btn-edit" id="contractEditBtn" onclick="enableContractEdit()" style="display:none;">Edit</button>
                 <button class="btn-save" onclick="saveContract()">Save Contract</button>
             </div>
         </div>
     </div>
 
     <!-- ─── ADD RECEIVABLE MODAL ─── -->
-    <div id="addReceivableModal" class="modal-overlay">
+    <div id="addReceivableModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add AR/AP Entry</h2><button class="modal-close" onclick="closeAddReceivableModal()">×</button></div>
             <div class="modal-body">
@@ -1422,7 +1298,7 @@
     </div>
 
     <!-- ─── ADD CASH POSITION MODAL ─── -->
-    <div id="addCashModal" class="modal-overlay">
+    <div id="addCashModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Cash Position</h2><button class="modal-close" onclick="closeAddCashModal()">×</button></div>
             <div class="modal-body">
@@ -1443,7 +1319,7 @@
     </div>
 
     <!-- ─── ADD REPAIR MODAL ─── -->
-    <div id="addRepairModal" class="modal-overlay">
+    <div id="addRepairModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Repair/Maintenance</h2><button class="modal-close" onclick="closeAddRepairModal()">×</button></div>
             <div class="modal-body">
@@ -1474,7 +1350,7 @@
     </div>
 
     <!-- ─── ADD BACKHOE EXPENSE MODAL ─── -->
-    <div id="addBackhoeExpenseModal" class="modal-overlay">
+    <div id="addBackhoeExpenseModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Backhoe Expense</h2><button class="modal-close" onclick="closeAddBackhoeExpenseModal()">×</button></div>
             <div class="modal-body">
@@ -1506,7 +1382,7 @@
     </div>
 
     <!-- ─── ADD BACKHOE RENTAL MODAL ─── -->
-    <div id="addBackhoeRentalModal" class="modal-overlay">
+    <div id="addBackhoeRentalModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Backhoe Rental Income</h2><button class="modal-close" onclick="closeAddBackhoeRentalModal()">×</button></div>
             <div class="modal-body">
@@ -1528,7 +1404,7 @@
     </div>
 
     <!-- ─── ADD BOND MODAL ─── -->
-    <div id="addBondModal" class="modal-overlay">
+    <div id="addBondModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Construction Bond</h2><button class="modal-close" onclick="closeAddBondModal()">×</button></div>
             <div class="modal-body">
@@ -2137,28 +2013,8 @@
         }
 
         // ─── TAB SWITCHING ─────────────────────────────────────────────
-        function toggleReportDropdown() {
-            document.getElementById('reportDropdown').classList.toggle('open');
-        }
-        
-        function selectReportTab(el) {
-            document.getElementById('reportDropdownLabel').textContent = el.dataset.label;
-            document.querySelectorAll('.report-dropdown-item').forEach(function(item) {
-                item.classList.toggle('active', item === el);
-            });
-            document.getElementById('reportDropdown').classList.remove('open');
-            switchReportTab(el.dataset.tab);
-        }
-        document.addEventListener('click', function(e) {
-            var dd = document.getElementById('reportDropdown');
-            if (dd && !dd.contains(e.target)) dd.classList.remove('open');
-        });
-
         function switchReportTab(tab) {
             currentReportTab = tab;
-            document.querySelectorAll('.report-tab').forEach(function(el) {
-                el.classList.toggle('active', el.dataset.tab === tab);
-            });
             document.querySelectorAll('.report-section').forEach(function(el) {
                 el.classList.toggle('active', el.id === 'tab' + tab.charAt(0).toUpperCase() + tab.slice(1));
             });
@@ -2188,6 +2044,19 @@
                 case 'summary': loadSummary(); break;
             }
         }
+
+        document.addEventListener('pfims:autorefresh', function() {
+            if (currentReportTab === 'expenses') {
+                fetchExpenses();
+                fetchAssets();
+                return;
+            }
+            if (currentReportTab === 'budgets') {
+                fetchBudgetData();
+                return;
+            }
+            switchReportTab(currentReportTab);
+        });
 
         // ─── DELETE MODALS ─────────────────────────────────────────────
         function openDeleteModal(message, callback) {
@@ -2387,7 +2256,7 @@
             var pageSize = financePageSize || 10;
             var start = (currentPage - 1) * pageSize + 1;
             var end = Math.min(start + pageSize - 1, totalCount);
-            rowsInfo.textContent = totalCount === 0 ? 'Showing 0 of 0 expenses' : 'Showing ' + start + '-' + end + ' of ' + totalCount + ' expenses';
+            rowsInfo.textContent = 'Total: ' + totalCount + ' expense' + (totalCount === 1 ? '' : 's');
         }
 
         // ─── API FETCH FUNCTIONS ──────────────────────────────────────
@@ -2992,7 +2861,7 @@
             var pageSize = budgetPageSize || 10;
             var start = (currentPage - 1) * pageSize + 1;
             var end = Math.min(start + pageSize - 1, totalCount);
-            rowsInfo.textContent = totalCount === 0 ? 'Showing 0 of 0 projects' : 'Showing ' + start + '-' + end + ' of ' + totalCount + ' projects';
+            rowsInfo.textContent = 'Total: ' + totalCount + ' project' + (totalCount === 1 ? '' : 's');
         }
 
         function updateBudgetStats() {
@@ -3120,8 +2989,8 @@
 
             if (isBudgetEditMode) toggleBudgetDetailEdit();
             isBudgetEditMode = false;
-            document.getElementById('budgetDetailEditBtn').style.display = 'inline-block';
-            document.getElementById('budgetDetailDeleteBtn').style.display = 'inline-block';
+            document.getElementById('budgetDetailEditBtn').style.display = 'none';
+            document.getElementById('budgetDetailDeleteBtn').style.display = 'none';
             document.getElementById('budgetDetailSaveBtn').style.display = 'none';
             document.querySelectorAll('.budget-detail-edit').forEach(function(el) { el.style.display = 'none'; });
             document.querySelectorAll('.budget-detail-value').forEach(function(el) { el.style.display = ''; });
@@ -3149,7 +3018,7 @@
 
             if (isBudgetEditMode) {
                 editBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
                 if (changeFileBtn) changeFileBtn.style.display = 'inline-block';
                 displayEls.forEach(function(el) { el.style.display = 'none'; });
@@ -3157,8 +3026,8 @@
                 var hasFile = selectedBudgetDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
-                editBtn.style.display = 'inline-block';
-                deleteBtn.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 if (changeFileBtn) changeFileBtn.style.display = 'none';
                 if (deleteFileBtn) deleteFileBtn.style.display = 'none';
@@ -3306,8 +3175,8 @@
 
             if (isEditMode) toggleDetailEdit();
             isEditMode = false;
-            document.getElementById('detailEditBtn').style.display = 'inline-block';
-            document.getElementById('detailDeleteBtn').style.display = 'inline-block';
+            document.getElementById('detailEditBtn').style.display = 'none';
+            document.getElementById('detailDeleteBtn').style.display = 'none';
             document.getElementById('detailSaveBtn').style.display = 'none';
             document.querySelectorAll('.detail-edit').forEach(function(el) { el.style.display = 'none'; });
             document.querySelectorAll('.detail-value').forEach(function(el) { el.style.display = ''; });
@@ -3335,7 +3204,7 @@
 
             if (isEditMode) {
                 editBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
                 if (changeFileBtn) changeFileBtn.style.display = 'inline-block';
                 displayEls.forEach(function(el) { el.style.display = 'none'; });
@@ -3343,8 +3212,8 @@
                 var hasFile = selectedDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
-                editBtn.style.display = 'inline-block';
-                deleteBtn.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 if (changeFileBtn) changeFileBtn.style.display = 'none';
                 if (deleteFileBtn) deleteFileBtn.style.display = 'none';
@@ -3702,6 +3571,28 @@
             }
         }
 
+        function openContractViewModal(row) {
+            openAddContractModal(row);
+            document.getElementById('contractModalTitle').textContent = 'Contract Details';
+            document.querySelectorAll('#addContractModal input, #addContractModal select').forEach(function(control) {
+                control.disabled = true;
+            });
+            document.getElementById('contractDeleteBtn').style.display = 'none';
+            document.getElementById('contractEditBtn').style.display = 'inline-block';
+            document.querySelector('#addContractModal .btn-save').style.display = 'none';
+        }
+
+        function enableContractEdit() {
+            document.getElementById('contractModalTitle').textContent = 'Edit Contract';
+            document.querySelectorAll('#addContractModal input, #addContractModal select').forEach(function(control) {
+                control.disabled = false;
+            });
+            document.getElementById('contractProject').disabled = true;
+            document.getElementById('contractDeleteBtn').style.display = 'inline-block';
+            document.getElementById('contractEditBtn').style.display = 'none';
+            document.querySelector('#addContractModal .btn-save').style.display = 'inline-block';
+        }
+
         function populateContractProjectDropdown() {
             var select = document.getElementById('contractProject');
             var currentValue = select.value;
@@ -3740,6 +3631,9 @@
             // Reset to add mode
             document.getElementById('contractProject').style.display = 'block';
             document.getElementById('contractProjectDisplay').style.display = 'none';
+            document.querySelectorAll('#addContractModal input, #addContractModal select').forEach(function(control) { control.disabled = false; });
+            document.getElementById('contractEditBtn').style.display = 'none';
+            document.querySelector('#addContractModal .btn-save').style.display = 'inline-block';
         }
 
         function saveContract() {
@@ -3922,8 +3816,8 @@
 
             if (isReceivableEditMode) toggleReceivableEdit();
             isReceivableEditMode = false;
-            document.getElementById('receivableDetailEditBtn').style.display = 'inline-block';
-            document.getElementById('receivableDetailDeleteBtn').style.display = 'inline-block';
+            document.getElementById('receivableDetailEditBtn').style.display = 'none';
+            document.getElementById('receivableDetailDeleteBtn').style.display = 'none';
             document.getElementById('receivableDetailSaveBtn').style.display = 'none';
             
             // Reset display/edit visibility
@@ -3976,7 +3870,7 @@
 
             if (isReceivableEditMode) {
                 editBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
                 
                 // Hide display values
@@ -4010,8 +3904,8 @@
                 document.getElementById('receivableDetailProjectDisplay').textContent = projectName;
                 
             } else {
-                editBtn.style.display = 'inline-block';
-                deleteBtn.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 
                 // Show display values
@@ -4916,7 +4810,7 @@
                         tr.setAttribute('data-addl-payment', row.additional_works_payment || 0);
                         tr.setAttribute('data-remarks', row.remarks || '');
                         tr.style.cursor = 'pointer';
-                        tr.onclick = function() { openAddContractModal(this); };
+                        tr.onclick = function() { openContractViewModal(this); };
                         tr.innerHTML = '<td><strong>' + (row.project_name || '') + '</strong></td>' +
                             '<td>' + (row.start_date || '') + '</td>' +
                             '<td>' + (row.actual_end_date || 'In Progress') + '</td>' +
@@ -5071,8 +4965,8 @@
 
             if (isCashEditMode) toggleCashEdit();
             isCashEditMode = false;
-            document.getElementById('cashDetailEditBtn').style.display = 'inline-block';
-            document.getElementById('cashDetailDeleteBtn').style.display = 'inline-block';
+            document.getElementById('cashDetailEditBtn').style.display = 'none';
+            document.getElementById('cashDetailDeleteBtn').style.display = 'none';
             document.getElementById('cashDetailSaveBtn').style.display = 'none';
             
             document.querySelectorAll('#cashDetailModal .detail-edit').forEach(function(el) { 
@@ -5104,7 +4998,7 @@
 
             if (isCashEditMode) {
                 editBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
                 
                 displayFields.forEach(function(id) {
@@ -5121,8 +5015,8 @@
                 document.getElementById('cashDetailAccountEdit').style.display = 'none';
                 
             } else {
-                editBtn.style.display = 'inline-block';
-                deleteBtn.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 
                 displayFields.forEach(function(id) {
@@ -5459,8 +5353,8 @@
 
             if (isBondEditMode) toggleBondEdit();
             isBondEditMode = false;
-            document.getElementById('bondDetailEditBtn').style.display = 'inline-block';
-            document.getElementById('bondDetailDeleteBtn').style.display = 'inline-block';
+            document.getElementById('bondDetailEditBtn').style.display = 'none';
+            document.getElementById('bondDetailDeleteBtn').style.display = 'none';
             document.getElementById('bondDetailSaveBtn').style.display = 'none';
             
             document.querySelectorAll('#bondDetailModal .detail-edit').forEach(function(el) { 
@@ -5494,7 +5388,7 @@
 
             if (isBondEditMode) {
                 editBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
                 
                 displayFields.forEach(function(id) {
@@ -5511,8 +5405,8 @@
                 document.getElementById('bondDetailProjectEdit').style.display = 'none';
                 
             } else {
-                editBtn.style.display = 'inline-block';
-                deleteBtn.style.display = 'inline-block';
+                editBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 
                 displayFields.forEach(function(id) {
@@ -5639,6 +5533,8 @@
 
         // ─── INIT ─────────────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', function() {
+            var requestedTab = document.body.dataset.financeTab || 'expenses';
+            currentReportTab = requestedTab;
             var profitYear = document.getElementById('profitYear');
             var currentYear = new Date().getFullYear();
             for (var year = currentYear; year >= 2000; year--) {
@@ -5647,24 +5543,43 @@
                 yearOption.textContent = year;
                 profitYear.appendChild(yearOption);
             }
-            fetchProjects()
-                .then(function() { return fetchExpenseCategories(); })
-                .then(function() { return fetchExpenses(); })
-                .then(function() { return fetchAssets(); })
-                .then(function() {
-                    if (currentReportTab === 'budgets') {
-                        fetchBudgetData();
-                    }
-                    if (currentReportTab === 'adminexp') {
-                        loadAdminExp();
-                    }
-                });
+            var initialLoad;
+            switch (requestedTab) {
+                case 'budgets':
+                    initialLoad = fetchProjects()
+                        .then(function() { return fetchExpenses(); })
+                        .then(function() { return fetchBudgetData(); });
+                    break;
+                case 'profit':
+                case 'receivables':
+                case 'bonds':
+                    initialLoad = fetchProjects().then(function() { switchReportTab(requestedTab); });
+                    break;
+                case 'backhoe':
+                    initialLoad = fetchAssets().then(function() { switchReportTab(requestedTab); });
+                    break;
+                case 'cash':
+                case 'summary':
+                    switchReportTab(requestedTab);
+                    initialLoad = Promise.resolve();
+                    break;
+                default:
+                    initialLoad = fetchProjects()
+                        .then(function() { return fetchExpenseCategories(); })
+                        .then(function() { return fetchExpenses(); })
+                        .then(function() { return fetchBudgetData(); })
+                        .then(function() { return fetchAssets(); })
+                        .then(function() { switchReportTab('expenses'); });
+            }
+            initialLoad.catch(function(error) { showError(error.message || 'Unable to load this finance section.'); });
             initializeProofFileUpload();
         });
+
     </script>
 
     @include('partials.data-import', ['importModule' => 'finance'])
     <script src="{{ asset('js/finance-analytics.js') }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script src="{{ asset('js/finance-review-flow.js') }}"></script>
 </body>
 </html>

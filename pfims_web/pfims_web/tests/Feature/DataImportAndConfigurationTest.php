@@ -100,6 +100,32 @@ class DataImportAndConfigurationTest extends TestCase
         $this->actingAs($admin)->getJson('/api/config/suppliers')->assertNotFound();
     }
 
+    public function test_project_phase_and_finance_component_configurations_load_and_populate_form_metadata(): void
+    {
+        $admin = $this->user('admin');
+
+        $this->actingAs($admin)->postJson('/api/config/project_phases', ['phase_name' => 'Mobilization'])
+            ->assertCreated()
+            ->assertJsonPath('data.phase_name', 'Mobilization');
+        $this->actingAs($admin)->getJson('/api/config/project_phases')
+            ->assertOk()
+            ->assertJsonPath('meta.id', 'phase_id')
+            ->assertJsonPath('meta.fields.phase_name.label', 'Project phase')
+            ->assertJsonPath('data.0.phase_name', 'Mobilization');
+
+        $component = $this->actingAs($admin)->postJson('/api/config/finance_components', ['component_name' => 'Equipment'])
+            ->assertCreated()
+            ->assertJsonPath('data.component_name', 'Equipment')
+            ->json('data');
+        $this->actingAs($admin)->getJson('/api/config/finance_components')
+            ->assertOk()
+            ->assertJsonPath('meta.id', 'component_id')
+            ->assertJsonPath('meta.fields.component_name.label', 'Finance component');
+        $this->actingAs($admin)->patchJson('/api/config/finance_components/'.$component['component_id'], ['component_name' => 'Other'])
+            ->assertOk()
+            ->assertJsonPath('data.component_name', 'Other');
+    }
+
     public function test_direct_finance_expenses_require_project_and_cost_component(): void
     {
         $admin = $this->user('admin');
@@ -248,6 +274,7 @@ class DataImportAndConfigurationTest extends TestCase
         Schema::create('project_tbl', function (Blueprint $table) {
             $table->integer('project_id')->primary();
             $table->string('project_name');
+            $table->string('phase')->nullable();
         });
         Schema::create('fin_expense_category_tbl', function (Blueprint $table) {
             $table->increments('fin_category_id');
@@ -283,6 +310,14 @@ class DataImportAndConfigurationTest extends TestCase
         Schema::create('unit_tbl', function (Blueprint $table) {
             $table->increments('unit_id');
             $table->string('unit_name');
+        });
+        Schema::create('project_phase_tbl', function (Blueprint $table) {
+            $table->increments('phase_id');
+            $table->string('phase_name')->unique();
+        });
+        Schema::create('fin_component_tbl', function (Blueprint $table) {
+            $table->increments('component_id');
+            $table->string('component_name')->unique();
         });
         Schema::create('inventory_item_tbl', function (Blueprint $table) {
             $table->increments('item_id');

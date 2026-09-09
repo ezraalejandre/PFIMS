@@ -199,7 +199,13 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('function refreshProjectAnalytics(projects)', false)
                 ->assertSee('function renderStatusChart(projects)', false);
         }
-        $operationsView->assertSee('/odashboard', false)->assertSee('/oinventory', false);
+        $operationsView
+            ->assertSee('data-portal="operations"', false)
+            ->assertSee('pfims-system-ui.js', false);
+
+        $sharedUi = file_get_contents(public_path('js/pfims-system-ui.js'));
+        $this->assertStringContainsString("'/dashboard': '/odashboard'", $sharedUi);
+        $this->assertStringContainsString("'/inventory': '/oinventory'", $sharedUi);
     }
 
     public function test_every_role_dashboard_uses_the_shared_application_shell_and_philippine_clock(): void
@@ -214,13 +220,12 @@ class CoreIntegrityProjectTest extends TestCase
             $response = $this->actingAs($this->user($dashboard['role']))
                 ->get($dashboard['path'])
                 ->assertOk()
-                ->assertSee('<body class="dashboard-page">', false)
+                ->assertSee('<body class="dashboard-page" data-portal="'.$dashboard['role'].'">', false)
                 ->assertSee('class="top-header"', false)
                 ->assertSee('class="sidebar"', false)
                 ->assertSee('class="bottom-nav"', false)
                 ->assertSee('class="main-content"', false)
-                ->assertSee('id="dashboardTime"', false)
-                ->assertSee('id="dashboardDate"', false)
+                ->assertSee('class="header-clock"', false)
                 ->assertSee('id="dashboardPagination"', false)
                 ->assertSee('id="pageSize"', false)
                 ->assertSee('id="dashboardRange"', false)
@@ -235,40 +240,31 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee("timeZone: 'Asia/Manila'", false)
                 ->assertSee('action="http://localhost/logout"', false);
 
+            if (in_array($dashboard['role'], ['admin', 'operations'], true)) {
+                $response->assertSee('>Project Cost Prediction</a>', false)
+                    ->assertDontSee('>Predictive analytics</a>', false);
+            }
+
             foreach ($dashboard['links'] as $link) {
                 $response->assertSee($link, false);
             }
 
-            if (in_array($dashboard['role'], ['admin', 'accounting'], true)) {
-                $response->assertSee('id="overviewTab"', false)
-                    ->assertSee('id="predictionTab"', false)
-                    ->assertSee('class="predictive-analytics-root embedded-ml-dashboard"', false)
-                    ->assertDontSee('id="predictiveAnalyticsFrame"', false)
-                    ->assertSee('Predictive analytics', false);
-            } else {
-                $response->assertDontSee('id="predictionTab"', false)
-                    ->assertSee('class="predictive-analytics-root embedded-ml-dashboard"', false)
-                    ->assertSee('Material projection', false)
-                    ->assertDontSee('Predictive analytics</button>', false)
-                    ->assertDontSee('Budget and Spending Comparison</button>', false);
-            }
+            $response->assertDontSee('id="overviewTab"', false)
+                ->assertDontSee('id="predictionTab"', false)
+                ->assertDontSee('class="predictive-analytics-root embedded-ml-dashboard"', false)
+                ->assertSee('nav-parent-toggle', false);
         }
     }
 
     public function test_active_web_pagination_surfaces_use_the_shared_rows_per_page_contract(): void
     {
         $views = [
-            'dashboard-centralized.blade.php',
+            'dashboard.blade.php',
             'projtracking.blade.php',
-            'Oprojects.blade.php',
             'finance.blade.php',
-            'Afinance.blade.php',
             'inventory.blade.php',
-            'Oinventory.blade.php',
             'notifications.blade.php',
-            'Anotifications.blade.php',
-            'Onotifications.blade.php',
-            'reports-centralized.blade.php',
+            'reports.blade.php',
         ];
 
         foreach ($views as $view) {
@@ -277,7 +273,6 @@ class CoreIntegrityProjectTest extends TestCase
             $this->assertStringContainsString('pagination-wrapper', $contents, $view);
             $this->assertStringContainsString('Rows per page', $contents, $view);
             $this->assertStringNotContainsString('Rows Displayed:', $contents, $view);
-            $this->assertMatchesRegularExpression('/<option value="10"(?: selected)?>10<\/option>/', $contents, $view);
             $this->assertDoesNotMatchRegularExpression('/<option value="25" selected>25<\/option>/', $contents, $view);
             $this->assertMatchesRegularExpression('/<option value="50"[^>]*>50<\/option>/', $contents, $view);
             $this->assertMatchesRegularExpression('/<option value="100"[^>]*>100<\/option>/', $contents, $view);
@@ -297,6 +292,173 @@ class CoreIntegrityProjectTest extends TestCase
 
         $operations = $this->user('operations');
         $this->actingAs($operations)->get('/settings')->assertRedirect('/osettings');
+    }
+
+    public function test_reported_ui_regressions_use_shared_controls_and_removed_two_factor_ui(): void
+    {
+        $admin = $this->user('admin');
+        $this->actingAs($admin)->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('id="materialForecastPagination"', false)
+            ->assertDontSee('id="project"', false)
+            ->assertDontSee('id="start"', false)
+            ->assertDontSee('id="end"', false)
+            ->assertSee('data-dashboard-period="all"', false)
+            ->assertSee('data-dashboard-period="monthly"', false)
+            ->assertSee('data-dashboard-period="yearly"', false)
+            ->assertSee("state.period !== 'all'", false)
+            ->assertSee("timeZone: 'Asia/Manila'", false)
+            ->assertSee('id="status"', false)
+            ->assertSee('id="stockStatus"', false)
+            ->assertDontSee('id="projectStatusChart"', false)
+            ->assertDontSee('id="stockStatusChart"', false);
+
+        $dashboardCss = file_get_contents(public_path('css/centralized-dashboard.css'));
+        $this->assertStringContainsString('grid-template-columns: repeat(2, minmax(0, 1fr));', $dashboardCss);
+        $this->assertMatchesRegularExpression('/\.budget-panel\s*\{\s*grid-column:\s*auto;/', $dashboardCss);
+
+        $sharedUi = file_get_contents(public_path('js/pfims-system-ui.js'));
+        $this->assertStringContainsString('window.showPfimsAlert = function', $sharedUi);
+        $this->assertStringContainsString("window.showSuccess = function", $sharedUi);
+        $this->assertStringContainsString("['Project Cost Prediction', '/ml-dashboard-test?section=predictive']", $sharedUi);
+        $this->assertStringNotContainsString("['Predictive Analytics', '/ml-dashboard-test?section=predictive']", $sharedUi);
+        $this->assertStringContainsString("localStorage.setItem('pfims-nav-' + module", $sharedUi);
+        $this->assertStringContainsString("item.classList.toggle('has-active-child', !!activeChild)", $sharedUi);
+        $this->assertStringContainsString("var shouldOpen = !!activeChild || savedState === 'open'", $sharedUi);
+        $this->assertStringContainsString("selected ? 'open' : 'closed'", $sharedUi);
+        $this->assertStringContainsString('function installExpandableActionButtons()', $sharedUi);
+        $this->assertStringContainsString("control.dataset.iconLabel = type", $sharedUi);
+        $this->assertStringContainsString("type === 'export'", $sharedUi);
+        $this->assertStringContainsString("type === 'clear' && control.closest('.modal-overlay, dialog, [role=\"dialog\"]')", $sharedUi);
+        $this->assertStringContainsString('function removeProjectFilterControls()', $sharedUi);
+        $this->assertStringContainsString('function installTablePagination(table)', $sharedUi);
+        $this->assertStringContainsString("['5', '25', '50', '100']", $sharedUi);
+        $this->assertStringContainsString('var AUTO_REFRESH_MS = 15000', $sharedUi);
+        $this->assertStringContainsString('function installHeaderClock()', $sharedUi);
+        $this->assertStringContainsString("timeZone: 'Asia/Manila'", $sharedUi);
+        $this->assertStringContainsString(".format(now) + ' PST'", $sharedUi);
+        $this->assertStringContainsString("time.className = 'header-clock-time'", $sharedUi);
+        $this->assertStringContainsString("}).format(now) + ' ';", $sharedUi);
+        $this->assertStringNotContainsString("}).format(now) + ' at ';", $sharedUi);
+        $this->assertStringContainsString("host.classList.add('pfims-search-host')", $sharedUi);
+        $this->assertStringContainsString("cell.offsetParent === null", $sharedUi);
+        $this->assertStringNotContainsString("forEach(installCustomSelect)", $sharedUi);
+
+        $sharedCss = file_get_contents(public_path('css/ui-refresh.css'));
+        $this->assertStringContainsString('.finance-page .pfims-add-modal .modal-container', $sharedCss);
+        $this->assertStringContainsString('.sidebar .nav-parent-toggle .nav-chevron', $sharedCss);
+        $this->assertStringContainsString('.sidebar .nav-parent.has-active-child.is-open', $sharedCss);
+        $this->assertStringContainsString('.sidebar .nav-parent.has-active-child:not(.is-open)', $sharedCss);
+        $this->assertStringContainsString('.pfims-expand-action:hover .button-label', $sharedCss);
+        $this->assertStringContainsString('max-width: 220px', $sharedCss);
+        $this->assertStringContainsString('.pfims-filter-heading', $sharedCss);
+        $this->assertStringContainsString('.pfims-search-suggestions[hidden]', $sharedCss);
+        $this->assertStringContainsString('.pfims-search-suggestions button', $sharedCss);
+        $this->assertStringContainsString('select option', $sharedCss);
+        $this->assertStringNotContainsString('zoom: .75', $sharedCss);
+        $this->assertStringContainsString('height: 34px !important', $sharedCss);
+        $this->assertStringContainsString('.top-header .right .header-clock', $sharedCss);
+        $this->assertStringContainsString('.top-header .right .header-clock-date', $sharedCss);
+        $this->assertStringContainsString('.top-header .right .header-clock-time', $sharedCss);
+        $this->assertStringContainsString('margin-left: 0.35rem;', $sharedCss);
+        $this->assertStringContainsString('font-weight: 800 !important', $sharedCss);
+        $this->assertStringContainsString('One KPI card contract with a top accent', $sharedCss);
+        $this->assertStringNotContainsString('stat cards get a side accent', $sharedCss);
+        $this->assertStringNotContainsString('Inventory card accent: side bar', $sharedCss);
+        $this->assertStringContainsString('Dashboard pagination is the final visual and sizing standard everywhere', $sharedCss);
+        $this->assertStringContainsString('grid-template-columns: repeat(3, minmax(0, 1fr))', $sharedCss);
+        $this->assertStringContainsString('Flat system surfaces', $sharedCss);
+        $this->assertStringContainsString('box-shadow: none !important', $sharedCss);
+
+        $settingsView = file_get_contents(resource_path('views/settings.blade.php'));
+        $this->assertStringContainsString('js/pfims-system-ui.js', $settingsView);
+
+        $this->get('/inventory?section=transactions')
+            ->assertOk()
+            ->assertDontSee('class="inventory-tabs"', false)
+            ->assertSee("requestedSection === 'transactions'", false);
+
+        $this->get('/ml-dashboard-test?section=material-projection')
+            ->assertOk()
+            ->assertSee('id="materialForecastPagination"', false)
+            ->assertSee('id="materialForecastPageSize"', false)
+            ->assertSee('function compactPaginationItems', false);
+
+        $this->get('/finance')
+            ->assertOk()
+            ->assertDontSee('>Refresh</button>', false)
+            ->assertSee("document.addEventListener('pfims:autorefresh'", false)
+            ->assertSee('finance-review-flow.js', false)
+            ->assertSeeInOrder([
+                'id="inventoryExpenseModal" class="modal-overlay pfims-add-modal"',
+                'id="addExpenseModal" class="modal-overlay pfims-add-modal"',
+                'id="addBudgetModal" class="modal-overlay pfims-add-modal"',
+                'id="addContractModal" class="modal-overlay pfims-add-modal"',
+                'id="addReceivableModal" class="modal-overlay pfims-add-modal"',
+                'id="addCashModal" class="modal-overlay pfims-add-modal"',
+                'id="addRepairModal" class="modal-overlay pfims-add-modal"',
+                'id="addBackhoeExpenseModal" class="modal-overlay pfims-add-modal"',
+                'id="addBackhoeRentalModal" class="modal-overlay pfims-add-modal"',
+                'id="addBondModal" class="modal-overlay pfims-add-modal"',
+            ], false)
+            ->assertDontSee('Report View', false)
+            ->assertDontSee('id="reportDropdown"', false)
+            ->assertSee('data-finance-tab=', false)
+            ->assertSee('openContractViewModal(this)', false)
+            ->assertSee('id="contractEditBtn"', false)
+            ->assertSee('then(function() { return fetchBudgetData(); })', false);
+
+        $financeAnalytics = file_get_contents(public_path('js/finance-analytics.js'));
+        $this->assertStringContainsString("window.updateBudgetActualAmounts", $financeAnalytics);
+
+        foreach (glob(resource_path('views/*.blade.php')) as $view) {
+            $this->assertStringNotContainsString('>SUPPLIERS</a>', file_get_contents($view), basename($view));
+        }
+
+        foreach (['settings.blade.php'] as $view) {
+            $contents = file_get_contents(resource_path('views/'.$view));
+            $this->assertStringNotContainsString('Two Factor Authentication', $contents, $view);
+            $this->assertStringNotContainsString('twofaModal', $contents, $view);
+            $this->assertStringContainsString('<li class="active">', $contents, $view);
+        }
+    }
+
+    public function test_every_role_uses_shared_module_blades_and_one_role_stylesheet(): void
+    {
+        $moduleViews = [
+            'dashboard.blade.php',
+            'projtracking.blade.php',
+            'finance.blade.php',
+            'inventory.blade.php',
+            'suppliers.blade.php',
+            'reports.blade.php',
+            'notifications.blade.php',
+            'profile.blade.php',
+            'settings.blade.php',
+            'ml-dashboard-test.blade.php',
+        ];
+
+        foreach ($moduleViews as $view) {
+            $contents = file_get_contents(resource_path('views/'.$view));
+            $this->assertStringContainsString("asset('css/'.\$portal.'.css')", $contents, $view);
+            $this->assertStringContainsString('data-portal="{{ $portal }}"', $contents, $view);
+        }
+
+        foreach (['admin', 'accounting', 'operations'] as $role) {
+            $contents = file_get_contents(public_path('css/'.$role.'.css'));
+            $this->assertStringContainsString("@import url('./ui-refresh.css');", $contents, $role);
+            $this->assertStringContainsString('--pfims-role: '.$role, $contents, $role);
+        }
+
+        foreach ([
+            'Adashboard.blade.php', 'Odashboard.blade.php', 'Afinance.blade.php',
+            'Oprojects.blade.php', 'Oinventory.blade.php', 'Osuppliers.blade.php',
+            'Areports.blade.php', 'Oreports.blade.php', 'Anotifications.blade.php',
+            'Onotifications.blade.php', 'Aprofile.blade.php', 'Oprofile.blade.php',
+            'Asettings.blade.php', 'Osettings.blade.php',
+        ] as $obsoleteView) {
+            $this->assertFileDoesNotExist(resource_path('views/'.$obsoleteView));
+        }
     }
 
     private function user(string $role = 'admin', ?string $email = null): User

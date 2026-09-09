@@ -295,6 +295,10 @@
         return apiFetch('/finance-expenses')
             .then(function (data) {
                 financeExpenses = Array.isArray(data) ? data : [];
+                if (typeof window.updateBudgetActualAmounts === 'function' && Array.isArray(budgetData) && budgetData.length) {
+                    window.updateBudgetActualAmounts();
+                    if (typeof window.filterBudgetTable === 'function') window.filterBudgetTable();
+                }
                 if (currentReportTab === 'expenses') applyFilters();
                 return financeExpenses;
             })

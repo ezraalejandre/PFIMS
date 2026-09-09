@@ -33,29 +33,28 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 
 // Accounting Dashboard
 Route::get('/adashboard', function () {
-    return view('Adashboard');
+    return view('dashboard', ['portal' => 'accounting']);
 })->middleware('auth')->name('accounting.dashboard');
 
 // Operations Dashboard
 Route::get('/odashboard', function () {
-    return view('Odashboard');
+    return view('dashboard', ['portal' => 'operations']);
 })->middleware('auth')->name('operations.dashboard');
 
 // ─── ACCOUNTING ROUTES ──────────────────────────────────────────
 Route::get('/afinance', function () {
-    return view('Afinance');
+    return view('finance', ['portal' => 'accounting']);
 })->middleware('auth');
 
-Route::get('/areports', function () {
-    return view('Areports');
-})->middleware('auth');
+Route::get('/areports', [ReportController::class, 'page'])->middleware('auth');
 
 Route::get('/anotifications', function () {
-    return view('Anotifications');
+    return view('notifications', ['portal' => 'accounting']);
 })->middleware('auth');
 
 Route::get('/aprofile', function () {
-    return view('Aprofile', [
+    return view('profile', [
+        'portal' => 'accounting',
         'user' => Auth::user(),
     ]);
 })->middleware('auth');
@@ -69,7 +68,8 @@ Route::get('/asettings', function () {
     }
     $users = User::orderBy('name')->get();
 
-    return view('Asettings', [
+    return view('settings', [
+        'portal' => 'accounting',
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
@@ -77,27 +77,26 @@ Route::get('/asettings', function () {
 
 // ─── OPERATIONS ROUTES ──────────────────────────────────────────
 Route::get('/oprojects', function () {
-    return view('Oprojects');
+    return view('projtracking', ['portal' => 'operations']);
 })->middleware('auth');
 
 Route::get('/oinventory', function () {
-    return view('Oinventory');
+    return view('inventory', ['portal' => 'operations']);
 })->middleware('auth');
 
 Route::get('/osuppliers', function () {
-    return view('Osuppliers');
+    return view('suppliers', ['portal' => 'operations']);
 })->middleware('auth');
 
-Route::get('/oreports', function () {
-    return view('Oreports');
-})->middleware('auth');
+Route::get('/oreports', [ReportController::class, 'page'])->middleware('auth');
 
 Route::get('/onotifications', function () {
-    return view('Onotifications');
+    return view('notifications', ['portal' => 'operations']);
 })->middleware('auth');
 
 Route::get('/oprofile', function () {
-    return view('Oprofile', [
+    return view('profile', [
+        'portal' => 'operations',
         'user' => Auth::user(),
     ]);
 })->middleware('auth');
@@ -111,7 +110,8 @@ Route::get('/osettings', function () {
     }
     $users = User::orderBy('name')->get();
 
-    return view('Osettings', [
+    return view('settings', [
+        'portal' => 'operations',
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
@@ -119,7 +119,7 @@ Route::get('/osettings', function () {
 
 // Project Tracking page
 Route::get('/projects', function () {
-    return view('projtracking');
+    return view('projtracking', ['portal' => 'admin']);
 })->middleware('auth');
 
 // Route::delete('/api/projects/{id}', function ($id) {
@@ -134,7 +134,7 @@ Route::get('/projects', function () {
 
 // Finance page
 Route::get('/finance', function () {
-    return view('finance');
+    return view('finance', ['portal' => 'admin']);
 })->middleware('auth');
 
 // // Budget page
@@ -150,12 +150,12 @@ Route::get('/finance', function () {
 
 // Inventory page
 Route::get('/inventory', function () {
-    return view('inventory');
+    return view('inventory', ['portal' => 'admin']);
 })->middleware('auth');
 
 // Suppliers page
 Route::get('/suppliers', function () {
-    return view('suppliers');
+    return view('suppliers', ['portal' => 'admin']);
 })->middleware('auth');
 
 // Authenticated web-only API endpoints
@@ -178,18 +178,17 @@ Route::middleware('auth')->group(function () {
 });
 
 // Reports page
-Route::get('/reports', function () {
-    return view('reports');
-})->middleware('auth');
+Route::get('/reports', [ReportController::class, 'page'])->middleware('auth');
 
 // Notifications page
 Route::get('/notifications', function () {
-    return view('notifications');
+    return view('notifications', ['portal' => 'admin']);
 })->middleware('auth');
 
 // Profile page
 Route::get('/profile', function () {
     return view('profile', [
+        'portal' => 'admin',
         'user' => Auth::user(),
     ]);
 })->middleware('auth');
@@ -229,6 +228,7 @@ Route::get('/settings', function () {
     $users = User::orderBy('name')->get();
 
     return view('settings', [
+        'portal' => 'admin',
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
@@ -525,11 +525,14 @@ Route::post('/change-password', [PasswordController::class, 'update'])->middlewa
 // ─── MACHINE LEARNING ROUTES ────────────────────────────────────
 // Financial analytics and model details are available only to signed-in users.
 Route::middleware('auth')->group(function () {
-    Route::get('/ml-dashboard-test', function () {
+    Route::get('/ml-dashboard-test', function (Request $request) {
         $user = Auth::user();
-        abort_unless($user instanceof User && in_array(strtolower((string) $user->role), ['admin', 'accounting'], true), 403);
+        $role = $user instanceof User ? strtolower((string) $user->role) : '';
+        $allowed = in_array($role, ['admin', 'accounting'], true)
+            || ($role === 'operations' && $request->query('section') === 'material-projection');
+        abort_unless($allowed, 403);
 
-        return view('ml-dashboard-test');
+        return view('ml-dashboard-test', ['portal' => $role]);
     });
 
     Route::prefix('api/ml')->group(function () {
