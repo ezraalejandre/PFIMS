@@ -866,7 +866,7 @@ html[data-theme="dark"] .dashboard-page .project-status {
     color: #f1f5f9;
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1024px) {
     .filters {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }

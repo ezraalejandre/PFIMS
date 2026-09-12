@@ -6,7 +6,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // Set CORS_ALLOWED_ORIGINS to a comma-separated list in production.
+    // APP_URL is the safe default for the same-origin web deployment.
+    'allowed_origins' => array_values(array_filter(array_map(
+        static fn (string $origin): string => trim($origin),
+        explode(',', (string) env('CORS_ALLOWED_ORIGINS', env('APP_URL', 'http://localhost')))
+    ))),
 
     'allowed_origins_patterns' => [],
 

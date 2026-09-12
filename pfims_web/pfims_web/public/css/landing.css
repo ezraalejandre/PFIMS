@@ -399,3 +399,17 @@ body::before {
         padding: 12px 18px;
     }
 }
+
+/* Keep stacked landing content anchored within short phone and tablet viewports. */
+@media (max-width: 850px) and (max-height: 850px),
+       (max-width: 600px) {
+    body {
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+
+    .container {
+        padding-top: max(20px, env(safe-area-inset-top));
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+}

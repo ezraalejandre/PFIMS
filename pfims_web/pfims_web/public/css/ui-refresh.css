@@ -3320,7 +3320,7 @@ html[data-theme="dark"] .pfims-filter-panel .pfims-clear-filters {
     color: #e5e7eb !important;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
     .pfims-filter-panel {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
@@ -3683,4 +3683,801 @@ body:not(.landing-page) *::after {
 
 html[data-theme="dark"] .top-header .right .header-clock {
     color: #f8fafc !important;
+}
+
+/* -------------------------------------------------------------------------
+   Responsive system contract
+
+   This is intentionally the final section in the shared stylesheet. Every
+   authenticated portal imports ui-refresh.css after its module stylesheet,
+   so these rules provide one responsive contract for legacy and centralized
+   screens alike without changing page markup or application behavior.
+   ------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+
+body:not(.landing-page) {
+    min-width: 320px;
+    overflow-x: hidden;
+}
+
+body:not(.landing-page) :where(
+    .main-content,
+    .main-content > *,
+    .panel,
+    .card,
+    .content-card,
+    .chart-card,
+    .chart-panel,
+    .table-wrapper,
+    .table-wrap,
+    .table-container,
+    .form-wrapper,
+    .settings-wrapper,
+    .settings-content,
+    .profile-card
+) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+body:not(.landing-page) :where(img, svg, video) {
+    max-width: 100%;
+}
+
+body:not(.landing-page) :where(canvas) {
+    display: block;
+    max-width: 100%;
+}
+
+body:not(.landing-page) :where(button, input, select, textarea, [role="button"]) {
+    max-width: 100%;
+    touch-action: manipulation;
+}
+
+/* The module pages use flex bodies. At tablet width the navigation becomes a
+   full-width row, then the content follows it in normal document flow. */
+@media (max-width: 1024px) {
+    body:not(.landing-page) {
+        display: flex !important;
+        flex-direction: column !important;
+        padding-top: 72px !important;
+    }
+
+    body:not(.landing-page) .sidebar {
+        position: relative !important;
+        inset: auto !important;
+        z-index: 10;
+        display: flex !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        flex: 0 0 auto !important;
+        flex-direction: column !important;
+        padding: 10px 12px !important;
+        overflow: visible !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, .10) !important;
+        border-radius: 0 !important;
+    }
+
+    body:not(.landing-page) .sidebar-collapse-toggle {
+        display: none !important;
+    }
+
+    body:not(.landing-page) .sidebar nav {
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul,
+    body:not(.landing-page) .sidebar .bottom-nav ul {
+        display: flex !important;
+        width: 100%;
+        align-items: stretch;
+        justify-content: center;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul li,
+    body:not(.landing-page) .sidebar .bottom-nav ul li {
+        min-width: 120px;
+        flex: 1 1 140px !important;
+        margin: 0 !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul li > a,
+    body:not(.landing-page) .sidebar .bottom-nav ul li > :is(a, button) {
+        min-height: 44px !important;
+        justify-content: center !important;
+        padding: 10px 8px !important;
+        overflow-wrap: anywhere;
+        text-align: center;
+        white-space: normal;
+    }
+
+    /* The older tablet rule hides link labels. Restore them so text-only
+       navigation used by the shared header remains usable and accessible. */
+    body:not(.landing-page) .sidebar nav ul li > a,
+    body:not(.landing-page) .sidebar .bottom-nav ul li > :is(a, button) {
+        color: rgba(255, 255, 255, .86) !important;
+        font-size: .72rem !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul li > a .nav-link-icon,
+    body:not(.landing-page) .sidebar .bottom-nav .nav-icon {
+        display: inline-block !important;
+        margin: 0 5px 0 0 !important;
+    }
+
+    body:not(.landing-page) .sidebar .bottom-nav {
+        width: 100%;
+        margin-top: 8px !important;
+        padding-top: 8px !important;
+    }
+
+    body:not(.landing-page) .main-content,
+    body.dashboard-page > .main-content,
+    body.reports-page .main-content,
+    html.sidebar-collapsed body.dashboard-page > .main-content,
+    html.sidebar-collapsed .reports-page .main-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+        flex-basis: auto !important;
+        margin-left: 0 !important;
+        padding: 26px clamp(16px, 3vw, 30px) 42px !important;
+    }
+
+    .top-header {
+        padding-inline: clamp(16px, 3vw, 28px) !important;
+    }
+
+    :where(.filters, .filters-grid, .filters-bar, .history-filters, .choice-grid) {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    :where(.kpis, .kpi-grid, .stats-grid-proj, .stats-grid-supplier, .stats-grid, .overview-grid) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+/* Shared heading/action wrapping prevents long titles and buttons from
+   forcing a horizontal page scroll on narrow tablets. */
+:where(
+    .page-header,
+    .page-heading,
+    .page-header-with-btn,
+    .dashboard-page-header,
+    .dashboard-heading-actions,
+    .profile-actions,
+    .page-actions,
+    .panel-heading,
+    .card-header,
+    .section-header,
+    .dialog-heading,
+    .dialog-actions,
+    .filters-bar,
+    .filter-row,
+    .filter-actions,
+    .form-actions,
+    .search-bar-wrapper,
+    .search-bar,
+    .toolbar
+) {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
+:where(
+    .page-header,
+    .page-heading,
+    .page-header-with-btn,
+    .dashboard-page-header,
+    .dashboard-heading-actions,
+    .profile-actions,
+    .page-actions,
+    .panel-heading,
+    .card-header,
+    .section-header,
+    .dialog-heading,
+    .dialog-actions,
+    .filters-bar,
+    .filter-row,
+    .filter-actions,
+    .form-actions,
+    .search-bar-wrapper,
+    .search-bar,
+    .toolbar
+) > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+:where(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header) h1,
+:where(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header) h2,
+:where(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header) p {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* All data surfaces scroll within themselves; the page itself never widens. */
+:where(
+    .table-wrapper,
+    .table-wrap,
+    .table-container,
+    .budget-table-wrapper,
+    .items-table-wrapper,
+    .forecast-table-wrapper,
+    .report-table-wrapper,
+    .analytics-table-wrapper
+) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+}
+
+:where(
+    .table-wrapper,
+    .table-wrap,
+    .table-container,
+    .budget-table-wrapper,
+    .items-table-wrapper,
+    .forecast-table-wrapper,
+    .report-table-wrapper,
+    .analytics-table-wrapper
+) > table {
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+}
+
+:where(table th, table td) {
+    vertical-align: middle;
+}
+
+/* Keep all chart variants contained by their card at every viewport. */
+:where(
+    .chart,
+    .chart-card,
+    .chart-panel,
+    .chart-box,
+    .chart-container,
+    .chart-wrapper,
+    .graph-container,
+    .graph-wrapper,
+    .canvas-container,
+    .project-chart-card,
+    .project-analytics
+) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+:where(.chart canvas, .chart-card canvas, .chart-panel canvas, .chart-box canvas, .chart-container canvas, .chart-wrapper canvas) {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Consistent minimums keep KPI and analytics grids from producing clipped
+   cards while retaining a useful two-column tablet layout. */
+:where(
+    .kpis,
+    .kpi-grid,
+    .stats-grid-proj,
+    .stats-grid-supplier,
+    .stats-grid,
+    .overview-grid,
+    .chart-grid,
+    .chart-layout,
+    .module-insights,
+    .analytics-grid,
+    .project-snapshot-grid,
+    .model-status-grid,
+    .model-detail-grid,
+    .detail-grid
+) {
+    min-width: 0;
+}
+
+/* Form rows and filter controls collapse naturally instead of preserving
+   legacy 150-350px child widths. */
+:where(.filter-row, .filters-bar, .history-filters, .form-row, .form-grid, .form-actions) > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+:where(form, .form-group, .filter-control, .project-filter-field, .pfims-filter-field) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+:where(form, .form-group, .filter-control, .project-filter-field, .pfims-filter-field) :where(
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea,
+    input[type="file"]
+) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Dialogs honor the viewport even when a module supplies an inline desktop
+   width. Their body remains independently scrollable for long forms. */
+:where(.modal-overlay, .overlay, .dialog-overlay) {
+    box-sizing: border-box;
+    padding: clamp(12px, 3vw, 32px) !important;
+    overflow-y: auto;
+}
+
+:where(.modal-container, .dialog, .dialog-container) {
+    box-sizing: border-box;
+    max-width: 100% !important;
+    max-height: calc(100vh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+:where(.modal-container, .dialog, .dialog-container) :where(.modal-header, .modal-body, .modal-footer, .dialog-heading, .dialog-actions) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+:where(.modal-header, .modal-footer, .dialog-actions) {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+    body:not(.landing-page) {
+        padding-top: 64px !important;
+    }
+
+    .top-header {
+        min-height: 64px;
+        height: 64px !important;
+        gap: 8px;
+        padding: 10px 12px !important;
+        flex-wrap: nowrap !important;
+        overflow: hidden;
+    }
+
+    .top-header .left {
+        min-width: 0;
+        flex: 1 1 auto;
+        gap: 9px;
+    }
+
+    .top-header .left img {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    .top-header .left .brand-text {
+        min-width: 0;
+        overflow: hidden;
+        font-size: .92rem !important;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .top-header .left .brand-text small {
+        display: none !important;
+    }
+
+    .top-header .right {
+        min-width: 0;
+        margin-left: auto;
+        gap: 4px !important;
+    }
+
+    .top-header .right .header-clock {
+        display: none !important;
+    }
+
+    .top-header .right > a {
+        min-width: 40px;
+        min-height: 40px;
+        justify-content: center;
+        padding: 6px !important;
+    }
+
+    .top-header .right > a:first-child > span:not(.notif-badge),
+    .top-header .right > a:last-child > span:not(.notif-badge) {
+        display: none !important;
+    }
+
+    .top-header .right .header-clock {
+        max-width: 100%;
+        overflow: hidden;
+        font-size: .7rem !important;
+        text-overflow: ellipsis;
+    }
+
+    body:not(.landing-page) .sidebar {
+        padding: 8px !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul,
+    body:not(.landing-page) .sidebar .bottom-nav ul {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul li,
+    body:not(.landing-page) .sidebar .bottom-nav ul li {
+        min-width: 0;
+        width: auto !important;
+        flex: none !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul li > a,
+    body:not(.landing-page) .sidebar .bottom-nav ul li > :is(a, button) {
+        min-height: 42px !important;
+        padding: 8px 6px !important;
+        font-size: .68rem !important;
+        line-height: 1.2;
+    }
+
+    body:not(.landing-page) .main-content,
+    body.dashboard-page > .main-content,
+    body.reports-page .main-content,
+    html.sidebar-collapsed body.dashboard-page > .main-content,
+    html.sidebar-collapsed .reports-page .main-content {
+        padding: 20px 12px 32px !important;
+    }
+
+    :where(.filters, .filters-grid, .filters-bar, .history-filters, .choice-grid) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    :where(.kpis, .kpi-grid, .stats-grid-proj, .stats-grid-supplier, .stats-grid, .overview-grid, .chart-grid, .chart-layout, .module-insights) {
+        grid-template-columns: 1fr !important;
+    }
+
+    :where(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header, .panel-heading, .card-header, .section-header) {
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    :where(.page-actions, .dashboard-heading-actions, .profile-actions, .dialog-actions, .form-actions) {
+        width: 100%;
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+
+    :where(.page-actions, .dashboard-heading-actions, .profile-actions, .dialog-actions, .form-actions) > :is(button, a, .btn) {
+        width: 100%;
+        min-width: 0;
+    }
+
+    :where(.filter-row, .filters-bar, .history-filters, .form-row) {
+        gap: 8px !important;
+    }
+
+    :where(.filter-row, .filters-bar, .history-filters, .form-row) > * {
+        flex: 1 1 100% !important;
+        width: 100%;
+    }
+
+    :where(.modal-footer, .dialog-actions) {
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+
+    :where(.modal-footer, .dialog-actions) > :is(button, a, .btn) {
+        width: 100%;
+        min-width: 0;
+    }
+
+    :where(button, [role="button"], .btn, .pfims-row-action) {
+        min-height: 42px !important;
+    }
+
+    .pfims-row-action {
+        width: 42px;
+        min-width: 42px;
+    }
+
+    :where(.pagination-wrapper .rows-info, .pagination-wrapper .pagination-links) {
+        width: 100%;
+        justify-content: center !important;
+    }
+
+    .pagination-wrapper .pagination-links {
+        gap: 4px !important;
+    }
+
+    :where(.pagination-wrapper .pagination-links a, .pagination-wrapper .pagination-links button) {
+        min-width: 38px !important;
+        min-height: 38px !important;
+        padding-inline: 9px !important;
+    }
+}
+
+@media (max-width: 420px) {
+    :where(.filters, .filters-grid, .filters-bar, .history-filters, .choice-grid) {
+        grid-template-columns: 1fr !important;
+    }
+
+    .top-header .right .header-clock {
+        display: none !important;
+    }
+
+    :where(.panel, .card, .content-card, .chart-card, .chart-panel, .profile-card, .table-wrapper) {
+        border-radius: 14px !important;
+    }
+
+    :where(.panel, .card, .content-card, .chart-card, .chart-panel, .profile-card) {
+        padding: 14px !important;
+    }
+
+    .modal-container {
+        width: 100% !important;
+        max-height: calc(100vh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+    }
+}
+
+/* Additional module-specific grid and tab names share the same responsive
+   behavior as their generic counterparts above. */
+@media (max-width: 1024px) {
+    :where(.charts-grid, .insight-pie-layout, .budget-detail-grid, .detail-grid, .view-details-grid, .project-details-grid, .stats-grid-inv) {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    :where(.charts-grid, .insight-pie-layout, .budget-detail-grid, .detail-grid, .view-details-grid, .project-details-grid, .stats-grid-inv) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    :where(.analytics-toolbar, .header-actions, .tab-actions, .notif-actions, .expense-file-actions, .budget-filter-row) {
+        min-width: 0;
+        max-width: 100%;
+        flex-wrap: wrap !important;
+    }
+}
+
+@media (max-width: 700px) {
+    /* The centralized dashboard's panel is named `.filters` in the current
+       view; keep the explicit `.dashboard-filter-panel` alias covered for
+       role-specific variants that use that name. */
+    :where(.dashboard-page .filters, .dashboard-page .dashboard-filter-panel) {
+        grid-template-columns: 1fr !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    :where(.dashboard-page .filters, .dashboard-page .dashboard-filter-panel) > :where(
+        .filter-heading,
+        .dashboard-filter-heading,
+        .dashboard-filter-header,
+        .filters-heading,
+        .pfims-filter-heading
+    ) {
+        grid-column: 1 / -1 !important;
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* JavaScript may move the clear action into this heading. Stack the
+       subtitle and action so the heading never becomes a narrow side column. */
+    .dashboard-page .pfims-filter-heading,
+    .dashboard-page .filter-heading,
+    .dashboard-page .dashboard-filter-heading,
+    .dashboard-page .dashboard-filter-header,
+    .dashboard-page .filters-heading {
+        display: flex !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        grid-column: 1 / -1 !important;
+    }
+
+    .dashboard-page .pfims-filter-heading > .pfims-clear-filters,
+    .dashboard-page .pfims-filter-heading > #clear,
+    .dashboard-page .filter-heading > .pfims-clear-filters,
+    .dashboard-page .filter-heading > #clear,
+    .dashboard-page .dashboard-filter-heading > .pfims-clear-filters,
+    .dashboard-page .dashboard-filter-heading > #clear,
+    .dashboard-page .dashboard-filter-header > .pfims-clear-filters,
+    .dashboard-page .dashboard-filter-header > #clear,
+    .dashboard-page .filters-heading > .pfims-clear-filters,
+    .dashboard-page .filters-heading > #clear {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex: 0 0 auto !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    :where(.dashboard-page .filters, .dashboard-page .dashboard-filter-panel) > :where(
+        label,
+        .filter-control,
+        .dashboard-filter-field,
+        .dashboard-period-filter,
+        button
+    ) {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    :where(.dashboard-page .filters, .dashboard-page .dashboard-filter-panel) > :where(label, .filter-control, .dashboard-filter-field) {
+        grid-column: 1 / -1 !important;
+    }
+
+    :where(.dashboard-page .filters, .dashboard-page .dashboard-filter-panel) > :where(label, .filter-control, .dashboard-filter-field) :where(input, select) {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .dashboard-page .dashboard-period-filter {
+        grid-column: 1 / -1 !important;
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        min-height: 42px !important;
+    }
+
+    .dashboard-page .dashboard-period-filter button,
+    .dashboard-page #clear,
+    .dashboard-page .dashboard-filter-panel button {
+        min-height: 42px !important;
+    }
+
+    .dashboard-page #clear {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    :where(.charts-grid, .insight-pie-layout, .budget-detail-grid, .detail-grid, .view-details-grid, .project-details-grid, .stats-grid-inv, .settings-wrapper, .choice-grid, .form-row-three) {
+        grid-template-columns: 1fr !important;
+    }
+
+    :where(.filter-tabs, .notif-tabs, .config-tabs, .dashboard-tabs, .report-tabs) {
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: thin;
+    }
+
+    :where(.filter-tabs, .notif-tabs, .config-tabs, .dashboard-tabs, .report-tabs) > * {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    :where(.analytics-toolbar, .header-actions, .tab-actions, .notif-actions, .expense-file-actions, .budget-filter-row) {
+        width: 100%;
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+
+    :where(.analytics-toolbar, .header-actions, .tab-actions, .notif-actions, .expense-file-actions, .budget-filter-row) > :is(button, a, .btn) {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+/* Centralized dashboards use a prefixed modal, while legacy modules use the
+   shared modal-overlay contract. Keep both dialog implementations viewport
+   safe and give the less-common table-responsive wrapper the same behavior. */
+:where(.dashboard-modal, .dashboard-modal-dialog) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.dashboard-modal {
+    box-sizing: border-box;
+    padding: clamp(12px, 3vw, 32px) !important;
+    overflow-y: auto;
+}
+
+.dashboard-modal-dialog {
+    box-sizing: border-box;
+    max-width: 100% !important;
+    max-height: calc(100vh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+:where(.dashboard-modal-header, .dashboard-modal-footer) {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
+:where(.table-responsive, .table-responsive > table) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive > table {
+    width: max-content;
+    min-width: 100%;
+}
+
+@media (max-width: 700px) {
+    .dashboard-modal-dialog {
+        width: 100% !important;
+        max-height: calc(100vh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+    }
+
+    :where(.dashboard-modal-footer) {
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+
+    :where(.dashboard-modal-footer) > :is(button, a, .btn) {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+/* -------------------------------------------------------------------------
+   Desktop density contract
+
+   Laptop and desktop screens intentionally match the proportions of the
+   application at 75% browser zoom. CSS zoom recalculates layout, so the page
+   continues to fill the available viewport without counter-scaling its width
+   or height. Tablet and mobile layouts keep their existing native sizing.
+   ------------------------------------------------------------------------- */
+:root {
+    --pfims-desktop-scale: 75%;
+}
+
+@media (min-width: 1025px) {
+    body {
+        zoom: var(--pfims-desktop-scale);
+    }
 }

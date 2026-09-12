@@ -56,6 +56,7 @@
     <link rel="stylesheet" href="{{ asset('css/centralized-dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/centralized-predictive-analytics.css') }}?v={{ filemtime(public_path('css/centralized-predictive-analytics.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
@@ -96,7 +97,16 @@
                             @if($key === 'projects')
                                 <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Project Records</a><a href="{{ url('/ml-dashboard-test') }}?section=predictive">Project Cost Prediction</a></div>
                             @elseif($key === 'finance')
-                                <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Expenses &amp; budgets</a><a href="{{ url('/ml-dashboard-test') }}?section=budget-comparison">Budget-Spending Comparison</a></div>
+                                <div class="nav-dropdown">
+                                    <a href="{{ url($links[$key]) }}">Expenses</a>
+                                    <a href="{{ url($links[$key]) }}?section=budgets">Budgets</a>
+                                    <a href="{{ url($links[$key]) }}?section=contracts">Contracts</a>
+                                    <a href="{{ url($links[$key]) }}?section=ar-ap">AR / AP</a>
+                                    <a href="{{ url($links[$key]) }}?section=cash-position">Cash Position</a>
+                                    <a href="{{ url($links[$key]) }}?section=equipment">Equipment</a>
+                                    <a href="{{ url($links[$key]) }}?section=bonds">Bonds</a>
+                                    <a href="{{ url('/ml-dashboard-test') }}?section=budget-comparison">Budget-Spending Comparison</a>
+                                </div>
                             @elseif($key === 'inventory')
                                 <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Items</a><a href="{{ url($links[$key]) }}?section=transactions">Transactions</a><a href="{{ url('/ml-dashboard-test') }}?section=material-projection">Material Projection</a></div>
                             @endif

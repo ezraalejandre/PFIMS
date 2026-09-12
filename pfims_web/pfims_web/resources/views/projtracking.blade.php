@@ -34,10 +34,11 @@
         .status-chart-bar { height:100%; min-width:0; border-radius:999px; transition:width .25s ease; }
         .status-chart-empty { color:#6b7280; font-size:.85rem; }
         .project-pie-wrap { position:relative; height:260px; max-width:520px; margin:0 auto; }
-        @media (max-width:1100px) { .project-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (max-width:1024px) { .project-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
         @media (max-width:640px) { .project-filter-panel { grid-template-columns:1fr; } }
     </style>
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>

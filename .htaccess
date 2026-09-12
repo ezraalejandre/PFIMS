@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
+    RewriteEngine On
+
+    # Keep ACME challenges reachable for Hostinger's managed SSL.
+    RewriteRule ^\.well-known(?:/|$) - [L]
+
+    # Let the nested Laravel public directory handle requests after routing.
+    RewriteRule ^pfims_web/pfims_web/public(?:/|$) - [L]
+
+    # Never expose the Laravel source, dependencies, or environment files.
+    RewriteRule ^pfims_web/pfims_web/(?!public(?:/|$)) - [F,L]
+
+    # Hostinger Git deployments use the repository root as public_html by
+    # default; route that root to Laravel's actual document root.
+    RewriteRule ^(.*)$ pfims_web/pfims_web/public/$1 [L]
+</IfModule>

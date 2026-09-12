@@ -245,6 +245,12 @@ class CoreIntegrityProjectTest extends TestCase
                     ->assertDontSee('>Predictive analytics</a>', false);
             }
 
+            if (in_array($dashboard['role'], ['admin', 'accounting'], true)) {
+                foreach (['Expenses', 'Budgets', 'Contracts', 'AR / AP', 'Cash Position', 'Equipment', 'Bonds', 'Budget-Spending Comparison'] as $financeTab) {
+                    $response->assertSee('>'.$financeTab.'</a>', false);
+                }
+            }
+
             foreach ($dashboard['links'] as $link) {
                 $response->assertSee($link, false);
             }
@@ -355,7 +361,10 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringContainsString('.pfims-search-suggestions[hidden]', $sharedCss);
         $this->assertStringContainsString('.pfims-search-suggestions button', $sharedCss);
         $this->assertStringContainsString('select option', $sharedCss);
-        $this->assertStringNotContainsString('zoom: .75', $sharedCss);
+        $this->assertStringContainsString('--pfims-desktop-scale: 75%;', $sharedCss);
+        $this->assertStringContainsString('@media (min-width: 1025px)', $sharedCss);
+        $this->assertStringContainsString('zoom: var(--pfims-desktop-scale);', $sharedCss);
+        $this->assertStringNotContainsString('@media (max-width: 1100px)', $sharedCss);
         $this->assertStringContainsString('height: 34px !important', $sharedCss);
         $this->assertStringContainsString('.top-header .right .header-clock', $sharedCss);
         $this->assertStringContainsString('.top-header .right .header-clock-date', $sharedCss);

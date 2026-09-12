@@ -8,6 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/settings.css') }}">
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
 <body class="settings-page" data-portal="{{ $portal }}" data-config-api-base="{{ request()->getBaseUrl() }}/api/config">
@@ -158,14 +159,13 @@
                         <button class="config-tab" onclick="switchConfigType(this, 'inv_categories')">Inventory Categories</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'exp_categories')">Expense Categories</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'project_phases')">Project Phases</button>
-                        <button class="config-tab" onclick="switchConfigType(this, 'finance_components')">Finance Components</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'thresholds')">Thresholds</button>
                     </div>
 
                     <div id="configCrudPanel">
                         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                             <button class="btn-add-user" onclick="openConfigAddModal()">+ Add New</button>
-                            <input type="search" id="configTableSearch" oninput="renderConfigTable()" placeholder="Search configurations..." style="min-width:240px;padding:9px 13px;border:1px solid #ddd;border-radius:8px;">
+                            <input type="search" id="configTableSearch" oninput="renderConfigTable()" placeholder="Search configurations..." style="width:100%; max-width:320px; min-width:0; padding:9px 13px;border:1px solid #ddd;border-radius:8px;">
                         </div>
 
                         <div style="overflow-x: auto; margin-top: 15px;">
@@ -652,14 +652,14 @@
             'units': [],
             'inv_categories': [],
             'exp_categories': []
-            , 'project_phases': [], 'finance_components': []
+            , 'project_phases': []
         };
 
         var configFieldMap = {
             'units': { id: 'unit_id', name: 'unit_name' },
             'inv_categories': { id: 'inventory_category_id', name: 'inventory_category_name' },
             'exp_categories': { id: 'fin_category_id', name: 'category_name' }
-            , 'project_phases': { id: 'phase_id', name: 'phase_name' }, 'finance_components': { id: 'component_id', name: 'component_name' }
+            , 'project_phases': { id: 'phase_id', name: 'phase_name' }
         };
         var configMeta = {};
 

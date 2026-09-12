@@ -52,6 +52,7 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
 <body class="suppliers-page" data-portal="{{ $portal }}">
