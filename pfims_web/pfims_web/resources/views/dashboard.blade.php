@@ -1,411 +1,558 @@
+@php
+    $portal = $portal ?? 'admin';
+    $maps = [
+        'admin' => [
+            'dashboard' => '/dashboard',
+            'projects' => '/projects',
+            'finance' => '/finance',
+            'inventory' => '/inventory',
+            'suppliers' => '/suppliers',
+            'reports' => '/reports',
+            'settings' => '/settings',
+            'notifications' => '/notifications',
+            'profile' => '/profile',
+        ],
+        'accounting' => [
+            'dashboard' => '/adashboard',
+            'finance' => '/afinance',
+            'reports' => '/areports',
+            'settings' => '/asettings',
+            'notifications' => '/anotifications',
+            'profile' => '/aprofile',
+        ],
+        'operations' => [
+            'dashboard' => '/odashboard',
+            'projects' => '/oprojects',
+            'inventory' => '/oinventory',
+            'suppliers' => '/osuppliers',
+            'reports' => '/oreports',
+            'settings' => '/osettings',
+            'notifications' => '/onotifications',
+            'profile' => '/oprofile',
+        ],
+    ];
+    $navigation = [
+        'dashboard' => ['label' => 'DASHBOARD', 'icon' => 'dashboard.png'],
+        'projects' => ['label' => 'PROJECTS', 'icon' => 'projects.png'],
+        'finance' => ['label' => 'FINANCE', 'icon' => 'finance.png'],
+        'inventory' => ['label' => 'INVENTORY', 'icon' => 'inventory.png'],
+        'reports' => ['label' => 'REPORTS', 'icon' => 'reports.png'],
+    ];
+    $portalTitles = [
+        'admin' => 'Admin',
+        'accounting' => 'Accounting',
+        'operations' => 'Operations',
+    ];
+    $links = $maps[$portal];
+    $portalTitle = $portalTitles[$portal];
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
-    <style>
-        .error-notification { z-index: 9999 !important; }
-        .success-notification { z-index: 9999 !important; }
-    </style>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ $portalTitle }} Dashboard - PFIMS</title>
+    <link rel="stylesheet" href="{{ asset('css/centralized-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/centralized-predictive-analytics.css') }}?v={{ filemtime(public_path('css/centralized-predictive-analytics.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}" defer></script>
 </head>
-<body>
-
-    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
-    <div id="errorNotification" class="error-notification" style="display: none;">
-        <div class="error-content">
-            <span class="error-icon">⚠</span>
-            <span id="errorMessage">An error occurred. Please try again.</span>
-            <button class="error-close" onclick="closeError()">×</button>
-        </div>
-    </div>
-
-    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
-    <div id="successNotification" class="success-notification" style="display: none;">
-        <div class="success-content">
-            <span class="success-icon">●</span>
-            <span id="successMessage">Action completed successfully!</span>
-            <button class="success-close" onclick="closeSuccess()">×</button>
-        </div>
-    </div>
-
-    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+<body class="dashboard-page" data-portal="{{ $portal }}">
     <header class="top-header">
         <div class="left">
-            <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
+            <img src="{{ asset('images/logo.jpg') }}" alt="PFIMS logo">
             <div class="brand-text">
                 PFIMS
-                <small>E.V. Catapang Design-Construction & Supply</small>
+                <small>E.V. Catapang Design-Construction &amp; Supply</small>
             </div>
         </div>
         <div class="right">
-            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
-                <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
-                <span>Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+            <span class="header-clock" aria-label="Current Philippine date and time">Loading date and time…</span>
+            <a href="{{ url($links['notifications']) }}">
+                <img src="{{ asset('images/notif.jpg') }}" alt="" aria-hidden="true">
+                <span class="sr-only">Open alerts</span>
             </a>
-            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
-                <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+            <a href="{{ url($links['profile']) }}">
+                <img class="profile-avatar" src="{{ asset('images/user.jpg') }}" alt="" aria-hidden="true">
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+        <nav aria-label="Primary navigation">
             <ul>
-                <li class="active">DASHBOARD</li>
-                <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}" style="color: inherit; text-decoration: none; display: block;">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;">REPORTS</a></li>
+                @foreach($navigation as $key => $item)
+                    @if(isset($links[$key]))
+                        <li class="{{ $key === 'dashboard' ? 'active' : '' }} {{ in_array($key, ['projects','finance','inventory'], true) ? 'nav-parent' : '' }}">
+                            <a href="{{ in_array($key, ['projects','finance','inventory'], true) ? '#' : url($links[$key]) }}" class="{{ in_array($key, ['projects','finance','inventory'], true) ? 'nav-parent-toggle' : '' }}" aria-expanded="false">
+                                <img src="{{ asset('images/'.$item['icon']) }}" alt="" class="nav-link-icon" aria-hidden="true">
+                                {{ $item['label'] }} @if(in_array($key, ['projects','finance','inventory'], true))<span class="nav-chevron" aria-hidden="true">▾</span>@endif
+                            </a>
+                            @if($key === 'projects')
+                                <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Project Records</a><a href="{{ url('/ml-dashboard-test') }}?section=predictive">Project Cost Prediction</a></div>
+                            @elseif($key === 'finance')
+                                <div class="nav-dropdown">
+                                    <a href="{{ url($links[$key]) }}">Expenses</a>
+                                    <a href="{{ url($links[$key]) }}?section=budgets">Budgets</a>
+                                    <a href="{{ url($links[$key]) }}?section=contracts">Contracts</a>
+                                    <a href="{{ url($links[$key]) }}?section=ar-ap">AR / AP</a>
+                                    <a href="{{ url($links[$key]) }}?section=cash-position">Cash Position</a>
+                                    <a href="{{ url($links[$key]) }}?section=equipment">Equipment</a>
+                                    <a href="{{ url($links[$key]) }}?section=bonds">Bonds</a>
+                                    <a href="{{ url('/ml-dashboard-test') }}?section=budget-comparison">Budget-Spending Comparison</a>
+                                </div>
+                            @elseif($key === 'inventory')
+                                <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Items</a><a href="{{ url($links[$key]) }}?section=transactions">Transactions</a><a href="{{ url('/ml-dashboard-test') }}?section=material-projection">Material Projection</a></div>
+                            @endif
+                        </li>
+                    @endif
+                @endforeach
             </ul>
         </nav>
         <div class="bottom-nav">
             <ul>
                 <li>
-                    <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                    <a href="{{ url($links['settings']) }}">
+                        <img src="{{ asset('images/settings.jpg') }}" alt="" class="nav-icon" aria-hidden="true">
                         Settings
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
-                        Log out
-                    </a>
+                    <form action="{{ url('/logout') }}" method="POST">
+                        @csrf
+                        <button type="submit">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="" class="nav-icon" aria-hidden="true">
+                            Log out
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>
     </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
+        <section class="dashboard-page-header">
+            <div class="dashboard-title-block">
+                <h1>{{ strtoupper($portalTitle) }} DASHBOARD</h1>
+            </div>
+            <div class="dashboard-heading-actions">
+            </div>
+        </section>
 
-        <!-- Page Title -->
-        <div class="page-header">
-            <h1>DASHBOARD <small>construction operation overview</small></h1>
-        </div>
+        <section id="overviewPanel" class="dashboard-tab-panel active" role="tabpanel" aria-labelledby="overviewTab">
+        <div class="notice" id="notice" role="alert" hidden></div>
 
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Active Projects</div>
-                <div class="stat-value">24</div>
+        <section class="panel filters" aria-label="Dashboard filters">
+            <label>
+                Search
+                <input id="search" type="search" maxlength="100" placeholder="Project, client, manager, or phase">
+            </label>
+            <label>
+                Project status
+                <select id="status"><option value="">All statuses</option></select>
+            </label>
+            <label>
+                Stock status
+                <select id="stockStatus"><option value="">All stock states</option></select>
+            </label>
+            <div class="dashboard-period-filter" role="group" aria-label="Dashboard reporting period">
+                <button type="button" class="active" data-dashboard-period="all" aria-pressed="true">All</button>
+                <button type="button" data-dashboard-period="monthly" aria-pressed="false">Monthly</button>
+                <button type="button" data-dashboard-period="yearly" aria-pressed="false">Yearly</button>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Total Budget</div>
-                <div class="stat-value">$18.6M</div>
-                <div class="stat-sub">$2.1M remaining</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Equipment Units</div>
-                <div class="stat-value">156</div>
-                <div class="stat-sub">12 under maintenance</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Workforce</div>
-                <div class="stat-value">342</div>
-                <div class="stat-sub">28 new hires this month</div>
-            </div>
-        </div>
+            <button id="clear" class="btn-secondary" type="button">Clear filters</button>
+        </section>
 
-        <!-- ─── CHARTS ROW ─── -->
-        <div class="charts-row">
-            <div class="chart-box">
-                <h3>PROJECT COMPLETION TREND</h3>
-                <div class="bar-chart">
-                    <div class="bar-group"><div class="bar" style="height:35px;"></div><span class="bar-label">Jan</span></div>
-                    <div class="bar-group"><div class="bar" style="height:60px;"></div><span class="bar-label">Feb</span></div>
-                    <div class="bar-group"><div class="bar" style="height:50px;"></div><span class="bar-label">Mar</span></div>
-                    <div class="bar-group"><div class="bar" style="height:80px;"></div><span class="bar-label">Apr</span></div>
-                    <div class="bar-group"><div class="bar" style="height:70px;"></div><span class="bar-label">May</span></div>
-                    <div class="bar-group"><div class="bar" style="height:90px;"></div><span class="bar-label">Jun</span></div>
+        <h2 class="dashboard-section-title">Projects Performance</h2>
+
+        <section class="kpis" id="kpis" aria-label="Dashboard key performance indicators"></section>
+
+        <section class="chart-grid" aria-label="Dashboard charts">
+            <article class="panel chart-card">
+                <h2>Completion trend</h2>
+                <p>Average current completion of projects started in each month.</p>
+                <div class="chart"><canvas id="completionChart"></canvas></div>
+            </article>
+            <article class="panel chart-card budget-panel">
+                <h2>Budget vs recorded expenses</h2>
+                <p>Cumulative allocation and finance-ledger spending.</p>
+                <div class="chart"><canvas id="budgetChart"></canvas></div>
+            </article>
+        </section>
+        <section class="panel content-card project-panel">
+            <div class="panel-heading">
+                <div>
+                    <h2>Matching projects</h2>
+                    <p id="projectCount">Loading…</p>
                 </div>
             </div>
-
-            <div class="chart-box">
-                <h3>BUDGET ALLOCATION VS SPENDING</h3>
-                <div class="line-chart">
-                    <svg viewBox="0 0 500 180" preserveAspectRatio="xMidYMid meet">
-                        <line x1="40" y1="20" x2="480" y2="20" class="grid-line" />
-                        <line x1="40" y1="60" x2="480" y2="60" class="grid-line" />
-                        <line x1="40" y1="100" x2="480" y2="100" class="grid-line" />
-                        <line x1="40" y1="140" x2="480" y2="140" class="grid-line" />
-                        <text x="30" y="20" class="y-label">500</text>
-                        <text x="30" y="60" class="y-label">400</text>
-                        <text x="30" y="100" class="y-label">300</text>
-                        <text x="30" y="140" class="y-label">200</text>
-                        <text x="30" y="170" class="y-label">100</text>
-                        <text x="30" y="175" class="y-label">0</text>
-                        <polygon class="area-path" points="40,40 128,33 216,30 304,26 392,23 480,20 480,170 40,170" />
-                        <polyline class="line-path" points="40,40 128,33 216,30 304,26 392,23 480,20" />
-                        <circle cx="40" cy="40" r="5" class="dot" />
-                        <text x="40" y="30" class="dot-label">430</text>
-                        <text x="40" y="175" class="x-label">Jan</text>
-                        <circle cx="128" cy="33" r="5" class="dot" />
-                        <text x="128" y="23" class="dot-label">450</text>
-                        <text x="128" y="175" class="x-label">Feb</text>
-                        <circle cx="216" cy="30" r="5" class="dot" />
-                        <text x="216" y="20" class="dot-label">460</text>
-                        <text x="216" y="175" class="x-label">Mar</text>
-                        <circle cx="304" cy="26" r="5" class="dot" />
-                        <text x="304" y="16" class="dot-label">470</text>
-                        <text x="304" y="175" class="x-label">Apr</text>
-                        <circle cx="392" cy="23" r="5" class="dot" />
-                        <text x="392" y="13" class="dot-label">480</text>
-                        <text x="392" y="175" class="x-label">May</text>
-                        <circle cx="480" cy="20" r="5" class="dot" />
-                        <text x="480" y="10" class="dot-label">490</text>
-                        <text x="480" y="175" class="x-label">Jun</text>
-                    </svg>
-                </div>
+            <div class="table-wrap table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Client</th>
+                            <th>Manager</th>
+                            <th>Phase</th>
+                            <th>Project Status</th>
+                            <th>Started</th>
+                            <th>Estimated End</th>
+                            <th>Workers</th>
+                            <th>Completion</th>
+                            <th>Budget</th>
+                            <th>Actual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectBody">
+                        <tr><td colspan="11">Loading dashboard…</td></tr>
+                    </tbody>
+                </table>
             </div>
-        </div>
-
-        <!-- Projects List -->
-        <div class="projects-section">
-            <h2>ACTIVE PROJECTS</h2>
-            <div class="projects-list">
-                <div class="project-item" 
-                     data-name="Riverside Commercial Complex"
-                     data-client="Riverside Client"
-                     data-budget="$2.4M"
-                     data-start="Jan 15, 2025"
-                     data-est-end="Dec 30, 2025"
-                     data-actual-end="—"
-                     data-duration="11.5 mo"
-                     data-phase="Structure"
-                     data-status="At Risk"
-                     data-progress="78"
-                     onclick="openProjectDetail(this)">
-                    <img src="{{ asset('images/building1.jpg') }}" alt="Riverside Commercial Complex">
-                    <div class="info">
-                        <h4>Riverside Commercial Complex</h4>
-                        <div class="budget">Budget: $2.4M</div>
-                    </div>
-                    <div class="progress-wrapper">
-                        <div class="progress-bar"><div class="fill" style="width:78%;"></div></div>
-                        <div class="progress-label"><span>78%</span><span>Complete</span></div>
-                    </div>
+            <div class="pagination-wrapper" id="dashboardPagination">
+                <div class="rows-info">
+                    Rows per page
+                    <select id="pageSize" aria-label="Dashboard rows per page">
+                        <option value="5" selected>5</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span id="dashboardRange">Total: 0 projects</span>
                 </div>
-
-                <div class="project-item" 
-                     data-name="Downtown Office Tower"
-                     data-client="Downtown Client"
-                     data-budget="$5.8M"
-                     data-start="Mar 1, 2025"
-                     data-est-end="Aug 15, 2025"
-                     data-actual-end="—"
-                     data-duration="5.5 mo"
-                     data-phase="Finishing"
-                     data-status="On Track"
-                     data-progress="45"
-                     onclick="openProjectDetail(this)">
-                    <img src="{{ asset('images/building2.jpg') }}" alt="Downtown Office Tower">
-                    <div class="info">
-                        <h4>Downtown Office Tower</h4>
-                        <div class="budget">Budget: $5.8M</div>
-                    </div>
-                    <div class="progress-wrapper">
-                        <div class="progress-bar"><div class="fill" style="width:45%;"></div></div>
-                        <div class="progress-label"><span>45%</span><span>Complete</span></div>
-                    </div>
-                </div>
-
-                <div class="project-item" 
-                     data-name="Suburban Housing Development"
-                     data-client="Suburban Client"
-                     data-budget="$3.2M"
-                     data-start="Nov 10, 2024"
-                     data-est-end="May 20, 2025"
-                     data-actual-end="—"
-                     data-duration="6.3 mo"
-                     data-phase="Complete"
-                     data-status="Completed"
-                     data-progress="92"
-                     onclick="openProjectDetail(this)">
-                    <img src="{{ asset('images/building3.jpg') }}" alt="Suburban Housing Development">
-                    <div class="info">
-                        <h4>Suburban Housing Development</h4>
-                        <div class="budget">Budget: $3.2M</div>
-                    </div>
-                    <div class="progress-wrapper">
-                        <div class="progress-bar"><div class="fill" style="width:92%;"></div></div>
-                        <div class="progress-label"><span>92%</span><span>Complete</span></div>
-                    </div>
-                </div>
+                <div class="pagination-links" id="dashboardPaginationLinks" aria-label="Dashboard table pagination"></div>
             </div>
-        </div>
+        </section>
+        </section>
 
     </main>
 
-    <!-- ─── PROJECT DETAIL MODAL ─── -->
-    <div id="projectDetailModal" class="modal-overlay modal-update">
-        <div class="modal-container">
-            <div class="modal-header">
+    <div class="dashboard-modal" id="projectDetailModal" hidden>
+        <section class="dashboard-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="detailProjectName" aria-describedby="detailProjectClient">
+            <header class="dashboard-modal-header">
                 <div>
-                    <h2 id="detailProjectName" style="margin-bottom: 2px;">Project Name</h2>
-                    <span class="subtitle" id="detailClientName">Client</span>
+                    <span class="eyebrow">PROJECT DETAILS</span>
+                    <h2 id="detailProjectName">Project</h2>
+                    <p id="detailProjectClient">Client</p>
                 </div>
-                <button class="modal-close" onclick="closeProjectDetail()">×</button>
+                <button class="dashboard-modal-close" id="closeProjectDetailButton" type="button" aria-label="Close project details">×</button>
+            </header>
+            <div class="dashboard-project-details">
+                <div class="dashboard-detail-item"><span>Project manager</span><strong id="detailProjectManager">—</strong></div>
+                <div class="dashboard-detail-item"><span>Phase</span><strong id="detailPhase">—</strong></div>
+                <div class="dashboard-detail-item"><span>Project Status</span><strong id="detailStatus">—</strong></div>
+                <div class="dashboard-detail-item"><span>Completion</span><strong id="detailCompletion">—</strong></div>
+                <div class="dashboard-detail-item"><span>Start date</span><strong id="detailStartDate">—</strong></div>
+                <div class="dashboard-detail-item"><span>Estimated end</span><strong id="detailEstimatedEnd">—</strong></div>
+                <div class="dashboard-detail-item"><span>Actual end</span><strong id="detailActualEnd">—</strong></div>
+                <div class="dashboard-detail-item"><span>Planned duration</span><strong id="detailDuration">—</strong></div>
+                <div class="dashboard-detail-item"><span>Assigned workers</span><strong id="detailWorkers">—</strong></div>
+                <div class="dashboard-detail-item"><span>Budget</span><strong id="detailBudget">—</strong></div>
+                <div class="dashboard-detail-item"><span>Recorded actual</span><strong id="detailActual">—</strong></div>
+                <div class="dashboard-detail-item"><span>Budget difference</span><strong id="detailVariance">—</strong></div>
             </div>
-            <div class="project-details-grid">
-                <div class="detail-item">
-                    <label>Budget</label>
-                    <span id="detailBudget">—</span>
-                </div>
-                <div class="detail-item">
-                    <label>Start Date</label>
-                    <span id="detailStartDate">—</span>
-                </div>
-                <div class="detail-item">
-                    <label>Est. End Date</label>
-                    <span id="detailEstEndDate">—</span>
-                </div>
-                <div class="detail-item">
-                    <label>Actual End Date</label>
-                    <span id="detailActualEndDate">—</span>
-                </div>
-                <div class="detail-item">
-                    <label>Duration</label>
-                    <span id="detailDuration">—</span>
-                </div>
-                <div class="detail-item">
-                    <label>Phase</label>
-                    <span id="detailPhase" class="phase-badge">—</span>
-                </div>
-                <div class="detail-item">
-                    <label>Status</label>
-                    <span id="detailStatus" class="status-badge">—</span>
-                </div>
-            </div>
-            <div class="modal-footer" style="justify-content: flex-end;">
-                <button class="btn-cancel" onclick="closeProjectDetail()">Close</button>
-                <button class="btn-view-project" onclick="viewProject()">View Project</button>
-            </div>
-        </div>
+            <footer class="dashboard-modal-footer">
+                <button class="btn-secondary" id="closeProjectDetailFooter" type="button">Close</button>
+                @if(isset($links['projects']))
+                    <a class="btn-primary dashboard-view-project" id="viewProjectLink" href="{{ url($links['projects']) }}">View project</a>
+                @endif
+            </footer>
+        </section>
     </div>
 
     <script>
-        function hideBadge(event) {
-            var badge = document.getElementById('notifBadge');
-            if (badge) {
-                badge.style.display = 'none';
+        (function () {
+            const state = { data: null, page: 1, timer: null, loadedOptions: false, period: 'all' };
+            const controls = {
+                search: document.getElementById('search'),
+                status: document.getElementById('status'),
+                stock_status: document.getElementById('stockStatus')
+            };
+            const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            })[character]);
+            const money = value => new Intl.NumberFormat('en-PH', {
+                style: 'currency',
+                currency: 'PHP'
+            }).format(Number(value || 0));
+
+            function activeFilters() {
+                const filters = Object.fromEntries(Object.entries(controls)
+                    .map(([key, element]) => [key, element.value.trim()])
+                    .filter(([, value]) => value));
+                if (state.period !== 'all') {
+                    const parts = Object.fromEntries(new Intl.DateTimeFormat('en', {
+                        timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
+                    }).formatToParts(new Date()).filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+                    const year = Number(parts.year);
+                    const month = Number(parts.month);
+                    filters.start_date = state.period === 'yearly'
+                        ? `${year}-01-01`
+                        : `${year}-${String(month).padStart(2, '0')}-01`;
+                    filters.end_date = state.period === 'yearly'
+                        ? `${year}-12-31`
+                        : `${year}-${String(month).padStart(2, '0')}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, '0')}`;
+                }
+                return filters;
             }
-        }
 
-        // ─── ERROR NOTIFICATION ───
-        function showError(message) {
-            var notif = document.getElementById('errorNotification');
-            var msgSpan = document.getElementById('errorMessage');
-            if (msgSpan) {
-                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            function showError(message) {
+                const notice = document.getElementById('notice');
+                notice.textContent = message;
+                notice.hidden = false;
+                window.setTimeout(() => { notice.hidden = true; }, 5000);
             }
-            notif.style.display = 'block';
-            if (window.errorTimeout) clearTimeout(window.errorTimeout);
-            window.errorTimeout = setTimeout(function() {
-                closeError();
-            }, 5000);
-        }
 
-        function closeError() {
-            document.getElementById('errorNotification').style.display = 'none';
-            if (window.errorTimeout) {
-                clearTimeout(window.errorTimeout);
-                window.errorTimeout = null;
+            async function loadDashboard() {
+                try {
+                    const query = new URLSearchParams(activeFilters());
+                    const response = await fetch('/api/dashboard?' + query, {
+                        headers: { Accept: 'application/json' }
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.errors
+                            ? Object.values(data.errors).flat().join(' ')
+                            : (data.message || 'Dashboard request failed.'));
+                    }
+
+                    state.data = data;
+                    if (!state.loadedOptions) {
+                        fillOptions(controls.status, data.filter_options.statuses.map(value => ({ value, label: value })));
+                        fillOptions(controls.stock_status, data.filter_options.stock_statuses.map(value => ({ value, label: value })));
+                        state.loadedOptions = true;
+                    }
+                    state.page = 1;
+                    renderDashboard();
+                } catch (error) {
+                    showError(error.message);
+                }
             }
-        }
 
-        // ─── SUCCESS NOTIFICATION ───
-        function showSuccess(message) {
-            var notif = document.getElementById('successNotification');
-            var msgSpan = document.getElementById('successMessage');
-            if (msgSpan) {
-                msgSpan.textContent = message || 'Action completed successfully!';
+            function fillOptions(element, items) {
+                items.forEach(item => element.insertAdjacentHTML(
+                    'beforeend',
+                    `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`
+                ));
             }
-            notif.style.display = 'block';
-            if (window.successTimeout) clearTimeout(window.successTimeout);
-            window.successTimeout = setTimeout(function() {
-                closeSuccess();
-            }, 5000);
-        }
 
-        function closeSuccess() {
-            document.getElementById('successNotification').style.display = 'none';
-            if (window.successTimeout) {
-                clearTimeout(window.successTimeout);
-                window.successTimeout = null;
+            function renderDashboard() {
+                document.getElementById('kpis').innerHTML = state.data.stat_cards.map(card => `
+                    <article class="kpi-card">
+                        <span>${escapeHtml(card.label)}</span>
+                        <strong>${escapeHtml(card.value)}</strong>
+                        <small>${escapeHtml(card.subtitle)}</small>
+                        ${card.badge ? `<b class="${escapeHtml(card.badge_type)}">${escapeHtml(card.badge)}</b>` : ''}
+                    </article>
+                `).join('');
+
+                renderChart('completionChart', 'line', state.data.completion_trend.months, [
+                    { label: 'Completion %', values: state.data.completion_trend.values }
+                ]);
+                renderChart('budgetChart', 'bar', state.data.budget_vs_expense.months, [
+                    { label: 'Budget', values: state.data.budget_vs_expense.allocated_budget },
+                    { label: 'Expenses', values: state.data.budget_vs_expense.expenses }
+                ]);
+                renderTable();
             }
-        }
 
-        // ─── PROJECT DETAIL MODAL ───
-        var currentProjectData = null;
-
-        function openProjectDetail(element) {
-            var name = element.dataset.name || 'Untitled';
-            var client = element.dataset.client || '—';
-            var budget = element.dataset.budget || '—';
-            var start = element.dataset.start || '—';
-            var estEnd = element.dataset.estEnd || '—';
-            var actualEnd = element.dataset.actualEnd || '—';
-            var duration = element.dataset.duration || '—';
-            var phase = element.dataset.phase || '—';
-            var status = element.dataset.status || '—';
-
-            currentProjectData = { name: name };
-
-            document.getElementById('detailProjectName').textContent = name;
-            document.getElementById('detailClientName').textContent = client;
-            document.getElementById('detailBudget').textContent = budget;
-            document.getElementById('detailStartDate').textContent = start;
-            document.getElementById('detailEstEndDate').textContent = estEnd;
-            document.getElementById('detailActualEndDate').textContent = actualEnd;
-            document.getElementById('detailDuration').textContent = duration;
-
-            var phaseEl = document.getElementById('detailPhase');
-            phaseEl.textContent = phase;
-            phaseEl.className = 'phase-badge';
-
-            var statusEl = document.getElementById('detailStatus');
-            statusEl.textContent = status;
-            statusEl.className = 'status-badge';
-            if (status === 'On Track') statusEl.classList.add('on-track');
-            else if (status === 'Delayed') statusEl.classList.add('delayed');
-            else if (status === 'Completed') statusEl.classList.add('completed');
-            else if (status === 'At Risk') statusEl.classList.add('at-risk');
-
-            document.getElementById('projectDetailModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeProjectDetail() {
-            document.getElementById('projectDetailModal').classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        function viewProject() {
-            window.location.href = "{{ url('/projects') }}";
-        }
-
-        document.getElementById('projectDetailModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeProjectDetail();
+            const dashboardCharts = {};
+            function renderChart(id, type, labels, series) {
+                if (dashboardCharts[id]) dashboardCharts[id].destroy();
+                const colors = ['#f08a1a', '#2563eb', '#16a34a', '#9333ea'];
+                dashboardCharts[id] = new Chart(document.getElementById(id), {
+                    type,
+                    data: { labels, datasets: series.map((item, index) => ({
+                        label: item.label, data: item.values.map(Number), borderColor: colors[index],
+                        backgroundColor: type === 'doughnut' ? colors : (type === 'line' ? colors[index] + '28' : colors[index]),
+                        fill: type === 'line', tension: .35, pointRadius: 4, pointHoverRadius: 7, borderWidth: 2
+                    })) },
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: type === 'doughnut' ? 'nearest' : 'index', intersect: type === 'doughnut' },
+                        plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } }, scales: type === 'doughnut' ? {} : { y: { beginAtZero: true } } }
+                });
             }
-        });
 
-        document.addEventListener('click', function(e) {
-            if (document.getElementById('errorNotification').style.display === 'block') {
-                if (!e.target.closest('.error-notification')) { closeError(); }
+            function renderTable() {
+                const size = Number(document.getElementById('pageSize').value);
+                const rows = state.data.projects || [];
+                const pages = Math.max(Math.ceil(rows.length / size), 1);
+                state.page = Math.min(state.page, pages);
+                const visibleRows = rows.slice((state.page - 1) * size, state.page * size);
+
+                document.getElementById('projectBody').innerHTML = visibleRows.length
+                    ? visibleRows.map(project => `
+                        <tr class="dashboard-project-row" data-project-id="${escapeHtml(project.project_id)}" tabindex="0" role="button" aria-label="View details for ${escapeHtml(project.name)}">
+                            <td><strong>${escapeHtml(project.name)}</strong></td>
+                            <td>${escapeHtml(project.client_name || '—')}</td>
+                            <td>${escapeHtml(project.project_manager || '—')}</td>
+                            <td>${escapeHtml(project.status === 'Completed' ? '—' : (project.phase || '—'))}</td>
+                            <td><span class="project-status">${escapeHtml(project.status || '—')}</span></td>
+                            <td>${escapeHtml(project.start_date || '—')}</td>
+                            <td>${escapeHtml(project.estimated_end_date || '—')}</td>
+                            <td>${escapeHtml(project.worker_count || 0)}</td>
+                            <td>
+                                <div class="progress"><i style="width:${Math.min(Number(project.completion_percentage || 0), 100)}%"></i></div>
+                                ${Number(project.completion_percentage || 0).toFixed(1)}%
+                            </td>
+                            <td>${escapeHtml(money(project.budget_amount))}</td>
+                            <td>${escapeHtml(money(project.actual_amount))}</td>
+                        </tr>
+                    `).join('')
+                    : '<tr><td colspan="11">No projects match these filters.</td></tr>';
+
+                const total = Number(state.data.project_total ?? rows.length);
+                document.getElementById('projectCount').textContent =
+                    `${total.toLocaleString()} matching project${total === 1 ? '' : 's'}` +
+                    (total > rows.length ? `; first ${rows.length.toLocaleString()} shown` : '');
+                document.getElementById('dashboardRange').textContent =
+                    `Total: ${rows.length.toLocaleString()} project${rows.length === 1 ? '' : 's'}`;
+                renderPagination(pages);
             }
-            if (document.getElementById('successNotification').style.display === 'block') {
-                if (!e.target.closest('.success-notification')) { closeSuccess(); }
+
+            let projectDetailTrigger = null;
+
+            function projectDuration(startDate, endDate) {
+                if (!startDate || !endDate) return '—';
+                const start = new Date(`${startDate}T00:00:00`);
+                const end = new Date(`${endDate}T00:00:00`);
+                if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return '—';
+                const months = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24 * 30.4375)));
+                return `${months} month${months === 1 ? '' : 's'}`;
             }
-        });
+
+            function openProjectDetail(project, trigger) {
+                projectDetailTrigger = trigger || null;
+                const budget = Number(project.budget_amount || 0);
+                const actual = Number(project.actual_amount || 0);
+                const variance = budget - actual;
+                const setText = (id, value) => { document.getElementById(id).textContent = value ?? '—'; };
+                setText('detailProjectName', project.name || 'Untitled project');
+                setText('detailProjectClient', project.client_name || 'No client recorded');
+                setText('detailProjectManager', project.project_manager || '—');
+                setText('detailPhase', project.phase || '—');
+                setText('detailStatus', project.status || '—');
+                setText('detailCompletion', `${Number(project.completion_percentage || 0).toFixed(1)}%`);
+                setText('detailStartDate', project.start_date || '—');
+                setText('detailEstimatedEnd', project.estimated_end_date || '—');
+                setText('detailActualEnd', project.actual_end_date || '—');
+                setText('detailDuration', projectDuration(project.start_date, project.estimated_end_date));
+                setText('detailWorkers', Number(project.worker_count || 0).toLocaleString());
+                setText('detailBudget', money(budget));
+                setText('detailActual', money(actual));
+                setText('detailVariance', money(variance));
+                const link = document.getElementById('viewProjectLink');
+                if (link) link.href = `${link.getAttribute('href').split('?')[0]}?project=${encodeURIComponent(project.project_id)}`;
+                const modal = document.getElementById('projectDetailModal');
+                modal.hidden = false;
+                document.body.classList.add('modal-open');
+                document.getElementById('closeProjectDetailButton').focus();
+            }
+
+            function closeProjectDetail() {
+                const modal = document.getElementById('projectDetailModal');
+                if (modal.hidden) return;
+                modal.hidden = true;
+                document.body.classList.remove('modal-open');
+                projectDetailTrigger?.focus();
+                projectDetailTrigger = null;
+            }
+
+            function paginationItems(current, total) {
+                if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+                const items = [1];
+                const from = Math.max(2, current - 1);
+                const to = Math.min(total - 1, current + 1);
+                if (from > 2) items.push('ellipsis-start');
+                for (let page = from; page <= to; page += 1) items.push(page);
+                if (to < total - 1) items.push('ellipsis-end');
+                items.push(total);
+                return items;
+            }
+
+            function renderPagination(totalPages) {
+                const links = document.getElementById('dashboardPaginationLinks');
+                const pageButton = (label, page, options = {}) => {
+                    const classes = [options.active ? 'active' : '', options.disabled ? 'disabled' : ''].filter(Boolean).join(' ');
+                    return `<button type="button" data-page="${page}" class="${classes}" ${options.disabled ? 'disabled' : ''}>${label}</button>`;
+                };
+                let html = pageButton('Previous', state.page - 1, { disabled: state.page <= 1 });
+                paginationItems(state.page, totalPages).forEach(item => {
+                    html += typeof item === 'number'
+                        ? pageButton(item, item, { active: item === state.page })
+                        : '<span class="ellipsis" aria-hidden="true">…</span>';
+                });
+                html += pageButton('Next', state.page + 1, { disabled: state.page >= totalPages });
+                links.innerHTML = html;
+            }
+
+            Object.entries(controls).forEach(([key, element]) => {
+                element.addEventListener(key === 'search' ? 'input' : 'change', () => {
+                    window.clearTimeout(state.timer);
+                    state.timer = window.setTimeout(loadDashboard, key === 'search' ? 300 : 0);
+                });
+            });
+            document.getElementById('clear').addEventListener('click', () => {
+                Object.values(controls).forEach(element => { element.value = ''; });
+                state.period = 'all';
+                document.querySelectorAll('[data-dashboard-period]').forEach(button => {
+                    const selected = button.dataset.dashboardPeriod === state.period;
+                    button.classList.toggle('active', selected);
+                    button.setAttribute('aria-pressed', String(selected));
+                });
+                loadDashboard();
+            });
+            document.querySelectorAll('[data-dashboard-period]').forEach(button => {
+                button.addEventListener('click', () => {
+                    state.period = button.dataset.dashboardPeriod;
+                    document.querySelectorAll('[data-dashboard-period]').forEach(option => {
+                        const selected = option === button;
+                        option.classList.toggle('active', selected);
+                        option.setAttribute('aria-pressed', String(selected));
+                    });
+                    loadDashboard();
+                });
+            });
+            document.getElementById('pageSize').addEventListener('change', () => {
+                state.page = 1;
+                renderTable();
+            });
+            document.getElementById('dashboardPaginationLinks').addEventListener('click', event => {
+                const button = event.target.closest('[data-page]');
+                if (!button || button.disabled) return;
+                state.page = Number(button.dataset.page);
+                renderTable();
+            });
+            document.getElementById('projectBody').addEventListener('click', event => {
+                const row = event.target.closest('[data-project-id]');
+                if (!row) return;
+                const project = (state.data?.projects || []).find(item => String(item.project_id) === row.dataset.projectId);
+                if (project) openProjectDetail(project, row);
+            });
+            document.getElementById('projectBody').addEventListener('keydown', event => {
+                if (!['Enter', ' '].includes(event.key)) return;
+                const row = event.target.closest('[data-project-id]');
+                if (!row) return;
+                event.preventDefault();
+                const project = (state.data?.projects || []).find(item => String(item.project_id) === row.dataset.projectId);
+                if (project) openProjectDetail(project, row);
+            });
+            document.getElementById('closeProjectDetailButton').addEventListener('click', closeProjectDetail);
+            document.getElementById('closeProjectDetailFooter').addEventListener('click', closeProjectDetail);
+            document.getElementById('projectDetailModal').addEventListener('click', event => {
+                if (event.target.id === 'projectDetailModal') closeProjectDetail();
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') closeProjectDetail();
+            });
+            document.addEventListener('pfims:autorefresh', loadDashboard);
+            loadDashboard();
+        })();
     </script>
-
 </body>
 </html>

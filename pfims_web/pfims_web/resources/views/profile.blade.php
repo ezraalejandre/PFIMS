@@ -1,3 +1,4 @@
+@php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,10 +6,82 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/profile.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="profile-page" data-portal="{{ $portal }}" data-status-message="{{ session('status', '') }}">
 
-    @include('partials.header')
+    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <div id="errorNotification" class="error-notification" style="display: none;">
+        <div class="error-content">
+            <span class="error-icon">⚠</span>
+            <span id="errorMessage">An error occurred. Please try again.</span>
+            <button class="error-close" onclick="closeError()">×</button>
+        </div>
+    </div>
+
+    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <div id="successNotification" class="success-notification" style="display: none;">
+        <div class="success-content">
+            <span class="success-icon">●</span>
+            <span id="successMessage">Action completed successfully!</span>
+            <button class="success-close" onclick="closeSuccess()">×</button>
+        </div>
+    </div>
+
+    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <header class="top-header">
+        <div class="left">
+            <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
+            <div class="brand-text">
+                PFIMS
+                <small>E.V. Catapang Design-Construction & Supply</small>
+            </div>
+        </div>
+                <div class="right">
+            <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
+                <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
+                <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
+            </a>
+            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- ─── SIDEBAR ─── -->
+<aside class="sidebar">
+    <nav>
+                <ul>
+            <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+            <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+            <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+            <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+            <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+        </ul>
+    </nav>
+    <div class="bottom-nav">
+        <ul>
+            <li>
+                <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
+                    <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                    Settings
+                </a>
+            </li>
+            <li class="logout">
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
+            </li>
+        </ul>
+    </div>
+</aside>
 
     <!-- ─── MAIN CONTENT ─── -->
     <main class="main-content">
@@ -16,11 +89,14 @@
         <!-- Page Header -->
         <div class="page-header">
             <h1>PROFILE</h1>
-            <div class="subtitle">account &amp; settings management</div>
         </div>
 
         @if(session('status'))
-            <div class="status-message">{{ session('status') }}</div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showSuccess(document.body.dataset.statusMessage);
+                });
+            </script>
         @endif
 
         <!-- Profile Card -->
@@ -78,13 +154,110 @@
     </main>
 
     <script>
-        // ─── HIDE NOTIFICATION BADGE ON CLICK ───
+                // ─── HIDE NOTIFICATION BADGE ON CLICK ───
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
                 badge.style.display = 'none';
             }
             // The link will still navigate to /notifications.
+        }
+
+        // ─── FETCH UNREAD NOTIFICATION COUNT ───
+        function fetchNotifBadge() {
+            fetch('/api/notifications/unread-count', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load unread count.');
+                return response.json();
+            })
+            .then(function(data) {
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                var count = data.unread_count || 0;
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function(error) {
+                console.error('Error loading notification badge:', error);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchNotifBadge);
+
+        // ─── ERROR NOTIFICATION (POP-UP) ───
+        function showError(message) {
+            var notif = document.getElementById('errorNotification');
+            var msgSpan = document.getElementById('errorMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            }
+            notif.style.display = 'block';
+            if (window.errorTimeout) clearTimeout(window.errorTimeout);
+            window.errorTimeout = setTimeout(function() {
+                closeError();
+            }, 5000);
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+            if (window.errorTimeout) {
+                clearTimeout(window.errorTimeout);
+                window.errorTimeout = null;
+            }
+        }
+
+        // ─── SUCCESS NOTIFICATION (POP-UP) ───
+        function showSuccess(message) {
+            var notif = document.getElementById('successNotification');
+            var msgSpan = document.getElementById('successMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'Action completed successfully!';
+            }
+            notif.style.display = 'block';
+            if (window.successTimeout) clearTimeout(window.successTimeout);
+            window.successTimeout = setTimeout(function() {
+                closeSuccess();
+            }, 5000);
+        }
+
+        function closeSuccess() {
+            document.getElementById('successNotification').style.display = 'none';
+            if (window.successTimeout) {
+                clearTimeout(window.successTimeout);
+                window.successTimeout = null;
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (document.getElementById('errorNotification').style.display === 'block') {
+                if (!e.target.closest('.error-notification')) { closeError(); }
+            }
+            if (document.getElementById('successNotification').style.display === 'block') {
+                if (!e.target.closest('.success-notification')) { closeSuccess(); }
+            }
+        });
+
+        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Saving...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
         }
 
         // ─── ENABLE EDIT MODE ───
@@ -107,13 +280,16 @@
 
         // ─── SAVE PROFILE ───
         function saveProfile() {
+            var saveBtn = document.querySelector('.profile-actions .btn-save-profile');
+            if (saveBtn && saveBtn.disabled) return;
+
             var fullName = document.getElementById('editFullName').value.trim();
             var email = document.getElementById('editEmail').value.trim();
             var phone = document.getElementById('editPhone').value.trim();
             var location = document.getElementById('editLocation').value.trim();
 
             if (!fullName || !email || !phone || !location) {
-                alert('Please fill in all fields.');
+                showError('Please fill in all fields.');
                 return;
             }
 
@@ -127,9 +303,10 @@
             var card = document.getElementById('profileCard');
             card.classList.remove('edit-mode');
 
+            setButtonLoading(saveBtn, true, 'Saving...');
             document.getElementById('profileCard').submit();
         }
     </script>
-
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 </body>
 </html>

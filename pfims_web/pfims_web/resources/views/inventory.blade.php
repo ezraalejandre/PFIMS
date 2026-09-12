@@ -1,15 +1,263 @@
+@php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Inventory Records - PFIMS</title>
+    <title>Inventory - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/inventory.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
+    <style>
+        #deleteConfirmModal { z-index: 9999 !important; }
+        
+        /* Add Item Modal specific styles */
+        .modal-add-item .modal-container {
+            max-width: 500px;
+        }
+        
+        /* View Modal styles */
+        .modal-view .modal-container {
+            max-width: 700px;
+        }
+        
+        .view-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px 30px;
+            padding: 20px;
+            background: #faf8f5;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        
+        .view-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .view-item label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        
+        .view-item .view-value {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #1a2b3c;
+            padding: 4px 0;
+        }
+        
+        .view-item .view-input {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            background: #fff;
+            transition: 0.3s;
+        }
+        
+        .view-item .view-input:focus {
+            outline: none;
+            border-color: #c9a96e;
+            box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
+        }
+        
+        .view-item .status-badge {
+            font-size: 0.9rem;
+        }
+        
+        /* Button group */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-add-item {
+            background: #c9a96e;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+        
+        .btn-add-item:hover {
+            background: #b8975a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(201, 169, 110, 0.3);
+        }
+        
+        .btn-add-transaction {
+            background: #1a2b3c;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+        
+                .btn-add-transaction:hover {
+            background: #2a3f54;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(26, 43, 60, 0.3);
+        }
+        
+        .btn-confirm-expense:hover {
+            background: #cf8735;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(225, 154, 69, 0.3);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Items Table specific */
+        .items-table-wrapper {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+        }
+        
+        .items-table-wrapper table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 800px;
+        }
+        
+        .items-table-wrapper table thead th {
+            text-align: left;
+            padding: 12px 16px;
+            color: #888;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #f0f0f0;
+            white-space: nowrap;
+        }
+        
+        .items-table-wrapper table tbody td {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            color: #333;
+            white-space: nowrap;
+        }
+        
+        .items-table-wrapper table tbody tr:hover {
+    background: #faf8f5;
+}
+        
+        .items-table-wrapper table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .items-table-wrapper .action-cell {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .items-table-wrapper .action-cell button {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 4px;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+                .items-table-wrapper .action-cell button:hover {
+            background: rgba(225, 154, 69, 0.12);
+        }
+        
+        .table-wrapper .action-cell button:hover {
+            background: rgba(225, 154, 69, 0.12);
+        }
+        
+        .items-table-wrapper .action-cell button img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            opacity: 0.7;
+            transition: 0.2s;
+        }
+        
+        .items-table-wrapper .action-cell button:hover img {
+            opacity: 1;
+        }
+        
+        .action-cell .expense-btn {
+            color: #2e7d32;
+        }
+        .action-cell .expense-btn:hover {
+            background: rgba(46, 125, 50, 0.1);
+        }
+        
+        /* Expense Modal */
+        .modal-expense .modal-container {
+            max-width: 550px;
+        }
+        
+        .modal-expense .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 650px) {
+            .btn-group {
+                flex-direction: column;
+                width: 100%;
+            }
+            .btn-group button {
+                width: 100%;
+                justify-content: center;
+                text-align: center;
+            }
+            .view-details-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                padding: 15px;
+            }
+            .modal-add-item .modal-container {
+                padding: 20px;
+            }
+            .modal-expense .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <script src="{{ asset('js/theme.js') }}"></script>
 </head>
-<body>
+<body class="inventory-page" data-portal="{{ $portal }}">
 
-    <!-- Error Notification -->
+    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
             <span class="error-icon">⚠</span>
@@ -18,7 +266,16 @@
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <div id="successNotification" class="success-notification" style="display: none;">
+        <div class="success-content">
+            <span class="success-icon">●</span>
+            <span id="successMessage">Action completed successfully!</span>
+            <button class="success-close" onclick="closeSuccess()">×</button>
+        </div>
+    </div>
+
+    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
     <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -40,12 +297,25 @@
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION ─── -->
-    <div id="successNotification" class="success-notification" style="display: none;">
-        <div class="success-content">
-            <span class="success-icon">●</span>
-            <span>Transaction added successfully!</span>
-            <button class="success-close" onclick="closeSuccess()">×</button>
+    <!-- ─── EXPENSE CONFIRMATION MODAL ─── -->
+    <div id="expenseConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+        <div class="modal-container" style="width: 400px; max-width: 95%;">
+            <div class="modal-header">
+                <h2>Confirm Expense</h2>
+                <button class="modal-close" onclick="closeExpenseConfirmModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="expenseConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
+                    Are you sure you want to create an expense for this item?
+                </p>
+                <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
+                    This will add the cost to the project's expenses.
+                </p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+                <button class="btn-cancel" onclick="closeExpenseConfirmModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
+                <button class="btn-confirm-expense" id="confirmExpenseBtn" onclick="confirmExpense()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #e19a45; color: #fff; transition: 0.3s;">Create Expense</button>
+            </div>
         </div>
     </div>
 
@@ -58,29 +328,27 @@
                 <small>E.V. Catapang Design-Construction & Supply</small>
             </div>
         </div>
-        <div class="right">
+                <div class="right">
             <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
-                <span>Notifications</span>
-                <span class="notif-badge" id="notifBadge">6</span>
+                <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
             </a>
-            <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
+                        <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
         </div>
     </header>
 
     <!-- ─── SIDEBAR ─── -->
     <aside class="sidebar">
-        <nav>
+                <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
-                <li><a href="{{ url('/projects') }}">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}">FINANCE</a></li>
-                <li class="active"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
-                <li><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
-                <li><a href="{{ url('/reports') }}">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
+                <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
+                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
+                <li class="active"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -92,10 +360,13 @@
                     </a>
                 </li>
                 <li class="logout">
-                    <a href="{{ url('/') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
-                        Log out
-                    </a>
+                    <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
+                        @csrf
+                        <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
+                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            Log out
+                        </button>
+                    </form>
                 </li>
             </ul>
         </div>
@@ -106,97 +377,317 @@
 
         <!-- Page Header -->
         <div class="page-header">
-            <h1>INVENTORY RECORDS</h1>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="stats-grid-inv">
-            <div class="stat-card-inv">
-                <div class="stat-label">Total Items</div>
-                <div class="stat-value">188</div>
-                <div class="stat-sub">Across all transactions</div>
-            </div>
-            <div class="stat-card-inv">
-                <div class="stat-label">Total Value</div>
-                <div class="stat-value">$31,963.12</div>
-                <div class="stat-sub">Current Inventory Value</div>
-            </div>
-            <div class="stat-card-inv">
-                <div class="stat-label">Low Stock Items</div>
-                <div class="stat-value">0</div>
-                <div class="stat-sub">Items for restocking</div>
-            </div>
-            <div class="stat-card-inv">
-                <div class="stat-label">Categories</div>
-                <div class="stat-value">10</div>
-                <div class="stat-sub">Item categories</div>
+            <h1>INVENTORY</h1>
+            <div class="btn-group">
+                <button class="btn-add-transaction" onclick="openPfimsImport()">Import CSV/XLSX</button>
+                <button class="btn-add-item" onclick="openAddItemModal()">+ Add Item</button>
+                <button class="btn-add-transaction" onclick="openTransactionModal()">+ Add Transaction</button>
             </div>
         </div>
 
-        <!-- Filters Bar -->
-        <div class="filters-bar">
-            <input type="text" class="search-input" placeholder="Search transactions...">
-            <select>
-                <option>All Transactions</option>
-                <option>IN</option>
-                <option>OUT</option>
-            </select>
-            <input type="date" class="date-input" value="2026-05-01">
-            <input type="date" class="date-input" value="2026-05-08">
-            <button class="btn-add-transaction" onclick="openModal()">+ Add Transaction</button>
-        </div>
-
-        <!-- Table -->
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Item Name</th>
-                        <th>Category</th>
-                        <th>Unit</th>
-                        <th>Quantity</th>
-                        <th>Supplier</th>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th>Current Stock</th>
-                        <th>Status</th>
-                        <th style="text-align: center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="inventoryTableBody">
-                    <tr><td colspan="9" style="text-align: center; padding: 20px;">Loading inventory items...</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination-wrapper">
-            <div class="rows-info">
-                Rows Displayed:
-                <select>
-                    <option>10</option>
-                    <option>25</option>
-                    <option>50</option>
-                    <option>100</option>
+        <!-- ─── TAB 1: ITEMS ─── -->
+        <div id="tabItems" class="tab-content active">
+            <!-- Filters Bar -->
+            <div class="filters-bar">
+                <input type="search" class="search-input" maxlength="150" placeholder="Search items..." id="itemsSearchInput" oninput="filterItemsTable()">
+                <select id="itemsCategoryFilter" onchange="filterItemsTable()">
+                    <option value="all">All Categories</option>
                 </select>
+                <select id="itemsSupplierFilter" onchange="filterItemsTable()">
+                    <option value="all">All Suppliers</option>
+                </select>
+                <select id="itemsStockFilter" onchange="filterItemsTable()">
+                    <option value="all">All Stock States</option>
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                </select>
+                <button type="button" class="btn-clear-filters" onclick="clearItemsFilters()">X</button>
             </div>
-            <div class="pagination-links">
-                <a href="#">&laquo;</a>
-                <a href="#" class="active">1</a>
-                <a href="#">2</a>
-                <a href="#">3</a>
-                <span class="dots">...</span>
-                <a href="#">67</a>
-                <a href="#">68</a>
-                <a href="#">&raquo;</a>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid-inv" aria-label="Inventory stock KPIs">
+                <div class="stat-card-inv">
+                    <div class="stat-label" id="totalItemsLabel">Total Items</div>
+                    <div class="stat-value" id="totalItemsCount">0</div>
+                    <div class="stat-sub" id="totalItemsSub">Matching current item filters</div>
+                </div>
+                <div class="stat-card-inv">
+                    <div class="stat-label" id="lowStockLabel">Low Stock</div>
+                    <div class="stat-value" id="lowStockCount">0</div>
+                    <div class="stat-sub" id="lowStockSub">At or below reorder level</div>
+                </div>
+                <div class="stat-card-inv">
+                    <div class="stat-label" id="categoriesLabel">Out of Stock</div>
+                    <div class="stat-value" id="categoriesCount">0</div>
+                    <div class="stat-sub" id="categoriesSub">No stock remaining</div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <div class="items-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th>Supplier</th>
+                            <th>Unit</th>
+                            <th>Current Stock</th>
+                            <th>Status</th>
+                            <th style="text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody">
+                        <tr><td colspan="7" style="text-align: center; padding: 20px;">Loading items...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Items Pagination -->
+            <div class="pagination-wrapper" id="itemsPagination">
+                                <div class="rows-info">
+                    Rows per page
+                    <select id="itemsRowsPerPage" aria-label="Inventory item rows per page" onchange="changeItemsPageSize()">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span id="itemsTotalCount" class="pagination-total">Total: 0</span>
+                </div>
+                <div class="pagination-links" id="itemsPaginationLinks">
+                    <!-- Generated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── TAB 2: TRANSACTIONS ─── -->
+        <div id="tabTransactions" class="tab-content">
+            <!-- Filters Bar -->
+            <div class="filters-bar">
+                <input type="search" class="search-input" maxlength="150" placeholder="Search transactions..." id="searchInput" oninput="filterTable()">
+                <select id="typeFilter" onchange="filterTable()">
+                    <option value="all">All Transactions</option>
+                    <option value="IN">IN</option>
+                    <option value="OUT">OUT</option>
+                </select>
+                <select id="transactionCategoryFilter" onchange="filterTable()"><option value="all">All Categories</option></select>
+                <select id="transactionProjectFilter" onchange="filterTable()"><option value="all">All Projects</option></select>
+                <label class="filter-date-label">From <input type="date" class="date-input" id="startDate" onchange="filterTable()"></label>
+                <label class="filter-date-label">To <input type="date" class="date-input" id="endDate" onchange="filterTable()"></label>
+                <button type="button" class="btn-clear-filters" onclick="clearTransactionFilters()">X</button>
+            </div>
+            <!-- Transactions Table -->
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Project Name</th>
+                            <th>Category</th>
+                            <th>Item Name</th>
+                            <th>Description</th>
+                            <th>Bar Code</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Unit</th>
+                            <th>Qty</th>
+                            <th>Proof File</th>
+                            <th style="text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr><td colspan="11" style="text-align: center; padding: 20px;">Loading transactions...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Transactions Pagination -->
+            <div class="pagination-wrapper" id="transactionsPagination">
+                                <div class="rows-info">
+                    Rows per page
+                    <select id="transactionRowsPerPage" aria-label="Inventory transaction rows per page" onchange="changeTransactionPageSize()">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span id="transactionsTotalCount" class="pagination-total">Total: 0</span>
+                </div>
+                <div class="pagination-links" id="transactionPaginationLinks">
+                    <!-- Generated by JavaScript -->
+                </div>
             </div>
         </div>
 
     </main>
 
-    </main>
+    <!-- ─── ADD ITEM MODAL ─── -->
+    <div id="addItemModal" class="modal-overlay modal-add-item">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Add New Item</h2>
+                <button class="modal-close" onclick="closeAddItemModal()">×</button>
+            </div>
 
-    <!-- View/Edit Modal -->
+            <div class="step-indicator">
+                <span class="step active" id="addItemStep1Indicator">
+                    <span class="step-number">1</span> Item Details
+                </span>
+                <span class="step" id="addItemStep2Indicator">
+                    <span class="step-number">2</span> Review
+                </span>
+            </div>
+
+            <div class="modal-step" id="addItemStep1">
+                <div class="form-group">
+                    <label>Item Name <span class="required">*</span></label>
+                    <input type="text" id="newItemName" placeholder="e.g. Plywood 1/2">
+                </div>
+                <div class="form-group">
+                    <label>Category <span class="required">*</span></label>
+                    <select id="newItemCategory">
+                        <option value="">Select Category...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Unit <span class="required">*</span></label>
+                    <select id="newItemUnit">
+                        <option value="">Select Unit...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Supplier <span class="required">*</span></label>
+                    <select id="newItemSupplier">
+                        <option value="">Select Supplier...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Reorder Level</label>
+                    <input type="number" id="newItemReorderLevel" placeholder="e.g. 10" min="0" value="5">
+                </div>
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="btn-cancel" onclick="closeAddItemModal()">Cancel</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="btn-continue" onclick="addItemNextStep()">Continue</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-step" id="addItemStep2" style="display: none;">
+                <h3>Review item details</h3>
+                <div class="summary-list">
+                    <div class="summary-item"><strong>Item Name</strong><span class="summary-value" id="reviewItemName">—</span></div>
+                    <div class="summary-item"><strong>Category</strong><span class="summary-value" id="reviewItemCategory">—</span></div>
+                    <div class="summary-item"><strong>Unit</strong><span class="summary-value" id="reviewItemUnit">—</span></div>
+                    <div class="summary-item"><strong>Supplier</strong><span class="summary-value" id="reviewItemSupplier">—</span></div>
+                    <div class="summary-item"><strong>Reorder Level</strong><span class="summary-value" id="reviewItemReorder">—</span></div>
+                </div>
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="btn-cancel" onclick="closeAddItemModal()">Cancel</button>
+                        <button class="btn-back" onclick="addItemPrevStep()">Back</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="btn-save" id="saveNewItemBtn" onclick="saveNewItem()">Add Item</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── ITEM DETAIL MODAL ─── -->
+    <div id="itemDetailModal" class="modal-overlay modal-view">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="itemDetailTitle">Item Details</h2>
+                <button class="modal-close" onclick="closeItemDetailModal()">×</button>
+            </div>
+
+            <div class="view-details-grid">
+                <div class="view-item">
+                    <label>Item Name</label>
+                    <span id="itemDetailName" class="view-value">—</span>
+                </div>
+                <div class="view-item">
+                    <label>Category</label>
+                    <span id="itemDetailCategory" class="view-value">—</span>
+                </div>
+                <div class="view-item">
+                    <label>Unit</label>
+                    <span id="itemDetailUnit" class="view-value">—</span>
+                </div>
+                <div class="view-item">
+                    <label>Supplier</label>
+                    <span id="itemDetailSupplier" class="view-value">—</span>
+                </div>
+                <div class="view-item">
+                    <label>Current Stock</label>
+                    <span id="itemDetailStock" class="view-value">—</span>
+                </div>
+                <div class="view-item">
+                    <label>Reorder Level</label>
+                    <span id="itemDetailReorder" class="view-value">—</span>
+                </div>
+                <div class="view-item" style="grid-column: 1 / -1;">
+                    <label>Status</label>
+                    <span id="itemDetailStatus" class="view-value status-badge">—</span>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
+                <button class="btn-cancel" onclick="closeItemDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── EDIT ITEM MODAL ─── -->
+    <div id="editItemModal" class="modal-overlay modal-add-item">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Edit Item</h2>
+                <button class="modal-close" onclick="closeEditItemModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editItemId">
+                <div class="form-group">
+                    <label>Item Name <span class="required">*</span></label>
+                    <input type="text" id="editItemName" placeholder="e.g. Plywood 1/2">
+                </div>
+                <div class="form-group">
+                    <label>Category <span class="required">*</span></label>
+                    <select id="editItemCategory">
+                        <option value="">Select Category...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Unit <span class="required">*</span></label>
+                    <select id="editItemUnit">
+                        <option value="">Select Unit...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Supplier <span class="required">*</span></label>
+                    <select id="editItemSupplier">
+                        <option value="">Select Supplier...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Reorder Level</label>
+                    <input type="number" id="editItemReorderLevel" placeholder="e.g. 10" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeEditItemModal()">Cancel</button>
+                <button class="btn-delete" onclick="deleteItem()">Delete</button>
+                <button class="btn-save" onclick="saveEditItem()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── VIEW/EDIT TRANSACTION MODAL ─── -->
     <div id="viewModal" class="modal-overlay modal-view">
         <div class="modal-container">
             <div class="modal-header">
@@ -211,34 +702,20 @@
                 <div class="view-item">
                     <label>Item Name</label>
                     <span id="viewItemNameDisplay" class="view-value">—</span>
-                    <input type="text" id="viewItemNameInput" class="view-input" style="display: none;" placeholder="Item Name">
+                    <input type="text" id="viewItemNameInput" class="view-input" style="display: none;" placeholder="Item Name" readonly>
                 </div>
                 <div class="view-item">
                     <label>Category</label>
                     <span id="viewCategoryDisplay" class="view-value">—</span>
-                    <select id="viewCategoryInput" class="view-input" style="display: none;">
-                        <option value="Cement">Cement</option>
-                        <option value="Steel">Steel</option>
-                        <option value="Paint">Paint</option>
-                        <option value="Aggregates">Aggregates</option>
-                        <option value="Masonry">Masonry</option>
-                        <option value="Plumbing">Plumbing</option>
-                        <option value="Electrical">Electrical</option>
-                        <option value="Finishing">Finishing</option>
+                    <select id="viewCategoryInput" class="view-input" style="display: none;" disabled>
+                        <option value="">Select Category...</option>
                     </select>
                 </div>
                 <div class="view-item">
                     <label>Unit</label>
                     <span id="viewUnitDisplay" class="view-value">—</span>
-                    <select id="viewUnitInput" class="view-input" style="display: none;">
-                        <option value="bags">bags</option>
-                        <option value="pcs">pcs</option>
-                        <option value="gallons">gallons</option>
-                        <option value="tons">tons</option>
-                        <option value="rolls">rolls</option>
-                        <option value="boxes">boxes</option>
-                        <option value="m">m</option>
-                        <option value="kg">kg</option>
+                    <select id="viewUnitInput" class="view-input" style="display: none;" disabled>
+                        <option value="">Select Unit...</option>
                     </select>
                 </div>
                 <div class="view-item">
@@ -247,16 +724,21 @@
                     <input type="number" id="viewQuantityInput" class="view-input" style="display: none;" min="1">
                 </div>
                 <div class="view-item">
+                    <label>Bar Code</label>
+                    <span id="viewBarCodeDisplay" class="view-value">—</span>
+                    <input type="text" id="viewBarCodeInput" class="view-input" style="display: none;" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+                <div class="view-item">
                     <label>Supplier</label>
                     <span id="viewSupplierDisplay" class="view-value">—</span>
-                    <select id="viewSupplierInput" class="view-input" style="display: none;">
+                    <select id="viewSupplierInput" class="view-input" style="display: none;" disabled>
                         <option value="">Select Supplier...</option>
                     </select>
                 </div>
                 <div class="view-item">
                     <label>Transaction Type</label>
                     <span id="viewTypeDisplay" class="view-value">—</span>
-                    <select id="viewTypeInput" class="view-input" style="display: none;">
+                    <select id="viewTypeInput" class="view-input" style="display: none;" disabled>
                         <option value="IN">IN</option>
                         <option value="OUT">OUT</option>
                     </select>
@@ -266,36 +748,27 @@
                     <span id="viewDateDisplay" class="view-value">—</span>
                     <input type="date" id="viewDateInput" class="view-input" style="display: none;">
                 </div>
-                <div class="view-item">
-                    <label>Current Stock</label>
-                    <span id="viewStockDisplay" class="view-value">—</span>
-                </div>
-                <div class="view-item">
-                    <label>Status</label>
-                    <span id="viewStatusDisplay" class="view-value status-badge">—</span>
-                </div>
                 <div class="view-item" id="viewProjectRow" style="display: none;">
                     <label>Project</label>
                     <span id="viewProjectDisplay" class="view-value">—</span>
-                    <input type="text" id="viewProjectInput" class="view-input" style="display: none;">
+                    <input type="text" id="viewProjectInput" class="view-input" style="display: none;" readonly>
                 </div>
             </div>
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeViewModal()">Close</button>
-                <button class="btn-delete" id="viewDeleteBtn" onclick="deleteTransaction()">Delete</button>
-                <button class="btn-edit-project" id="viewEditBtn" onclick="enableEditMode()">Edit</button>
+                <button class="btn-delete" id="viewDeleteBtn" style="display: none;" onclick="deleteTransaction()">Delete</button>
                 <button class="btn-save" id="viewSaveBtn" style="display: none;" onclick="saveEdit()">Save Changes</button>
             </div>
         </div>
     </div>
 
-    <!-- ─── OVERLAY / MODAL (Add Transaction) ─── -->
+    <!-- ─── ADD TRANSACTION MODAL ─── -->
     <div id="transactionModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
-                <h2>Add new transaction</h2>
-                <button class="modal-close" onclick="closeModal()">×</button>
+                <h2>Add New Transaction</h2>
+                <button class="modal-close" onclick="closeTransactionModal()">×</button>
             </div>
 
             <!-- Step Indicator -->
@@ -312,42 +785,43 @@
             <div class="modal-step" id="step1">
                 <h3>Item Information</h3>
 
-                <!-- Row 1: Item Name + Category (side by side) -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Item Name</label>
-                        <input type="text" placeholder="Item Name" id="itemName">
-                    </div>
-                    <div class="form-group">
-                        <label>Item Category</label>
-                        <select id="itemCategory">
-                            <option value="">Loading categories...</option>
-                        </select>
-                    </div>
+                <!-- Item Name - Populates other fields -->
+                <div class="form-group">
+                    <label>Item Name <span class="required">*</span></label>
+                    <select id="transactionItemSelect" onchange="populateItemFields()">
+                        <option value="">Select Item...</option>
+                    </select>
+                    <span style="font-size: 0.75rem; color: #888; margin-top: 4px; display: block;">Select an existing item or use "Add Item" button to create a new one</span>
                 </div>
 
-                <!-- Row 2: Quantity + Unit + Supplier (side by side - 3 columns) -->
-                <div class="form-row-three">
+                <!-- Auto-populated fields -->
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Item Quantity</label>
-                        <div class="quantity-control">
-                            <button type="button" onclick="changeQuantity(-1)">−</button>
-                            <input type="number" id="itemQuantity" value="1" min="1">
-                            <button type="button" onclick="changeQuantity(1)">+</button>
-                        </div>
+                        <label>Item Category</label>
+                        <input type="text" id="transactionItemCategory" readonly style="background: #f5f5f5; color: #555;">
                     </div>
                     <div class="form-group">
                         <label>Item Unit</label>
-                        <select id="itemUnit">
-                            <option value="">Loading units...</option>
-                        </select>
+                        <input type="text" id="transactionItemUnit" readonly style="background: #f5f5f5; color: #555;">
                     </div>
-                    <div class="form-group">
-                        <label>Item Supplier</label>
-                        <select id="itemSupplier">
-                            <option value="">Loading suppliers...</option>
-                        </select>
-                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Item Supplier</label>
+                    <input type="text" id="transactionItemSupplier" readonly style="background: #f5f5f5; color: #555;">
+                </div>
+
+                <div class="form-group">
+                    <label>Barcode</label>
+                    <input type="text" id="transactionItemBarCode" placeholder="Enter transaction barcode" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+
+                <!-- Project Selection for OUT transactions -->
+                <div class="form-group" id="transactionProjectGroup" style="display: none;">
+                    <label>Project Name <span class="required" style="display:none;" id="transactionProjectRequired">*</span></label>
+                    <select id="transactionProject">
+                        <option value="">Select Project...</option>
+                    </select>
                 </div>
 
                 <!-- Separator Line -->
@@ -355,35 +829,49 @@
 
                 <h3>Transaction Details</h3>
 
-                <!-- Row 3: Transaction Type + Date (side by side) -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Transaction Type</label>
-                        <div class="radio-group">
-                            <label>
-                                <input type="radio" name="transactionType" value="IN" checked>
-                                IN
-                                <span class="radio-sub">Item Stock in</span>
-                            </label>
-                            <label>
-                                <input type="radio" name="transactionType" value="OUT">
-                                OUT
-                                <span class="radio-sub">Item Stock out</span>
-                            </label>
+                        <label>Item Quantity <span class="required">*</span></label>
+                        <div class="quantity-control">
+                            <button type="button" onclick="changeTransactionQuantity(-1)">−</button>
+                            <input type="number" id="transactionQuantity" value="1" min="1">
+                            <button type="button" onclick="changeTransactionQuantity(1)">+</button>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Transaction Date</label>
-                        <input type="date" id="transactionDate" value="2026-05-10">
+                        <label>Transaction Date <span class="required">*</span></label>
+                        <input type="date" id="transactionDate" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Transaction Type <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="transactionType" value="IN" checked onchange="toggleTransactionProjectField()">
+                            IN
+                            <span class="radio-sub">Item Stock in</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="transactionType" value="OUT" onchange="toggleTransactionProjectField()">
+                            OUT
+                            <span class="radio-sub">Item Stock out</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Transaction Proof <span class="required">*</span></label>
+                    <input type="file" id="transactionProofFile" accept=".jpg,.jpeg,.png,.pdf">
+                    <span style="font-size:0.75rem;color:#888;display:block;margin-top:4px;">Required: PDF, JPG, or PNG. Maximum 10MB.</span>
                 </div>
 
                 <div class="modal-footer">
                     <div class="footer-left">
-                        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                        <button class="btn-cancel" onclick="closeTransactionModal()">Cancel</button>
                     </div>
                     <div class="footer-right">
-                        <button class="btn-continue" onclick="nextStep(2)">Continue</button>
+                        <button class="btn-continue" onclick="transactionNextStep(2)">Continue</button>
                     </div>
                 </div>
             </div>
@@ -395,44 +883,55 @@
                 <div class="summary-list">
                     <div class="summary-item">
                         <strong>Item Name</strong>
-                        <span class="summary-value" id="reviewItemName">—</span>
+                        <span class="summary-value" id="reviewTransItemName">—</span>
                     </div>
                     <div class="summary-item">
                         <strong>Item Category</strong>
-                        <span class="summary-value" id="reviewItemCategory">—</span>
+                        <span class="summary-value" id="reviewTransItemCategory">—</span>
                     </div>
                     <div class="summary-item">
                         <strong>Item Supplier</strong>
-                        <span class="summary-value" id="reviewItemSupplier">—</span>
+                        <span class="summary-value" id="reviewTransItemSupplier">—</span>
+                    </div>
+                    <div class="summary-item">
+                        <strong>Barcode</strong>
+                        <span class="summary-value" id="reviewTransItemBarCode">—</span>
                     </div>
                     <div class="summary-item">
                         <strong>Item Quantity</strong>
-                        <span class="summary-value" id="reviewItemQuantity">—</span>
+                        <span class="summary-value" id="reviewTransItemQuantity">—</span>
                     </div>
                     <div class="summary-item">
                         <strong>Item Unit</strong>
-                        <span class="summary-value" id="reviewItemUnit">—</span>
+                        <span class="summary-value" id="reviewTransItemUnit">—</span>
+                    </div>
+                    <div class="summary-item">
+                        <strong>Transaction Proof</strong>
+                        <span class="summary-value" id="reviewTransProof">—</span>
                     </div>
                 </div>
 
-                <!-- Separator Line before Transaction Type -->
                 <hr style="border: none; border-top: 1px solid #e9ecef; margin: 5px 0 12px;">
 
-                <div class="summary-list" style="border-left-color: #1a2b3c;">
+                    <div class="summary-list">
                     <div class="summary-item">
                         <strong>Transaction Type</strong>
-                        <span class="summary-value" id="reviewTransactionType">—</span>
+                        <span class="summary-value" id="reviewTransType">—</span>
                     </div>
                     <div class="summary-item">
                         <strong>Transaction Date</strong>
-                        <span class="summary-value" id="reviewTransactionDate">—</span>
+                        <span class="summary-value" id="reviewTransDate">—</span>
+                    </div>
+                    <div class="summary-item" id="reviewTransProjectRow" style="display: none;">
+                        <strong>Project</strong>
+                        <span class="summary-value" id="reviewTransProject">—</span>
                     </div>
                 </div>
 
                 <div class="modal-footer">
                     <div class="footer-left">
-                        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-                        <button class="btn-back" onclick="prevStep(1)">Back</button>
+                        <button class="btn-cancel" onclick="closeTransactionModal()">Cancel</button>
+                        <button class="btn-back" onclick="transactionPrevStep(1)">Back</button>
                     </div>
                     <div class="footer-right">
                         <button class="btn-save" onclick="saveTransaction()">Add Transaction</button>
@@ -442,138 +941,103 @@
         </div>
     </div>
 
+    <!-- ─── EXPENSE MODAL (from Transactions table) ─── -->
+    <div id="expenseModal" class="modal-overlay modal-expense">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Create Expense from Stock-In</h2>
+                <button class="modal-close" onclick="closeExpenseModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="expenseItemId">
+                <input type="hidden" id="expenseTransactionId">
+                <input type="hidden" id="expenseProjectId">
+                
+                <div class="form-group">
+                    <label>Item</label>
+                    <input type="text" id="expenseItemName" readonly style="background: #f5f5f5; color: #555;">
+                </div>
+                <div class="form-group">
+                    <label>Quantity Stocked In</label>
+                    <input type="text" id="expenseQuantity" readonly style="background: #f5f5f5; color: #555;">
+                </div>
+                <div class="form-group" id="expenseProjectGroup" style="display: none;">
+                    <label>Project</label>
+                    <input type="text" id="expenseProjectDisplay" readonly style="background: #f5f5f5; color: #555;">
+                </div>
+                <div class="form-group">
+                    <label>Expense Description <span class="required">*</span></label>
+                    <input type="text" id="expenseModalDesc" placeholder="e.g. Material purchase">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount <span class="required">*</span></label>
+                        <input type="number" step="0.01" id="expenseModalAmount" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Category <span class="required">*</span></label>
+                        <select id="expenseModalCategory">
+                            <option value="">Select Category...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="expenseModalDate" value="{{ date('Y-m-d') }}">
+                </div>
+                <div class="form-group">
+                    <label>Remarks</label>
+                    <input type="text" id="expenseModalRemarks" placeholder="Additional notes...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeExpenseModal()">Cancel</button>
+                <button class="btn-save" onclick="saveExpenseFromTransaction()">Create Expense</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        var csrfToken = '{{ csrf_token() }}';
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         var lookupData = { categories: [], suppliers: [], units: [] };
+
+        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalText = button.textContent;
+                button.textContent = loadingText || 'Loading...';
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.style.cursor = 'not-allowed';
+            } else {
+                button.textContent = button.dataset.originalText || button.textContent;
+                button.disabled = false;
+                button.style.opacity = '';
+                button.style.cursor = '';
+            }
+        }
         var inventoryItems = [];
         var allTransactions = [];
+        var filteredData = [];
+        var inventoryPageSize = 10;
+        var inventoryCurrentPage = 1;
+        
+        // Items tab variables
+        var itemsData = [];
+        var itemsFilteredData = [];
+        var itemsPageSize = 10;
+        var itemsCurrentPage = 1;
+        var currentExpenseRow = null;
+        var currentItemDetailRow = null;
 
-        // ─── LOAD LOOKUP DATA ───
-        function loadLookupData() {
-            fetch('/api/inventory/lookup-data', {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data.success && data.data) {
-                    lookupData = data.data;
-                    populateDropdowns();
-                    loadInventoryItems();
-                }
-            })
-            .catch(function(err) {
-                console.error('Error loading lookup data:', err);
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>'"]/g, function(character) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[character];
             });
         }
 
-        // ─── POPULATE FORM DROPDOWNS ───
-        function populateDropdowns() {
-            var categorySelect = document.getElementById('itemCategory');
-            var unitSelect = document.getElementById('itemUnit');
-            var supplierSelect = document.getElementById('itemSupplier');
-
-            // Categories
-            categorySelect.innerHTML = '<option value="">Choose Category...</option>';
-            lookupData.categories.forEach(function(cat) {
-                var opt = document.createElement('option');
-                opt.value = cat.inventory_category_id;
-                opt.textContent = cat.inventory_category_name;
-                categorySelect.appendChild(opt);
-            });
-
-            // Units
-            unitSelect.innerHTML = '<option value="">Choose Unit...</option>';
-            lookupData.units.forEach(function(unit) {
-                var opt = document.createElement('option');
-                opt.value = unit.unit_id;
-                opt.textContent = unit.unit_name;
-                unitSelect.appendChild(opt);
-            });
-
-            // Suppliers
-            supplierSelect.innerHTML = '<option value="">Choose Supplier...</option>';
-            lookupData.suppliers.forEach(function(sup) {
-                var opt = document.createElement('option');
-                opt.value = sup.supplier_id;
-                opt.textContent = sup.supplier_name;
-                supplierSelect.appendChild(opt);
-            });
-        }
-
-        // ─── LOAD INVENTORY ITEMS AND TRANSACTIONS ───
-        var allTransactions = [];
-        function loadInventoryItems() {
-            Promise.all([
-                fetch('/api/inventory', {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                }).then(function(res) { return res.json(); }),
-                fetch('/api/inventory/transactions', {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                }).then(function(res) { return res.json(); })
-            ])
-            .then(function(results) {
-                var itemsResult = results[0];
-                var transactionsResult = results[1];
-
-                inventoryItems = itemsResult.success ? itemsResult.data || [] : [];
-                allTransactions = transactionsResult.success ? transactionsResult.data || [] : [];
-                renderInventoryTable();
-            })
-            .catch(function(err) {
-                console.error('Error loading inventory data:', err);
-            });
-        }
-
-        // ─── RENDER INVENTORY TABLE ───
-        function renderInventoryTable() {
-        var tbody = document.getElementById('inventoryTableBody');
-        tbody.innerHTML = '';
-
-        if (!allTransactions.length) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px;">No transactions found.</td></tr>';
-            return;
-        }
-
-        allTransactions.forEach(function(row) {
-            var tr = document.createElement('tr');
-            var status = row.current_stock > row.reorder_level ? 'in-stock' : 'low-stock';
-            var statusText = row.current_stock > row.reorder_level ? 'In Stock' : 'Low Stock';
-            var typeLabel = row.transaction_type || '—';
-            var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
-
-            tr.setAttribute('data-id', row.inventory_transaction_id || '');
-            tr.setAttribute('data-item-id', row.item_id || '');
-            tr.setAttribute('data-item', row.item_name || '');
-            tr.setAttribute('data-category', row.category || '');
-            tr.setAttribute('data-unit', row.unit || '');
-            tr.setAttribute('data-quantity', row.quantity || '');
-            tr.setAttribute('data-supplier', row.supplier || '');
-            tr.setAttribute('data-supplier-id', row.supplier_id || '');
-            tr.setAttribute('data-type', typeLabel);
-            tr.setAttribute('data-date', row.transaction_date || '');
-            tr.setAttribute('data-stock', row.current_stock || '');
-            tr.setAttribute('data-status', statusText);
-            tr.setAttribute('data-project', row.project || '');
-
-            tr.innerHTML = `
-                <td><strong>${row.item_name}</strong></td>
-                <td>${row.category}</td>
-                <td>${row.unit}</td>
-                <td>${row.quantity}</td>
-                <td>${row.supplier}</td>
-                <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
-                <td>${dateValue}</td>
-                <td>${row.current_stock}</td>
-                <td><span class="status-badge ${status}"><span class="dot"></span> ${statusText}</span></td>
-                <td style="text-align: center;">
-                    <span class="action-icon" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));">👁️</span>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-        // ─── HIDE NOTIFICATION BADGE ON CLICK ───
+                // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -581,214 +1045,74 @@
             }
         }
 
-        // ─── MODAL CONTROLS ───
-        function openModal() {
-            document.getElementById('transactionModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-            goToStep(1);
-            // Reset form
-            document.getElementById('itemName').value = '';
-            document.getElementById('itemCategory').value = '';
-            document.getElementById('itemQuantity').value = 1;
-            document.getElementById('itemUnit').value = '';
-            document.getElementById('itemSupplier').value = '';
-            document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
-            var today = new Date().toISOString().split('T')[0];
-            document.getElementById('transactionDate').value = today;
-            // Clear review
-            document.getElementById('reviewItemName').textContent = '—';
-            document.getElementById('reviewItemCategory').textContent = '—';
-            document.getElementById('reviewItemSupplier').textContent = '—';
-            document.getElementById('reviewItemQuantity').textContent = '—';
-            document.getElementById('reviewItemUnit').textContent = '—';
-            document.getElementById('reviewTransactionType').textContent = '—';
-            document.getElementById('reviewTransactionDate').textContent = '—';
-        }
-
-        function closeModal() {
-            document.getElementById('transactionModal').classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        let currentStep = 1;
-
-        function goToStep(step) {
-            document.querySelectorAll('.modal-step').forEach(function(el) {
-                el.style.display = 'none';
-            });
-            document.getElementById('step' + step).style.display = 'block';
-
-            document.querySelectorAll('.step-indicator .step').forEach(function(el, index) {
-                el.classList.toggle('active', index + 1 === step);
-                el.classList.toggle('completed', index + 1 < step);
-            });
-            currentStep = step;
-        }
-
-        function nextStep(step) {
-            // Validate Step 1
-            var itemName = document.getElementById('itemName').value.trim();
-            var categoryId = document.getElementById('itemCategory').value;
-            var quantity = document.getElementById('itemQuantity').value;
-            var unitId = document.getElementById('itemUnit').value;
-            var supplierId = document.getElementById('itemSupplier').value;
-            var date = document.getElementById('transactionDate').value;
-
-            if (!itemName) { alert('Please enter the item name.'); return; }
-            if (!categoryId) { alert('Please select an item category.'); return; }
-            if (!quantity || quantity < 1) { alert('Please enter a valid quantity (minimum 1).'); return; }
-            if (!unitId) { alert('Please select an item unit.'); return; }
-            if (!supplierId) { alert('Please select a supplier.'); return; }
-            if (!date) { alert('Please select a transaction date.'); return; }
-
-            // Find category and unit names
-            var categoryName = lookupData.categories.find(function(c) { return c.inventory_category_id == categoryId; })?.inventory_category_name || 'N/A';
-            var unitName = lookupData.units.find(function(u) { return u.unit_id == unitId; })?.unit_name || 'N/A';
-            var supplierName = lookupData.suppliers.find(function(s) { return s.supplier_id == supplierId; })?.supplier_name || 'N/A';
-
-            // Populate review
-            document.getElementById('reviewItemName').textContent = itemName;
-            document.getElementById('reviewItemCategory').textContent = categoryName;
-            document.getElementById('reviewItemSupplier').textContent = supplierName;
-            document.getElementById('reviewItemQuantity').textContent = quantity;
-            document.getElementById('reviewItemUnit').textContent = unitName;
-
-            var type = document.querySelector('input[name="transactionType"]:checked');
-            var typeLabel = type ? type.value : 'IN';
-            var typeDisplay = typeLabel === 'IN' ? 'IN (Item Stock in)' : 'OUT (Item Stock out)';
-            document.getElementById('reviewTransactionType').textContent = typeDisplay;
-            document.getElementById('reviewTransactionDate').textContent = date;
-
-            goToStep(step);
-        }
-
-        function prevStep(step) {
-            goToStep(step);
-        }
-
-        // ─── QUANTITY CONTROLS ───
-        function changeQuantity(delta) {
-            var input = document.getElementById('itemQuantity');
-            var val = parseInt(input.value) || 1;
-            val = Math.max(1, val + delta);
-            input.value = val;
-        }
-
-        // ─── SAVE TRANSACTION ───
-        function saveTransaction() {
-            var itemName = document.getElementById('itemName').value.trim();
-            var categoryId = document.getElementById('itemCategory').value;
-            var quantity = parseFloat(document.getElementById('itemQuantity').value);
-            var unitId = document.getElementById('itemUnit').value;
-            var supplierId = document.getElementById('itemSupplier').value;
-            var date = document.getElementById('transactionDate').value;
-            var type = document.querySelector('input[name="transactionType"]:checked').value;
-            var categoryName = lookupData.categories.find(function(c) { return c.inventory_category_id == categoryId; })?.inventory_category_name || '';
-            var unitName = lookupData.units.find(function(u) { return u.unit_id == unitId; })?.unit_name || '';
-            var supplierName = lookupData.suppliers.find(function(s) { return s.supplier_id == supplierId; })?.supplier_name || '';
-
-            function normalize(text) {
-                return String(text || '').trim().toLowerCase();
-            }
-
-            // First, check if item already exists, if not create it
-            var existingItem = inventoryItems.find(function(i) {
-                return normalize(i.item_name) === normalize(itemName)
-                    && normalize(i.category) === normalize(categoryName)
-                    && normalize(i.unit) === normalize(unitName)
-                    && normalize(i.supplier) === normalize(supplierName);
-            });
-
-            var itemId;
-            if (existingItem) {
-                itemId = existingItem.item_id;
-                addTransaction(itemId, type, quantity, date);
-            } else {
-                // Create new item first
-                var itemPayload = {
-                    item_name: itemName,
-                    inventory_category_id: categoryId,
-                    supplier_id: supplierId,
-                    unit_id: unitId,
-                    current_stock: 0,
-                    reorder_level: 0
-                };
-
-                fetch('/api/inventory/item', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify(itemPayload)
-                })
-                .then(function(res) { return res.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        itemId = data.data.item_id;
-                        addTransaction(itemId, type, quantity, date);
-                    } else {
-                        alert('Failed to create item: ' + (data.message || 'Unknown error'));
-                    }
-                })
-                .catch(function(err) {
-                    console.error('Error creating item:', err);
-                    alert('Failed to create item.');
-                });
-            }
-        }
-
-        function addTransaction(itemId, type, quantity, date) {
-            var payload = {
-                item_id: itemId,
-                project_id: null,
-                transaction_type: type,
-                quantity: quantity,
-                transaction_date: date
-            };
-
-            fetch('/api/inventory/transaction', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(payload)
+        function fetchNotifBadge() {
+            fetch('/api/notifications/unread-count', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(function(res) { return res.json(); })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load unread count.');
+                return response.json();
+            })
             .then(function(data) {
-                if (data.success) {
-                    closeModal();
-                    showSuccess(data.message || 'Transaction added successfully!');
-                    loadInventoryItems();
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                var count = data.unread_count || 0;
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
                 } else {
-                    alert('Failed to add transaction: ' + (data.message || 'Unknown error'));
+                    badge.style.display = 'none';
                 }
             })
-            .catch(function(err) {
-                console.error('Error adding transaction:', err);
-                alert('Failed to add transaction.');
+            .catch(function(error) {
+                console.error('Error loading notification badge:', error);
             });
         }
 
-        // ─── SUCCESS NOTIFICATION ───
+        function showError(message) {
+            var notif = document.getElementById('errorNotification');
+            var msgSpan = document.getElementById('errorMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'An error occurred. Please try again.';
+            }
+            notif.style.display = 'block';
+            if (window.errorTimeout) clearTimeout(window.errorTimeout);
+            window.errorTimeout = setTimeout(function() {
+                closeError();
+            }, 5000);
+        }
+
+        function closeError() {
+            document.getElementById('errorNotification').style.display = 'none';
+            if (window.errorTimeout) {
+                clearTimeout(window.errorTimeout);
+                window.errorTimeout = null;
+            }
+        }
+
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
-            var msgSpan = notif.querySelector('.success-content span:not(.success-icon)');
-            if (msgSpan) msgSpan.textContent = message || 'Transaction added successfully!';
+            var msgSpan = document.getElementById('successMessage');
+            if (msgSpan) {
+                msgSpan.textContent = message || 'Action completed successfully!';
+            }
             notif.style.display = 'block';
-            setTimeout(function() {
+            if (window.successTimeout) clearTimeout(window.successTimeout);
+            window.successTimeout = setTimeout(function() {
                 closeSuccess();
             }, 5000);
         }
 
         function closeSuccess() {
             document.getElementById('successNotification').style.display = 'none';
+            if (window.successTimeout) {
+                clearTimeout(window.successTimeout);
+                window.successTimeout = null;
+            }
         }
 
         var deleteCallback = null;
+        var expenseConfirmCallback = null;
 
         function openDeleteModal(message, callback) {
             document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this transaction?';
@@ -810,47 +1134,1339 @@
             closeDeleteModal();
         }
 
-        function showError(message) {
-            document.getElementById('errorMessage').textContent = message || 'An error occurred. Please try again.';
-            document.getElementById('errorNotification').style.display = 'block';
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteModal();
+            }
+        });
+
+        // ─── EXPENSE CONFIRM MODAL ───
+        function openExpenseConfirmModal(message, callback) {
+            document.getElementById('expenseConfirmMessage').textContent = message || 'Are you sure you want to create an expense for this item?';
+            expenseConfirmCallback = callback;
+            document.getElementById('expenseConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
 
-        function closeError() {
-            document.getElementById('errorNotification').style.display = 'none';
+        function closeExpenseConfirmModal() {
+            document.getElementById('expenseConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            expenseConfirmCallback = null;
         }
 
+        function confirmExpense() {
+            if (typeof expenseConfirmCallback === 'function') {
+                expenseConfirmCallback();
+            }
+            closeExpenseConfirmModal();
+        }
+
+        document.getElementById('expenseConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeExpenseConfirmModal();
+            }
+        });
+
+        // ─── INVENTORY TABS ──────────────────────────────────────────
+        function switchInventoryTab(el, tab) {
+            document.getElementById('tabItems').classList.remove('active');
+            document.getElementById('tabTransactions').classList.remove('active');
+
+            if (tab === 'items') {
+                document.getElementById('tabItems').classList.add('active');
+                renderItemsPage(1);
+            } else {
+                document.getElementById('tabTransactions').classList.add('active');
+                renderTransactionPage(1);
+            }
+        }
+
+        // ─── UPDATE STATS CARDS ──────────────────────────────────────
+        function updateStats(transactions, items, categories) {
+            var uniqueItems = new Set();
+            transactions.forEach(function(t) {
+                if (t.item_name) {
+                    uniqueItems.add(t.item_name + '|' + t.category);
+                }
+            });
+            var totalItems = uniqueItems.size || items.length || 0;
+            document.getElementById('totalItemsCount').textContent = totalItems;
+            document.getElementById('totalItemsSub').textContent = totalItems > 0 ? totalItems + ' unique items' : 'No items found';
+
+            var lowStockItems = 0;
+            var lowStockList = [];
+            items.forEach(function(item) {
+                var stock = parseFloat(item.current_stock) || 0;
+                if (stock <= 5 && stock > 0) {
+                    lowStockItems++;
+                    lowStockList.push(item.item_name);
+                }
+            });
+            document.getElementById('lowStockCount').textContent = lowStockItems;
+            document.getElementById('lowStockSub').textContent = lowStockItems > 0 ? 
+                lowStockList.join(', ').substring(0, 30) + (lowStockList.length > 2 ? '...' : '') : 
+                'All items well stocked';
+
+            var uniqueCategories = new Set();
+            categories.forEach(function(c) {
+                uniqueCategories.add(c.inventory_category_name);
+            });
+            var categoryCount = uniqueCategories.size || 0;
+            document.getElementById('categoriesCount').textContent = categoryCount;
+            document.getElementById('categoriesSub').textContent = categoryCount + ' active categories';
+            
+            // Update badge count
+            var badge = document.getElementById('transactionBadge');
+            if (badge) {
+                badge.textContent = transactions.length;
+            }
+        }
+
+        // ─── LOAD LOOKUP DATA ────────────────────────────────────────
+        function loadLookupData() {
+            fetch('/api/inventory/lookup-data', {
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success && data.data) {
+                    lookupData = data.data;
+                    populateAllDropdowns();
+                    loadInventoryItems();
+                }
+            })
+            .catch(function(err) {
+                console.error('Error loading lookup data:', err);
+            });
+        }
+
+        // ─── POPULATE ALL DROPDOWNS ──────────────────────────────────
+        function populateAllDropdowns() {
+            populateAddItemDropdowns();
+            populateTransactionItemSelect();
+            populateViewDropdowns();
+            populateEditItemDropdowns();
+            populateProjectDropdown();
+            populateFilterDropdowns();
+        }
+
+        function populateFilterDropdowns() {
+            var categoryFilter = document.getElementById('itemsCategoryFilter');
+            var supplierFilter = document.getElementById('itemsSupplierFilter');
+            
+            // Categories
+            categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+            if (lookupData.categories) {
+                lookupData.categories.forEach(function(cat) {
+                    var opt = document.createElement('option');
+                    opt.value = cat.inventory_category_id;
+                    opt.textContent = cat.inventory_category_name;
+                    categoryFilter.appendChild(opt);
+                });
+            }
+            
+            // Suppliers
+            supplierFilter.innerHTML = '<option value="all">All Suppliers</option>';
+            if (lookupData.suppliers) {
+                lookupData.suppliers.forEach(function(sup) {
+                    var opt = document.createElement('option');
+                    opt.value = sup.supplier_id;
+                    opt.textContent = sup.supplier_name;
+                    supplierFilter.appendChild(opt);
+                });
+            }
+        }
+
+        // ─── POPULATE ADD ITEM DROPDOWNS ─────────────────────────────
+        function populateAddItemDropdowns() {
+            var categorySelect = document.getElementById('newItemCategory');
+            var unitSelect = document.getElementById('newItemUnit');
+            var supplierSelect = document.getElementById('newItemSupplier');
+
+            categorySelect.innerHTML = '<option value="">Select Category...</option>';
+            if (lookupData.categories) {
+                lookupData.categories.forEach(function(cat) {
+                    var opt = document.createElement('option');
+                    opt.value = cat.inventory_category_id;
+                    opt.textContent = cat.inventory_category_name;
+                    categorySelect.appendChild(opt);
+                });
+            }
+
+            unitSelect.innerHTML = '<option value="">Select Unit...</option>';
+            if (lookupData.units) {
+                lookupData.units.forEach(function(unit) {
+                    var opt = document.createElement('option');
+                    opt.value = unit.unit_id;
+                    opt.textContent = unit.unit_name;
+                    unitSelect.appendChild(opt);
+                });
+            }
+
+            supplierSelect.innerHTML = '<option value="">Select Supplier...</option>';
+            if (lookupData.suppliers) {
+                lookupData.suppliers.forEach(function(sup) {
+                    var opt = document.createElement('option');
+                    opt.value = sup.supplier_id;
+                    opt.textContent = sup.supplier_name;
+                    supplierSelect.appendChild(opt);
+                });
+            }
+        }
+
+        // ─── POPULATE EXPENSE CATEGORY DROPDOWN ──────────────────────
+        function populateExpenseCategoryDropdown() {
+            var select = document.getElementById('expenseModalCategory');
+            if (!select) return;
+            
+            fetch('/api/expense-categories', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                select.innerHTML = '<option value="">Select Category...</option>';
+                data.forEach(function(cat) {
+                    var opt = document.createElement('option');
+                    opt.value = cat.expense_category_id;
+                    opt.textContent = cat.category_name;
+                    select.appendChild(opt);
+                });
+            })
+            .catch(function(err) {
+                console.error('Error loading expense categories:', err);
+            });
+        }
+
+        // ─── POPULATE TRANSACTION ITEM SELECT ────────────────────────
+        function populateTransactionItemSelect() {
+            var select = document.getElementById('transactionItemSelect');
+            select.innerHTML = '<option value="">Select Item...</option>';
+            
+            var uniqueItems = {};
+            inventoryItems.forEach(function(item) {
+                var key = item.item_name + '|' + item.category + '|' + item.unit + '|' + item.supplier;
+                if (!uniqueItems[key]) {
+                    uniqueItems[key] = {
+                        item_id: item.item_id,
+                        item_name: item.item_name,
+                        category: item.category,
+                        unit: item.unit,
+                        supplier: item.supplier,
+                        supplier_id: item.supplier_id
+                    };
+                }
+            });
+            
+            Object.values(uniqueItems).forEach(function(item) {
+                var opt = document.createElement('option');
+                opt.value = item.item_id;
+                opt.textContent = item.item_name + ' (' + item.category + ', ' + item.unit + ')';
+                opt.dataset.category = item.category;
+                opt.dataset.unit = item.unit;
+                opt.dataset.supplier = item.supplier;
+                opt.dataset.supplierId = item.supplier_id;
+                select.appendChild(opt);
+            });
+        }
+
+        // ─── POPULATE ITEM FIELDS FROM SELECTION ─────────────────────
+        function populateItemFields() {
+            var select = document.getElementById('transactionItemSelect');
+            var selectedOption = select.options[select.selectedIndex];
+            
+            if (select.value && selectedOption) {
+                document.getElementById('transactionItemCategory').value = selectedOption.dataset.category || '';
+                document.getElementById('transactionItemUnit').value = selectedOption.dataset.unit || '';
+                document.getElementById('transactionItemSupplier').value = selectedOption.dataset.supplier || '';
+            } else {
+                document.getElementById('transactionItemCategory').value = '';
+                document.getElementById('transactionItemUnit').value = '';
+                document.getElementById('transactionItemSupplier').value = '';
+            }
+        }
+
+        // ─── POPULATE VIEW DROPDOWNS ─────────────────────────────────
         function populateViewDropdowns() {
             var categorySelect = document.getElementById('viewCategoryInput');
             var unitSelect = document.getElementById('viewUnitInput');
             var supplierSelect = document.getElementById('viewSupplierInput');
+            
             if (!categorySelect || !unitSelect || !supplierSelect) return;
 
             categorySelect.innerHTML = '<option value="">Select Category...</option>';
-            lookupData.categories.forEach(function(cat) {
-                var opt = document.createElement('option');
-                opt.value = cat.inventory_category_name;
-                opt.textContent = cat.inventory_category_name;
-                categorySelect.appendChild(opt);
-            });
+            if (lookupData.categories) {
+                lookupData.categories.forEach(function(cat) {
+                    var opt = document.createElement('option');
+                    opt.value = cat.inventory_category_name;
+                    opt.textContent = cat.inventory_category_name;
+                    categorySelect.appendChild(opt);
+                });
+            }
 
             unitSelect.innerHTML = '<option value="">Select Unit...</option>';
-            lookupData.units.forEach(function(unit) {
-                var opt = document.createElement('option');
-                opt.value = unit.unit_name;
-                opt.textContent = unit.unit_name;
-                unitSelect.appendChild(opt);
-            });
+            if (lookupData.units) {
+                lookupData.units.forEach(function(unit) {
+                    var opt = document.createElement('option');
+                    opt.value = unit.unit_name;
+                    opt.textContent = unit.unit_name;
+                    unitSelect.appendChild(opt);
+                });
+            }
 
             supplierSelect.innerHTML = '<option value="">Select Supplier...</option>';
-            lookupData.suppliers.forEach(function(sup) {
-                var opt = document.createElement('option');
-                opt.value = sup.supplier_id;
-                opt.textContent = sup.supplier_name;
-                supplierSelect.appendChild(opt);
+            if (lookupData.suppliers) {
+                lookupData.suppliers.forEach(function(sup) {
+                    var opt = document.createElement('option');
+                    opt.value = sup.supplier_id;
+                    opt.textContent = sup.supplier_name;
+                    supplierSelect.appendChild(opt);
+                });
+            }
+        }
+
+        // ─── POPULATE EDIT ITEM DROPDOWNS ────────────────────────────
+        function populateEditItemDropdowns() {
+            var categorySelect = document.getElementById('editItemCategory');
+            var unitSelect = document.getElementById('editItemUnit');
+            var supplierSelect = document.getElementById('editItemSupplier');
+
+            categorySelect.innerHTML = '<option value="">Select Category...</option>';
+            if (lookupData.categories) {
+                lookupData.categories.forEach(function(cat) {
+                    var opt = document.createElement('option');
+                    opt.value = cat.inventory_category_id;
+                    opt.textContent = cat.inventory_category_name;
+                    categorySelect.appendChild(opt);
+                });
+            }
+
+            unitSelect.innerHTML = '<option value="">Select Unit...</option>';
+            if (lookupData.units) {
+                lookupData.units.forEach(function(unit) {
+                    var opt = document.createElement('option');
+                    opt.value = unit.unit_id;
+                    opt.textContent = unit.unit_name;
+                    unitSelect.appendChild(opt);
+                });
+            }
+
+            supplierSelect.innerHTML = '<option value="">Select Supplier...</option>';
+            if (lookupData.suppliers) {
+                lookupData.suppliers.forEach(function(sup) {
+                    var opt = document.createElement('option');
+                    opt.value = sup.supplier_id;
+                    opt.textContent = sup.supplier_name;
+                    supplierSelect.appendChild(opt);
+                });
+            }
+        }
+
+        // ─── POPULATE PROJECT DROPDOWN ───────────────────────────────
+        function populateProjectDropdown() {
+            fetch('/api/projects/list', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(projects) {
+                var select = document.getElementById('transactionProject');
+                select.innerHTML = '<option value="">Select Project...</option>';
+                if (Array.isArray(projects)) {
+                    projects.forEach(function(project) {
+                        var opt = document.createElement('option');
+                        opt.value = project.project_id;
+                        opt.textContent = project.project_name;
+                        select.appendChild(opt);
+                    });
+                }
+            })
+            .catch(function(err) {
+                console.error('Error loading projects:', err);
             });
         }
 
-        // ─── VIEW/EDIT MODAL ───
+        // ─── LOAD INVENTORY ITEMS AND TRANSACTIONS ───────────────────
+        function loadInventoryItems() {
+            Promise.all([
+                fetch('/api/inventory', {
+                    headers: { 
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                }).then(function(res) { return res.json(); }),
+                fetch('/api/inventory/transactions', {
+                    headers: { 
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                }).then(function(res) { return res.json(); })
+            ])
+            .then(function(results) {
+                var itemsResult = results[0];
+                var transactionsResult = results[1];
+
+                inventoryItems = itemsResult.success ? itemsResult.data || [] : [];
+                itemsData = inventoryItems;
+                itemsFilteredData = itemsData;
+                
+                allTransactions = transactionsResult.success ? transactionsResult.data || [] : [];
+                filteredData = allTransactions;
+                
+                populateTransactionItemSelect();
+                renderItemsPage(1);
+                renderTransactionPage(1);
+                updateStats(allTransactions, inventoryItems, lookupData.categories);
+            })
+            .catch(function(err) {
+                console.error('Error loading inventory data:', err);
+                var tbody = document.getElementById('inventoryTableBody');
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #d32f2f;">Error loading inventory data. Please refresh the page.</td></tr>';
+                var itemsTbody = document.getElementById('itemsTableBody');
+                itemsTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #d32f2f;">Error loading items. Please refresh the page.</td></tr>';
+            });
+        }
+
+        // ─── ITEMS TAB FUNCTIONS ─────────────────────────────────────
+        function renderItemsPage(page) {
+            itemsCurrentPage = page;
+            var start = (page - 1) * itemsPageSize;
+            var end = Math.min(start + itemsPageSize, itemsFilteredData.length);
+            var pageData = itemsFilteredData.slice(start, end);
+            
+            var tbody = document.getElementById('itemsTableBody');
+            tbody.innerHTML = '';
+            
+            if (!pageData.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #888;">No items found.</td></tr>';
+                renderItemsPagination();
+                return;
+            }
+            
+            pageData.forEach(function(item) {
+                var tr = document.createElement('tr');
+                var stock = parseFloat(item.current_stock) || 0;
+                var reorderLevel = parseFloat(item.reorder_level) || 0;
+                var status = stock > reorderLevel ? 'in-stock' : (stock <= 0 ? 'out-of-stock' : 'low-stock');
+                var statusText = stock > reorderLevel ? 'In Stock' : (stock <= 0 ? 'Out of Stock' : 'Low Stock');
+                var statusClass = status === 'in-stock' ? 'in-stock' : (status === 'out-of-stock' ? 'out-of-stock' : 'low-stock');
+
+                // Store item data as data attributes
+                tr.setAttribute('data-item-id', item.item_id);
+                tr.setAttribute('data-item-name', item.item_name || 'Unknown');
+                tr.setAttribute('data-category', item.category || '—');
+                tr.setAttribute('data-unit', item.unit || '—');
+                tr.setAttribute('data-supplier', item.supplier || '—');
+                tr.setAttribute('data-stock', stock);
+                tr.setAttribute('data-reorder', reorderLevel);
+                tr.setAttribute('data-status', statusText);
+                tr.setAttribute('data-status-class', statusClass);
+                tr.setAttribute('data-inventory-category-id', item.inventory_category_id || '');
+                tr.setAttribute('data-supplier-id', item.supplier_id || '');
+                tr.setAttribute('data-unit-id', item.unit_id || '');
+
+                    tr.innerHTML = `
+
+                    <td><strong>${item.item_name || 'Unknown'}</strong></td>
+                    <td>${item.category || '—'}</td>
+                    <td>${item.supplier || '—'}</td>
+                    <td>${item.unit || '—'}</td>
+                    <td>${stock}</td>
+                    <td><span class="status-badge ${statusClass}"><span class="dot"></span> ${statusText}</span></td>
+                    <td style="text-align: center;">
+                        <button class="pfims-row-action" onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr'));" title="View item" aria-label="View item"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
+                        <button class="pfims-row-action" onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr')); setTimeout(openItemEditModal, 0);" title="Edit item" aria-label="Edit item"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+                        renderItemsPagination();
+            if (window.refreshTableScrollFade) window.refreshTableScrollFade();
+        }
+
+        function renderItemsPagination() {
+            var container = document.getElementById('itemsPaginationLinks');
+            if (!container) return;
+            
+            var total = itemsFilteredData.length;
+            var totalEl = document.getElementById('itemsTotalCount');
+            if (totalEl) totalEl.textContent = 'Total: ' + total;
+            var totalPages = Math.ceil(total / itemsPageSize);
+            var current = itemsCurrentPage;
+            
+            if (totalPages <= 1) {
+                container.innerHTML = `<span class="pagination-info">Showing all ${total} items</span>`;
+                return;
+            }
+            
+            var html = '';
+            html += `<a href="#" onclick="renderItemsPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
+            
+            if (totalPages <= 7) {
+                for (var i = 1; i <= totalPages; i++) {
+                    html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+            } else {
+                for (var i = 1; i <= 3; i++) {
+                    html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                if (current > 4) {
+                    html += `<span class="dots">...</span>`;
+                }
+                var startPage = Math.max(4, current - 1);
+                var endPage = Math.min(totalPages - 2, current + 1);
+                for (var i = startPage; i <= endPage; i++) {
+                    html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                if (current < totalPages - 3) {
+                    html += `<span class="dots">...</span>`;
+                }
+                for (var i = totalPages - 1; i <= totalPages; i++) {
+                    if (i > 3) {
+                        html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                    }
+                }
+            }
+            html += `<a href="#" onclick="renderItemsPage(${current + 1}); return false;" class="${current >= totalPages ? 'disabled' : ''}">»</a>`;
+            container.innerHTML = html;
+        }
+
+        function changeItemsPageSize() {
+            var select = document.getElementById('itemsRowsPerPage');
+            itemsPageSize = parseInt(select.value) || 10;
+            itemsCurrentPage = 1;
+            renderItemsPage(1);
+        }
+
+        function filterItemsTable() {
+            var searchTerm = document.getElementById('itemsSearchInput').value.toLowerCase().trim();
+            var categoryFilter = document.getElementById('itemsCategoryFilter').value;
+            var supplierFilter = document.getElementById('itemsSupplierFilter').value;
+            
+            itemsFilteredData = itemsData.filter(function(item) {
+                var matchesSearch = true;
+                if (searchTerm) {
+                    matchesSearch = (item.item_name || '').toLowerCase().includes(searchTerm) ||
+                                   (item.category || '').toLowerCase().includes(searchTerm) ||
+                                   (item.supplier || '').toLowerCase().includes(searchTerm);
+                }
+                
+                var matchesCategory = true;
+                if (categoryFilter !== 'all') {
+                    matchesCategory = String(item.inventory_category_id) === categoryFilter;
+                }
+                
+                var matchesSupplier = true;
+                if (supplierFilter !== 'all') {
+                    matchesSupplier = String(item.supplier_id) === supplierFilter;
+                }
+                
+                return matchesSearch && matchesCategory && matchesSupplier;
+            });
+            
+            renderItemsPage(1);
+        }
+
+                function applyItemsFilters() {
+            filterItemsTable();
+            showSuccess('Filters applied!');
+        }
+
+        function clearItemsFilters() {
+            document.getElementById('itemsSearchInput').value = '';
+            document.getElementById('itemsCategoryFilter').value = 'all';
+            document.getElementById('itemsSupplierFilter').value = 'all';
+            document.getElementById('itemsStockFilter').value = 'all';
+            filterItemsTable();
+        }
+
+        // ─── TRANSACTION TAB FUNCTIONS ──────────────────────────────
+        function renderTransactionPage(page) {
+            inventoryCurrentPage = page;
+            var start = (page - 1) * inventoryPageSize;
+            var end = Math.min(start + inventoryPageSize, filteredData.length);
+            var pageData = filteredData.slice(start, end);
+            
+            var tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+            
+            if (!pageData.length) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #888;">No transactions found.</td></tr>';
+                renderTransactionPagination();
+                return;
+            }
+            
+            pageData.forEach(function(row) {
+                var tr = document.createElement('tr');
+                var stock = parseFloat(row.current_stock) || 0;
+                var reorderLevel = parseFloat(row.reorder_level) || 0;
+                var status = stock > reorderLevel ? 'in-stock' : (stock <= 0 ? 'out-of-stock' : 'low-stock');
+                var statusText = stock > reorderLevel ? 'In Stock' : (stock <= 0 ? 'Out of Stock' : 'Low Stock');
+                var typeLabel = row.transaction_type || '—';
+                var dateValue = row.transaction_date ? new Date(row.transaction_date).toLocaleDateString() : '—';
+                var proofFile = row.proof_file_path
+                    ? `<a href="/storage/${encodeURI(row.proof_file_path)}" target="_blank" rel="noopener" title="Open proof file">${escapeHtml(row.proof_file_name || 'View Proof')}</a>`
+                    : '—';
+
+                tr.setAttribute('data-id', row.inventory_transaction_id || '');
+                tr.setAttribute('data-item-id', row.item_id || '');
+                tr.setAttribute('data-item', row.item_name || '');
+                tr.setAttribute('data-category', row.category || '');
+                tr.setAttribute('data-unit', row.unit || '');
+                tr.setAttribute('data-quantity', row.quantity || '');
+                tr.setAttribute('data-bar-code', row.bar_code ?? '');
+                tr.setAttribute('data-supplier', row.supplier || '');
+                tr.setAttribute('data-supplier-id', row.supplier_id || '');
+                tr.setAttribute('data-type', typeLabel);
+                tr.setAttribute('data-date', row.transaction_date || '');
+                tr.setAttribute('data-stock', stock);
+                tr.setAttribute('data-status', statusText);
+                tr.setAttribute('data-project', row.project || '');
+
+                var statusClass = status === 'in-stock' ? 'in-stock' : (status === 'out-of-stock' ? 'out-of-stock' : 'low-stock');
+
+                tr.innerHTML = `
+                    <td>${row.project || '-'}</td>
+                    <td>${row.category}</td>
+                    <td><strong>${row.item_name}</strong></td>
+                    <td>${row.description || '-'}</td>
+                    <td>${row.bar_code ?? '-'}</td>
+                    <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
+                    <td>${dateValue}</td>
+                    <td>${row.unit}</td>
+                    <td>${row.quantity}</td>
+                    <td>${proofFile}</td>
+                    <td style="text-align: center;">
+                        <div class="action-cell" style="display: flex; gap: 4px; justify-content: center; align-items: center;">
+                            <button class="pfims-row-action" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" title="View transaction" aria-label="View transaction"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
+                            <button class="pfims-row-action" onclick="event.stopPropagation(); openViewModal(this.closest('tr')); setTimeout(enableEditMode, 0);" title="Edit transaction" aria-label="Edit transaction"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+                        renderTransactionPagination();
+            if (window.refreshTableScrollFade) window.refreshTableScrollFade();
+        }
+
+        function renderTransactionPagination() {
+            var container = document.getElementById('transactionPaginationLinks');
+            if (!container) return;
+            
+            var total = filteredData.length;
+            var totalEl = document.getElementById('transactionsTotalCount');
+            if (totalEl) totalEl.textContent = 'Total: ' + total;
+            var totalPages = Math.ceil(total / inventoryPageSize);
+            var current = inventoryCurrentPage;
+            
+            if (totalPages <= 1) {
+                container.innerHTML = `<span class="pagination-info">Showing all ${total} transactions</span>`;
+                return;
+            }
+            
+            var html = '';
+            html += `<a href="#" onclick="renderTransactionPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
+            
+            if (totalPages <= 7) {
+                for (var i = 1; i <= totalPages; i++) {
+                    html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+            } else {
+                for (var i = 1; i <= 3; i++) {
+                    html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                if (current > 4) {
+                    html += `<span class="dots">...</span>`;
+                }
+                var startPage = Math.max(4, current - 1);
+                var endPage = Math.min(totalPages - 2, current + 1);
+                for (var i = startPage; i <= endPage; i++) {
+                    html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                }
+                if (current < totalPages - 3) {
+                    html += `<span class="dots">...</span>`;
+                }
+                for (var i = totalPages - 1; i <= totalPages; i++) {
+                    if (i > 3) {
+                        html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
+                    }
+                }
+            }
+            html += `<a href="#" onclick="renderTransactionPage(${current + 1}); return false;" class="${current >= totalPages ? 'disabled' : ''}">»</a>`;
+            container.innerHTML = html;
+        }
+
+        function changeTransactionPageSize() {
+            var select = document.getElementById('transactionRowsPerPage');
+            inventoryPageSize = parseInt(select.value) || 10;
+            inventoryCurrentPage = 1;
+            renderTransactionPage(1);
+        }
+
+        // ─── FILTER TABLE (Transactions) ─────────────────────────────
+        function filterTable() {
+            var searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            var typeFilter = document.getElementById('typeFilter').value;
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+            
+            filteredData = allTransactions.filter(function(row) {
+                var matchesSearch = true;
+                if (searchTerm) {
+                    matchesSearch = (row.item_name || '').toLowerCase().includes(searchTerm) ||
+                                   (row.category || '').toLowerCase().includes(searchTerm) ||
+                                   (row.supplier || '').toLowerCase().includes(searchTerm);
+                }
+                
+                var matchesType = true;
+                if (typeFilter !== 'all') {
+                    matchesType = row.transaction_type === typeFilter;
+                }
+                
+                var matchesDate = true;
+                if (startDate && endDate) {
+                    var rowDate = row.transaction_date || '';
+                    matchesDate = rowDate >= startDate && rowDate <= endDate;
+                }
+                
+                return matchesSearch && matchesType && matchesDate;
+            });
+            
+            renderTransactionPage(1);
+        }
+
+                function applyFilters() {
+            filterTable();
+            showSuccess('Filters applied!');
+        }
+
+        function clearTransactionFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('typeFilter').value = 'all';
+            document.getElementById('transactionCategoryFilter').value = 'all';
+            document.getElementById('transactionProjectFilter').value = 'all';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            filterTable();
+        }
+
+        // ─── ADD ITEM MODAL ──────────────────────────────────────────
+        function openAddItemModal() {
+            document.getElementById('addItemModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            document.getElementById('newItemName').value = '';
+            document.getElementById('newItemCategory').value = '';
+            document.getElementById('newItemUnit').value = '';
+            document.getElementById('newItemSupplier').value = '';
+            document.getElementById('newItemReorderLevel').value = '5';
+            populateAddItemDropdowns();
+            addItemGoToStep(1);
+        }
+
+        function closeAddItemModal() {
+            document.getElementById('addItemModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function addItemGoToStep(step) {
+            document.querySelectorAll('#addItemModal .modal-step').forEach(function(el) {
+                el.style.display = 'none';
+            });
+            document.getElementById('addItemStep' + step).style.display = 'block';
+            document.querySelectorAll('#addItemModal .step-indicator .step').forEach(function(el, index) {
+                el.classList.toggle('active', index + 1 === step);
+                el.classList.toggle('completed', index + 1 < step);
+            });
+        }
+
+        function addItemNextStep() {
+            var name = document.getElementById('newItemName').value.trim();
+            var categoryId = document.getElementById('newItemCategory').value;
+            var unitId = document.getElementById('newItemUnit').value;
+            var supplierId = document.getElementById('newItemSupplier').value;
+            var reorderLevel = document.getElementById('newItemReorderLevel').value;
+
+            if (!name) { showError('Please enter an item name.'); return; }
+            if (!categoryId) { showError('Please select a category.'); return; }
+            if (!unitId) { showError('Please select a unit.'); return; }
+            if (!supplierId) { showError('Please select a supplier.'); return; }
+
+            document.getElementById('reviewItemName').textContent = name;
+            document.getElementById('reviewItemCategory').textContent = document.getElementById('newItemCategory').selectedOptions[0].text;
+            document.getElementById('reviewItemUnit').textContent = document.getElementById('newItemUnit').selectedOptions[0].text;
+            document.getElementById('reviewItemSupplier').textContent = document.getElementById('newItemSupplier').selectedOptions[0].text;
+            document.getElementById('reviewItemReorder').textContent = reorderLevel || '0';
+
+            addItemGoToStep(2);
+        }
+
+        function addItemPrevStep() {
+            addItemGoToStep(1);
+        }
+
+        function saveNewItem() {
+            var saveBtn = document.getElementById('saveNewItemBtn');
+            if (saveBtn && saveBtn.disabled) return;
+            var name = document.getElementById('newItemName').value.trim();
+            var categoryId = document.getElementById('newItemCategory').value;
+            var unitId = document.getElementById('newItemUnit').value;
+            var supplierId = document.getElementById('newItemSupplier').value;
+            var reorderLevel = parseFloat(document.getElementById('newItemReorderLevel').value) || 0;
+
+            if (!name) { showError('Please enter an item name.'); return; }
+            if (!categoryId) { showError('Please select a category.'); return; }
+            if (!unitId) { showError('Please select a unit.'); return; }
+            if (!supplierId) { showError('Please select a supplier.'); return; }
+
+            var payload = {
+                item_name: name,
+                inventory_category_id: parseInt(categoryId),
+                supplier_id: parseInt(supplierId),
+                unit_id: parseInt(unitId),
+                current_stock: 0,
+                reorder_level: reorderLevel
+            };
+
+            setButtonLoading(saveBtn, true, 'Adding...');
+            fetch('/api/inventory/item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeAddItemModal();
+                    showSuccess('Item "' + name + '" added successfully!');
+                    loadInventoryItems();
+                } else {
+                    showError(data.message || 'Failed to add item.');
+                }
+            })
+            .catch(function(err) {
+                console.error('Error adding item:', err);
+                showError('Failed to add item.');
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
+        }
+
+        // ─── ITEM DETAIL MODAL FUNCTIONS ─────────────────────────────
+        function openItemDetailModal(row) {
+            currentItemDetailRow = row;
+            
+            var itemId = row.dataset.itemId || '';
+            var itemName = row.dataset.itemName || '—';
+            var category = row.dataset.category || '—';
+            var unit = row.dataset.unit || '—';
+            var supplier = row.dataset.supplier || '—';
+            var stock = row.dataset.stock || '0';
+            var reorder = row.dataset.reorder || '0';
+            var status = row.dataset.status || 'In Stock';
+            var statusClass = row.dataset.statusClass || 'in-stock';
+            
+            document.getElementById('itemDetailTitle').textContent = itemName;
+            document.getElementById('itemDetailName').textContent = itemName;
+            document.getElementById('itemDetailCategory').textContent = category;
+            document.getElementById('itemDetailUnit').textContent = unit;
+            document.getElementById('itemDetailSupplier').textContent = supplier;
+            document.getElementById('itemDetailStock').textContent = stock;
+            document.getElementById('itemDetailReorder').textContent = reorder;
+            
+            var statusEl = document.getElementById('itemDetailStatus');
+            statusEl.textContent = status;
+            statusEl.className = 'view-value status-badge ' + statusClass;
+            
+            document.getElementById('itemDetailModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeItemDetailModal() {
+            document.getElementById('itemDetailModal').classList.remove('active');
+            document.body.style.overflow = '';
+            currentItemDetailRow = null;
+        }
+
+        // ─── EDIT ITEM MODAL FUNCTIONS ──────────────────────────────
+        function openItemEditModal() {
+            if (!currentItemDetailRow) return;
+            
+            var itemId = currentItemDetailRow.dataset.itemId || '';
+            var itemName = currentItemDetailRow.dataset.itemName || '';
+            var category = currentItemDetailRow.dataset.category || '';
+            var unit = currentItemDetailRow.dataset.unit || '';
+            var supplier = currentItemDetailRow.dataset.supplier || '';
+            var reorder = currentItemDetailRow.dataset.reorder || '0';
+            var categoryId = currentItemDetailRow.dataset.inventoryCategoryId || '';
+            var supplierId = currentItemDetailRow.dataset.supplierId || '';
+            var unitId = currentItemDetailRow.dataset.unitId || '';
+            
+            document.getElementById('editItemId').value = itemId;
+            document.getElementById('editItemName').value = itemName;
+            document.getElementById('editItemReorderLevel').value = reorder;
+            
+            // Populate dropdowns with current values
+            var categorySelect = document.getElementById('editItemCategory');
+            var unitSelect = document.getElementById('editItemUnit');
+            var supplierSelect = document.getElementById('editItemSupplier');
+            
+            // Repopulate dropdowns first
+            populateEditItemDropdowns();
+            
+            // Set values
+            if (categoryId) {
+                categorySelect.value = categoryId;
+            } else {
+                // Try to match by name
+                for (var i = 0; i < categorySelect.options.length; i++) {
+                    if (categorySelect.options[i].text === category) {
+                        categorySelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (unitId) {
+                unitSelect.value = unitId;
+            } else {
+                for (var i = 0; i < unitSelect.options.length; i++) {
+                    if (unitSelect.options[i].text === unit) {
+                        unitSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (supplierId) {
+                supplierSelect.value = supplierId;
+            } else {
+                for (var i = 0; i < supplierSelect.options.length; i++) {
+                    if (supplierSelect.options[i].text === supplier) {
+                        supplierSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            
+            closeItemDetailModal();
+            document.getElementById('editItemModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEditItemModal() {
+            document.getElementById('editItemModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function saveEditItem() {
+            var saveBtn = document.querySelector('#editItemModal .btn-save');
+            if (saveBtn && saveBtn.disabled) return;
+            var itemId = document.getElementById('editItemId').value;
+            var name = document.getElementById('editItemName').value.trim();
+            var categoryId = document.getElementById('editItemCategory').value;
+            var unitId = document.getElementById('editItemUnit').value;
+            var supplierId = document.getElementById('editItemSupplier').value;
+            var reorderLevel = parseFloat(document.getElementById('editItemReorderLevel').value) || 0;
+
+            if (!name) { showError('Please enter an item name.'); return; }
+            if (!categoryId) { showError('Please select a category.'); return; }
+            if (!unitId) { showError('Please select a unit.'); return; }
+            if (!supplierId) { showError('Please select a supplier.'); return; }
+
+            var payload = {
+                item_name: name,
+                inventory_category_id: parseInt(categoryId),
+                supplier_id: parseInt(supplierId),
+                unit_id: parseInt(unitId),
+                reorder_level: reorderLevel
+            };
+
+            setButtonLoading(saveBtn, true, 'Saving...');
+            fetch('/api/inventory/item/' + itemId, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeEditItemModal();
+                    showSuccess('Item updated successfully!');
+                    loadInventoryItems();
+                } else {
+                    showError(data.message || 'Failed to update item.');
+                }
+            })
+            .catch(function(err) {
+                console.error('Error updating item:', err);
+                showError('Failed to update item.');
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
+        }
+
+        function deleteItem() {
+            if (!currentItemDetailRow) return;
+            var itemId = currentItemDetailRow.dataset.itemId || '';
+            if (!itemId) { showError('Item ID missing.'); return; }
+
+            openDeleteModal('Deleting this item will also delete its inventory transactions. Continue?', function() {
+                var deleteBtn = document.getElementById('confirmDeleteBtn');
+                setButtonLoading(deleteBtn, true, 'Deleting...');
+                fetch('/api/inventory/item/' + itemId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        closeItemDetailModal();
+                        closeEditItemModal();
+                        showSuccess(data.message || 'Item deleted successfully!');
+                        loadInventoryItems();
+                    } else {
+                        showError(data.message || 'Failed to delete item.');
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Error deleting item:', err);
+                    showError('Failed to delete item.');
+                })
+                .finally(function() { setButtonLoading(deleteBtn, false); });
+            });
+        }
+
+        document.getElementById('itemDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeItemDetailModal(); }
+        });
+
+        document.getElementById('editItemModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeEditItemModal(); }
+        });
+
+        // ─── TRANSACTION MODAL ───────────────────────────────────────
+        var transactionCurrentStep = 1;
+
+        function openTransactionModal() {
+            document.getElementById('transactionModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            transactionGoToStep(1);
+            
+            document.getElementById('transactionItemSelect').value = '';
+            document.getElementById('transactionItemCategory').value = '';
+            document.getElementById('transactionItemUnit').value = '';
+            document.getElementById('transactionItemSupplier').value = '';
+            document.getElementById('transactionItemBarCode').value = '';
+            document.getElementById('transactionQuantity').value = 1;
+            document.getElementById('transactionProofFile').value = '';
+            document.getElementById('transactionDate').value = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
+            document.getElementById('transactionProjectGroup').style.display = 'none';
+            document.getElementById('transactionProjectRequired').style.display = 'none';
+            document.getElementById('transactionProject').value = '';
+            
+            document.getElementById('reviewTransItemName').textContent = '—';
+            document.getElementById('reviewTransItemCategory').textContent = '—';
+            document.getElementById('reviewTransItemSupplier').textContent = '—';
+            document.getElementById('reviewTransItemBarCode').textContent = '—';
+            document.getElementById('reviewTransItemQuantity').textContent = '—';
+            document.getElementById('reviewTransItemUnit').textContent = '—';
+            document.getElementById('reviewTransProof').textContent = '—';
+            document.getElementById('reviewTransType').textContent = '—';
+            document.getElementById('reviewTransDate').textContent = '—';
+            document.getElementById('reviewTransProjectRow').style.display = 'none';
+            document.getElementById('reviewTransProject').textContent = '—';
+            
+            populateTransactionItemSelect();
+            populateProjectDropdown();
+        }
+
+        function closeTransactionModal() {
+            document.getElementById('transactionModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function transactionGoToStep(step) {
+            document.querySelectorAll('#transactionModal .modal-step').forEach(function(el) {
+                el.style.display = 'none';
+            });
+            document.getElementById('step' + step).style.display = 'block';
+
+            document.querySelectorAll('#transactionModal .step-indicator .step').forEach(function(el, index) {
+                el.classList.toggle('active', index + 1 === step);
+                el.classList.toggle('completed', index + 1 < step);
+            });
+            transactionCurrentStep = step;
+        }
+
+        function transactionNextStep(step) {
+            var itemId = document.getElementById('transactionItemSelect').value;
+            var quantity = document.getElementById('transactionQuantity').value;
+            var barCode = document.getElementById('transactionItemBarCode').value.trim();
+            var date = document.getElementById('transactionDate').value;
+            var type = document.querySelector('input[name="transactionType"]:checked');
+            var proofFile = document.getElementById('transactionProofFile').files[0];
+
+            if (!itemId) { showError('Please select an item.'); return; }
+            if (!quantity || quantity < 1) { showError('Please enter a valid quantity (minimum 1).'); return; }
+            if (barCode !== '' && !/^\d+$/.test(barCode)) { showError('Barcode must contain numbers only.'); return; }
+            if (!date) { showError('Please select a transaction date.'); return; }
+            if (date > document.getElementById('transactionDate').max) { showError('Transaction date cannot be in the future.'); return; }
+            if (!proofFile) { showError('Transaction proof file is required.'); return; }
+            if (!['application/pdf', 'image/jpeg', 'image/png'].includes(proofFile.type)) { showError('Proof must be a PDF, JPG, or PNG file.'); return; }
+            if (proofFile.size > 10 * 1024 * 1024) { showError('Proof file must not exceed 10MB.'); return; }
+
+            var typeLabel = type ? type.value : 'IN';
+            if (typeLabel === 'OUT') {
+                var projectId = document.getElementById('transactionProject').value;
+                if (!projectId) {
+                    showError('Please select a project for OUT transactions.');
+                    return;
+                }
+                var projectName = document.getElementById('transactionProject').options[document.getElementById('transactionProject').selectedIndex].text;
+                document.getElementById('reviewTransProjectRow').style.display = 'flex';
+                document.getElementById('reviewTransProject').textContent = projectName;
+            } else {
+                document.getElementById('reviewTransProjectRow').style.display = 'none';
+            }
+
+            var select = document.getElementById('transactionItemSelect');
+            var selectedOption = select.options[select.selectedIndex];
+            var itemName = selectedOption ? selectedOption.text.split(' (')[0] : '—';
+            var category = document.getElementById('transactionItemCategory').value || '—';
+            var supplier = document.getElementById('transactionItemSupplier').value || '—';
+            var unit = document.getElementById('transactionItemUnit').value || '—';
+            var barCode = document.getElementById('transactionItemBarCode').value || '—';
+
+            document.getElementById('reviewTransItemName').textContent = itemName;
+            document.getElementById('reviewTransItemCategory').textContent = category;
+            document.getElementById('reviewTransItemSupplier').textContent = supplier;
+            document.getElementById('reviewTransItemBarCode').textContent = barCode;
+            document.getElementById('reviewTransItemQuantity').textContent = quantity;
+            document.getElementById('reviewTransItemUnit').textContent = unit;
+            document.getElementById('reviewTransProof').textContent = proofFile.name;
+            document.getElementById('reviewTransType').textContent = typeLabel === 'IN' ? 'IN (Item Stock in)' : 'OUT (Item Stock out)';
+            document.getElementById('reviewTransDate').textContent = date;
+
+            transactionGoToStep(step);
+        }
+
+        function transactionPrevStep(step) {
+            transactionGoToStep(step);
+        }
+
+        function changeTransactionQuantity(delta) {
+            var input = document.getElementById('transactionQuantity');
+            var val = parseInt(input.value) || 1;
+            val = Math.max(1, val + delta);
+            input.value = val;
+        }
+
+        function toggleTransactionProjectField() {
+            var typeRadios = document.querySelectorAll('input[name="transactionType"]');
+            var selected = Array.from(typeRadios).find(r => r.checked);
+            var projectGroup = document.getElementById('transactionProjectGroup');
+            var projectRequired = document.getElementById('transactionProjectRequired');
+            if (selected && selected.value === 'OUT') {
+                projectGroup.style.display = 'block';
+                projectRequired.style.display = 'inline';
+            } else {
+                projectGroup.style.display = 'none';
+                projectRequired.style.display = 'none';
+            }
+        }
+
+        // ─── SAVE TRANSACTION ────────────────────────────────────────
+        function saveTransaction() {
+            var saveBtn = document.querySelector('#step2 .btn-save');
+            if (saveBtn && saveBtn.disabled) return;
+            var itemId = document.getElementById('transactionItemSelect').value;
+            var quantity = parseFloat(document.getElementById('transactionQuantity').value);
+            var barCode = document.getElementById('transactionItemBarCode').value.trim();
+            var date = document.getElementById('transactionDate').value;
+            var type = document.querySelector('input[name="transactionType"]:checked').value;
+            var projectId = null;
+            var proofFile = document.getElementById('transactionProofFile').files[0];
+            
+            if (type === 'OUT') {
+                projectId = document.getElementById('transactionProject').value;
+                if (!projectId) {
+                    showError('Please select a project for OUT transactions.');
+                    return;
+                }
+            }
+
+            if (!proofFile) { showError('Transaction proof file is required.'); return; }
+
+            var payload = new FormData();
+            payload.append('item_id', parseInt(itemId));
+            if (projectId) payload.append('project_id', projectId);
+            payload.append('transaction_type', type);
+            payload.append('quantity', quantity);
+            if (barCode !== '') payload.append('bar_code', parseInt(barCode, 10));
+            payload.append('transaction_date', date);
+            payload.append('proof_file', proofFile);
+
+            setButtonLoading(saveBtn, true, 'Saving...');
+            fetch('/api/inventory/transaction', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: payload
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeTransactionModal();
+                    showSuccess('Transaction added successfully!');
+                    loadInventoryItems();
+                } else {
+                    showError(data.message || 'Failed to add transaction.');
+                }
+            })
+            .catch(function(err) {
+                console.error('Error adding transaction:', err);
+                showError('Failed to add transaction.');
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
+        }
+
+        // ─── EXPENSE FROM TRANSACTION ───────────────────────────────
+        function openExpenseFromTransaction(row) {
+            var itemId = row.dataset.itemId || '';
+            var itemName = row.dataset.item || '';
+            var quantity = row.dataset.quantity || '';
+            var unit = row.dataset.unit || '';
+            var transactionId = row.dataset.id || '';
+            var project = row.dataset.project || '';
+            
+            if (!itemId) {
+                showError('Item not found.');
+                return;
+            }
+            
+            var item = inventoryItems.find(function(i) { return String(i.item_id) === String(itemId); });
+            if (!item) {
+                showError('Item not found in inventory.');
+                return;
+            }
+            
+            document.getElementById('expenseItemId').value = itemId;
+            document.getElementById('expenseTransactionId').value = transactionId;
+            document.getElementById('expenseItemName').value = itemName;
+            document.getElementById('expenseQuantity').value = quantity;
+            document.getElementById('expenseModalDesc').value = 'Stock-in: ' + itemName;
+            document.getElementById('expenseModalAmount').value = '';
+            document.getElementById('expenseModalDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('expenseModalRemarks').value = 'Stock-in: ' + quantity + ' ' + unit;
+            document.getElementById('expenseProjectId').value = project || '';
+            
+            // Show project if exists
+            var projectGroup = document.getElementById('expenseProjectGroup');
+            if (project) {
+                projectGroup.style.display = 'block';
+                document.getElementById('expenseProjectDisplay').value = project;
+            } else {
+                projectGroup.style.display = 'none';
+            }
+            
+            // Set category default to 'material' if available
+            var categorySelect = document.getElementById('expenseModalCategory');
+            for (var i = 0; i < categorySelect.options.length; i++) {
+                if (categorySelect.options[i].text.toLowerCase() === 'material') {
+                    categorySelect.selectedIndex = i;
+                    break;
+                }
+            }
+            
+            currentExpenseRow = { item: item, transactionId: transactionId, project: project };
+            document.getElementById('expenseModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeExpenseModal() {
+            document.getElementById('expenseModal').classList.remove('active');
+            document.body.style.overflow = '';
+            currentExpenseRow = null;
+        }
+
+        function saveExpenseFromTransaction() {
+            var saveBtn = document.querySelector('#expenseModal .btn-save');
+            if (saveBtn && saveBtn.disabled) return;
+            var desc = document.getElementById('expenseModalDesc').value.trim();
+            var amount = parseFloat(document.getElementById('expenseModalAmount').value);
+            var categoryId = document.getElementById('expenseModalCategory').value;
+            var date = document.getElementById('expenseModalDate').value;
+            var remarks = document.getElementById('expenseModalRemarks').value.trim();
+            var projectId = document.getElementById('expenseProjectId').value || null;
+            
+            if (!desc) { showError('Please enter an expense description.'); return; }
+            if (!amount || amount <= 0) { showError('Please enter a valid expense amount.'); return; }
+            if (!categoryId) { showError('Please select an expense category.'); return; }
+            
+            var payload = {
+                project_id: projectId ? parseInt(projectId) : null,
+                expense_category_id: parseInt(categoryId),
+                expense_description: desc,
+                amount: amount,
+                expense_date: date,
+                remarks: remarks || 'Stock-in expense'
+            };
+            
+            setButtonLoading(saveBtn, true, 'Creating...');
+            fetch('/api/expenses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success !== false) {
+                    closeExpenseModal();
+                    showSuccess('Expense created successfully!');
+                    loadInventoryItems();
+                } else {
+                    showError(data.message || 'Failed to create expense.');
+                }
+            })
+            .catch(function(err) {
+                console.error('Error creating expense:', err);
+                showError('Failed to create expense.');
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
+        }
+
+        document.getElementById('expenseModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeExpenseModal(); }
+        });
+
+        // ─── VIEW/EDIT TRANSACTION MODAL ─────────────────────────────
         var currentRow = null;
         var isEditMode = false;
 
@@ -863,12 +2479,11 @@
             var category = row.dataset.category || '';
             var unit = row.dataset.unit || '';
             var quantity = row.dataset.quantity || '';
+            var barCode = row.dataset.barCode || '';
             var supplier = row.dataset.supplier || '';
             var supplierId = row.dataset.supplierId || '';
             var type = row.dataset.type || '';
             var date = row.dataset.date || '';
-            var stock = row.dataset.stock || '';
-            var status = row.dataset.status || '';
             var project = row.dataset.project || '';
 
             var selectedItem = inventoryItems.find(function(i) {
@@ -893,27 +2508,16 @@
             document.getElementById('viewTransactionId').value = id;
             document.getElementById('viewItemId').value = itemId;
             document.getElementById('viewItemNameDisplay').textContent = item;
-            document.getElementById('viewItemNameInput').value = item;
             document.getElementById('viewCategoryDisplay').textContent = category;
-            document.getElementById('viewCategoryInput').value = category;
             document.getElementById('viewUnitDisplay').textContent = unit;
-            document.getElementById('viewUnitInput').value = unit;
             document.getElementById('viewQuantityDisplay').textContent = quantity;
             document.getElementById('viewQuantityInput').value = quantity;
+            document.getElementById('viewBarCodeDisplay').textContent = barCode || '—';
+            document.getElementById('viewBarCodeInput').value = barCode;
             document.getElementById('viewSupplierDisplay').textContent = supplier;
-            document.getElementById('viewSupplierInput').value = supplierId;
             document.getElementById('viewTypeDisplay').textContent = type;
-            document.getElementById('viewTypeInput').value = type;
             document.getElementById('viewDateDisplay').textContent = date;
             document.getElementById('viewDateInput').value = date;
-            document.getElementById('viewStockDisplay').textContent = stock;
-            var statusEl = document.getElementById('viewStatusDisplay');
-            statusEl.textContent = status;
-            statusEl.className = 'view-value status-badge';
-            if (status === 'In Stock') statusEl.classList.add('in-stock');
-            else if (status === 'Low Stock') statusEl.classList.add('low-stock');
-            else if (status === 'Out of Stock') statusEl.classList.add('out-of-stock');
-
             var projectRow = document.getElementById('viewProjectRow');
             if (type === 'OUT' && project) {
                 projectRow.style.display = 'flex';
@@ -936,31 +2540,43 @@
 
         function enableEditMode() {
             isEditMode = true;
-            document.querySelectorAll('#viewModal .view-value').forEach(el => {
-                if (el.id === 'viewStockDisplay' || el.id === 'viewStatusDisplay') {
-                    el.style.display = 'block';
-                    return;
-                }
-                el.style.display = 'none';
-            });
-            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'block');
-            document.getElementById('viewEditBtn').style.display = 'none';
-            document.getElementById('viewDeleteBtn').style.display = 'none';
-            document.getElementById('viewSaveBtn').style.display = 'inline-block';
+            // Only show edit for Quantity and Date fields
+            document.getElementById('viewQuantityDisplay').style.display = 'none';
+            document.getElementById('viewQuantityInput').style.display = 'block';
+            document.getElementById('viewBarCodeDisplay').style.display = 'none';
+            document.getElementById('viewBarCodeInput').style.display = 'block';
+            document.getElementById('viewDateDisplay').style.display = 'none';
+            document.getElementById('viewDateInput').style.display = 'block';
+            
+            // Hide other edit fields
+            document.getElementById('viewItemNameInput').style.display = 'none';
+            document.getElementById('viewCategoryInput').style.display = 'none';
+            document.getElementById('viewUnitInput').style.display = 'none';
+            document.getElementById('viewSupplierInput').style.display = 'none';
+            document.getElementById('viewTypeInput').style.display = 'none';
+            
+            // Keep displays for non-editable fields
+            document.getElementById('viewItemNameDisplay').style.display = 'block';
+            document.getElementById('viewCategoryDisplay').style.display = 'block';
+            document.getElementById('viewUnitDisplay').style.display = 'block';
+            document.getElementById('viewSupplierDisplay').style.display = 'block';
+            document.getElementById('viewTypeDisplay').style.display = 'block';
+            // Project row handling
             var projectRow = document.getElementById('viewProjectRow');
             if (projectRow.style.display !== 'none') {
-                document.getElementById('viewProjectDisplay').style.display = 'none';
-                document.getElementById('viewProjectInput').style.display = 'block';
+                document.getElementById('viewProjectDisplay').style.display = 'block';
+                document.getElementById('viewProjectInput').style.display = 'none';
             }
-            populateViewDropdowns();
+            
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.getElementById('viewSaveBtn').style.display = 'inline-block';
         }
 
         function disableEditMode() {
             isEditMode = false;
-            document.querySelectorAll('#viewModal .view-value').forEach(el => el.style.display = 'block');
-            document.querySelectorAll('#viewModal .view-input').forEach(el => el.style.display = 'none');
-            document.getElementById('viewEditBtn').style.display = 'inline-block';
-            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
+            document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
+            document.getElementById('viewDeleteBtn').style.display = 'none';
             document.getElementById('viewSaveBtn').style.display = 'none';
             var projectRow = document.getElementById('viewProjectRow');
             if (projectRow.style.display !== 'none') {
@@ -971,67 +2587,59 @@
 
         function saveEdit() {
             if (!currentRow) return;
+            var saveBtn = document.getElementById('viewSaveBtn');
             var transactionId = currentRow.dataset.id || '';
-            var itemId = document.getElementById('viewItemId').value || currentRow.dataset.itemId || '';
-            var itemName = document.getElementById('viewItemNameInput').value.trim();
-            var categoryName = document.getElementById('viewCategoryInput').value;
-            var unitName = document.getElementById('viewUnitInput').value;
-            var supplierId = document.getElementById('viewSupplierInput').value;
             var quantity = parseFloat(document.getElementById('viewQuantityInput').value);
-            var type = document.getElementById('viewTypeInput').value;
+            var barCode = document.getElementById('viewBarCodeInput').value.trim();
             var date = document.getElementById('viewDateInput').value;
-            var project = document.getElementById('viewProjectInput').value.trim();
 
             if (!transactionId) { showError('Transaction ID missing.'); return; }
-            if (!itemId) { showError('Item ID missing.'); return; }
-            if (!itemName) { showError('Please enter an item name.'); return; }
-            if (!categoryName) { showError('Please select a category.'); return; }
-            if (!unitName) { showError('Please select a unit.'); return; }
-            if (!supplierId) { showError('Please select a supplier.'); return; }
             if (!quantity || quantity < 0.01) {
                 showError('Please enter a valid quantity.');
                 return;
             }
-            if (!type || !date) {
-                showError('Please fill in all required fields.');
+            if (!date) {
+                showError('Please select a date.');
                 return;
             }
-            if (type === 'OUT' && !project) {
-                showError('Project is required for OUT transactions.');
-                return;
-            }
-
-            var category = lookupData.categories.find(function(c) { return c.inventory_category_name === categoryName; });
-            var unit = lookupData.units.find(function(u) { return u.unit_name === unitName; });
-
-            if (!category || !unit) {
-                showError('Invalid category or unit.');
+            if (barCode !== '' && !/^\d+$/.test(barCode)) {
+                showError('Barcode must contain numbers only.');
                 return;
             }
 
             var payload = {
-                item_name: itemName,
-                inventory_category_id: category.inventory_category_id,
-                unit_id: unit.unit_id,
-                supplier_id: parseInt(supplierId, 10),
                 quantity: quantity,
-                transaction_type: type,
-                transaction_date: date,
-                project_id: project || null
+                bar_code: barCode === '' ? null : parseInt(barCode, 10),
+                transaction_date: date
             };
 
+            setButtonLoading(saveBtn, true, 'Saving...');
             fetch('/api/inventory/transaction/' + transactionId, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(payload)
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {
+                    // Update the row data
+                    currentRow.dataset.quantity = quantity;
+                    currentRow.dataset.barCode = barCode;
+                    currentRow.dataset.date = date;
+                    
+                    // Update display cells
+                    var cells = currentRow.querySelectorAll('td');
+                    if (cells.length >= 10) {
+                        cells[8].textContent = quantity;
+                        cells[4].textContent = barCode || '-';
+                        cells[6].textContent = new Date(date).toLocaleDateString();
+                    }
+                    
                     closeViewModal();
                     showSuccess(data.message || 'Transaction updated successfully!');
                     loadInventoryItems();
@@ -1042,7 +2650,8 @@
             .catch(function(err) {
                 console.error('Error saving transaction:', err);
                 showError('Failed to save changes.');
-            });
+            })
+            .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
         function deleteTransaction() {
@@ -1054,11 +2663,14 @@
             }
 
             openDeleteModal('Are you sure you want to permanently delete this transaction?', function() {
+                var deleteBtn = document.getElementById('confirmDeleteBtn');
+                setButtonLoading(deleteBtn, true, 'Deleting...');
                 fetch('/api/inventory/transaction/' + transactionId, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     }
                 })
                 .then(function(res) { return res.json(); })
@@ -1074,9 +2686,15 @@
                 .catch(function(err) {
                     console.error('Error deleting transaction:', err);
                     showError('Failed to delete transaction.');
-                });
+                })
+                .finally(function() { setButtonLoading(deleteBtn, false); });
             });
         }
+
+        // ─── CLOSE MODALS ON BACKDROP CLICK ──────────────────────────
+        document.getElementById('addItemModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeAddItemModal(); }
+        });
 
         document.getElementById('viewModal').addEventListener('click', function(e) {
             if (e.target === this) { closeViewModal(); }
@@ -1086,27 +2704,36 @@
             if (e.target === this) { closeDeleteModal(); }
         });
 
-        // ─── CLOSE MODAL ON BACKDROP CLICK ───
         document.getElementById('transactionModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeModal();
-            }
+            if (e.target === this) { closeTransactionModal(); }
         });
 
-        // ─── CLOSE SUCCESS ON CLICK OUTSIDE ───
+        document.getElementById('expenseConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeExpenseConfirmModal(); }
+        });
+
         document.addEventListener('click', function(e) {
+            if (document.getElementById('errorNotification').style.display === 'block') {
+                if (!e.target.closest('.error-notification')) { closeError(); }
+            }
             if (document.getElementById('successNotification').style.display === 'block') {
-                if (!e.target.closest('.success-notification')) {
-                    closeSuccess();
-                }
+                if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
         });
 
-        // ─── INIT ───
+                // ─── INIT ───
         document.addEventListener('DOMContentLoaded', function() {
             loadLookupData();
+            fetchNotifBadge();
+            var requestedSection = new URLSearchParams(window.location.search).get('section');
+            switchInventoryTab(null, requestedSection === 'transactions' ? 'transactions' : 'items');
         });
     </script>
 
+        @include('partials.data-import', ['importModule' => 'inventory'])
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="{{ asset('js/inventory-analytics.js') }}"></script>
+    <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 </body>
 </html>

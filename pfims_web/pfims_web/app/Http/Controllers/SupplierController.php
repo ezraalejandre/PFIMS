@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SupplierController extends Controller
 {
@@ -13,6 +15,7 @@ class SupplierController extends Controller
     public function index()
     {
         $suppliers = Supplier::all();
+
         return response()->json([
             'success' => true,
             'data' => $suppliers,
@@ -27,8 +30,12 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'supplier_name' => 'required|string|max:100',
             'address' => 'required|string|max:255',
-            'contact_number' => 'required|string|max:20',
+            'contact_number' => ['required', 'string', 'max:20', 'regex:/^(?=.*\d)[0-9+().\s-]+$/'],
         ]);
+        $validated = array_map(fn ($value) => trim((string) $value), $validated);
+        if ($this->duplicateName($validated['supplier_name'])) {
+            return response()->json(['success' => false, 'message' => 'Supplier name already exists.'], 409);
+        }
 
         $supplier = Supplier::create($validated);
 
@@ -49,8 +56,12 @@ class SupplierController extends Controller
         $validated = $request->validate([
             'supplier_name' => 'required|string|max:100',
             'address' => 'required|string|max:255',
-            'contact_number' => 'required|string|max:20',
+            'contact_number' => ['required', 'string', 'max:20', 'regex:/^(?=.*\d)[0-9+().\s-]+$/'],
         ]);
+        $validated = array_map(fn ($value) => trim((string) $value), $validated);
+        if ($this->duplicateName($validated['supplier_name'], (int) $id)) {
+            return response()->json(['success' => false, 'message' => 'Supplier name already exists.'], 409);
+        }
 
         $supplier->update($validated);
 
@@ -81,11 +92,11 @@ class SupplierController extends Controller
     {
         $supplier = Supplier::findOrFail($id);
 
-        $hasItems = \DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists();
+        $hasItems = DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists();
         if ($hasItems) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot delete supplier: it is still linked to inventory items.'
+                'message' => 'Cannot delete supplier: it is still linked to inventory items.',
             ], 409);
         }
 
@@ -95,5 +106,16 @@ class SupplierController extends Controller
             'success' => true,
             'message' => 'Supplier deleted successfully!',
         ]);
+    }
+
+    private function duplicateName(string $name, ?int $ignoreId = null): bool
+    {
+        $query = DB::table('supplier_tbl')
+            ->whereRaw('LOWER(TRIM(supplier_name)) = ?', [Str::lower(trim($name))]);
+        if ($ignoreId !== null) {
+            $query->where('supplier_id', '!=', $ignoreId);
+        }
+
+        return $query->exists();
     }
 }

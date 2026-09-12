@@ -1,0 +1,20 @@
+<?php
+// app/Models/Budget.php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use App\Models\Project;
+
+class Budget extends Model
+{
+    protected $table = 'budgets_tbl';
+    protected $primaryKey = 'budget_id';
+    public $timestamps = false;
+    protected $fillable = ['project_id', 'budget_amount', 'actual_amount', 'proof_file_path', 'proof_file_name'];
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id', 'project_id');
+    }
+}

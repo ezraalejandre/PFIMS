@@ -23,7 +23,7 @@
 
             <a href="{{ url('/profile') }}" style="display: flex; align-items: center; gap: 5px; color: inherit; text-decoration: none;">
                 <img src="{{ asset('images/user.jpg') }}" alt="User" style="height: 30px; width: 30px; cursor: pointer; border-radius: 50%; object-fit: cover;">
-                <span>{{ auth()->user()->name }}</span>
+                <span>{{ auth()->user()->name === 'Administrator' ? 'Admin' : auth()->user()->name }}</span>
             </a>
 
         @else
@@ -43,7 +43,6 @@
                 <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">PROJECTS</a></li>
                 <li class="{{ request()->is('finance*') ? 'active' : '' }}"><a href="{{ url('/finance') }}">FINANCE</a></li>
                 <li class="{{ request()->is('inventory*') ? 'active' : '' }}"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
-                <li class="{{ request()->is('suppliers*') ? 'active' : '' }}"><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
                 <li class="{{ request()->is('reports*') ? 'active' : '' }}"><a href="{{ url('/reports') }}">REPORTS</a></li>
             @endif
 
@@ -54,7 +53,6 @@
             @if(in_array($role, ['operations','inventory']))
                 <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">PROJECTS</a></li>
                 <li class="{{ request()->is('inventory*') ? 'active' : '' }}"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
-                <li class="{{ request()->is('suppliers*') ? 'active' : '' }}"><a href="{{ url('/suppliers') }}">SUPPLIERS</a></li>
             @endif
         
         </ul>
@@ -62,7 +60,7 @@
 
     <div class="bottom-nav">
         <ul>
-            <li>
+            <li class="{{ request()->is('settings') || request()->is('asettings') || request()->is('osettings') ? 'active' : '' }}">
                 <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
                     <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
                     Settings

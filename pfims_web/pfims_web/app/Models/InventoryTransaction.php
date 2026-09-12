@@ -15,11 +15,19 @@ class InventoryTransaction extends Model
         'project_id',
         'transaction_type',
         'quantity',
+        'bar_code',
         'transaction_date',
+        'proof_file_path',
+        'proof_file_name',
     ];
 
     public function item()
     {
         return $this->belongsTo(InventoryItem::class, 'item_id', 'item_id');
+    }
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id', 'project_id');
     }
 }
