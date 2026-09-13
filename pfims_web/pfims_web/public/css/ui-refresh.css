@@ -4546,13 +4546,15 @@ body:not(.landing-page) :where(button, input, select, textarea, [role="button"])
 }
 
 @media (min-width: 1025px) {
-    /* Use fixed top/bottom in the zoomed desktop coordinate space. A
-       calc(100vh - 72px) height is itself scaled by body zoom and leaves a
-       visible gap below the sidebar on shorter desktop viewports. */
+    /* Viewport units are resolved before body zoom is painted. Compensate the
+       fixed sidebar's height only, so its rendered bottom reaches the viewport
+       while the rest of the desktop layout keeps the shared 75% density. */
     body:not(.landing-page) .sidebar {
-        top: 72px !important;
-        bottom: 0 !important;
-        height: auto !important;
+        position: fixed !important;
+        inset: 72px auto auto 0 !important;
+        height: calc(133.333333vh - 72px) !important;
+        min-height: 0 !important;
+        max-height: none !important;
         overflow-y: auto !important;
     }
 
