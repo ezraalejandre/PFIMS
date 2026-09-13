@@ -756,7 +756,7 @@
             </div>
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
-                <button class="btn-cancel" onclick="closeViewModal()">Close</button>
+                <button class="btn-cancel" id="viewCancelBtn" onclick="closeViewModal()">Close</button>
                 <button class="btn-delete" id="viewDeleteBtn" style="display: none;" onclick="deleteTransaction()">Delete</button>
                 <button class="btn-save" id="viewSaveBtn" style="display: none;" onclick="saveEdit()">Save Changes</button>
             </div>
@@ -2540,6 +2540,8 @@
 
         function enableEditMode() {
             isEditMode = true;
+            document.getElementById('viewModalTitle').textContent = 'Edit Transaction';
+            document.getElementById('viewCancelBtn').textContent = 'Cancel';
             // Only show edit for Quantity and Date fields
             document.getElementById('viewQuantityDisplay').style.display = 'none';
             document.getElementById('viewQuantityInput').style.display = 'block';
@@ -2574,6 +2576,8 @@
 
         function disableEditMode() {
             isEditMode = false;
+            document.getElementById('viewModalTitle').textContent = 'Transaction Details';
+            document.getElementById('viewCancelBtn').textContent = 'Close';
             document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
             document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
             document.getElementById('viewDeleteBtn').style.display = 'none';
