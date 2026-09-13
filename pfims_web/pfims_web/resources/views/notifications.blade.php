@@ -20,13 +20,11 @@
         .notif-icon.wrench { background: #f5f5f5; color: #616161; }
         .notif-icon.purple { background: #f3e5f5; color: #6a1b9a; }
         
-        .notif-item.unread {
+        .notif-item.unread,
+        .notif-item.read {
             background: #f0f7ff;
             border-left: 4px solid #1a237e;
-        }
-        
-        .notif-item.read {
-            opacity: 0.7;
+            opacity: 1;
         }
         
         .notif-item .notif-time {

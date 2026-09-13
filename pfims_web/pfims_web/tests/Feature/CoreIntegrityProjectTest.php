@@ -211,9 +211,9 @@ class CoreIntegrityProjectTest extends TestCase
     public function test_every_role_dashboard_uses_the_shared_application_shell_and_philippine_clock(): void
     {
         $dashboards = [
-            ['role' => 'admin', 'path' => '/dashboard', 'links' => ['/dashboard', '/finance', '/inventory']],
+            ['role' => 'admin', 'path' => '/dashboard', 'links' => ['/dashboard', '/finance', '/inventory', '/suppliers']],
             ['role' => 'accounting', 'path' => '/adashboard', 'links' => ['/adashboard', '/afinance', '/areports']],
-            ['role' => 'operations', 'path' => '/odashboard', 'links' => ['/odashboard', '/oprojects', '/oinventory']],
+            ['role' => 'operations', 'path' => '/odashboard', 'links' => ['/odashboard', '/oprojects', '/oinventory', '/osuppliers']],
         ];
 
         foreach ($dashboards as $dashboard) {

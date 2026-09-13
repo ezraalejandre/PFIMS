@@ -113,7 +113,7 @@
                                     <a href="{{ url('/ml-dashboard-test') }}?section=budget-comparison">Budget-Spending Comparison</a>
                                 </div>
                             @elseif($key === 'inventory')
-                                <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Items</a><a href="{{ url($links[$key]) }}?section=transactions">Transactions</a><a href="{{ url('/ml-dashboard-test') }}?section=material-projection">Material Projection</a></div>
+                                <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Items</a><a href="{{ url($portal === 'operations' ? '/osuppliers' : '/suppliers') }}">Suppliers</a><a href="{{ url($links[$key]) }}?section=transactions">Transactions</a><a href="{{ url('/ml-dashboard-test') }}?section=material-projection">Material Projection</a></div>
                             @endif
                         </li>
                     @endif

@@ -2204,9 +2204,9 @@ html[data-theme="dark"] .notifications-page :where(.btn-mark-read, .btn-clear-al
 }
 
 html[data-theme="dark"] .notifications-page .notif-item {
-    background: #111827 !important;
+    background: #182235 !important;
     color: #edf2f7 !important;
-    border-color: #2c3749 !important;
+    border-color: #465975 !important;
 }
 
 html[data-theme="dark"] .notifications-page .notif-item.unread {

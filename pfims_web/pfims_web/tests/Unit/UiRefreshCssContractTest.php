@@ -67,6 +67,9 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringNotContainsString("document.getElementById('configStatus')", $settings);
         $this->assertStringNotContainsString("document.getElementById('addUserStatus')", $settings);
         $this->assertStringContainsString('.notifications-page .total-notif-item.card-red', $css);
+        $this->assertStringContainsString('.notif-item.unread,', $notifications);
+        $this->assertStringContainsString('.notif-item.read {', $notifications);
+        $this->assertStringNotContainsString('opacity: 0.7;', $notifications);
         $this->assertStringContainsString('var rolePaths = ROLE_PATHS[portal] || ROLE_PATHS.admin;', $systemUi);
         $this->assertStringContainsString('childUrl.pathname = rolePath;', $systemUi);
         $this->assertStringNotContainsString('setInterval(function() {'.PHP_EOL.'                loadNotifications();', $notifications);
