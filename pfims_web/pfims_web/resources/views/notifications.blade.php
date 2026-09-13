@@ -758,7 +758,7 @@
                 return;
             }
 
-            fetch('/api/notifications/all/read', {
+            fetch('/api/notifications/mark-all-read', {
                 method: 'PUT',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -782,10 +782,7 @@
             })
             .catch(function(error) {
                 console.error('Mark all read error:', error);
-                allNotifications.forEach(function(n) { if (!n.requires_acknowledgement) n.is_read = true; });
-                renderNotifications();
-                updateBadgeCount();
-                showSuccess('All notifications marked as read!');
+                showError('Unable to mark all notifications as read. Please try again.');
             });
         }
 

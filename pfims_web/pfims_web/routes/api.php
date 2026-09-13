@@ -21,7 +21,6 @@ use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SystemSettingsController;
-use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -135,17 +134,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::match(['post', 'put'], '/notifications/{id}/read', [NotificationController::class, 'markRead']);
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
     Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
-
-    Route::get('/test-notify', function () {
-        app(NotificationService::class)->notify(
-            title: 'Test',
-            message: 'This is a test notification',
-            type: 'test',
-            kind: 'info',
-        );
-
-        return 'ok';
-    });
 
     // =====================================================================
     // FINANCE MODULE ROUTES (Using fin_* tables - PRIMARY EXPENSE SYSTEM)

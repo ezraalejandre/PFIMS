@@ -114,4 +114,32 @@ class PasswordReminderNotificationTest extends TestCase
         $this->assertDatabaseMissing('notifications_tbl', ['notification_id' => $reminder->notification_id]);
         $this->assertTrue(Hash::check('SecurePass123!', $newUser->fresh()->password));
     }
+
+    public function test_mark_all_read_uses_the_registered_endpoint_and_persists_state(): void
+    {
+        $user = User::create([
+            'name' => 'Operations User', 'email' => 'operations@gmail.com', 'password' => Hash::make('password'),
+            'role' => 'operations', 'status' => 'Active',
+        ]);
+
+        $notification = AppNotification::create([
+            'user_id' => $user->id,
+            'title' => 'Test notification',
+            'message' => 'Unread notification',
+            'type' => 'test',
+            'kind' => 'info',
+            'filter' => 'system',
+            'is_read' => false,
+            'requires_acknowledgement' => false,
+        ]);
+
+        $this->actingAs($user)->putJson('/api/notifications/mark-all-read')
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('notifications_tbl', [
+            'notification_id' => $notification->notification_id,
+            'is_read' => true,
+        ]);
+    }
 }

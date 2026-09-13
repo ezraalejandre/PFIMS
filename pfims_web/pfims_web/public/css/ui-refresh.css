@@ -158,7 +158,9 @@ table td[title] { cursor: help; }
 
 /* The Projects reference is the compact baseline for every module page. */
 body { color: #263244; }
-:where(.main-content, main) { font-size: .75rem; }
+/* Keep the authenticated shell at its normal readable base size. Desktop
+   density is controlled once by the 75% body zoom below; shrinking the whole
+   content tree here as well makes labels and table text effectively tiny. */
 :where(.main-content, main) :where(h1, .page-title) { font-size: clamp(1.25rem, 2vw, 1.65rem) !important; }
 :where(.main-content, main) :where(button, input, select, textarea, .pfims-select-trigger) { min-height: 32px; }
 .pfims-select { max-width: 12rem; }
