@@ -185,15 +185,15 @@ body.reports-page {
 /* Keep every report dataset on the same content canvas. Without an explicit
    flex basis, narrower tables can shrink the entire main column. */
 .reports-page .main-content {
-    width: calc(100vw - 248px) !important;
-    max-width: calc(100vw - 248px) !important;
-    flex: 0 0 calc(100vw - 248px);
+    width: calc(100% - 248px) !important;
+    max-width: calc(100% - 248px) !important;
+    flex: 0 0 calc(100% - 248px);
 }
 
 html.sidebar-collapsed .reports-page .main-content {
-    width: calc(100vw - 76px) !important;
-    max-width: calc(100vw - 76px) !important;
-    flex-basis: calc(100vw - 76px);
+    width: calc(100% - 76px) !important;
+    max-width: calc(100% - 76px) !important;
+    flex-basis: calc(100% - 76px);
 }
 
 .reports-page :where(.page-heading, .report-tabs, .panel, .kpi-grid) {

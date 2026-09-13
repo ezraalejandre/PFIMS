@@ -19,9 +19,11 @@ class UiRefreshCssContractTest extends TestCase
 
         $finance = file_get_contents(dirname(__DIR__, 2).'/resources/views/finance.blade.php');
         $reports = file_get_contents(dirname(__DIR__, 2).'/resources/views/reports.blade.php');
+        $reportsCss = file_get_contents(dirname(__DIR__, 2).'/public/css/centralized-reports.css');
 
         $this->assertIsString($finance);
         $this->assertIsString($reports);
+        $this->assertIsString($reportsCss);
         $this->assertStringNotContainsString('id="filePreviewImage" src=""', $finance);
         $this->assertStringNotContainsString('id="budgetFilePreviewImage" src=""', $finance);
         $this->assertStringContainsString('.reports-page .report-tabs .tab', $css);
@@ -33,5 +35,9 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('body.analytics-module-page', $css);
         $this->assertStringContainsString('padding-inline: 0 !important;', $css);
         $this->assertStringContainsString('id="reportTabs"', $reports);
+        $this->assertStringContainsString('width: calc(100% - 248px) !important;', $reportsCss);
+        $this->assertStringContainsString('flex: 0 0 calc(100% - 248px);', $reportsCss);
+        $this->assertStringContainsString('width: calc(100% - 76px) !important;', $reportsCss);
+        $this->assertStringNotContainsString('width: calc(100vw - 248px) !important;', $reportsCss);
     }
 }
