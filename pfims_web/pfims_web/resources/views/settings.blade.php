@@ -1,4 +1,21 @@
-@php $portal = $portal ?? 'admin'; @endphp
+@php
+    $portal = $portal ?? 'admin';
+    $currentUser = auth()->user();
+    $currentUserName = trim((string) ($currentUser?->name ?? 'User')) ?: 'User';
+    $nameParts = preg_split('/\s+/u', $currentUserName, -1, PREG_SPLIT_NO_EMPTY);
+    $currentUserInitials = mb_strtoupper(
+        mb_substr($nameParts[0] ?? 'U', 0, 1).
+        (count($nameParts) > 1 ? mb_substr($nameParts[count($nameParts) - 1], 0, 1) : '')
+    );
+    $currentUserRole = strtolower((string) ($currentUser?->role ?? ''));
+    $currentUserRoleLabel = match ($currentUserRole) {
+        'admin' => 'Administrator',
+        'accounting' => 'Accounting',
+        'operations' => 'Operations',
+        default => 'User',
+    };
+    $isAdmin = $currentUserRole === 'admin';
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,9 +110,13 @@
                     <li class="active" onclick="switchSettings(this, 'profile')">Profile</li>
                     <li onclick="switchSettings(this, 'security')">Account &amp; Security</li>
                     <li onclick="switchSettings(this, 'preferences')">System Preferences</li>
-                    <li onclick="switchSettings(this, 'configurations')">Configurations</li>
+                    @if($isAdmin)
+                        <li onclick="switchSettings(this, 'configurations')">Configurations</li>
+                    @endif
                     <li onclick="switchSettings(this, 'notifications')">Notifications</li>
-                    <li onclick="switchSettings(this, 'usermanagement')">User Management</li>
+                    @if($isAdmin)
+                        <li onclick="switchSettings(this, 'usermanagement')">User Management</li>
+                    @endif
                 </ul>
             </div>
 
@@ -108,10 +129,10 @@
                     <div class="section-desc">Manage your personal information and account settings.</div>
 
                     <div class="profile-preview">
-                        <div class="avatar">EC</div>
+                        <div class="avatar">{{ $currentUserInitials }}</div>
                         <div class="info">
-                            <div class="name">Elito V. Catapang</div>
-                            <div class="role">Project Manager</div>
+                            <div class="name">{{ $currentUserName }}</div>
+                            <div class="role">{{ $currentUserRoleLabel }}</div>
                         </div>
                         <button class="btn-go-profile" data-url="{{ url('/profile') }}" onclick="window.location.href=this.dataset.url">Go to Profile</button>
                     </div>
@@ -150,6 +171,7 @@
                 </div>
 
                 <!-- ─── CONFIGURATIONS (Dropdown Management) ─── -->
+                @if($isAdmin)
                 <div id="section-configurations" class="settings-section" style="display: none;">
                     <div class="section-title">Configurations</div>
                     <div class="section-desc">Manage operational thresholds and the live values used by inventory and finance forms.</div>
@@ -196,6 +218,7 @@
                         <div style="display:flex;justify-content:flex-end;margin-top:18px;"><button type="button" class="btn-save" id="saveSystemSettings" onclick="saveSystemSettings(this)" style="background:#c9a96e;color:#fff;border:0;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;">Save thresholds</button></div>
                     </div>
                 </div>
+                @endif
 
                 <!-- ─── NOTIFICATIONS ─── -->
                 <div id="section-notifications" class="settings-section" style="display: none;">
@@ -232,6 +255,7 @@
                 </div>
 
                 <!-- ─── USER MANAGEMENT ─── -->
+                @if($isAdmin)
                 <div id="section-usermanagement" class="settings-section" style="display: none;">
                     <div class="section-title">User Management</div>
                     <div class="section-desc">Manage all user accounts, their roles, and permissions.</div>
@@ -315,6 +339,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
             </div>
         </div>
