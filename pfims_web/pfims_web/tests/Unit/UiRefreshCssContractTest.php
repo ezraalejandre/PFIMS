@@ -14,6 +14,9 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('--pfims-desktop-scale: 75%;', $css);
         $this->assertStringContainsString('@media (min-width: 1025px)', $css);
         $this->assertStringContainsString('zoom: var(--pfims-desktop-scale);', $css);
+        $this->assertStringContainsString('body:not(.landing-page) .sidebar', $css);
+        $this->assertStringContainsString('bottom: 0 !important;', $css);
+        $this->assertStringContainsString('height: auto !important;', $css);
         $this->assertStringContainsString('@media (max-width: 1024px)', $css);
         $this->assertStringNotContainsString(':where(.main-content, main) { font-size: .75rem; }', $css);
 

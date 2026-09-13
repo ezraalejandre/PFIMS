@@ -4546,6 +4546,16 @@ body:not(.landing-page) :where(button, input, select, textarea, [role="button"])
 }
 
 @media (min-width: 1025px) {
+    /* Use fixed top/bottom in the zoomed desktop coordinate space. A
+       calc(100vh - 72px) height is itself scaled by body zoom and leaves a
+       visible gap below the sidebar on shorter desktop viewports. */
+    body:not(.landing-page) .sidebar {
+        top: 72px !important;
+        bottom: 0 !important;
+        height: auto !important;
+        overflow-y: auto !important;
+    }
+
     body {
         zoom: var(--pfims-desktop-scale);
     }
