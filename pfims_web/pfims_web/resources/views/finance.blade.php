@@ -1450,7 +1450,7 @@
                     </div>
                     <input type="file" id="detailExpenseFile" class="file-input-hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="handleDetailFileSelect(this)">
                     <div id="filePreviewContainer" class="file-preview-container">
-                        <img id="filePreviewImage" src="" alt="File Preview">
+                        <img id="filePreviewImage" alt="File Preview">
                     </div>
                 </div>
             </div>
@@ -1487,7 +1487,7 @@
                     </div>
                     <input type="file" id="detailBudgetFile" class="file-input-hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="handleBudgetDetailFileSelect(this)">
                     <div id="budgetFilePreviewContainer" class="file-preview-container">
-                        <img id="budgetFilePreviewImage" src="" alt="File Preview">
+                        <img id="budgetFilePreviewImage" alt="File Preview">
                     </div>
                 </div>
             </div>

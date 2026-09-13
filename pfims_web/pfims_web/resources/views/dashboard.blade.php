@@ -379,6 +379,9 @@
             }
 
             function renderTable() {
+                // Shared pagination normalization can dispatch a change event
+                // before the initial dashboard request has completed.
+                if (!state.data) return;
                 const size = Number(document.getElementById('pageSize').value);
                 const rows = state.data.projects || [];
                 const pages = Math.max(Math.ceil(rows.length / size), 1);

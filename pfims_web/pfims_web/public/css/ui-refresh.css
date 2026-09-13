@@ -395,6 +395,11 @@ html.sidebar-collapsed .sidebar {
     padding-inline: 10px !important;
 }
 
+/* A collapsed sidebar has no room to render a readable submenu. */
+html.sidebar-collapsed .sidebar .nav-dropdown {
+    display: none !important;
+}
+
 html.sidebar-collapsed .sidebar-collapse-toggle {
     right: 3px;
 }
@@ -3755,6 +3760,13 @@ body:not(.landing-page) :where(button, input, select, textarea, [role="button"])
         padding-top: 72px !important;
     }
 
+    /* The predictive dashboard keeps a legacy 20px body inset. Its shared
+       header/sidebar shell should span the viewport like every other module;
+       the content container supplies its own responsive horizontal padding. */
+    body.analytics-module-page {
+        padding-inline: 0 !important;
+    }
+
     body:not(.landing-page) .sidebar {
         position: relative !important;
         inset: auto !important;
@@ -3821,6 +3833,45 @@ body:not(.landing-page) :where(button, input, select, textarea, [role="button"])
     body:not(.landing-page) .sidebar .bottom-nav .nav-icon {
         display: inline-block !important;
         margin: 0 5px 0 0 !important;
+    }
+
+    /* The legacy <=900px icon-only rule also matches submenu anchors. Keep
+       open module menus readable, compact, and inside their parent item. */
+    body:not(.landing-page) .sidebar li.nav-parent > .nav-dropdown {
+        display: none;
+        height: 0;
+        overflow: hidden;
+    }
+
+    body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown {
+        display: grid;
+        height: auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+        padding: 4px 0 2px;
+    }
+
+    body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown a {
+        display: flex !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 30px !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        padding: 6px 8px !important;
+        overflow: hidden;
+        color: rgba(255, 255, 255, .86) !important;
+        font-size: .76rem !important;
+        line-height: 1.15 !important;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown a.active {
+        color: #fff !important;
+        background: linear-gradient(135deg, rgba(240, 138, 26, .95), rgba(212, 112, 8, .92)) !important;
     }
 
     body:not(.landing-page) .sidebar .bottom-nav {
@@ -4385,6 +4436,22 @@ body:not(.landing-page) :where(button, input, select, textarea, [role="button"])
     }
 
     :where(.filter-tabs, .notif-tabs, .config-tabs, .dashboard-tabs, .report-tabs) > * {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    /* Report tabs are generated after load and can contain several long labels.
+       Keep each control intact and scroll only the tab strip, never the page. */
+    .reports-page .report-tabs {
+        min-width: 0;
+        max-width: 100%;
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+    }
+
+    .reports-page .report-tabs .tab {
         flex: 0 0 auto;
         white-space: nowrap;
     }
