@@ -12,7 +12,7 @@ class MlSectionInitializationTest extends TestCase
 
         $this->assertIsString($view);
         $this->assertStringContainsString("if (currentPortal === 'admin') loadDashboard();", $view);
-        $this->assertStringContainsString("targetSection === 'costPredictionSection' && ['admin', 'accounting'].includes(currentPortal)", $view);
+        $this->assertStringContainsString("targetSection === 'costPredictionSection' && currentPortal === 'admin'", $view);
         $this->assertStringContainsString("targetSection === 'materialProjectionSection' && ['admin', 'operations'].includes(currentPortal)", $view);
         $this->assertStringContainsString("targetSection === 'budgetComparisonSection' && ['admin', 'accounting'].includes(currentPortal)", $view);
     }

@@ -4,11 +4,6 @@
     if (window.PFIMS_SYSTEM_UI_LOADED) return;
     window.PFIMS_SYSTEM_UI_LOADED = true;
 
-    // Shared read-only refresh cadence. Refresh pauses while the page is hidden
-    // or a modal is open so it cannot interrupt an active form workflow.
-    var AUTO_REFRESH_MS = 15000;
-    var refreshActions = [];
-
     var alertTimer = null;
 
     function installHeaderClock() {
@@ -324,27 +319,9 @@
     function installAutomaticRefresh() {
         if (document.body?.dataset.pfimsAutoRefresh === 'ready') return;
         document.body.dataset.pfimsAutoRefresh = 'ready';
-        document.querySelectorAll('button, a').forEach(function (control) {
-            var label = ((control.textContent || '') + ' ' + (control.title || '') + ' ' + (control.getAttribute('aria-label') || '')).trim();
-            if (!/^refresh(?:\s|$)/i.test(label)) return;
-            refreshActions.push(function () { control.click(); });
-            control.remove();
-        });
-
-        window.setInterval(function () {
-            if (document.hidden || document.querySelector('.modal.show, .modal[style*="display: block"]')) return;
-            if (refreshActions.length) {
-                refreshActions.forEach(function (refresh) { refresh(); });
-            } else {
-                ['loadDashboard', 'fetchProjects',
-                    'loadInventoryItems', 'loadSuppliers', 'loadNotifications', 'loadDataset', 'loadHistory',
-                    'loadSystemSettings', 'loadPredictionProjects', 'loadMaterialForecast', 'loadBudgetVariance']
-                    .forEach(function (name) {
-                        if (typeof window[name] === 'function') window[name]();
-                    });
-            }
-            document.dispatchEvent(new CustomEvent('pfims:autorefresh'));
-        }, AUTO_REFRESH_MS);
+        // Data views refresh from their own successful create/update handlers or
+        // an explicit user action. Never poll every page: that can invoke
+        // role-incompatible endpoints and interrupt an active form.
     }
 
     function installColumnChooser(table) {
@@ -464,11 +441,19 @@
             menu.className = 'nav-dropdown';
             MODULE_NAVIGATION[module]
                 .filter(function (entry) {
-                    return !(portal === 'operations' && entry[0] === 'Project Cost Prediction');
+                    return !(entry[0] === 'Project Cost Prediction' && portal !== 'admin');
                 })
                 .forEach(function (entry) {
                 var child = document.createElement('a');
-                child.href = entry[1].charAt(0) === '/' ? entry[1] : base + entry[1];
+                var childHref = entry[1].charAt(0) === '/' ? entry[1] : base + entry[1];
+                var childUrl = new URL(childHref, window.location.origin);
+                var rolePaths = ROLE_PATHS[portal] || ROLE_PATHS.admin;
+                if (Object.prototype.hasOwnProperty.call(rolePaths, childUrl.pathname)) {
+                    var rolePath = rolePaths[childUrl.pathname];
+                    if (rolePath === null) return;
+                    childUrl.pathname = rolePath;
+                }
+                child.href = childUrl.pathname + childUrl.search + childUrl.hash;
                 child.textContent = entry[0];
                 menu.appendChild(child);
             });

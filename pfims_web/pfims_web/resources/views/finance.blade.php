@@ -1111,7 +1111,7 @@
     </main>
 
     <div id="inventoryExpenseModal" class="modal-overlay pfims-add-modal">
-        <div class="modal-container" style="max-width:420px;">
+        <div class="modal-container">
             <div class="modal-header"><h2>Add Stock-In Expense</h2><button class="modal-close" onclick="closeInventoryExpenseModal()">×</button></div>
             <div class="modal-body">
                 <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" id="inventoryExpenseAmount" min="0.01" step="0.01" placeholder="0.00"></div>
@@ -1213,7 +1213,7 @@
 
     <!-- ─── ADD CONTRACT MODAL ─── -->
     <div id="addContractModal" class="modal-overlay pfims-add-modal">
-        <div class="modal-container" style="width:600px;max-width:95%;">
+        <div class="modal-container">
             <div class="modal-header">
                 <h2 id="contractModalTitle">Add/Edit Contract</h2>
                 <button class="modal-close" onclick="closeAddContractModal()">×</button>
@@ -2990,7 +2990,7 @@
 
             if (isBudgetEditMode) toggleBudgetDetailEdit();
             isBudgetEditMode = false;
-            document.getElementById('budgetDetailEditBtn').style.display = 'none';
+            document.getElementById('budgetDetailEditBtn').style.display = 'inline-block';
             document.getElementById('budgetDetailDeleteBtn').style.display = 'none';
             document.getElementById('budgetDetailSaveBtn').style.display = 'none';
             document.querySelectorAll('.budget-detail-edit').forEach(function(el) { el.style.display = 'none'; });
@@ -3027,7 +3027,7 @@
                 var hasFile = selectedBudgetDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
-                editBtn.style.display = 'none';
+                editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 if (changeFileBtn) changeFileBtn.style.display = 'none';
@@ -3176,7 +3176,7 @@
 
             if (isEditMode) toggleDetailEdit();
             isEditMode = false;
-            document.getElementById('detailEditBtn').style.display = 'none';
+            document.getElementById('detailEditBtn').style.display = 'inline-block';
             document.getElementById('detailDeleteBtn').style.display = 'none';
             document.getElementById('detailSaveBtn').style.display = 'none';
             document.querySelectorAll('.detail-edit').forEach(function(el) { el.style.display = 'none'; });
@@ -3213,7 +3213,7 @@
                 var hasFile = selectedDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
-                editBtn.style.display = 'none';
+                editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 if (changeFileBtn) changeFileBtn.style.display = 'none';
@@ -3817,7 +3817,7 @@
 
             if (isReceivableEditMode) toggleReceivableEdit();
             isReceivableEditMode = false;
-            document.getElementById('receivableDetailEditBtn').style.display = 'none';
+            document.getElementById('receivableDetailEditBtn').style.display = 'inline-block';
             document.getElementById('receivableDetailDeleteBtn').style.display = 'none';
             document.getElementById('receivableDetailSaveBtn').style.display = 'none';
             
@@ -3905,7 +3905,7 @@
                 document.getElementById('receivableDetailProjectDisplay').textContent = projectName;
                 
             } else {
-                editBtn.style.display = 'none';
+                editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 
@@ -4966,7 +4966,7 @@
 
             if (isCashEditMode) toggleCashEdit();
             isCashEditMode = false;
-            document.getElementById('cashDetailEditBtn').style.display = 'none';
+            document.getElementById('cashDetailEditBtn').style.display = 'inline-block';
             document.getElementById('cashDetailDeleteBtn').style.display = 'none';
             document.getElementById('cashDetailSaveBtn').style.display = 'none';
             
@@ -5016,7 +5016,7 @@
                 document.getElementById('cashDetailAccountEdit').style.display = 'none';
                 
             } else {
-                editBtn.style.display = 'none';
+                editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 
@@ -5354,7 +5354,7 @@
 
             if (isBondEditMode) toggleBondEdit();
             isBondEditMode = false;
-            document.getElementById('bondDetailEditBtn').style.display = 'none';
+            document.getElementById('bondDetailEditBtn').style.display = 'inline-block';
             document.getElementById('bondDetailDeleteBtn').style.display = 'none';
             document.getElementById('bondDetailSaveBtn').style.display = 'none';
             
@@ -5406,7 +5406,7 @@
                 document.getElementById('bondDetailProjectEdit').style.display = 'none';
                 
             } else {
-                editBtn.style.display = 'none';
+                editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 

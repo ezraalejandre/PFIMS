@@ -331,7 +331,7 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringContainsString('window.showPfimsAlert = function', $sharedUi);
         $this->assertStringContainsString("window.showSuccess = function", $sharedUi);
         $this->assertStringContainsString("['Project Cost Prediction', '/ml-dashboard-test?section=predictive']", $sharedUi);
-        $this->assertStringContainsString("portal === 'operations' && entry[0] === 'Project Cost Prediction'", $sharedUi);
+        $this->assertStringContainsString("entry[0] === 'Project Cost Prediction' && portal !== 'admin'", $sharedUi);
         $this->assertStringNotContainsString("['Predictive Analytics', '/ml-dashboard-test?section=predictive']", $sharedUi);
         $this->assertStringContainsString("localStorage.setItem('pfims-nav-' + module", $sharedUi);
         $this->assertStringContainsString("item.classList.toggle('has-active-child', !!activeChild)", $sharedUi);
@@ -344,7 +344,8 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringContainsString('function removeProjectFilterControls()', $sharedUi);
         $this->assertStringContainsString('function installTablePagination(table)', $sharedUi);
         $this->assertStringContainsString("['5', '25', '50', '100']", $sharedUi);
-        $this->assertStringContainsString('var AUTO_REFRESH_MS = 15000', $sharedUi);
+        $this->assertStringNotContainsString('var AUTO_REFRESH_MS = 15000', $sharedUi);
+        $this->assertStringNotContainsString("document.dispatchEvent(new CustomEvent('pfims:autorefresh'))", $sharedUi);
         $this->assertStringContainsString('function installHeaderClock()', $sharedUi);
         $this->assertStringContainsString("timeZone: 'Asia/Manila'", $sharedUi);
         $this->assertStringContainsString(".format(now) + ' PST'", $sharedUi);

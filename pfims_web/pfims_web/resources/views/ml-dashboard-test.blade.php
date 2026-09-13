@@ -1010,6 +1010,7 @@
     <div id="predictiveAnalyticsRoot" class="predictive-analytics-root embedded-ml-dashboard" data-api-base="{{ url('/api/ml') }}">
     <div class="dashboard-container analytics-shell">
         <!-- Main Grid -->
+        @if($portal === 'admin')
         <div class="prediction-row analytics-tab-content" id="costPredictionSection" data-analytics-content @if($analyticsSection !== 'predictive') hidden @endif>
             <!-- Left Column: Prediction -->
             <div>
@@ -1060,6 +1061,7 @@
                 </section>
             </div>
         </div>
+        @endif
 
             <div class="analytics-tab-content" id="materialProjectionSection" data-analytics-content @if($analyticsSection !== 'material-projection') hidden @endif>
                 <!-- Material Forecast -->
@@ -1742,7 +1744,7 @@
         const targetSection = sectionMap[requestedAnalyticsSection] || 'costPredictionSection';
         document.querySelectorAll('[data-analytics-content]').forEach(section => { section.hidden = section.id !== targetSection; });
         if (currentPortal === 'admin') loadDashboard();
-        if (targetSection === 'costPredictionSection' && ['admin', 'accounting'].includes(currentPortal)) {
+        if (targetSection === 'costPredictionSection' && currentPortal === 'admin') {
             loadPredictionProjects(false);
         }
         if (targetSection === 'materialProjectionSection' && ['admin', 'operations'].includes(currentPortal)) {
@@ -1752,7 +1754,7 @@
             loadBudgetVariance();
         }
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
-        document.getElementById('predictionProject').addEventListener('change', updatePredictionProjectSnapshot);
+        document.getElementById('predictionProject')?.addEventListener('change', updatePredictionProjectSnapshot);
         document.getElementById('materialForecastPageSize').addEventListener('change', () => {
             materialForecastPage = 1;
             updateMaterialForecast(materialForecastRows);

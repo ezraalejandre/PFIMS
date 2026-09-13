@@ -97,7 +97,7 @@
                             @if($key === 'projects')
                                 <div class="nav-dropdown">
                                     <a href="{{ url($links[$key]) }}">Project Records</a>
-                                    @if($portal !== 'operations')
+                                    @if($portal === 'admin')
                                         <a href="{{ url('/ml-dashboard-test') }}?section=predictive">Project Cost Prediction</a>
                                     @endif
                                 </div>

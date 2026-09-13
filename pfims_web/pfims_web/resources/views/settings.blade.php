@@ -322,13 +322,6 @@
                                     <option value="operations">Operations</option>
                                 </select>
                             </div>
-                            <div style="width:160px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px;">Status</label>
-                                <select id="configStatus" style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                </select>
-                            </div>
                         </div>
 
                         <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px;">
@@ -424,13 +417,6 @@
                         <option value="Admin">Admin</option>
                         <option value="Accounting">Accounting</option>
                         <option value="Operations">Operations</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 18px;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">Status <span style="color: #d32f2f;">*</span></label>
-                    <select id="addUserStatus" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa;">
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
                     </select>
                 </div>
                 <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e9ecef; padding-top: 20px;">
@@ -571,7 +557,6 @@
                 document.getElementById('configRole').value = user.role || 'operations';
                 document.getElementById('configName').value = user.name;
                 document.getElementById('configEmail').value = user.email;
-                document.getElementById('configStatus').value = (user.status ? user.status : 'Active');
 
                 var roleEl = document.getElementById('configUserRole');
                 roleEl.className = 'role-badge';
@@ -598,7 +583,6 @@
             if (!activeConfigUserId) return;
             var payload = {
                 role: document.getElementById('configRole').value,
-                status: document.getElementById('configStatus').value,
                 _token: csrfToken
             };
 
@@ -992,7 +976,6 @@
             document.getElementById('addUserName').value = '';
             document.getElementById('addUserEmail').value = '';
             document.getElementById('addUserRole').value = 'Admin';
-            document.getElementById('addUserStatus').value = 'Active';
         }
 
         function closeAddUserModal() {
@@ -1004,13 +987,12 @@
             var name = document.getElementById('addUserName').value.trim();
             var email = document.getElementById('addUserEmail').value.trim();
             var role = document.getElementById('addUserRole').value;
-            var status = document.getElementById('addUserStatus').value;
             if (!name || !email) {
                 alert('Please fill in all required fields.');
                 return;
             }
 
-            var payload = { name: name, email: email, role: role, status: status, _token: csrfToken };
+            var payload = { name: name, email: email, role: role, _token: csrfToken };
 
             setButtonLoading(btn, true, 'Adding...');
 

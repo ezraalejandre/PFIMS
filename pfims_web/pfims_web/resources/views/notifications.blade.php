@@ -811,9 +811,6 @@
         // ─── INIT ───
         document.addEventListener('DOMContentLoaded', function() {
             loadNotifications();
-            setInterval(function() {
-                loadNotifications();
-            }, 60000);
         });
     </script>
 

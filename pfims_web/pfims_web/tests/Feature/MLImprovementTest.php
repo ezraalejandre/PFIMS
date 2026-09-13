@@ -59,6 +59,11 @@ class MLImprovementTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('success', false);
 
+        $accounting = $this->user('accounting');
+        $this->actingAs($accounting)->get('/ml-dashboard-test')->assertForbidden();
+        $this->actingAs($accounting)->getJson('/api/ml/prediction-projects')->assertForbidden();
+        $this->actingAs($accounting)->postJson('/api/ml/predict/cost', [])->assertForbidden();
+
         $this->actingAs($operations)->getJson('/api/ml/retrain')->assertMethodNotAllowed();
         $this->actingAs($operations)->getJson('/api/ml/predict/cost')->assertMethodNotAllowed();
         $this->getJson('/ml-debug')->assertNotFound();
@@ -97,12 +102,13 @@ class MLImprovementTest extends TestCase
             'Model Performance',
         ]);
 
-        $this->actingAs($this->user('accounting'))
-            ->get('/ml-dashboard-test?embedded=1')
+        $this->actingAs($accounting)
+            ->get('/ml-dashboard-test?section=budget-comparison&embedded=1')
             ->assertOk()
-            ->assertSee('Project Cost Prediction', false)
+            ->assertDontSee('id="predictionProject"', false)
+            ->assertDontSee('Project Cost Prediction', false)
             ->assertDontSee('id="retrainConfirmModal"', false);
-        $this->actingAs($this->user('accounting'))->get('/ml-dashboard-test?section=material-projection')->assertForbidden();
+        $this->actingAs($accounting)->get('/ml-dashboard-test?section=material-projection')->assertForbidden();
 
         $this->actingAs($admin)->get('/ml-dashboard-test?section=budget-comparison')
             ->assertOk()

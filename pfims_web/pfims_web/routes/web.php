@@ -531,7 +531,7 @@ Route::middleware('auth')->group(function () {
         $role = $user instanceof User ? strtolower((string) $user->role) : '';
         $section = $request->query('section', 'predictive');
         $allowed = $role === 'admin'
-            || ($role === 'accounting' && in_array($section, ['predictive', 'budget-comparison'], true))
+            || ($role === 'accounting' && $section === 'budget-comparison')
             || ($role === 'operations' && $section === 'material-projection');
         abort_unless($allowed, 403);
 
@@ -540,9 +540,9 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('api/ml')->group(function () {
         Route::post('/predict/cost', [MLController::class, 'predictProjectCost'])
-            ->middleware(['role.portal:admin,accounting', 'throttle:60,1']);
+            ->middleware(['role.portal:admin', 'throttle:60,1']);
         Route::get('/prediction-projects', [MLController::class, 'predictionProjects'])
-            ->middleware('role.portal:admin,accounting');
+            ->middleware('role.portal:admin');
         Route::get('/predict/material-demand', [MLController::class, 'predictMaterialDemand'])
             ->middleware('role.portal:admin,operations');
         Route::get('/status', [MLController::class, 'status'])

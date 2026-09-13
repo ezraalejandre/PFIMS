@@ -796,6 +796,35 @@ body {
     display: flex;
 }
 
+/* Finance create forms use the same container contract as Inventory's
+   Add New Transaction modal. Keep sizing in the module stylesheet so every
+   Finance add flow remains consistent without changing its form behavior. */
+.pfims-add-modal .modal-container {
+    width: 600px;
+    max-width: 95%;
+    max-height: 90vh;
+    border-radius: 16px;
+    padding: 30px 35px;
+}
+
+.pfims-add-modal .modal-body {
+    padding: 0 2px;
+}
+
+.pfims-add-modal .form-group input,
+.pfims-add-modal .form-group select,
+.pfims-add-modal .form-group textarea {
+    background: #fafafa;
+    border-radius: 8px;
+}
+
+@media (max-width: 650px) {
+    .pfims-add-modal .modal-container {
+        width: 95%;
+        padding: 20px;
+    }
+}
+
 .modal-container {
     background: #fff;
     width: 600px;

@@ -516,6 +516,13 @@ html.sidebar-collapsed .sidebar nav a::before {
     overflow: hidden;
 }
 
+/* Keep notification summary rows visually consistent with their severity;
+   this must follow the generic surface border above. */
+.notifications-page .total-notif-item.card-red { border-left: 4px solid #d32f2f !important; }
+.notifications-page .total-notif-item.card-orange { border-left: 4px solid #e65100 !important; }
+.notifications-page .total-notif-item.card-green { border-left: 4px solid #2e7d32 !important; }
+.notifications-page .total-notif-item.card-blue { border-left: 4px solid #1565c0 !important; }
+
 .stat-card::before,
 .stat-card-inv::before,
 .kpi-card::before,
