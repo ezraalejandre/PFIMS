@@ -21,6 +21,17 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('@media (max-width: 1024px)', $css);
         $this->assertStringNotContainsString(':where(.main-content, main) { font-size: .75rem; }', $css);
 
+        foreach (glob(dirname(__DIR__, 2).'/resources/views/*.blade.php') as $viewPath) {
+            $view = file_get_contents($viewPath);
+            if (str_contains($view, "asset('css/ui-refresh.css')")) {
+                $this->assertStringContainsString(
+                    "asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}",
+                    $view,
+                    basename($viewPath).' must cache-bust the shared UI stylesheet.'
+                );
+            }
+        }
+
         $finance = file_get_contents(dirname(__DIR__, 2).'/resources/views/finance.blade.php');
         $reports = file_get_contents(dirname(__DIR__, 2).'/resources/views/reports.blade.php');
         $reportsCss = file_get_contents(dirname(__DIR__, 2).'/public/css/centralized-reports.css');

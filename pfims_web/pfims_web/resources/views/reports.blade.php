@@ -55,7 +55,7 @@
     <title>{{ $portalTitle }} Reports - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/centralized-reports.css') }}">
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>

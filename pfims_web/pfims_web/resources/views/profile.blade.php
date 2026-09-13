@@ -7,7 +7,7 @@
     <title>Profile - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/profile.css') }}">
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}"></script>
 </head>
 <body class="profile-page" data-portal="{{ $portal }}" data-status-message="{{ session('status', '') }}">
