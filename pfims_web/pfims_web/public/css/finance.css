@@ -803,8 +803,43 @@ body {
     width: 600px;
     max-width: 95%;
     max-height: 90vh;
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 30px 35px;
+}
+
+/* Detail forms use the same direct-edit presentation as Inventory's
+   transaction editor. The view state and edit state share one container. */
+.finance-edit-modal .modal-container {
+    width: 600px;
+    max-width: 95%;
+    max-height: 90vh;
+    border-radius: 20px;
+    padding: 30px 35px;
+}
+
+.finance-edit-modal .modal-footer {
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.finance-edit-modal.is-editing .detail-grid,
+.finance-edit-modal.is-editing .budget-detail-grid {
+    grid-template-columns: 1fr;
+}
+
+.finance-edit-modal.is-editing .detail-item,
+.finance-edit-modal.is-editing .budget-detail-item {
+    margin-bottom: 0;
+}
+
+.finance-edit-modal.is-editing .detail-edit,
+.finance-edit-modal.is-editing .budget-detail-edit {
+    min-height: 42px;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    font: inherit;
 }
 
 .pfims-add-modal .modal-body {

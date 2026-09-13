@@ -723,7 +723,7 @@
         handler.call(row, { currentTarget: row, target: row, preventDefault: function () {}, stopPropagation: function () {} });
         if (!editMode) return;
         window.setTimeout(function () {
-            var visibleModal = Array.from(document.querySelectorAll('.modal.active, .modal-overlay.active, [role="dialog"]'))
+            var visibleModal = Array.from(document.querySelectorAll('.modal, .modal-overlay, [role="dialog"]'))
                 .filter(function (modal) { return !modal.hidden && getComputedStyle(modal).display !== 'none'; })
                 .pop();
             if (!visibleModal) return;

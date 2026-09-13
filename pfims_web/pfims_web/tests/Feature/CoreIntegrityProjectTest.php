@@ -408,7 +408,7 @@ class CoreIntegrityProjectTest extends TestCase
                 'id="inventoryExpenseModal" class="modal-overlay pfims-add-modal"',
                 'id="addExpenseModal" class="modal-overlay pfims-add-modal"',
                 'id="addBudgetModal" class="modal-overlay pfims-add-modal"',
-                'id="addContractModal" class="modal-overlay pfims-add-modal"',
+                'id="addContractModal" class="modal-overlay pfims-add-modal finance-edit-modal"',
                 'id="addReceivableModal" class="modal-overlay pfims-add-modal"',
                 'id="addCashModal" class="modal-overlay pfims-add-modal"',
                 'id="addRepairModal" class="modal-overlay pfims-add-modal"',

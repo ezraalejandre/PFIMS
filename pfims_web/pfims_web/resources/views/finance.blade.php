@@ -1212,7 +1212,7 @@
     </div>
 
     <!-- ─── ADD CONTRACT MODAL ─── -->
-    <div id="addContractModal" class="modal-overlay pfims-add-modal">
+    <div id="addContractModal" class="modal-overlay pfims-add-modal finance-edit-modal">
         <div class="modal-container">
             <div class="modal-header">
                 <h2 id="contractModalTitle">Add/Edit Contract</h2>
@@ -1250,11 +1250,11 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
+            <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddContractModal()">Cancel</button>
                 <button class="btn-delete" id="contractDeleteBtn" onclick="deleteContract()" style="display:none;">Delete</button>
                 <button class="btn-edit" id="contractEditBtn" onclick="enableContractEdit()" style="display:none;">Edit</button>
-                <button class="btn-save" onclick="saveContract()">Save Contract</button>
+                <button class="btn-save" id="contractSaveBtn" onclick="saveContract()">Save Contract</button>
             </div>
         </div>
     </div>
@@ -1424,8 +1424,8 @@
     </div>
 
     <!-- ─── EXPENSE DETAIL MODAL ─── -->
-    <div id="expenseDetailModal" class="modal-overlay modal-update">
-        <div class="modal-container" style="width:700px;max-width:95%;">
+    <div id="expenseDetailModal" class="modal-overlay modal-update finance-edit-modal">
+        <div class="modal-container">
             <div class="modal-header"><div><h2 id="detailModalTitle">Expense Details</h2></div><button class="modal-close" onclick="closeExpenseDetailModal()">×</button></div>
             <div class="detail-grid">
                 <div class="detail-item"><label>Project</label><span id="detailProjectDisplay" class="detail-value">—</span><select id="detailProjectEdit" class="detail-edit" style="display:none;"></select></div>
@@ -1454,8 +1454,8 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
-                <button class="btn-cancel" onclick="closeExpenseDetailModal()">Close</button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeExpenseDetailModal()">Cancel</button>
                 <button class="btn-delete" id="detailDeleteBtn" onclick="deleteExpense()">Delete</button>
                 <button class="btn-edit-project" id="detailEditBtn" onclick="toggleDetailEdit()">Edit</button>
                 <button class="btn-save" id="detailSaveBtn" style="display:none;" onclick="saveDetailChanges()">Save Changes</button>
@@ -1464,8 +1464,8 @@
     </div>
 
     <!-- ─── BUDGET DETAIL MODAL ─── -->
-    <div id="budgetDetailModal" class="modal-overlay modal-update">
-        <div class="modal-container" style="width:600px;max-width:95%;">
+    <div id="budgetDetailModal" class="modal-overlay modal-update finance-edit-modal">
+        <div class="modal-container">
             <div class="modal-header"><div><h2 id="budgetDetailModalTitle">Budget Details</h2></div><button class="modal-close" onclick="closeBudgetDetailModal()">×</button></div>
             <div class="budget-detail-grid">
                 <div class="budget-detail-item"><label>Project</label><span id="budgetDetailProjectDisplay" class="budget-detail-value">—</span></div>
@@ -1491,8 +1491,8 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
-                <button class="btn-cancel" onclick="closeBudgetDetailModal()">Close</button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeBudgetDetailModal()">Cancel</button>
                 <button class="btn-delete" id="budgetDetailDeleteBtn" onclick="deleteBudget()">Delete</button>
                 <button class="btn-edit-project" id="budgetDetailEditBtn" onclick="toggleBudgetDetailEdit()">Edit</button>
                 <button class="btn-save" id="budgetDetailSaveBtn" style="display:none;" onclick="saveBudgetDetailChanges()">Save Changes</button>
@@ -1501,8 +1501,8 @@
     </div>
 
     <!-- ─── RECEIVABLE DETAIL MODAL ─── -->
-    <div id="receivableDetailModal" class="modal-overlay modal-update">
-        <div class="modal-container" style="width:750px;max-width:95%;">
+    <div id="receivableDetailModal" class="modal-overlay modal-update finance-edit-modal">
+        <div class="modal-container">
             <div class="modal-header"><div><h2 id="receivableModalTitle">AR/AP Entry Details</h2></div><button class="modal-close" onclick="closeReceivableModal()">×</button></div>
             <div class="detail-grid">
                 <div class="detail-item">
@@ -1566,8 +1566,8 @@
                     <input type="text" id="receivableDetailRemarksEdit" class="detail-edit" style="display:none;">
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
-                <button class="btn-cancel" onclick="closeReceivableModal()">Close</button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeReceivableModal()">Cancel</button>
                 <button class="btn-delete" id="receivableDetailDeleteBtn" onclick="deleteReceivable()">Delete</button>
                 <button class="btn-edit-project" id="receivableDetailEditBtn" onclick="toggleReceivableEdit()">Edit</button>
                 <button class="btn-save" id="receivableDetailSaveBtn" style="display:none;" onclick="saveReceivableDetail()">Save Changes</button>
@@ -1576,8 +1576,8 @@
     </div>
 
     <!-- ─── BOND DETAIL MODAL ─── -->
-    <div id="bondDetailModal" class="modal-overlay modal-update">
-        <div class="modal-container" style="width:600px;max-width:95%;">
+    <div id="bondDetailModal" class="modal-overlay modal-update finance-edit-modal">
+        <div class="modal-container">
             <div class="modal-header"><div><h2 id="bondModalTitle">Bond Details</h2></div><button class="modal-close" onclick="closeBondModal()">×</button></div>
             <div class="detail-grid">
                 <div class="detail-item">
@@ -1616,8 +1616,8 @@
                     <input type="text" id="bondDetailRemarksEdit" class="detail-edit" style="display:none;">
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
-                <button class="btn-cancel" onclick="closeBondModal()">Close</button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeBondModal()">Cancel</button>
                 <button class="btn-delete" id="bondDetailDeleteBtn" onclick="deleteBond()">Delete</button>
                 <button class="btn-edit-project" id="bondDetailEditBtn" onclick="toggleBondEdit()">Edit</button>
                 <button class="btn-save" id="bondDetailSaveBtn" style="display:none;" onclick="saveBondDetail()">Save Changes</button>
@@ -1626,8 +1626,8 @@
     </div>
 
     <!-- ─── CASH ASSET DETAIL MODAL ─── -->
-    <div id="cashDetailModal" class="modal-overlay modal-update">
-        <div class="modal-container" style="width:500px;max-width:95%;">
+    <div id="cashDetailModal" class="modal-overlay modal-update finance-edit-modal">
+        <div class="modal-container">
             <div class="modal-header"><div><h2 id="cashModalTitle">Cash Position Details</h2></div><button class="modal-close" onclick="closeCashModal()">×</button></div>
             <div class="detail-grid">
                 <div class="detail-item">
@@ -1647,8 +1647,8 @@
                     <input type="number" step="0.01" id="cashDetailBalanceEdit" class="detail-edit" style="display:none;">
                 </div>
             </div>
-            <div class="modal-footer" style="justify-content:flex-end;gap:12px;">
-                <button class="btn-cancel" onclick="closeCashModal()">Close</button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeCashModal()">Cancel</button>
                 <button class="btn-delete" id="cashDetailDeleteBtn" onclick="deleteCashPosition()">Delete</button>
                 <button class="btn-edit-project" id="cashDetailEditBtn" onclick="toggleCashEdit()">Edit</button>
                 <button class="btn-save" id="cashDetailSaveBtn" style="display:none;" onclick="saveCashDetail()">Save Changes</button>
@@ -2990,6 +2990,7 @@
 
             if (isBudgetEditMode) toggleBudgetDetailEdit();
             isBudgetEditMode = false;
+            document.getElementById('budgetDetailModal').classList.remove('is-editing');
             document.getElementById('budgetDetailEditBtn').style.display = 'inline-block';
             document.getElementById('budgetDetailDeleteBtn').style.display = 'none';
             document.getElementById('budgetDetailSaveBtn').style.display = 'none';
@@ -3018,6 +3019,8 @@
             var fileNameDisplay = document.getElementById('budgetFileNameDisplay');
 
             if (isBudgetEditMode) {
+                document.getElementById('budgetDetailModal').classList.add('is-editing');
+                document.getElementById('budgetDetailModalTitle').textContent = 'Edit Budget';
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
@@ -3027,6 +3030,8 @@
                 var hasFile = selectedBudgetDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
+                document.getElementById('budgetDetailModal').classList.remove('is-editing');
+                document.getElementById('budgetDetailModalTitle').textContent = 'Budget Details';
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
@@ -3176,6 +3181,7 @@
 
             if (isEditMode) toggleDetailEdit();
             isEditMode = false;
+            document.getElementById('expenseDetailModal').classList.remove('is-editing');
             document.getElementById('detailEditBtn').style.display = 'inline-block';
             document.getElementById('detailDeleteBtn').style.display = 'none';
             document.getElementById('detailSaveBtn').style.display = 'none';
@@ -3204,6 +3210,8 @@
             var fileNameDisplay = document.getElementById('expenseFileNameDisplay');
 
             if (isEditMode) {
+                document.getElementById('expenseDetailModal').classList.add('is-editing');
+                document.getElementById('detailModalTitle').textContent = 'Edit Expense';
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
@@ -3213,6 +3221,8 @@
                 var hasFile = selectedDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
+                document.getElementById('expenseDetailModal').classList.remove('is-editing');
+                document.getElementById('detailModalTitle').textContent = 'Expense Details';
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
@@ -3567,6 +3577,7 @@
                 
                 // Hide delete button in add mode
                 deleteBtn.style.display = 'none';
+                document.getElementById('contractSaveBtn').textContent = 'Save Contract';
                 
                 updateContractBudgetDisplay();
             }
@@ -3574,8 +3585,9 @@
 
         function openContractViewModal(row) {
             openAddContractModal(row);
+            document.getElementById('addContractModal').classList.remove('is-editing');
             document.getElementById('contractModalTitle').textContent = 'Contract Details';
-            document.querySelectorAll('#addContractModal input, #addContractModal select').forEach(function(control) {
+            document.querySelectorAll('#addContractModal input, #addContractModal select, #addContractModal textarea').forEach(function(control) {
                 control.disabled = true;
             });
             document.getElementById('contractDeleteBtn').style.display = 'none';
@@ -3584,14 +3596,16 @@
         }
 
         function enableContractEdit() {
+            document.getElementById('addContractModal').classList.add('is-editing');
             document.getElementById('contractModalTitle').textContent = 'Edit Contract';
-            document.querySelectorAll('#addContractModal input, #addContractModal select').forEach(function(control) {
+            document.querySelectorAll('#addContractModal input, #addContractModal select, #addContractModal textarea').forEach(function(control) {
                 control.disabled = false;
             });
             document.getElementById('contractProject').disabled = true;
             document.getElementById('contractDeleteBtn').style.display = 'inline-block';
             document.getElementById('contractEditBtn').style.display = 'none';
-            document.querySelector('#addContractModal .btn-save').style.display = 'inline-block';
+            document.getElementById('contractSaveBtn').textContent = 'Save Changes';
+            document.getElementById('contractSaveBtn').style.display = 'inline-block';
         }
 
         function populateContractProjectDropdown() {
@@ -3632,7 +3646,7 @@
             // Reset to add mode
             document.getElementById('contractProject').style.display = 'block';
             document.getElementById('contractProjectDisplay').style.display = 'none';
-            document.querySelectorAll('#addContractModal input, #addContractModal select').forEach(function(control) { control.disabled = false; });
+            document.querySelectorAll('#addContractModal input, #addContractModal select, #addContractModal textarea').forEach(function(control) { control.disabled = false; });
             document.getElementById('contractEditBtn').style.display = 'none';
             document.querySelector('#addContractModal .btn-save').style.display = 'inline-block';
         }
@@ -3817,6 +3831,7 @@
 
             if (isReceivableEditMode) toggleReceivableEdit();
             isReceivableEditMode = false;
+            document.getElementById('receivableDetailModal').classList.remove('is-editing');
             document.getElementById('receivableDetailEditBtn').style.display = 'inline-block';
             document.getElementById('receivableDetailDeleteBtn').style.display = 'none';
             document.getElementById('receivableDetailSaveBtn').style.display = 'none';
@@ -3870,6 +3885,8 @@
                                  'receivableDetailRemarks'];
 
             if (isReceivableEditMode) {
+                document.getElementById('receivableDetailModal').classList.add('is-editing');
+                document.getElementById('receivableModalTitle').textContent = 'Edit AR/AP Entry';
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
@@ -3905,6 +3922,8 @@
                 document.getElementById('receivableDetailProjectDisplay').textContent = projectName;
                 
             } else {
+                document.getElementById('receivableDetailModal').classList.remove('is-editing');
+                document.getElementById('receivableModalTitle').textContent = 'AR/AP Entry Details';
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
@@ -4966,6 +4985,7 @@
 
             if (isCashEditMode) toggleCashEdit();
             isCashEditMode = false;
+            document.getElementById('cashDetailModal').classList.remove('is-editing');
             document.getElementById('cashDetailEditBtn').style.display = 'inline-block';
             document.getElementById('cashDetailDeleteBtn').style.display = 'none';
             document.getElementById('cashDetailSaveBtn').style.display = 'none';
@@ -4998,6 +5018,8 @@
             var displayFields = ['cashDetailAccount', 'cashDetailPeriod', 'cashDetailBalance'];
 
             if (isCashEditMode) {
+                document.getElementById('cashDetailModal').classList.add('is-editing');
+                document.getElementById('cashModalTitle').textContent = 'Edit Cash Position';
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
@@ -5016,6 +5038,8 @@
                 document.getElementById('cashDetailAccountEdit').style.display = 'none';
                 
             } else {
+                document.getElementById('cashDetailModal').classList.remove('is-editing');
+                document.getElementById('cashModalTitle').textContent = 'Cash Position Details';
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
@@ -5112,9 +5136,6 @@
                         tr.setAttribute('data-amount', row.asset_total || row.amount || 0);
                         tr.setAttribute('data-date', row.period_month || row.expense_date || '');
                         tr.setAttribute('data-remarks', row.remarks || '');
-                        tr.style.cursor = 'pointer';
-                        tr.onclick = function() { openRepairModal(this); };
-
                         tr.innerHTML = '<td><strong>' + (row.asset_name || 'Unknown Asset') + '</strong></td>' +
                             '<td>' + expenseTypeLabel + '</td>' +
                             '<td>' + formatCurrency(row.asset_total || row.amount || 0) + '</td>' +
@@ -5126,10 +5147,6 @@
                 .catch(function(error) {
                     showError('Error loading Repair data: ' + error.message);
                 });
-        }
-
-        function openRepairModal(row) {
-            showSuccess('Repair details for: ' + row.dataset.assetName);
         }
 
         // BACKHOE
@@ -5354,6 +5371,7 @@
 
             if (isBondEditMode) toggleBondEdit();
             isBondEditMode = false;
+            document.getElementById('bondDetailModal').classList.remove('is-editing');
             document.getElementById('bondDetailEditBtn').style.display = 'inline-block';
             document.getElementById('bondDetailDeleteBtn').style.display = 'none';
             document.getElementById('bondDetailSaveBtn').style.display = 'none';
@@ -5388,6 +5406,8 @@
                                  'bondDetailProvider', 'bondDetailStatus', 'bondDetailRemarks'];
 
             if (isBondEditMode) {
+                document.getElementById('bondDetailModal').classList.add('is-editing');
+                document.getElementById('bondModalTitle').textContent = 'Edit Construction Bond';
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
@@ -5406,6 +5426,8 @@
                 document.getElementById('bondDetailProjectEdit').style.display = 'none';
                 
             } else {
+                document.getElementById('bondDetailModal').classList.remove('is-editing');
+                document.getElementById('bondModalTitle').textContent = 'Bond Details';
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
