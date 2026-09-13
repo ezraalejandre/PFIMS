@@ -74,6 +74,10 @@ class FinanceModalPresentationTest extends TestCase
             "document.querySelectorAll('.modal, .modal-overlay, [role=\"dialog\"]')",
             $script
         );
+        $this->assertStringContainsString(
+            "modal.matches('.modal.active, .modal-overlay.active')",
+            $script
+        );
         $this->assertStringNotContainsString(
             "document.querySelectorAll('.modal.active, .modal-overlay.active, [role=\"dialog\"]')",
             $script

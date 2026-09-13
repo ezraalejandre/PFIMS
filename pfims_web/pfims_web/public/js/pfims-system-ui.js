@@ -723,9 +723,11 @@
         handler.call(row, { currentTarget: row, target: row, preventDefault: function () {}, stopPropagation: function () {} });
         if (!editMode) return;
         window.setTimeout(function () {
-            var visibleModal = Array.from(document.querySelectorAll('.modal, .modal-overlay, [role="dialog"]'))
-                .filter(function (modal) { return !modal.hidden && getComputedStyle(modal).display !== 'none'; })
-                .pop();
+            var visibleModals = Array.from(document.querySelectorAll('.modal, .modal-overlay, [role="dialog"]'))
+                .filter(function (modal) { return !modal.hidden && getComputedStyle(modal).display !== 'none'; });
+            var visibleModal = visibleModals
+                .filter(function (modal) { return modal.matches('.modal.active, .modal-overlay.active'); })
+                .pop() || visibleModals.pop();
             if (!visibleModal) return;
             var editButton = Array.from(visibleModal.querySelectorAll('button')).find(function (button) {
                 return /^edit(?:\s|$)/i.test((button.textContent || '').trim()) && !button.hidden && getComputedStyle(button).display !== 'none';
