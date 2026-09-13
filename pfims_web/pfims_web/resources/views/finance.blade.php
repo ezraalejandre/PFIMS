@@ -19,7 +19,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Budget & Finance - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/finance.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/finance.css') }}?v={{ filemtime(public_path('css/finance.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
     <style>
         /* ─── MODAL Z-INDEX ─── */

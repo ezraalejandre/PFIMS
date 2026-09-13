@@ -56,6 +56,8 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('body.analytics-module-page', $css);
         $this->assertStringContainsString('padding-inline: 0 !important;', $css);
         $this->assertStringContainsString('id="reportTabs"', $reports);
+        $this->assertStringContainsString("asset('css/centralized-reports.css') }}?v={{ filemtime(public_path('css/centralized-reports.css')) }}", $reports);
+        $this->assertStringContainsString("asset('css/finance.css') }}?v={{ filemtime(public_path('css/finance.css')) }}", $finance);
         $this->assertStringContainsString('width: auto !important;', $reportsCss);
         $this->assertStringContainsString('max-width: none !important;', $reportsCss);
         $this->assertStringContainsString('flex: 1 1 auto;', $reportsCss);

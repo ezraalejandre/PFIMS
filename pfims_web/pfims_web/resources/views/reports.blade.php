@@ -53,7 +53,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $portalTitle }} Reports - PFIMS</title>
-    <link rel="stylesheet" href="{{ asset('css/centralized-reports.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/centralized-reports.css') }}?v={{ filemtime(public_path('css/centralized-reports.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}"></script>
