@@ -1221,6 +1221,7 @@
     const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
     const requestedAnalyticsSection = new URLSearchParams(window.location.search).get('section');
+    const currentPortal = document.body.dataset.portal || 'admin';
     let predictionProjects = [];
     let materialForecastRows = [];
     let materialForecastPage = 1;
@@ -1740,10 +1741,16 @@
         const sectionMap = { predictive: 'costPredictionSection', 'material-projection': 'materialProjectionSection', 'budget-comparison': 'budgetComparisonSection' };
         const targetSection = sectionMap[requestedAnalyticsSection] || 'costPredictionSection';
         document.querySelectorAll('[data-analytics-content]').forEach(section => { section.hidden = section.id !== targetSection; });
-        loadDashboard();
-        loadPredictionProjects(false);
-        loadMaterialForecast();
-        loadBudgetVariance();
+        if (currentPortal === 'admin') loadDashboard();
+        if (targetSection === 'costPredictionSection' && ['admin', 'accounting'].includes(currentPortal)) {
+            loadPredictionProjects(false);
+        }
+        if (targetSection === 'materialProjectionSection' && ['admin', 'operations'].includes(currentPortal)) {
+            loadMaterialForecast();
+        }
+        if (targetSection === 'budgetComparisonSection' && ['admin', 'accounting'].includes(currentPortal)) {
+            loadBudgetVariance();
+        }
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
         document.getElementById('predictionProject').addEventListener('change', updatePredictionProjectSnapshot);
         document.getElementById('materialForecastPageSize').addEventListener('change', () => {

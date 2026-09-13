@@ -78,14 +78,8 @@ public function login(Request $request)
 
 public function profile(Request $request)
 {
-    $user = User::where('email', $request->email)->first();
-
-    if (!$user) {
-        return response()->json([
-            "success" => false,
-            "message" => "User not found",
-        ], 404);
-    }
+    /** @var User $user */
+    $user = $request->user();
 
     return response()->json([
         "success" => true,
@@ -104,19 +98,12 @@ public function profile(Request $request)
 public function updateField(Request $request)
 {
     $validated = $request->validate([
-        'email' => ['required', 'email'],
         'field' => ['required', 'string', 'in:name,email,phone,location'],
         'value' => ['required', 'string', 'max:255'],
     ]);
 
-    $user = User::where('email', $validated['email'])->first();
-
-    if (!$user) {
-        return response()->json([
-            "success" => false,
-            "message" => "User not found",
-        ], 404);
-    }
+    /** @var User $user */
+    $user = $request->user();
 
     // Extra validation when the field being changed is email itself —
     // must be a valid email and not already taken by another account.
@@ -159,18 +146,11 @@ public function updateField(Request $request)
 public function uploadProfilePhoto(Request $request)
 {
     $request->validate([
-        'email' => ['required', 'email'],
         'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
     ]);
 
-    $user = User::where('email', $request->email)->first();
-
-    if (!$user) {
-        return response()->json([
-            "success" => false,
-            "message" => "User not found",
-        ], 404);
-    }
+    /** @var User $user */
+    $user = $request->user();
 
     $file = $request->file('photo');
 
@@ -206,19 +186,12 @@ private function photoDataUri(User $user): ?string
 public function changePassword(Request $request)
 {
     $request->validate([
-        'email' => ['required', 'email'],
         'current_password' => ['required', 'string'],
         'new_password' => ['required', 'string', 'min:8'],
     ]);
 
-    $user = User::where('email', $request->email)->first();
-
-    if (!$user) {
-        return response()->json([
-            "success" => false,
-            "message" => "User not found",
-        ], 404);
-    }
+    /** @var User $user */
+    $user = $request->user();
 
     if (!Hash::check($request->current_password, $user->password)) {
         return response()->json([

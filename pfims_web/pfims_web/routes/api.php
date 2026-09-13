@@ -39,16 +39,19 @@ Route::get('/test', function () {
 
 // ─── AUTH ROUTES ─────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/profile', [AuthController::class, 'profile']);
-Route::post('/profile/photo', [AuthController::class, 'uploadProfilePhoto']);
-Route::post('/change-password', [AuthController::class, 'changePassword']);
-Route::post('/profile/update', [AuthController::class, 'updateField']);
 Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
 Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
 Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'reset']);
 
-// Operational APIs are for the authenticated web application.
 Route::middleware(['web', 'auth'])->group(function () {
+    Route::post('/profile', [AuthController::class, 'profile']);
+    Route::post('/profile/photo', [AuthController::class, 'uploadProfilePhoto']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/profile/update', [AuthController::class, 'updateField']);
+});
+
+// Operational APIs are for the authenticated web application.
+Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     // ─── UNIT ROUTES ─────────────────────────────────────────────────
     Route::get('/units', function () {
         return response()->json(

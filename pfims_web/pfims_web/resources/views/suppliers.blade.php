@@ -450,7 +450,7 @@
                 row.innerHTML = `
                     <td><strong>${supplier.supplier_name}</strong></td>
                     <td>${supplier.address}</td>
-                    <td>${supplier.contact_number}</td>
+                    <td>${String(supplier.contact_number || '').trim() || '—'}</td>
                     <td style="text-align: center;">
                     <button class="pfims-row-action" onclick="openViewModal(${supplier.supplier_id}, this)" title="View supplier" aria-label="View supplier"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
                     <button class="pfims-row-action" onclick="openEditModal(${supplier.supplier_id})" title="Edit supplier" aria-label="Edit supplier"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>

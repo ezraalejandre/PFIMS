@@ -438,6 +438,7 @@
     }
 
     function installModuleNavigation() {
+        var portal = document.body?.dataset.portal || 'admin';
         document.querySelectorAll('.sidebar li > a').forEach(function (link) {
             var label = (link.textContent || '').trim().toLowerCase();
             var module = Object.keys(MODULE_NAVIGATION).find(function (name) {
@@ -461,7 +462,11 @@
             link.appendChild(chevron);
             var menu = document.createElement('div');
             menu.className = 'nav-dropdown';
-            MODULE_NAVIGATION[module].forEach(function (entry) {
+            MODULE_NAVIGATION[module]
+                .filter(function (entry) {
+                    return !(portal === 'operations' && entry[0] === 'Project Cost Prediction');
+                })
+                .forEach(function (entry) {
                 var child = document.createElement('a');
                 child.href = entry[1].charAt(0) === '/' ? entry[1] : base + entry[1];
                 child.textContent = entry[0];

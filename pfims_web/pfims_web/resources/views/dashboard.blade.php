@@ -95,7 +95,12 @@
                                 {{ $item['label'] }} @if(in_array($key, ['projects','finance','inventory'], true))<span class="nav-chevron" aria-hidden="true">▾</span>@endif
                             </a>
                             @if($key === 'projects')
-                                <div class="nav-dropdown"><a href="{{ url($links[$key]) }}">Project Records</a><a href="{{ url('/ml-dashboard-test') }}?section=predictive">Project Cost Prediction</a></div>
+                                <div class="nav-dropdown">
+                                    <a href="{{ url($links[$key]) }}">Project Records</a>
+                                    @if($portal !== 'operations')
+                                        <a href="{{ url('/ml-dashboard-test') }}?section=predictive">Project Cost Prediction</a>
+                                    @endif
+                                </div>
                             @elseif($key === 'finance')
                                 <div class="nav-dropdown">
                                     <a href="{{ url($links[$key]) }}">Expenses</a>

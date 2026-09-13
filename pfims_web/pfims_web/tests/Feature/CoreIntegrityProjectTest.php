@@ -240,9 +240,13 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee("timeZone: 'Asia/Manila'", false)
                 ->assertSee('action="http://localhost/logout"', false);
 
-            if (in_array($dashboard['role'], ['admin', 'operations'], true)) {
+            if ($dashboard['role'] === 'admin') {
                 $response->assertSee('>Project Cost Prediction</a>', false)
                     ->assertDontSee('>Predictive analytics</a>', false);
+            }
+
+            if ($dashboard['role'] === 'operations') {
+                $response->assertDontSee('>Project Cost Prediction</a>', false);
             }
 
             if (in_array($dashboard['role'], ['admin', 'accounting'], true)) {
@@ -327,6 +331,7 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringContainsString('window.showPfimsAlert = function', $sharedUi);
         $this->assertStringContainsString("window.showSuccess = function", $sharedUi);
         $this->assertStringContainsString("['Project Cost Prediction', '/ml-dashboard-test?section=predictive']", $sharedUi);
+        $this->assertStringContainsString("portal === 'operations' && entry[0] === 'Project Cost Prediction'", $sharedUi);
         $this->assertStringNotContainsString("['Predictive Analytics', '/ml-dashboard-test?section=predictive']", $sharedUi);
         $this->assertStringContainsString("localStorage.setItem('pfims-nav-' + module", $sharedUi);
         $this->assertStringContainsString("item.classList.toggle('has-active-child', !!activeChild)", $sharedUi);

@@ -47,7 +47,13 @@ class MLImprovementTest extends TestCase
 
         $operations = $this->user('operations');
         $this->actingAs($operations)->get('/ml-dashboard-test')->assertForbidden();
+        $this->actingAs($operations)->get('/ml-dashboard-test?section=budget-comparison')->assertForbidden();
         $this->actingAs($operations)->get('/ml-dashboard-test?section=material-projection')->assertOk();
+        $this->actingAs($operations)->getJson('/api/ml/status')->assertForbidden();
+        $this->actingAs($operations)->getJson('/api/ml/analytics/dashboard')->assertForbidden();
+        $this->actingAs($operations)->getJson('/api/ml/analytics/budget-variance')->assertForbidden();
+        $this->actingAs($operations)->getJson('/api/ml/prediction-projects')->assertForbidden();
+        $this->actingAs($operations)->postJson('/api/ml/predict/cost', [])->assertForbidden();
         $this->actingAs($operations)
             ->postJson('/api/ml/retrain')
             ->assertForbidden()
@@ -96,6 +102,7 @@ class MLImprovementTest extends TestCase
             ->assertOk()
             ->assertSee('Project Cost Prediction', false)
             ->assertDontSee('id="retrainConfirmModal"', false);
+        $this->actingAs($this->user('accounting'))->get('/ml-dashboard-test?section=material-projection')->assertForbidden();
 
         $this->actingAs($admin)->get('/ml-dashboard-test?section=budget-comparison')
             ->assertOk()

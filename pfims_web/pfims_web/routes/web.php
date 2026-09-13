@@ -28,36 +28,36 @@ Route::get('/', function () {
 // ─── DASHBOARD ROUTES (Role-based) ─────────────────────────────
 // Admin Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware('auth')
+    ->middleware(['auth', 'role.portal:admin'])
     ->name('admin.dashboard');
 
 // Accounting Dashboard
 Route::get('/adashboard', function () {
     return view('dashboard', ['portal' => 'accounting']);
-})->middleware('auth')->name('accounting.dashboard');
+})->middleware(['auth', 'role.portal:admin,accounting'])->name('accounting.dashboard');
 
 // Operations Dashboard
 Route::get('/odashboard', function () {
     return view('dashboard', ['portal' => 'operations']);
-})->middleware('auth')->name('operations.dashboard');
+})->middleware(['auth', 'role.portal:admin,operations'])->name('operations.dashboard');
 
 // ─── ACCOUNTING ROUTES ──────────────────────────────────────────
 Route::get('/afinance', function () {
     return view('finance', ['portal' => 'accounting']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,accounting']);
 
-Route::get('/areports', [ReportController::class, 'page'])->middleware('auth');
+Route::get('/areports', [ReportController::class, 'page'])->middleware(['auth', 'role.portal:admin,accounting']);
 
 Route::get('/anotifications', function () {
     return view('notifications', ['portal' => 'accounting']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,accounting']);
 
 Route::get('/aprofile', function () {
     return view('profile', [
         'portal' => 'accounting',
         'user' => Auth::user(),
     ]);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,accounting']);
 
 Route::get('/asettings', function () {
     /** @var User $currentUser */
@@ -73,33 +73,33 @@ Route::get('/asettings', function () {
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,accounting']);
 
 // ─── OPERATIONS ROUTES ──────────────────────────────────────────
 Route::get('/oprojects', function () {
     return view('projtracking', ['portal' => 'operations']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,operations']);
 
 Route::get('/oinventory', function () {
     return view('inventory', ['portal' => 'operations']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,operations']);
 
 Route::get('/osuppliers', function () {
     return view('suppliers', ['portal' => 'operations']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,operations']);
 
-Route::get('/oreports', [ReportController::class, 'page'])->middleware('auth');
+Route::get('/oreports', [ReportController::class, 'page'])->middleware(['auth', 'role.portal:admin,operations']);
 
 Route::get('/onotifications', function () {
     return view('notifications', ['portal' => 'operations']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,operations']);
 
 Route::get('/oprofile', function () {
     return view('profile', [
         'portal' => 'operations',
         'user' => Auth::user(),
     ]);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,operations']);
 
 Route::get('/osettings', function () {
     /** @var User $currentUser */
@@ -115,12 +115,12 @@ Route::get('/osettings', function () {
         'users' => $users,
         'loginHistories' => $currentUser->loginHistories()->limit(10)->get(),
     ]);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin,operations']);
 
 // Project Tracking page
 Route::get('/projects', function () {
     return view('projtracking', ['portal' => 'admin']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin']);
 
 // Route::delete('/api/projects/{id}', function ($id) {
 //     $exists = DB::table('project_tbl')->where('project_id', $id)->exists();
@@ -135,7 +135,7 @@ Route::get('/projects', function () {
 // Finance page
 Route::get('/finance', function () {
     return view('finance', ['portal' => 'admin']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin']);
 
 // // Budget page
 // Route::delete('/api/budgets/{id}', function ($id) {
@@ -151,12 +151,12 @@ Route::get('/finance', function () {
 // Inventory page
 Route::get('/inventory', function () {
     return view('inventory', ['portal' => 'admin']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin']);
 
 // Suppliers page
 Route::get('/suppliers', function () {
     return view('suppliers', ['portal' => 'admin']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin']);
 
 // Authenticated web-only API endpoints
 Route::middleware('auth')->group(function () {
@@ -166,7 +166,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/api/config/{type}/{id}', [ConfigController::class, 'update']);
     Route::delete('/api/config/{type}/{id}', [ConfigController::class, 'destroy']);
 
-    Route::post('/api/finance-expenses/from-inventory/{transactionId}', [FinExpenseController::class, 'storeFromInventory']);
+    Route::post('/api/finance-expenses/from-inventory/{transactionId}', [FinExpenseController::class, 'storeFromInventory'])
+        ->middleware('role.portal:admin,operations');
 
     // Validated, transactional CSV/XLSX imports and downloadable CSV templates.
     Route::post('/api/imports/finance-expenses', [DataImportController::class, 'finance'])
@@ -178,12 +179,12 @@ Route::middleware('auth')->group(function () {
 });
 
 // Reports page
-Route::get('/reports', [ReportController::class, 'page'])->middleware('auth');
+Route::get('/reports', [ReportController::class, 'page'])->middleware(['auth', 'role.portal:admin']);
 
 // Notifications page
 Route::get('/notifications', function () {
     return view('notifications', ['portal' => 'admin']);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin']);
 
 // Profile page
 Route::get('/profile', function () {
@@ -191,7 +192,7 @@ Route::get('/profile', function () {
         'portal' => 'admin',
         'user' => Auth::user(),
     ]);
-})->middleware('auth');
+})->middleware(['auth', 'role.portal:admin']);
 
 // Route::patch('/profile', function (Request $request) {
 //     $user = Auth::user();
@@ -528,8 +529,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/ml-dashboard-test', function (Request $request) {
         $user = Auth::user();
         $role = $user instanceof User ? strtolower((string) $user->role) : '';
-        $allowed = in_array($role, ['admin', 'accounting'], true)
-            || ($role === 'operations' && $request->query('section') === 'material-projection');
+        $section = $request->query('section', 'predictive');
+        $allowed = $role === 'admin'
+            || ($role === 'accounting' && in_array($section, ['predictive', 'budget-comparison'], true))
+            || ($role === 'operations' && $section === 'material-projection');
         abort_unless($allowed, 403);
 
         return view('ml-dashboard-test', ['portal' => $role]);
@@ -537,16 +540,21 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('api/ml')->group(function () {
         Route::post('/predict/cost', [MLController::class, 'predictProjectCost'])
-            ->middleware('throttle:60,1');
-        Route::get('/prediction-projects', [MLController::class, 'predictionProjects']);
-        Route::get('/predict/material-demand', [MLController::class, 'predictMaterialDemand']);
-        Route::get('/status', [MLController::class, 'status']);
-        Route::get('/analytics/dashboard', [MLController::class, 'dashboardAnalytics']);
-        Route::get('/analytics/budget-variance', [MLController::class, 'budgetVariance']);
+            ->middleware(['role.portal:admin,accounting', 'throttle:60,1']);
+        Route::get('/prediction-projects', [MLController::class, 'predictionProjects'])
+            ->middleware('role.portal:admin,accounting');
+        Route::get('/predict/material-demand', [MLController::class, 'predictMaterialDemand'])
+            ->middleware('role.portal:admin,operations');
+        Route::get('/status', [MLController::class, 'status'])
+            ->middleware('role.portal:admin');
+        Route::get('/analytics/dashboard', [MLController::class, 'dashboardAnalytics'])
+            ->middleware('role.portal:admin');
+        Route::get('/analytics/budget-variance', [MLController::class, 'budgetVariance'])
+            ->middleware('role.portal:admin,accounting');
 
         // The controller also enforces the administrator role. Retraining is POST-only.
         Route::post('/retrain', [MLController::class, 'retrain'])
-            ->middleware('throttle:3,1');
+            ->middleware(['role.portal:admin', 'throttle:3,1']);
     });
 });
 
