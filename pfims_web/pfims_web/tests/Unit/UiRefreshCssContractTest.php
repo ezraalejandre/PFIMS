@@ -104,6 +104,8 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertNotFalse($finalDrawerContract);
         $this->assertGreaterThan($legacyResponsiveSidebar, $finalDrawerContract, 'The final drawer contract must follow legacy responsive sidebar rules.');
         $finalDrawerCss = substr($css, $finalDrawerContract);
+        $this->assertStringContainsString('body:not(.landing-page) .sidebar {', $finalDrawerCss);
+        $this->assertStringContainsString('html.mobile-nav-open body:not(.landing-page) .sidebar', $finalDrawerCss);
         $this->assertStringContainsString('inset: 72px 0 0;', $finalDrawerCss);
         $this->assertStringContainsString('position: relative !important;', $finalDrawerCss);
         $this->assertStringContainsString('flex-direction: column;', $finalDrawerCss);
