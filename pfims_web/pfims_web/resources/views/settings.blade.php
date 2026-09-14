@@ -28,7 +28,7 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
 </head>
-<body class="settings-page" data-portal="{{ $portal }}" data-config-api-base="{{ request()->getBaseUrl() }}/api/config">
+<body class="settings-page" data-portal="{{ $portal }}" data-is-admin="{{ $isAdmin ? '1' : '0' }}" data-config-api-base="{{ request()->getBaseUrl() }}/api/config">
 
     <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none; z-index: 4000;">
@@ -674,8 +674,10 @@
 
         var currentConfigType = 'units';
         var configApiBase = document.body.dataset.configApiBase;
+        var isAdmin = document.body.dataset.isAdmin === '1';
 
         function switchConfigType(el, type) {
+            if (!isAdmin) return;
             var btns = document.querySelectorAll('.config-tab');
             btns.forEach(function(btn) {
                 btn.classList.remove('active');
@@ -694,7 +696,9 @@
         }
 
         function fetchConfigItems(type) {
+            if (!isAdmin) return;
             var tbody = document.getElementById('configTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px;">Loading...</td></tr>';
 
             fetch(configApiBase + '/' + type, {
@@ -721,9 +725,11 @@
         }
 
         function renderConfigTable() {
+            if (!isAdmin) return;
             var items = configData[currentConfigType] || [];
             var search = document.getElementById('configTableSearch').value.trim().toLowerCase();
             var tbody = document.getElementById('configTableBody');
+            if (!tbody) return;
             tbody.innerHTML = '';
             var fields = configFieldMap[currentConfigType];
             if (search) {
@@ -933,6 +939,7 @@
         }
 
         function loadSystemSettings() {
+            if (!isAdmin) return;
             fetch('/api/settings', { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                 .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
                 .then(function(result) {
@@ -1085,7 +1092,7 @@
         });
 
         // ─── INIT ───
-        fetchConfigItems(currentConfigType);
+        if (isAdmin) fetchConfigItems(currentConfigType);
 
         // ─── CHANGE PASSWORD FUNCTIONS ───
 

@@ -94,6 +94,10 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringNotContainsString('id="addUserStatus"', $settings);
         $this->assertStringNotContainsString("document.getElementById('configStatus')", $settings);
         $this->assertStringNotContainsString("document.getElementById('addUserStatus')", $settings);
+        $this->assertStringContainsString('data-is-admin="{{ $isAdmin ? \'1\' : \'0\' }}"', $settings);
+        $this->assertStringContainsString("var isAdmin = document.body.dataset.isAdmin === '1';", $settings);
+        $this->assertStringContainsString('if (!isAdmin) return;', $settings);
+        $this->assertStringContainsString('if (isAdmin) fetchConfigItems(currentConfigType);', $settings);
         $this->assertStringContainsString('.notifications-page .total-notif-item.card-red', $css);
         $this->assertStringContainsString('.notif-item.unread,', $notifications);
         $this->assertStringContainsString('.notif-item.read {', $notifications);
