@@ -39,6 +39,7 @@ class UiRefreshCssContractTest extends TestCase
         $notifications = file_get_contents(dirname(__DIR__, 2).'/resources/views/notifications.blade.php');
         $systemUi = file_get_contents(dirname(__DIR__, 2).'/public/js/pfims-system-ui.js');
         $theme = file_get_contents(dirname(__DIR__, 2).'/public/js/theme.js');
+        $themeViews = glob(dirname(__DIR__, 2).'/resources/views/*.blade.php');
 
         $this->assertIsString($finance);
         $this->assertIsString($reports);
@@ -47,6 +48,25 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertIsString($notifications);
         $this->assertIsString($systemUi);
         $this->assertIsString($theme);
+        $this->assertIsArray($themeViews);
+        $themeInclusions = 0;
+        foreach ($themeViews as $themeViewPath) {
+            $themeView = file_get_contents($themeViewPath);
+            if (substr_count($themeView, "asset('js/theme.js')")) {
+                $themeInclusions += substr_count($themeView, "asset('js/theme.js')");
+                $this->assertStringNotContainsString(
+                    'asset(\'js/theme.js\') }}"></script>',
+                    $themeView,
+                    basename($themeViewPath).' must version theme.js.'
+                );
+                $this->assertStringContainsString(
+                    "asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}",
+                    $themeView,
+                    basename($themeViewPath).' must use the theme.js filemtime version.'
+                );
+            }
+        }
+        $this->assertSame(11, $themeInclusions, 'Every theme.js view inclusion must be accounted for.');
         $this->assertStringContainsString('loadLegacySystemUiIfNeeded', $theme);
         $this->assertStringContainsString("document.addEventListener('DOMContentLoaded', loadLegacySystemUiIfNeeded", $theme);
         $this->assertStringContainsString('const themeScript = document.currentScript;', $theme);
