@@ -82,6 +82,9 @@ class FinanceModalPresentationTest extends TestCase
             "document.querySelectorAll('.modal.active, .modal-overlay.active, [role=\"dialog\"]')",
             $script
         );
+        $this->assertStringContainsString('window.PFIMS_ROW_EDIT_MODE = !!editMode;', $script);
+        $this->assertStringContainsString('window.PFIMS_ROW_EDIT_MODE === true', $this->financeView());
+        $this->assertStringContainsString('if (!isEditMode && currentDetailRow === row) toggleDetailEdit();', $this->financeView());
     }
 
     public function test_finance_editable_detail_modals_have_inventory_style_edit_footer_controls(): void

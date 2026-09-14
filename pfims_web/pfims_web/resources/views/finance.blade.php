@@ -3136,6 +3136,7 @@
         // ─── EXPENSE DETAIL MODAL ─────────────────────────────────────
         function openExpenseModal(row) {
             currentDetailRow = row;
+            var openInEditMode = window.PFIMS_ROW_EDIT_MODE === true;
             document.getElementById('detailProjectDisplay').textContent = row.dataset.project;
             document.getElementById('detailDescDisplay').textContent = row.dataset.desc;
             document.getElementById('detailCategoryDisplay').textContent = row.dataset.category;
@@ -3190,6 +3191,11 @@
 
             document.getElementById('expenseDetailModal').classList.add('active');
             document.body.style.overflow = 'hidden';
+            if (openInEditMode) {
+                window.setTimeout(function() {
+                    if (!isEditMode && currentDetailRow === row) toggleDetailEdit();
+                }, 0);
+            }
         }
 
         function closeExpenseDetailModal() {

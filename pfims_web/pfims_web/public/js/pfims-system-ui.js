@@ -720,6 +720,9 @@
     }
 
     function openCapturedRowAction(row, handler, editMode) {
+        // Expose the action intent for modules whose row handler opens a
+        // detail modal and must enter its edit state directly.
+        window.PFIMS_ROW_EDIT_MODE = !!editMode;
         handler.call(row, { currentTarget: row, target: row, preventDefault: function () {}, stopPropagation: function () {} });
         if (!editMode) return;
         window.setTimeout(function () {
@@ -733,6 +736,7 @@
                 return /^edit(?:\s|$)/i.test((button.textContent || '').trim()) && !button.hidden && getComputedStyle(button).display !== 'none';
             });
             if (editButton) editButton.click();
+            window.PFIMS_ROW_EDIT_MODE = false;
         }, 0);
     }
 
