@@ -763,21 +763,111 @@ button,
     background: #aab6c7;
 }
 
-@media (max-width: 900px) {
+/* Responsive navigation drawer. Desktop collapse state is intentionally
+   ignored below 1025px; mobile navigation owns its open/closed state. */
+.mobile-nav-toggle,
+.mobile-nav-backdrop {
+    display: none;
+}
+
+@media (max-width: 1024px) {
     .sidebar {
-        position: static !important;
+        position: fixed !important;
+        z-index: 1200 !important;
+        top: 72px !important;
         left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        height: auto !important;
-        padding: 10px 8px !important;
+        width: 50vw !important;
+        height: calc(100dvh - 72px) !important;
+        max-height: calc(100dvh - 72px) !important;
+        padding: 18px 14px !important;
         border-radius: 0 !important;
         border-right: 0 !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 0;
+        overflow-y: auto !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.24s ease !important;
+    }
+
+    html.mobile-nav-open .sidebar {
+        transform: translateX(0) !important;
     }
 
     .sidebar-collapse-toggle {
         display: none !important;
+    }
+
+    .mobile-nav-backdrop {
+        display: block;
+        position: fixed;
+        z-index: 1190;
+        inset: 72px 0 0;
+        background: rgba(15, 23, 42, 0.42);
+        opacity: 1;
+        transition: opacity 0.24s ease;
+    }
+
+    html:not(.mobile-nav-open) .mobile-nav-backdrop {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .mobile-nav-toggle {
+        position: relative !important;
+        inset: auto !important;
+        display: inline-flex !important;
+        width: 38px !important;
+        height: 38px !important;
+        flex: 0 0 38px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 7px;
+        border: 1px solid rgba(71, 85, 105, .18) !important;
+        border-radius: 10px;
+        background: rgba(15, 23, 42, .035) !important;
+        color: #475569 !important;
+        box-shadow: none;
+        cursor: pointer;
+    }
+
+    .mobile-nav-toggle span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        border-radius: 2px;
+        background: currentColor;
+    }
+
+    .mobile-nav-toggle:hover,
+    .mobile-nav-toggle:focus-visible {
+        border-color: rgba(240, 138, 26, .36) !important;
+        background: rgba(240, 138, 26, .08) !important;
+        color: #c76b0a !important;
+    }
+
+    .mobile-nav-toggle:focus-visible {
+        outline: 2px solid rgba(240, 138, 26, .28);
+        outline-offset: 2px;
+    }
+
+    html[data-theme="dark"] .mobile-nav-toggle {
+        border-color: rgba(255, 255, 255, .14) !important;
+        background: rgba(255, 255, 255, .045) !important;
+        color: #dbe5f3 !important;
+    }
+
+    html.sidebar-collapsed .sidebar {
+        width: 50vw !important;
+        padding-inline: 14px !important;
+    }
+
+    html.sidebar-collapsed .sidebar nav a,
+    html.sidebar-collapsed .sidebar .bottom-nav :where(a, button) {
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        color: inherit !important;
+        font-size: inherit !important;
     }
 
     .sidebar nav {
@@ -786,15 +876,12 @@ button,
 
     .sidebar nav ul,
     .sidebar .bottom-nav ul {
-        display: flex !important;
-        flex-wrap: wrap;
-        gap: 6px !important;
-        justify-content: center;
+        display: block !important;
     }
 
     .sidebar nav ul li,
     .sidebar .bottom-nav ul li {
-        flex: 0 0 auto;
+        width: 100% !important;
     }
 
     .sidebar nav ul li a,
@@ -802,11 +889,11 @@ button,
     .sidebar .bottom-nav ul li button {
         display: flex !important;
         align-items: center;
-        justify-content: center;
-        gap: 0 !important;
-        font-size: 0 !important;
-        color: transparent !important;
-        padding: 8px !important;
+        justify-content: flex-start;
+        gap: 12px !important;
+        font-size: inherit !important;
+        color: inherit !important;
+        padding: 12px 14px !important;
     }
 
     .sidebar nav ul li a .nav-link-icon,
@@ -818,6 +905,27 @@ button,
     .main-content {
         margin-left: 0 !important;
         padding: 24px 18px 36px !important;
+    }
+
+    .sidebar .nav-dropdown {
+        padding-left: 32px !important;
+    }
+}
+
+@media (max-width: 700px) {
+    .mobile-nav-backdrop {
+        inset-block-start: 64px;
+    }
+
+    .sidebar {
+        top: 64px !important;
+        width: 75vw !important;
+        height: calc(100dvh - 64px) !important;
+        max-height: calc(100dvh - 64px) !important;
+    }
+
+    html.sidebar-collapsed .sidebar {
+        width: 75vw !important;
     }
 }
 
