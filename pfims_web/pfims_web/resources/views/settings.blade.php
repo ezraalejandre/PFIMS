@@ -414,9 +414,9 @@
                 <div class="form-group" style="margin-bottom: 18px;">
                     <label style="display: block; font-size: 0.85rem; font-weight: 500; color: #333; margin-bottom: 4px;">Role <span style="color: #d32f2f;">*</span></label>
                     <select id="addUserRole" style="width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa;">
-                        <option value="Admin">Admin</option>
-                        <option value="Accounting">Accounting</option>
-                        <option value="Operations">Operations</option>
+                        <option value="admin">Admin</option>
+                        <option value="accounting">Accounting</option>
+                        <option value="operations">Operations</option>
                     </select>
                 </div>
                 <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e9ecef; padding-top: 20px;">
@@ -982,7 +982,7 @@
             document.body.style.overflow = 'hidden';
             document.getElementById('addUserName').value = '';
             document.getElementById('addUserEmail').value = '';
-            document.getElementById('addUserRole').value = 'Admin';
+            document.getElementById('addUserRole').value = 'admin';
         }
 
         function closeAddUserModal() {

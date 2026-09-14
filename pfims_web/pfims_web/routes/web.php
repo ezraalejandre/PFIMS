@@ -242,6 +242,7 @@ Route::post('/users', function (Request $request) {
         'name' => preg_replace('/\s+/u', ' ', trim((string) $request->input('name'))),
         'email' => mb_strtolower(trim((string) $request->input('email'))),
         'role' => strtolower(trim((string) $request->input('role'))),
+        'status' => $request->input('status', 'Active'),
     ]);
     $validated = $request->validate([
         'name' => ['required', 'string', 'max:150'],
@@ -290,7 +291,13 @@ Route::patch('/users/{id}', function (Request $request, $id) {
     abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
 
-    $request->merge(['role' => strtolower(trim((string) $request->input('role')))]);
+    // The Settings role editor only submits a role. Preserve the existing
+    // status when it is omitted instead of rejecting an otherwise valid role
+    // update with the required status validation rule.
+    $request->merge([
+        'role' => strtolower(trim((string) $request->input('role'))),
+        'status' => $request->input('status', $user->status ?? 'Active'),
+    ]);
 
     $validated = $request->validate([
         'role' => ['required', 'in:admin,operations,accounting'],
