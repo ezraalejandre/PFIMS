@@ -98,6 +98,17 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('@media (max-width: 700px)', $css);
         $this->assertStringContainsString('height: calc(100dvh - 64px) !important;', $css);
         $this->assertStringContainsString('width: 75vw !important;', $css);
+        $legacyResponsiveSidebar = strpos($css, '@media (max-width: 900px)');
+        $finalDrawerContract = strpos($css, '/* Final responsive drawer contract.');
+        $this->assertNotFalse($legacyResponsiveSidebar);
+        $this->assertNotFalse($finalDrawerContract);
+        $this->assertGreaterThan($legacyResponsiveSidebar, $finalDrawerContract, 'The final drawer contract must follow legacy responsive sidebar rules.');
+        $finalDrawerCss = substr($css, $finalDrawerContract);
+        $this->assertStringContainsString('inset: 72px 0 0;', $finalDrawerCss);
+        $this->assertStringContainsString('position: relative !important;', $finalDrawerCss);
+        $this->assertStringContainsString('flex-direction: column;', $finalDrawerCss);
+        $this->assertStringContainsString('margin-top: 0 !important;', $finalDrawerCss);
+        $this->assertStringNotContainsString('.mobile-nav-toggle::before', $finalDrawerCss);
         $this->assertStringContainsString('id="reportTabs"', $reports);
         $this->assertStringContainsString("asset('css/centralized-reports.css') }}?v={{ filemtime(public_path('css/centralized-reports.css')) }}", $reports);
         $this->assertStringContainsString("asset('css/finance.css') }}?v={{ filemtime(public_path('css/finance.css')) }}", $finance);
