@@ -1,9 +1,22 @@
 (function () {
-    if (!window.PFIMS_SYSTEM_UI_LOADED && !document.querySelector('script[src*="pfims-system-ui.js"]')) {
+    const themeScript = document.currentScript;
+    // Authenticated pages include the versioned shared UI script explicitly at
+    // the end of the document. Wait until parsing is complete before deciding
+    // whether a legacy page (currently the landing page) still needs the
+    // fallback; otherwise the head script races the explicit copy and loads an
+    // unversioned duplicate first.
+    function loadLegacySystemUiIfNeeded() {
+        if (window.PFIMS_SYSTEM_UI_LOADED || document.querySelector('script[src*="pfims-system-ui.js"]')) return;
         const systemUi = document.createElement('script');
-        systemUi.src = new URL('pfims-system-ui.js', document.currentScript.src).href;
+        systemUi.src = new URL('pfims-system-ui.js', themeScript ? themeScript.src : window.location.href).href;
         systemUi.defer = true;
         document.head.appendChild(systemUi);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadLegacySystemUiIfNeeded, { once: true });
+    } else {
+        loadLegacySystemUiIfNeeded();
     }
     // Authenticated pages can be kept as visual snapshots in a browser's
     // back/forward cache. Hide the page before it enters that cache. If the

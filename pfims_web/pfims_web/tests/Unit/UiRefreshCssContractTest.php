@@ -38,6 +38,7 @@ class UiRefreshCssContractTest extends TestCase
         $settings = file_get_contents(dirname(__DIR__, 2).'/resources/views/settings.blade.php');
         $notifications = file_get_contents(dirname(__DIR__, 2).'/resources/views/notifications.blade.php');
         $systemUi = file_get_contents(dirname(__DIR__, 2).'/public/js/pfims-system-ui.js');
+        $theme = file_get_contents(dirname(__DIR__, 2).'/public/js/theme.js');
 
         $this->assertIsString($finance);
         $this->assertIsString($reports);
@@ -45,6 +46,13 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertIsString($settings);
         $this->assertIsString($notifications);
         $this->assertIsString($systemUi);
+        $this->assertIsString($theme);
+        $this->assertStringContainsString('loadLegacySystemUiIfNeeded', $theme);
+        $this->assertStringContainsString("document.addEventListener('DOMContentLoaded', loadLegacySystemUiIfNeeded", $theme);
+        $this->assertStringContainsString('const themeScript = document.currentScript;', $theme);
+        $this->assertStringNotContainsString('if (!window.PFIMS_SYSTEM_UI_LOADED && !document.querySelector', $theme);
+        $this->assertStringNotContainsString('new URL(\'pfims-system-ui.js\', document.currentScript.src)', $theme);
+        $this->assertStringNotContainsString("document.head.appendChild(systemUi);\n    }\n    // Authenticated pages", $theme);
         $this->assertStringNotContainsString('id="filePreviewImage" src=""', $finance);
         $this->assertStringNotContainsString('id="budgetFilePreviewImage" src=""', $finance);
         $this->assertStringContainsString('.reports-page .report-tabs .tab', $css);
