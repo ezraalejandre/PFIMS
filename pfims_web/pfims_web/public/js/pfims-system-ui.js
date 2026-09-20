@@ -162,10 +162,146 @@
         return firstOption ? firstOption.textContent.replace(/^All\s+|^Sort by\s+/i, '').trim() : 'Filter';
     }
 
+    function currentDefaultFilterModule() {
+        if (document.body?.dataset.defaultFilterModule) return document.body.dataset.defaultFilterModule;
+        var path = window.location.pathname.replace(/^\/(a|o)(?=dashboard|finance|projects|inventory|suppliers|reports)/, '/');
+        var section = new URLSearchParams(window.location.search).get('section') || '';
+        if (path === '/dashboard') return 'dashboard';
+        if (path === '/projects') return 'projects';
+        if (path === '/suppliers') return 'suppliers';
+        if (path === '/reports') return 'reports';
+        if (path === '/audit-logs') return 'audit-logs';
+        if (path === '/finance') {
+            if (/budget/i.test(section)) return 'finance.budgets';
+            if (/bond/i.test(section)) return 'finance.bonds';
+            return 'finance.expenses';
+        }
+        if (path === '/inventory') return /transaction/i.test(section) ? 'inventory.transactions' : 'inventory.items';
+        if (path === '/ml-dashboard-test') return /budget/i.test(section) ? 'analytics.budget' : 'analytics.material';
+        return null;
+    }
+
+    function installDefaultFilters() {
+        if (document.body?.dataset.pfimsDefaultFilters === 'loading' || document.body?.dataset.pfimsDefaultFilters === 'ready') return;
+        var module = currentDefaultFilterModule();
+        if (!module || document.body.classList.contains('settings-page')) return;
+        document.body.dataset.pfimsDefaultFilters = 'loading';
+        fetch('/api/default-filters', { headers: { Accept: 'application/json' } })
+            .then(function (response) { return response.ok ? response.json() : {}; })
+            .then(function (allDefaults) {
+                var defaults = allDefaults[module] || {};
+                document.body.dataset.pfimsDefaultFilters = 'ready';
+                if (!Object.keys(defaults).length) return;
+                var controls = [];
+                var resetButtons = new Set();
+
+                function syncResetButton(button) {
+                    var differs = controls.some(function (control) {
+                        var expected = defaults[control.id || control.name];
+                        if (control.multiple) expected = Array.isArray(expected) ? expected : [expected];
+                        var actual = control.multiple
+                            ? Array.from(control.selectedOptions).map(function (option) { return option.value; })
+                            : control.value;
+                        return JSON.stringify(actual) !== JSON.stringify(expected);
+                    });
+                    button.hidden = !differs;
+                }
+
+                function applyAvailableControls() {
+                    Object.keys(defaults).forEach(function (key) {
+                        var control = document.getElementById(key) || document.querySelector('[name="' + CSS.escape(key) + '"]');
+                        if (!control || control.dataset.pfimsDefaultApplied === 'ready') return;
+                        var value = defaults[key];
+                        if (control.tagName === 'SELECT' && !control.multiple && value !== ''
+                            && !Array.from(control.options).some(function (option) { return option.value === String(value); })) return;
+                        control.dataset.pfimsDefaultApplied = 'ready';
+                        if (control.multiple) {
+                            var selected = Array.isArray(value) ? value.map(String) : [String(value)];
+                            Array.from(control.options).forEach(function (option) { option.selected = selected.includes(option.value); });
+                        } else control.value = value;
+                        controls.push(control);
+                        control.dispatchEvent(new Event(control.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+                        var panel = control.closest('.pfims-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters');
+                        if (!panel) return;
+                        panel.classList.add('pfims-using-defaults');
+                        if (!panel.querySelector('.pfims-default-filter-note')) {
+                            var note = document.createElement('span');
+                            note.className = 'pfims-default-filter-note';
+                            note.textContent = 'Using saved defaults';
+                            panel.prepend(note);
+                        }
+                        var reset = panel.querySelector('.pfims-reset-defaults');
+                        if (!reset) {
+                            reset = document.createElement('button');
+                            reset.type = 'button';
+                            reset.className = 'pfims-reset-defaults';
+                            reset.textContent = 'Reset Filters to Default';
+                            reset.hidden = true;
+                            var clear = panel.querySelector('.pfims-clear-filters');
+                            if (clear) clear.insertAdjacentElement('afterend', reset); else panel.appendChild(reset);
+                            reset.addEventListener('click', function () {
+                                controls.filter(function (item) { return panel.contains(item); }).forEach(function (item) {
+                                    var expected = defaults[item.id || item.name];
+                                    item.value = expected;
+                                    item.dispatchEvent(new Event(item.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+                                });
+                                syncResetButton(reset);
+                            });
+                        }
+                        resetButtons.add(reset);
+                        if (control.dataset.pfimsDefaultWatch !== 'ready') {
+                            control.dataset.pfimsDefaultWatch = 'ready';
+                            ['input', 'change'].forEach(function (eventName) {
+                                control.addEventListener(eventName, function () {
+                                    window.setTimeout(function () { resetButtons.forEach(syncResetButton); }, 0);
+                                });
+                            });
+                        }
+                    });
+                    resetButtons.forEach(syncResetButton);
+                }
+                applyAvailableControls();
+                new MutationObserver(applyAvailableControls).observe(document.body, { childList: true, subtree: true });
+            })
+            .catch(function () { document.body.dataset.pfimsDefaultFilters = 'unavailable'; });
+    }
+
+    function installAdminAuditNavigation() {
+        if (document.body?.dataset.portal !== 'admin' || document.querySelector('.sidebar a[href$="/audit-logs"]')) return;
+        var list = document.querySelector('.sidebar nav ul');
+        if (!list) return;
+        var item = document.createElement('li');
+        if (window.location.pathname === '/audit-logs') item.className = 'active';
+        item.innerHTML = '<a href="/audit-logs"><span class="nav-link-icon pfims-audit-icon" aria-hidden="true">≡</span>AUDIT LOGS</a>';
+        list.appendChild(item);
+    }
+
+    function installAuditDeepLink() {
+        var subject = new URLSearchParams(window.location.search).get('audit_subject');
+        if (!subject || document.body.dataset.pfimsAuditDeepLink === 'ready') return;
+        document.body.dataset.pfimsAuditDeepLink = 'ready';
+        var attempts = 0;
+        function tryOpen() {
+            attempts += 1;
+            var candidates = Array.from(document.querySelectorAll('[data-id], [data-record-id], [data-project-id], [data-item-id], [data-supplier-id]'));
+            var target = candidates.find(function (element) {
+                return Array.from(element.attributes).some(function (attribute) { return /^data-.*id$/.test(attribute.name) && attribute.value === subject; });
+            });
+            var row = target?.closest('tr') || target;
+            var view = row && Array.from(row.querySelectorAll('button, a')).find(function (control) {
+                return /^view/i.test(control.getAttribute('aria-label') || control.title || control.textContent || '');
+            });
+            if (view) { view.click(); return; }
+            if (attempts < 30) window.setTimeout(tryOpen, 150);
+        }
+        tryOpen();
+    }
+
     function installSharedFilters() {
         document.querySelectorAll('.project-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters').forEach(function (panel) {
             if (panel.dataset.pfimsFilters === 'ready') return;
             panel.classList.add('pfims-filter-panel');
+            if (!panel.closest('.modal, .modal-overlay, dialog')) panel.classList.add('pfims-sticky-filter');
             panel.dataset.pfimsFilters = 'ready';
 
             if (!panel.closest('.reports-page')) {
@@ -248,6 +384,23 @@
                 window.clearTimeout(timer);
                 timer = window.setTimeout(function () { element.classList.remove('pfims-is-scrolling'); }, 700);
             }, { passive: true });
+        });
+    }
+
+    function installTableScrollFades() {
+        var selector = '.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .forecast-table-wrapper, .report-table-wrapper, .analytics-table-wrapper';
+        function update(wrapper) {
+            var max = Math.max(0, wrapper.scrollWidth - wrapper.clientWidth);
+            var scrollable = max > 1;
+            wrapper.classList.toggle('is-at-start', !scrollable || wrapper.scrollLeft <= 1);
+            wrapper.classList.toggle('is-at-end', !scrollable || wrapper.scrollLeft >= max - 1);
+        }
+        document.querySelectorAll(selector).forEach(function (wrapper) {
+            update(wrapper);
+            if (wrapper.dataset.pfimsScrollFade === 'ready') return;
+            wrapper.dataset.pfimsScrollFade = 'ready';
+            wrapper.addEventListener('scroll', function () { update(wrapper); }, { passive: true });
+            if (typeof ResizeObserver === 'function') new ResizeObserver(function () { update(wrapper); }).observe(wrapper);
         });
     }
 
@@ -731,9 +884,7 @@
         var activeCell = null;
 
         function eligible(target) {
-            var cell = target.closest && target.closest('table tbody td');
-            if (!cell || cell.classList.contains('action-cell') || cell.querySelector('button, a, input, select, textarea')) return null;
-            return cell;
+            return target.closest && target.closest('table th, table td');
         }
         function position(x, y) {
             var gap = 12;
@@ -751,7 +902,7 @@
             tooltip.textContent = value;
             tooltip.hidden = false;
             cell.setAttribute('aria-describedby', tooltip.id);
-            if (!cell.hasAttribute('tabindex')) cell.tabIndex = 0;
+            if (!cell.hasAttribute('tabindex') && !cell.querySelector('button, a, input, select, textarea')) cell.tabIndex = 0;
             position(x, y);
         }
         function hide(cell) {
@@ -784,28 +935,38 @@
     }
 
     function installPageLoader() {
-        if (window.PFIMS_PAGE_LOADER) return;
+        if (window.PFIMS_PAGE_LOADER || document.body.classList.contains('landing-page')) return;
+        var host = document.querySelector('main.main-content, .main-content, main');
+        if (!host) return;
+        host.classList.add('pfims-loader-host');
         var loader = document.createElement('div');
         loader.id = 'pfimsPageLoader';
         loader.className = 'pfims-page-loader';
         loader.setAttribute('role', 'status');
         loader.setAttribute('aria-live', 'polite');
         loader.innerHTML = '<span class="pfims-page-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span>';
-        document.body.appendChild(loader);
+        host.appendChild(loader);
         var pending = 0;
-        var visible = document.readyState === 'loading';
-        loader.hidden = !visible;
+        var visible = false;
+        loader.hidden = true;
 
         function show() {
             visible = true;
             loader.hidden = false;
-            document.body.classList.add('pfims-is-loading');
+            host.classList.add('pfims-is-loading');
         }
+        var settleTimer;
         function hide() {
             if (pending > 0) return;
-            visible = false;
-            loader.hidden = true;
-            document.body.classList.remove('pfims-is-loading');
+            window.clearTimeout(settleTimer);
+            settleTimer = window.setTimeout(function () {
+                if (pending > 0) return;
+                window.requestAnimationFrame(function () { window.requestAnimationFrame(function () {
+                    visible = false;
+                    loader.hidden = true;
+                    host.classList.remove('pfims-is-loading');
+                }); });
+            }, 80);
         }
         window.PFIMS_PAGE_LOADER = { show: show, hide: hide };
 
@@ -823,16 +984,18 @@
             trackedFetch.__pfimsTracked = true;
             window.fetch = trackedFetch;
         }
-        window.addEventListener('load', function () {
-            window.requestAnimationFrame(function () { window.requestAnimationFrame(hide); });
-        }, { once: true });
-        window.addEventListener('beforeunload', show);
+        show();
+        if (document.readyState === 'complete') hide();
+        else window.addEventListener('load', hide, { once: true });
         document.addEventListener('click', function (event) {
             var control = event.target.closest('a[href], [role="tab"], .tab, .nav-link, .nav-parent-toggle');
             if (!control || event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            if (control.matches('.nav-parent-toggle') || control.closest('.nav-parent-toggle')) return;
             if (control.matches('a[href]')) {
                 var href = control.getAttribute('href') || '';
                 if (!href || href.charAt(0) === '#' || control.target === '_blank') return;
+                var destination = new URL(control.href, window.location.href);
+                if (destination.href === window.location.href) return;
                 show();
                 return;
             }
@@ -1100,7 +1263,10 @@
         installAutomaticRefresh();
         installHeaderClock();
         installRoleNavigation();
+        installAdminAuditNavigation();
         installSharedFilters();
+        installDefaultFilters();
+        installAuditDeepLink();
         removeProjectFilterControls();
         installModuleNavigation();
         installSingleClickNavigation();
@@ -1112,12 +1278,14 @@
         installAccurateChartHover();
         installDetailsFooterBridge();
         installQuietScrollbars();
+        installTableScrollFades();
         document.querySelectorAll('table').forEach(installActionsForClickableRows);
         document.querySelectorAll('table').forEach(installStandardActions);
         document.querySelectorAll('table').forEach(installTablePagination);
         document.querySelectorAll('table').forEach(installColumnChooser);
         new MutationObserver(function () {
             installSharedFilters();
+            installAdminAuditNavigation();
             removeProjectFilterControls();
             installRoleNavigation();
             installModuleNavigation();
@@ -1127,6 +1295,7 @@
             normalizePaginationTotals();
             document.querySelectorAll('input[type="search"]').forEach(installSearchSuggestions);
             installQuietScrollbars();
+            installTableScrollFades();
             document.querySelectorAll('table').forEach(installActionsForClickableRows);
             document.querySelectorAll('table').forEach(installStandardActions);
             document.querySelectorAll('table').forEach(installTablePagination);

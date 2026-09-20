@@ -79,6 +79,11 @@ class User extends Authenticatable
         return $this->hasMany(LoginHistory::class)->latest('logged_in_at');
     }
 
+    public function defaultFilters()
+    {
+        return $this->hasMany(UserDefaultFilter::class);
+    }
+
 //     public function sendPasswordResetNotification($token)
 // {
 //     $this->notify(new ApiResetPasswordNotification($token));

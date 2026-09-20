@@ -14,6 +14,9 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('--pfims-desktop-scale: 75%;', $css);
         $this->assertStringContainsString('@media (min-width: 1025px)', $css);
         $this->assertStringContainsString('zoom: var(--pfims-desktop-scale);', $css);
+        $this->assertStringContainsString('width: calc(100% - 248px) !important;', $css);
+        $this->assertStringContainsString('html.sidebar-collapsed body:not(.landing-page) .main-content', $css);
+        $this->assertStringContainsString('width: calc(100% - 76px) !important;', $css);
         $this->assertStringContainsString('body:not(.landing-page) .sidebar', $css);
         $this->assertStringContainsString('position: fixed !important;', $css);
         $this->assertStringContainsString('inset: 72px auto auto 0 !important;', $css);
@@ -66,7 +69,7 @@ class UiRefreshCssContractTest extends TestCase
                 );
             }
         }
-        $this->assertSame(11, $themeInclusions, 'Every theme.js view inclusion must be accounted for.');
+        $this->assertSame(12, $themeInclusions, 'Every theme.js view inclusion must be accounted for.');
         $this->assertStringContainsString('loadLegacySystemUiIfNeeded', $theme);
         $this->assertStringContainsString("document.addEventListener('DOMContentLoaded', loadLegacySystemUiIfNeeded", $theme);
         $this->assertStringContainsString('const themeScript = document.currentScript;', $theme);
@@ -132,6 +135,15 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringNotContainsString('opacity: 0.7;', $notifications);
         $this->assertStringContainsString('var rolePaths = ROLE_PATHS[portal] || ROLE_PATHS.admin;', $systemUi);
         $this->assertStringContainsString('childUrl.pathname = rolePath;', $systemUi);
+        $this->assertStringContainsString("target.closest('table th, table td')", $systemUi);
+        $this->assertStringContainsString("document.body.classList.contains('landing-page')", $systemUi);
+        $this->assertStringContainsString("host.classList.add('pfims-loader-host')", $systemUi);
+        $this->assertStringContainsString("control.matches('.nav-parent-toggle')", $systemUi);
+        $this->assertStringNotContainsString("window.addEventListener('beforeunload', show)", $systemUi);
+        $this->assertStringContainsString('position: fixed;', $css);
+        $this->assertStringContainsString('inset: 72px 0 0 248px;', $css);
+        $this->assertStringContainsString('html.sidebar-collapsed .pfims-page-loader', $css);
+        $this->assertStringContainsString('.pfims-loader-host', $css);
         $this->assertStringNotContainsString('setInterval(function() {'.PHP_EOL.'                loadNotifications();', $notifications);
     }
 }

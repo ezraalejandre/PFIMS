@@ -8,6 +8,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\MLController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\UserDefaultFilterController;
 use App\Mail\FirstLoginVerificationMail;
 use App\Models\AppNotification;
 use App\Models\LoginHistory;
@@ -160,6 +162,9 @@ Route::get('/suppliers', function () {
 
 // Authenticated web-only API endpoints
 Route::middleware('auth')->group(function () {
+    Route::get('/api/default-filters', [UserDefaultFilterController::class, 'index']);
+    Route::put('/api/default-filters/{module}', [UserDefaultFilterController::class, 'update']);
+    Route::delete('/api/default-filters/{module}', [UserDefaultFilterController::class, 'destroy']);
     // Config API endpoints
     Route::get('/api/config/{type}', [ConfigController::class, 'index']);
     Route::post('/api/config/{type}', [ConfigController::class, 'store']);
@@ -177,6 +182,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/imports/templates/{type}', [DataImportController::class, 'template'])
         ->whereIn('type', ['finance-expenses', 'inventory-items', 'inventory-transactions']);
 });
+
+Route::get('/audit-logs', [AuditLogController::class, 'index'])
+    ->middleware(['auth', 'role.portal:admin'])
+    ->name('audit-logs.index');
 
 // Reports page
 Route::get('/reports', [ReportController::class, 'page'])->middleware(['auth', 'role.portal:admin']);

@@ -113,6 +113,7 @@
                     @if($isAdmin)
                         <li onclick="switchSettings(this, 'configurations')">Configurations</li>
                     @endif
+                    <li onclick="switchSettings(this, 'defaultfilters')">Default Filters</li>
                     <li onclick="switchSettings(this, 'notifications')">Notifications</li>
                     @if($isAdmin)
                         <li onclick="switchSettings(this, 'usermanagement')">User Management</li>
@@ -219,6 +220,34 @@
                     </div>
                 </div>
                 @endif
+
+                <div id="section-defaultfilters" class="settings-section" style="display: none;">
+                    <div class="section-title">Default Filters</div>
+                    <div class="section-desc">Choose the filters that should be applied automatically whenever you open a module. You can temporarily change them on each page without changing these saved preferences.</div>
+                    <div class="default-filter-config">
+                        <label class="default-filter-module-field"><span>Module</span>
+                            <select id="defaultFilterModule" onchange="renderDefaultFilterFields()">
+                                <option value="dashboard">Dashboard</option>
+                                <option value="projects">Projects</option>
+                                <option value="finance.expenses">Finance — Expenses</option>
+                                <option value="finance.budgets">Finance — Budgets</option>
+                                <option value="finance.bonds">Finance — Construction Bonds</option>
+                                <option value="inventory.items">Inventory — Items</option>
+                                <option value="inventory.transactions">Inventory — Transactions</option>
+                                <option value="suppliers">Suppliers</option>
+                                <option value="reports">Reports</option>
+                                <option value="analytics.material">Analytics — Material Projection</option>
+                                <option value="analytics.budget">Analytics — Budget Comparison</option>
+                            </select>
+                        </label>
+                        <div id="defaultFilterFields" class="default-filter-fields"></div>
+                        <div class="default-filter-actions">
+                            <button type="button" class="btn-cancel" onclick="removeDefaultFilters()">Remove saved defaults</button>
+                            <button type="button" class="btn-save" onclick="saveDefaultFilters()">Save defaults</button>
+                        </div>
+                        <p id="defaultFilterStatus" class="default-filter-status" role="status" aria-live="polite"></p>
+                    </div>
+                </div>
 
                 <!-- ─── NOTIFICATIONS ─── -->
                 <div id="section-notifications" class="settings-section" style="display: none;">
@@ -1305,7 +1334,10 @@
             resetPasswordToggleButtons();
             loadSystemSettings();
             var query = new URLSearchParams(window.location.search);
-            if (query.get('section') === 'usermanagement') {
+            if (query.get('section') === 'defaultfilters') {
+                var defaultFiltersTab = document.querySelector(".settings-nav li[onclick*='defaultfilters']");
+                if (defaultFiltersTab) switchSettings(defaultFiltersTab, 'defaultfilters');
+            } else if (query.get('section') === 'usermanagement') {
                 var userManagementTab = document.querySelector(".settings-nav li[onclick*='usermanagement']");
                 if (userManagementTab) switchSettings(userManagementTab, 'usermanagement');
             } else if (query.get('change_password') === '1') {
@@ -1313,7 +1345,71 @@
                 if (securityTab) switchSettings(securityTab, 'security');
                 openChangePasswordModal();
             }
+            loadDefaultFilters();
         });
+
+        var savedDefaultFilters = {};
+        var defaultFilterDefinitions = {
+            dashboard: [['search','Search','search'],['status','Project status','text'],['stock_status','Stock status','text'],['start_date','Start date','date'],['end_date','End date','date']],
+            projects: [['projectSearch','Search','search'],['projectStatusFilter','Status','text'],['projectPhaseFilter','Phase','text'],['projectDateFrom','From','date'],['projectDateTo','To','date']],
+            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project ID','number'],['expenseScopeFilter','Expense type','text'],['expenseCategoryFilter','Category ID','number'],['expenseComponentFilter','Component','text']],
+            'finance.budgets': [['budgetSearch','Search','search'],['budgetProjectFilter','Project ID','number'],['budgetStatusFilter','Status','text']],
+            'finance.bonds': [['bondProjectFilter','Project ID','number'],['bondStatusFilter','Status','text']],
+            'inventory.items': [['itemsSearchInput','Search','search'],['itemsCategoryFilter','Category ID','number'],['itemsSupplierFilter','Supplier ID','number'],['itemsStockFilter','Stock status','text']],
+            'inventory.transactions': [['searchInput','Search','search'],['typeFilter','Transaction type','text'],['transactionCategoryFilter','Category ID','number'],['transactionProjectFilter','Project ID','number'],['startDate','From','date'],['endDate','To','date']],
+            suppliers: [['supplierSearch','Search','search'],['supplierSort','Sort order','text']],
+            reports: [['filterSearch','Search','search'],['filterProject','Project ID','number'],['filterStatus','Status','text'],['filterClassification','Classification','text'],['filterCategory','Category ID','number'],['filterSupplier','Supplier ID','number'],['filterStockStatus','Stock status','text'],['filterStart','From','date'],['filterEnd','To','date']],
+            'analytics.material': [['materialForecastSearch','Search','search'],['materialForecastStatus','Status','text']],
+            'analytics.budget': [['budgetVarianceSearch','Search','search'],['budgetVarianceProject','Project ID','number'],['budgetVarianceStatus','Position','text']]
+        };
+
+        function loadDefaultFilters() {
+            fetch('/api/default-filters', { headers: { Accept: 'application/json' } })
+                .then(function(response) { if (!response.ok) throw new Error('Unable to load defaults.'); return response.json(); })
+                .then(function(data) { savedDefaultFilters = data || {}; renderDefaultFilterFields(); })
+                .catch(function(error) { document.getElementById('defaultFilterStatus').textContent = error.message; });
+        }
+
+        function renderDefaultFilterFields() {
+            var module = document.getElementById('defaultFilterModule').value;
+            var values = savedDefaultFilters[module] || {};
+            var host = document.getElementById('defaultFilterFields');
+            host.replaceChildren();
+            (defaultFilterDefinitions[module] || []).forEach(function(definition) {
+                var label = document.createElement('label');
+                var title = document.createElement('span');
+                var input = document.createElement('input');
+                title.textContent = definition[1];
+                input.type = definition[2];
+                input.dataset.filterKey = definition[0];
+                input.value = values[definition[0]] || '';
+                input.placeholder = 'Leave blank for no default';
+                label.append(title, input);
+                host.appendChild(label);
+            });
+            document.getElementById('defaultFilterStatus').textContent = Object.keys(values).length ? 'Saved defaults are active for this module.' : 'No defaults saved for this module.';
+        }
+
+        function saveDefaultFilters() {
+            var module = document.getElementById('defaultFilterModule').value;
+            var filters = {};
+            document.querySelectorAll('#defaultFilterFields [data-filter-key]').forEach(function(input) {
+                if (input.value.trim() !== '') filters[input.dataset.filterKey] = input.value.trim();
+            });
+            fetch('/api/default-filters/' + encodeURIComponent(module), {
+                method: 'PUT', headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrfToken},
+                body: JSON.stringify({filters: filters})
+            }).then(function(response) { if (!response.ok) throw new Error('Unable to save defaults.'); return response.json(); })
+              .then(function(data) { savedDefaultFilters[module] = data.filters || {}; renderDefaultFilterFields(); showSuccess('Default filters saved.'); })
+              .catch(function(error) { document.getElementById('defaultFilterStatus').textContent = error.message; });
+        }
+
+        function removeDefaultFilters() {
+            var module = document.getElementById('defaultFilterModule').value;
+            fetch('/api/default-filters/' + encodeURIComponent(module), {method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':csrfToken}})
+                .then(function(response) { if (!response.ok) throw new Error('Unable to remove defaults.'); delete savedDefaultFilters[module]; renderDefaultFilterFields(); showSuccess('Saved defaults removed.'); })
+                .catch(function(error) { document.getElementById('defaultFilterStatus').textContent = error.message; });
+        }
     </script>
     <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 </body>

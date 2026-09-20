@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\AutomaticModelRetraining;
 use App\Services\NotificationService;
+use App\Services\AuditLogService;
+use App\Models\FinExpense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +19,7 @@ class FinExpenseController extends Controller
     public function __construct(
         private NotificationService $notifications,
         private AutomaticModelRetraining $modelRetraining,
+        private AuditLogService $audit,
     ) {}
 
     private function mapExpense($item)
@@ -258,6 +261,7 @@ class FinExpenseController extends Controller
             });
 
             $createdExpense = $this->findWithJoins($id);
+            if ($audited = FinExpense::find($id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
             $this->modelRetraining->afterDataChange($createdExpense?->project_id === null ? [] : [(int) $createdExpense->project_id]);
 
             return response()->json($this->mapExpense($createdExpense), 201);
@@ -313,6 +317,7 @@ class FinExpenseController extends Controller
 
             $id = DB::table('fin_expense_tbl')->insertGetId($data);
             $expense = $this->findWithJoins($id);
+            if ($audited = FinExpense::find($id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
 
             // Send notification
             $category = $expense->category_name ?? 'Expense';
@@ -397,6 +402,7 @@ class FinExpenseController extends Controller
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->update($data);
             $expense = $this->findWithJoins($id);
+            if ($audited = FinExpense::find($id)) $this->audit->record($audited, 'UPDATE', (array) $existing, $audited->getAttributes());
             $projectIds = array_values(array_filter([$oldProjectId, $expense->project_id === null ? null : (int) $expense->project_id]));
             $this->modelRetraining->afterDataChange($projectIds);
 
@@ -419,6 +425,9 @@ class FinExpenseController extends Controller
             }
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->delete();
+            $deleted = new FinExpense();
+            $deleted->setRawAttributes((array) $existing, true);
+            $this->audit->record($deleted, 'DELETE', (array) $existing, []);
             $this->modelRetraining->afterDataChange($existing->project_id === null ? [] : [(int) $existing->project_id]);
 
             return response()->json(['success' => true, 'message' => 'Expense deleted successfully']);

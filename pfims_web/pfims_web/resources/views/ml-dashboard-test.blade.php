@@ -1489,7 +1489,7 @@
                     </div>
                     <p class="result-helper"><strong>How to read this:</strong> A projected savings figure means the forecast is below the approved budget; an overrun means the forecast is above it. This view does not change the underlying prediction calculation.</p>
                 `;
-                showNotification('Prediction completed. The business diagnostic is ready.', 'success');
+                showNotification('Prediction completed.', 'success');
             } else {
                 resultDiv.className = 'prediction-result show danger';
                 const errors = result.errors ? Object.values(result.errors).flat().join('<br>') : '';
