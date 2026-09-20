@@ -307,7 +307,7 @@
             if (!panel.closest('.reports-page')) {
                 var subtitle = document.createElement('p');
                 subtitle.className = 'pfims-filter-subtitle';
-                subtitle.textContent = 'Filters update the KPIs, live records, and graph together.';
+                subtitle.textContent = panel.dataset.filterDescription || 'Filters update the KPIs, live records, and graph together.';
                 panel.prepend(subtitle);
             }
 
