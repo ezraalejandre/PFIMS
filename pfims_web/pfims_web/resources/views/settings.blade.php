@@ -1350,17 +1350,17 @@
 
         var savedDefaultFilters = {};
         var defaultFilterDefinitions = {
-            dashboard: [['search','Search','search'],['status','Project status','text'],['stock_status','Stock status','text'],['start_date','Start date','date'],['end_date','End date','date']],
-            projects: [['projectSearch','Search','search'],['projectStatusFilter','Status','text'],['projectPhaseFilter','Phase','text'],['projectDateFrom','From','date'],['projectDateTo','To','date']],
-            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project ID','number'],['expenseScopeFilter','Expense type','text'],['expenseCategoryFilter','Category ID','number'],['expenseComponentFilter','Component','text']],
-            'finance.budgets': [['budgetSearch','Search','search'],['budgetProjectFilter','Project ID','number'],['budgetStatusFilter','Status','text']],
+            dashboard: [['search','Search','search'],['status','Project status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','in_stock','low_stock','out_of_stock']]],
+            projects: [['projectSearch','Search','search'],['projectStatusFilter','Status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','select',['','Planning','Foundation','Structure','Finishing','Complete']],['projectDateFrom','From','date'],['projectDateTo','To','date']],
+            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project ID','number'],['expenseScopeFilter','Expense type','select',['all','direct','admin','overall']],['expenseCategoryFilter','Category ID','number'],['expenseComponentFilter','Component','select',['all','material','labor','equipment','other']]],
+            'finance.budgets': [['budgetSearch','Search','search'],['budgetProjectFilter','Project ID','number'],['budgetStatusFilter','Status','select',['all','On Track','Near Limit','Over Budget','No Budget']]],
             'finance.bonds': [['bondProjectFilter','Project ID','number'],['bondStatusFilter','Status','text']],
-            'inventory.items': [['itemsSearchInput','Search','search'],['itemsCategoryFilter','Category ID','number'],['itemsSupplierFilter','Supplier ID','number'],['itemsStockFilter','Stock status','text']],
-            'inventory.transactions': [['searchInput','Search','search'],['typeFilter','Transaction type','text'],['transactionCategoryFilter','Category ID','number'],['transactionProjectFilter','Project ID','number'],['startDate','From','date'],['endDate','To','date']],
-            suppliers: [['supplierSearch','Search','search'],['supplierSort','Sort order','text']],
+            'inventory.items': [['itemsSearchInput','Search','search'],['itemsCategoryFilter','Category ID','number'],['itemsSupplierFilter','Supplier ID','number'],['itemsStockFilter','Stock status','select',['all','in_stock','low_stock','out_of_stock']]],
+            'inventory.transactions': [['searchInput','Search','search'],['typeFilter','Transaction type','select',['all','IN','OUT']],['transactionCategoryFilter','Category ID','number'],['transactionProjectFilter','Project ID','number'],['startDate','From','date'],['endDate','To','date']],
+            suppliers: [['supplierSearch','Search','search'],['supplierSort','Sort order','select',['name','items','alerts']]],
             reports: [['filterSearch','Search','search'],['filterProject','Project ID','number'],['filterStatus','Status','text'],['filterClassification','Classification','text'],['filterCategory','Category ID','number'],['filterSupplier','Supplier ID','number'],['filterStockStatus','Stock status','text'],['filterStart','From','date'],['filterEnd','To','date']],
-            'analytics.material': [['materialForecastSearch','Search','search'],['materialForecastStatus','Status','text']],
-            'analytics.budget': [['budgetVarianceSearch','Search','search'],['budgetVarianceProject','Project ID','number'],['budgetVarianceStatus','Position','text']]
+            'analytics.material': [['materialForecastSearch','Search','search'],['materialForecastStatus','Status','select',['','Healthy','Low Stock','Reorder Needed']]],
+            'analytics.budget': [['budgetVarianceSearch','Search','search'],['budgetVarianceProject','Project ID','number'],['budgetVarianceStatus','Position','select',['','within','over']]]
         };
 
         function loadDefaultFilters() {
@@ -1378,12 +1378,18 @@
             (defaultFilterDefinitions[module] || []).forEach(function(definition) {
                 var label = document.createElement('label');
                 var title = document.createElement('span');
-                var input = document.createElement('input');
+                var input = definition[2] === 'select' ? document.createElement('select') : document.createElement('input');
                 title.textContent = definition[1];
-                input.type = definition[2];
+                if (input.tagName === 'INPUT') input.type = definition[2];
+                else (definition[3] || []).forEach(function(value) {
+                    var option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value || 'No default';
+                    input.appendChild(option);
+                });
                 input.dataset.filterKey = definition[0];
                 input.value = values[definition[0]] || '';
-                input.placeholder = 'Leave blank for no default';
+                if (input.tagName === 'INPUT') input.placeholder = 'Leave blank for no default';
                 label.append(title, input);
                 host.appendChild(label);
             });
@@ -1394,7 +1400,7 @@
             var module = document.getElementById('defaultFilterModule').value;
             var filters = {};
             document.querySelectorAll('#defaultFilterFields [data-filter-key]').forEach(function(input) {
-                if (input.value.trim() !== '') filters[input.dataset.filterKey] = input.value.trim();
+                if (String(input.value).trim() !== '') filters[input.dataset.filterKey] = String(input.value).trim();
             });
             fetch('/api/default-filters/' + encodeURIComponent(module), {
                 method: 'PUT', headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrfToken},

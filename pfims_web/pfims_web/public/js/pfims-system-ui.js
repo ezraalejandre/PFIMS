@@ -192,19 +192,70 @@
                 var defaults = allDefaults[module] || {};
                 document.body.dataset.pfimsDefaultFilters = 'ready';
                 if (!Object.keys(defaults).length) return;
-                var controls = [];
-                var resetButtons = new Set();
+                var componentControls = new Map();
 
-                function syncResetButton(button) {
-                    var differs = controls.some(function (control) {
+                function componentFor(control) {
+                    var panel = control.closest('.pfims-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters');
+                    return panel?.closest('.pfims-filter-component') || panel;
+                }
+
+                function setControlValue(control, expected) {
+                    if (control.multiple) {
+                        var selected = Array.isArray(expected) ? expected.map(String) : [String(expected)];
+                        Array.from(control.options).forEach(function (option) { option.selected = selected.includes(option.value); });
+                    } else {
+                        control.value = expected == null ? '' : String(expected);
+                    }
+                    control.dispatchEvent(new Event('input', { bubbles: true }));
+                    control.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                function syncComponent(component) {
+                    var state = componentControls.get(component);
+                    if (!state) return;
+                    var differs = state.controls.some(function (control) {
                         var expected = defaults[control.id || control.name];
                         if (control.multiple) expected = Array.isArray(expected) ? expected : [expected];
                         var actual = control.multiple
                             ? Array.from(control.selectedOptions).map(function (option) { return option.value; })
                             : control.value;
-                        return JSON.stringify(actual) !== JSON.stringify(expected);
+                        return JSON.stringify(actual) !== JSON.stringify(control.multiple ? expected.map(String) : String(expected ?? ''));
                     });
-                    button.hidden = !differs;
+                    state.reset.hidden = !differs;
+                    state.note.textContent = differs ? 'Filters differ from saved defaults' : 'Using saved defaults';
+                    component.classList.toggle('pfims-defaults-modified', differs);
+                }
+
+                function ensureComponentState(component) {
+                    if (componentControls.has(component)) return componentControls.get(component);
+                    var heading = component.querySelector(':scope > .pfims-filter-heading, :scope > .panel-heading')
+                        || component.querySelector('.pfims-filter-heading');
+                    var note = document.createElement('span');
+                    note.className = 'pfims-default-filter-note';
+                    note.setAttribute('role', 'status');
+                    note.textContent = 'Using saved defaults';
+                    var headingText = heading?.querySelector(':scope > div');
+                    if (headingText) headingText.appendChild(note);
+                    else if (heading) heading.insertBefore(note, heading.querySelector('.pfims-clear-filters, button, a'));
+                    else component.prepend(note);
+                    var reset = document.createElement('button');
+                    reset.type = 'button';
+                    reset.className = 'pfims-reset-defaults';
+                    reset.textContent = 'Reset Filters to Default';
+                    reset.hidden = true;
+                    var clear = component.querySelector('.pfims-clear-filters');
+                    if (clear) clear.insertAdjacentElement('afterend', reset);
+                    else if (heading) heading.appendChild(reset);
+                    else component.appendChild(reset);
+                    var state = { controls: [], reset: reset, note: note };
+                    componentControls.set(component, state);
+                    reset.addEventListener('click', function () {
+                        state.controls.forEach(function (control) {
+                            setControlValue(control, defaults[control.id || control.name]);
+                        });
+                        syncComponent(component);
+                    });
+                    return state;
                 }
 
                 function applyAvailableControls() {
@@ -215,50 +266,22 @@
                         if (control.tagName === 'SELECT' && !control.multiple && value !== ''
                             && !Array.from(control.options).some(function (option) { return option.value === String(value); })) return;
                         control.dataset.pfimsDefaultApplied = 'ready';
-                        if (control.multiple) {
-                            var selected = Array.isArray(value) ? value.map(String) : [String(value)];
-                            Array.from(control.options).forEach(function (option) { option.selected = selected.includes(option.value); });
-                        } else control.value = value;
-                        controls.push(control);
-                        control.dispatchEvent(new Event(control.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
-                        var panel = control.closest('.pfims-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters');
-                        if (!panel) return;
-                        panel.classList.add('pfims-using-defaults');
-                        if (!panel.querySelector('.pfims-default-filter-note')) {
-                            var note = document.createElement('span');
-                            note.className = 'pfims-default-filter-note';
-                            note.textContent = 'Using saved defaults';
-                            panel.prepend(note);
-                        }
-                        var reset = panel.querySelector('.pfims-reset-defaults');
-                        if (!reset) {
-                            reset = document.createElement('button');
-                            reset.type = 'button';
-                            reset.className = 'pfims-reset-defaults';
-                            reset.textContent = 'Reset Filters to Default';
-                            reset.hidden = true;
-                            var clear = panel.querySelector('.pfims-clear-filters');
-                            if (clear) clear.insertAdjacentElement('afterend', reset); else panel.appendChild(reset);
-                            reset.addEventListener('click', function () {
-                                controls.filter(function (item) { return panel.contains(item); }).forEach(function (item) {
-                                    var expected = defaults[item.id || item.name];
-                                    item.value = expected;
-                                    item.dispatchEvent(new Event(item.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
-                                });
-                                syncResetButton(reset);
-                            });
-                        }
-                        resetButtons.add(reset);
+                        setControlValue(control, value);
+                        var component = componentFor(control);
+                        if (!component) return;
+                        component.classList.add('pfims-using-defaults');
+                        var state = ensureComponentState(component);
+                        state.controls.push(control);
                         if (control.dataset.pfimsDefaultWatch !== 'ready') {
                             control.dataset.pfimsDefaultWatch = 'ready';
                             ['input', 'change'].forEach(function (eventName) {
                                 control.addEventListener(eventName, function () {
-                                    window.setTimeout(function () { resetButtons.forEach(syncResetButton); }, 0);
+                                    window.setTimeout(function () { syncComponent(component); }, 0);
                                 });
                             });
                         }
                     });
-                    resetButtons.forEach(syncResetButton);
+                    componentControls.forEach(function (_, component) { syncComponent(component); });
                 }
                 applyAvailableControls();
                 new MutationObserver(applyAvailableControls).observe(document.body, { childList: true, subtree: true });
@@ -301,7 +324,9 @@
         document.querySelectorAll('.project-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters').forEach(function (panel) {
             if (panel.dataset.pfimsFilters === 'ready') return;
             panel.classList.add('pfims-filter-panel');
-            if (!panel.closest('.modal, .modal-overlay, dialog')) panel.classList.add('pfims-sticky-filter');
+            var component = panel.closest('.filter-panel') || panel;
+            component.classList.add('pfims-filter-component');
+            if (!panel.closest('.modal, .modal-overlay, dialog')) component.classList.add('pfims-sticky-filter');
             panel.dataset.pfimsFilters = 'ready';
 
             if (!panel.closest('.reports-page') && !panel.closest('.filter-panel')) {
@@ -361,6 +386,31 @@
             }
 
         });
+    }
+
+    function installStickyFilterTracking() {
+        if (document.body.dataset.pfimsStickyTracking === 'ready') return;
+        document.body.dataset.pfimsStickyTracking = 'ready';
+        var queued = false;
+        function update() {
+            queued = false;
+            var header = document.querySelector('.top-header');
+            var headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+            document.querySelectorAll('.pfims-filter-component.pfims-sticky-filter').forEach(function (component) {
+                var rect = component.getBoundingClientRect();
+                var visible = rect.width > 0 && rect.height > 0;
+                component.classList.toggle('is-stuck', visible && rect.top <= headerBottom + 2 && rect.bottom > headerBottom + 2);
+            });
+        }
+        function schedule() {
+            if (queued) return;
+            queued = true;
+            window.requestAnimationFrame(update);
+        }
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule, { passive: true });
+        document.addEventListener('pfims:filters-updated', schedule);
+        schedule();
     }
 
     function removeProjectFilterControls() {
@@ -1265,6 +1315,7 @@
         installRoleNavigation();
         installAdminAuditNavigation();
         installSharedFilters();
+        installStickyFilterTracking();
         installDefaultFilters();
         installAuditDeepLink();
         removeProjectFilterControls();
@@ -1285,6 +1336,7 @@
         document.querySelectorAll('table').forEach(installColumnChooser);
         new MutationObserver(function () {
             installSharedFilters();
+            document.dispatchEvent(new CustomEvent('pfims:filters-updated'));
             installAdminAuditNavigation();
             removeProjectFilterControls();
             installRoleNavigation();
