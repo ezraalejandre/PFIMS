@@ -6,12 +6,16 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\AuditFeatureSchema;
 
 class AuditLogController extends Controller
 {
+    public function __construct(private readonly AuditFeatureSchema $schema) {}
+
     public function index(Request $request)
     {
         abort_unless(strtolower((string) $request->user()?->role) === 'admin', 403);
+        $this->schema->ensure();
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:150'],
             'date_from' => ['nullable', 'date'],
