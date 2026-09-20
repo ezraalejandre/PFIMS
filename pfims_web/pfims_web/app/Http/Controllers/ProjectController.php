@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\SystemSetting;
 use App\Services\AutomaticModelRetraining;
 use App\Services\NotificationService;
+use App\Services\AuditLogService;
+use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,7 @@ class ProjectController extends Controller
     public function __construct(
         private NotificationService $notifications,
         private AutomaticModelRetraining $modelRetraining,
+        private AuditLogService $audit,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -119,6 +122,7 @@ class ProjectController extends Controller
         });
 
         $this->modelRetraining->afterDataChange([(int) $projectId]);
+        if ($created = Project::find($projectId)) $this->audit->record($created, 'CREATE', [], $created->getAttributes());
 
         return response()->json($this->findPresented($projectId), 201);
     }
@@ -173,13 +177,15 @@ class ProjectController extends Controller
             $this->notifyStatusChange($project, $newStatus);
         }
         $this->modelRetraining->afterDataChange([(int) $id]);
+        if ($updated = Project::find($id)) $this->audit->record($updated, 'UPDATE', (array) $existing, $updated->getAttributes());
 
         return response()->json($project);
     }
 
     public function destroy(int $id): JsonResponse
     {
-        if (! DB::table('project_tbl')->where('project_id', $id)->exists()) {
+        $existing = DB::table('project_tbl')->where('project_id', $id)->first();
+        if (! $existing) {
             return response()->json(['message' => 'Project not found'], 404);
         }
 
@@ -197,6 +203,9 @@ class ProjectController extends Controller
             DB::table('budgets_tbl')->where('project_id', $id)->delete();
             DB::table('project_tbl')->where('project_id', $id)->delete();
         });
+        $deleted = new Project();
+        $deleted->setRawAttributes((array) $existing, true);
+        $this->audit->record($deleted, 'DELETE', (array) $existing, []);
 
         return response()->json(['message' => 'Project deleted']);
     }

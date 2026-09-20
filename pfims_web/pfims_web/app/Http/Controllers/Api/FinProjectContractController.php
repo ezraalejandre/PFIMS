@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Models\FinProjectContract;
+use App\Services\AuditLogService;
 
 class FinProjectContractController extends Controller
 {
+    public function __construct(private AuditLogService $audit) {}
+
     public function index()
     {
         try {
@@ -75,6 +79,7 @@ class FinProjectContractController extends Controller
                 'additional_works_payment' => $validated['additional_works_payment'] ?? 0,
                 'remarks' => blank($validated['remarks'] ?? null) ? null : trim($validated['remarks']),
             ]);
+            if ($contract = FinProjectContract::find($id)) $this->audit->record($contract, 'CREATE', [], $contract->getAttributes());
 
             return response()->json([
                 'success' => true,
@@ -89,8 +94,8 @@ class FinProjectContractController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            $exists = DB::table('fin_project_contract_tbl')->where('contract_id', $id)->exists();
-            if (! $exists) {
+            $existing = DB::table('fin_project_contract_tbl')->where('contract_id', $id)->first();
+            if (! $existing) {
                 return response()->json(['error' => 'Contract not found'], 404);
             }
 
@@ -116,6 +121,7 @@ class FinProjectContractController extends Controller
                     'additional_works_payment' => $validated['additional_works_payment'] ?? 0,
                     'remarks' => blank($validated['remarks'] ?? null) ? null : trim($validated['remarks']),
                 ]);
+            if ($contract = FinProjectContract::find($id)) $this->audit->record($contract, 'UPDATE', (array) $existing, $contract->getAttributes());
 
             return response()->json([
                 'success' => true,
@@ -129,12 +135,15 @@ class FinProjectContractController extends Controller
     public function destroy($id)
     {
         try {
-            $exists = DB::table('fin_project_contract_tbl')->where('contract_id', $id)->exists();
-            if (! $exists) {
+            $existing = DB::table('fin_project_contract_tbl')->where('contract_id', $id)->first();
+            if (! $existing) {
                 return response()->json(['error' => 'Contract not found'], 404);
             }
 
             DB::table('fin_project_contract_tbl')->where('contract_id', $id)->delete();
+            $deleted = new FinProjectContract();
+            $deleted->setRawAttributes((array) $existing, true);
+            $this->audit->record($deleted, 'DELETE', (array) $existing, []);
 
             return response()->json([
                 'success' => true,

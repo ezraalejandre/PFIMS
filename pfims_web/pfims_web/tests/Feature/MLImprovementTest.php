@@ -96,7 +96,8 @@ class MLImprovementTest extends TestCase
             ->assertSee('Projected budget savings', false)
             ->assertSee('Projected budget overrun', false)
             ->assertSee('How to read this:', false)
-            ->assertSee('Prediction completed. The business diagnostic is ready.', false)
+            ->assertSee('Prediction completed.', false)
+            ->assertDontSee('The business diagnostic is ready.', false)
             ->assertDontSee('function refreshData()', false);
 
         $adminDashboard->assertSeeInOrder([

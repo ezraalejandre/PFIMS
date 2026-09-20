@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\NotificationService;
+use App\Services\AuditLogService;
+use App\Models\FinExpense;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class ExpenseController extends Controller
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(private NotificationService $notifications, private AuditLogService $audit) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -101,6 +103,7 @@ class ExpenseController extends Controller
             type: 'new_expense', kind: 'info', filter: 'alerts',
             referenceType: 'fin_expense', referenceId: (int) $expense->fin_expense_id,
         );
+        if ($audited = FinExpense::find($expense->fin_expense_id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
 
         return response()->json($this->present($expense), 201);
     }
@@ -165,6 +168,8 @@ class ExpenseController extends Controller
             Storage::disk('public')->delete($oldPath);
         }
 
+        $updatedExpense = FinExpense::find($id);
+        if ($updatedExpense) $this->audit->record($updatedExpense, 'UPDATE', (array) $expense, $updatedExpense->getAttributes());
         return response()->json($this->present($this->find($id)));
     }
 
@@ -183,6 +188,9 @@ class ExpenseController extends Controller
                 $this->recalcBudgetActual((int) $projectId);
             }
         });
+        $deleted = new FinExpense();
+        $deleted->setRawAttributes((array) $expense, true);
+        $this->audit->record($deleted, 'DELETE', (array) $expense, []);
         if ($path) {
             Storage::disk('public')->delete($path);
         }

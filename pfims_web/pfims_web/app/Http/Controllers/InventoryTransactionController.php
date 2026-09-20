@@ -4,13 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
 use App\Services\NotificationService;
+use App\Services\AuditLogService;
+use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class InventoryTransactionController extends Controller
 {
-    public function __construct(private NotificationService $notifications) {}
+    public function __construct(private NotificationService $notifications, private AuditLogService $audit) {}
 
     public function store(Request $request)
     {
@@ -111,6 +113,10 @@ class InventoryTransactionController extends Controller
                 referenceType: 'inventory_transaction',
                 referenceId: (int) $result['inventory_transaction_id'],
             );
+        }
+
+        if ($transaction = InventoryTransaction::find($result['inventory_transaction_id'])) {
+            $this->audit->record($transaction, 'CREATE', [], $transaction->getAttributes());
         }
 
         if (
