@@ -65,6 +65,23 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString('.pfims-add-modal .form-group textarea', $css);
     }
 
+    public function test_finance_add_flow_uses_inventory_numbered_stepper_and_navigation_contract(): void
+    {
+        $script = file_get_contents(__DIR__ . '/../../public/js/finance-review-flow.js');
+        $css = file_get_contents(__DIR__ . '/../../public/css/finance.css');
+
+        $this->assertStringContainsString("stepper.className = 'step-indicator pfims-finance-stepper'", $script);
+        $this->assertStringContainsString('<span class="step-number">1</span> Details', $script);
+        $this->assertStringContainsString('<span class="step-number">2</span> Review', $script);
+        $this->assertStringContainsString("back.className = 'btn-back pfims-review-back'", $script);
+        $this->assertStringContainsString("save.textContent = review ? flow.originalSaveText : 'Continue'", $script);
+        $this->assertStringContainsString("if (!isAddMode(modal)) return;", $script);
+        $this->assertStringNotContainsString('pfims-review-tabs', $script);
+        $this->assertStringContainsString('.pfims-add-modal .step-indicator', $css);
+        $this->assertStringContainsString('.pfims-add-modal .step-indicator .step.completed', $css);
+        $this->assertStringContainsString('.pfims-add-modal .pfims-finance-stepper[hidden]', $css);
+    }
+
     public function test_shared_row_edit_action_detects_finance_modals_without_active_class(): void
     {
         $script = file_get_contents(dirname(__DIR__, 2).'/public/js/pfims-system-ui.js');

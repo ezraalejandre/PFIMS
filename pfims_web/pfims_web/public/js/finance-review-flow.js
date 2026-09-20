@@ -70,16 +70,24 @@
         return rows;
     }
 
+    function isAddMode(modal) {
+        return !modal.classList.contains('is-editing') && !modal.getAttribute('data-edit-id');
+    }
+
     function setMode(flow, review) {
+        var rows = review ? reviewRows(flow.modal) : [];
         flow.mode = review ? 'review' : 'details';
         flow.details.forEach(function (element) { element.hidden = review; });
         flow.panel.hidden = !review;
-        flow.detailsTab.classList.toggle('active', !review);
-        flow.reviewTab.classList.toggle('active', review);
-        flow.save.textContent = review ? 'Confirm and save' : flow.originalSaveText;
+        flow.detailsStep.classList.toggle('active', !review);
+        flow.detailsStep.classList.toggle('completed', review);
+        flow.reviewStep.classList.toggle('active', review);
+        flow.back.hidden = !review;
+        flow.save.classList.toggle('btn-continue', !review);
+        flow.save.textContent = review ? flow.originalSaveText : 'Continue';
         if (review) {
             flow.list.replaceChildren();
-            reviewRows(flow.modal).forEach(function (entry) {
+            rows.forEach(function (entry) {
                 var item = document.createElement('div');
                 item.className = 'pfims-review-item';
                 var label = document.createElement('span');
@@ -102,34 +110,41 @@
         var header = modal.querySelector('.modal-header');
         if (!save || !body || !header) return;
 
-        var tabs = document.createElement('div');
-        tabs.className = 'pfims-review-tabs';
-        var detailsTab = document.createElement('button');
-        detailsTab.type = 'button';
-        detailsTab.className = 'active';
-        detailsTab.textContent = '1. Details';
-        var reviewTab = document.createElement('button');
-        reviewTab.type = 'button';
-        reviewTab.textContent = '2. Review';
-        tabs.append(detailsTab, reviewTab);
-        header.insertAdjacentElement('afterend', tabs);
+        var stepper = document.createElement('div');
+        stepper.className = 'step-indicator pfims-finance-stepper';
+        stepper.setAttribute('aria-label', 'Add entry progress');
+        var detailsStep = document.createElement('span');
+        detailsStep.className = 'step active';
+        detailsStep.innerHTML = '<span class="step-number">1</span> Details';
+        var reviewStep = document.createElement('span');
+        reviewStep.className = 'step';
+        reviewStep.innerHTML = '<span class="step-number">2</span> Review';
+        stepper.append(detailsStep, reviewStep);
+        header.insertAdjacentElement('afterend', stepper);
 
         var panel = document.createElement('section');
-        panel.className = 'pfims-review-panel';
+        panel.className = 'pfims-review-panel modal-step';
         panel.hidden = true;
-        panel.innerHTML = '<h3>Review entry</h3><p>Check these details before saving.</p><div class="pfims-review-list"></div>';
+        panel.innerHTML = '<h3>Review entry details</h3><div class="summary-list pfims-review-list"></div>';
         var details = Array.from(body.children);
         body.appendChild(panel);
+        var footer = save.closest('.modal-footer');
+        var back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'btn-back pfims-review-back';
+        back.textContent = 'Back';
+        back.hidden = true;
+        footer.insertBefore(back, save);
         var flow = {
             modal: modal, required: flows[modal.id], save: save, originalSaveText: save.textContent.trim(),
             body: body, details: details, panel: panel, list: panel.querySelector('.pfims-review-list'),
-            detailsTab: detailsTab, reviewTab: reviewTab, mode: 'details'
+            stepper: stepper, detailsStep: detailsStep, reviewStep: reviewStep, back: back, mode: 'details'
         };
         modal.dataset.reviewFlow = 'ready';
 
-        detailsTab.addEventListener('click', function () { setMode(flow, false); });
-        reviewTab.addEventListener('click', function () { if (validate(flow, modal)) setMode(flow, true); });
+        back.addEventListener('click', function () { setMode(flow, false); });
         save.addEventListener('click', function (event) {
+            if (!isAddMode(modal)) return;
             if (flow.mode === 'review') return;
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -140,9 +155,24 @@
                 window.setTimeout(function () { setMode(flow, false); }, 0);
             }
         });
-        new MutationObserver(function () {
-            if (!modal.classList.contains('active')) setMode(flow, false);
-        }).observe(modal, { attributes: true, attributeFilter: ['class', 'style'] });
+        function syncFlow() {
+            var available = isAddMode(modal);
+            stepper.hidden = !available;
+            back.hidden = !available || flow.mode !== 'review';
+            if (!available) {
+                flow.details.forEach(function (element) { element.hidden = false; });
+                flow.panel.hidden = true;
+                save.classList.remove('btn-continue');
+                save.textContent = flow.originalSaveText;
+            } else if (!modal.classList.contains('active')) {
+                setMode(flow, false);
+            }
+        }
+        new MutationObserver(syncFlow).observe(modal, {
+            attributes: true,
+            attributeFilter: ['class', 'style', 'data-edit-id']
+        });
+        setMode(flow, false);
     }
 
     function initialize() {

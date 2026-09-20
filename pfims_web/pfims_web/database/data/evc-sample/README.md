@@ -1,6 +1,6 @@
 # EVC construction demonstration dataset
 
-This is synthetic demonstration data inspired by the supplied EVC workbooks, not the company's actual project history. Project names, clients, schedules, suppliers, cash balances and transaction allocations are generated. Supplier phone numbers are deliberately blank. Do not present model scores on this dataset as real-world company accuracy.
+This is non-sensitive, synthetic demonstration data inspired by the supplied EVC workbooks, not the company's actual project history. Project names, clients, schedules, suppliers, cash balances and transaction allocations are generated to resemble a mature Batangas-based construction operation. Supplier contact details are fictional but complete. Do not present model scores on this dataset as real-world company accuracy.
 
 ## Sources and assumptions
 
@@ -9,8 +9,9 @@ This is synthetic demonstration data inspired by the supplied EVC workbooks, not
 - `SAMPLE-REPORT.xlsx`, `B. HOE KOMATSU!A4` and `B. HOE SUMITOMO!A4`: equipment acquisition-cost anchors of PHP 860,000 and PHP 1,075,000.
 - `EVC-MAIN-BRANCH-DECEMBER-2024.xlsx` and `INVENTORY-2.xlsx`: product names, brands and unit-price anchors. Exact item references are in `catalog.json`. Prices are historical reference prices, not current supplier quotations.
 - Localities are Batangas locations, consistent with the supplied equipment-site examples. Generated project names describe sample construction scope and municipality; they do not claim actual company contracts at those sites.
-- History begins in January 2019. Most projects last 3–6 months, with occasional small completion delays. There are 72 completed projects, 8 active projects and 2 planned projects as of September 7, 2026.
-- The source contains no confirmed supplier master. The six supplier names are explicitly marked `(Sample)`.
+- History begins in January 2019. Most projects last 3–6 months, with occasional small completion delays. There are 72 completed projects, 8 active projects and 2 planned projects as of September 20, 2026.
+- The generated finance ledger contains more than 2,000 varied transactions across all nine finance categories, with seasonal gaps, project-stage spending, and a complete 2019–2026 date span.
+- The source contains no confirmed supplier master. The six supplier names, phone numbers, and addresses are fictional demonstration records.
 - Ambiguous welding-rod and quartz-unit rows are excluded from the generated inventory. Units are normalized so `PC` and `PCS.` are one unit. Source descriptions are retained where package size was not given.
 
 ## Reproduce and install
@@ -27,11 +28,11 @@ php artisan ml:retrain
 
 The command is restricted to the local application environment. The first invocation validates without changing data. `--apply` backs up every scoped table, related notifications, and existing ML model artifacts before replacing records in one transaction. Any insertion or reconciliation failure rolls back the database transaction. Backups are under the configured local storage disk's `sample-backups` directory, and the command prints the exact path.
 
-Users, authentication, reports and unrelated notifications are preserved. Old uploaded proof files are retained for recovery, while new sample records have no fabricated proof attachments. Legacy `expense_tbl` is explicitly emptied; all new project expenses are stored in `fin_expense_tbl` to avoid counting the same cost twice.
+Users, authentication, reports and unrelated notifications are preserved. Old uploaded proof files are retained for recovery, while new sample records have no fabricated proof attachments. Legacy `expense_tbl` is explicitly emptied; all new project expenses are stored in `fin_expense_tbl` to avoid counting the same cost twice. Inventory records use explicit warehouse receipt, warehouse transfer, project stock-in, and project issue rows; each project-linked stock-in is linked to exactly one finance expense row through `inventory_transaction_id`.
 
 ## Reconciliation
 
-Each project's `budgets_tbl.actual_amount` equals its finance expense total. Item issues split material-stage postings instead of adding duplicate cost, and link each issue to a finance row. Warehouse current stock equals receipts less issues and never becomes negative. Equipment costs and rental income represent external hire activity, separate from project expenses. Bonds are refundable security and excluded from expense totals. Cash positions are illustrative dated balance snapshots, not a generated general ledger.
+Each project's `budgets_tbl.actual_amount` equals its finance expense total. Inventory transfer and issue postings preserve the material-stage valuation without adding duplicate cost. Warehouse current stock equals receipts less transfers and issues and never becomes negative. Equipment costs and rental income represent external hire activity, separate from project expenses. Bonds are refundable security and excluded from expense totals. Cash positions are illustrative dated balance snapshots, not a generated general ledger.
 
 The as-of date is fixed for reproducibility. Future use should intentionally advance the dataset and dates rather than silently relabel old records. A larger synthetic dataset does not establish real prediction performance. The ML service reports `sample_trained_model` and explains this limitation in prediction reliability notes.
 

@@ -846,6 +846,96 @@ body {
     padding: 0 2px;
 }
 
+/* Finance Add flows intentionally mirror Inventory's numbered two-step modal. */
+.pfims-add-modal .step-indicator {
+    display: flex;
+    gap: 0;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.pfims-add-modal .pfims-finance-stepper[hidden],
+.pfims-add-modal .pfims-review-back[hidden] {
+    display: none !important;
+}
+
+.pfims-add-modal .step-indicator .step {
+    flex: 1;
+    padding: 10px 0;
+    border-bottom: 3px solid transparent;
+    color: #aaa;
+    font-size: .8rem;
+    font-weight: 500;
+    text-align: center;
+    transition: .3s;
+}
+
+.pfims-add-modal .step-indicator .step-number {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #ddd;
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 600;
+    line-height: 22px;
+    text-align: center;
+    transition: .3s;
+}
+
+.pfims-add-modal .step-indicator .step.active {
+    border-bottom-color: #c9a96e;
+    color: #1a2b3c;
+}
+
+.pfims-add-modal .step-indicator .step.active .step-number {
+    background: #c9a96e;
+}
+
+.pfims-add-modal .step-indicator .step.completed {
+    border-bottom-color: #2e7d32;
+    color: #2e7d32;
+}
+
+.pfims-add-modal .step-indicator .step.completed .step-number {
+    background: #2e7d32;
+}
+
+.pfims-add-modal .pfims-review-panel h3 {
+    margin: 0 0 12px;
+    color: #888;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+
+.pfims-add-modal .pfims-review-list {
+    display: grid;
+    gap: 0;
+    padding: 4px 16px;
+    border-left: 4px solid #e19a45;
+    background: #faf8f5;
+}
+
+.pfims-add-modal .pfims-review-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e4e8ef;
+}
+
+.pfims-add-modal .pfims-review-item:last-child {
+    border-bottom: 0;
+}
+
+.pfims-add-modal .pfims-review-back {
+    margin-right: auto;
+}
+
 .pfims-add-modal .form-group input,
 .pfims-add-modal .form-group select,
 .pfims-add-modal .form-group textarea {

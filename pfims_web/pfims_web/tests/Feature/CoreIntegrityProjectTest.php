@@ -230,7 +230,6 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('id="pageSize"', false)
                 ->assertSee('id="dashboardRange"', false)
                 ->assertSee('id="dashboardPaginationLinks"', false)
-                ->assertSee('class="panel chart-card budget-panel"', false)
                 ->assertSee('id="projectDetailModal"', false)
                 ->assertSee('class="dashboard-project-row"', false)
                 ->assertSee('function openProjectDetail(project, trigger)', false)
@@ -246,7 +245,13 @@ class CoreIntegrityProjectTest extends TestCase
             }
 
             if ($dashboard['role'] === 'operations') {
-                $response->assertDontSee('>Project Cost Prediction</a>', false);
+                $response->assertDontSee('>Project Cost Prediction</a>', false)
+                    ->assertSee('class="chart-grid single-chart"', false)
+                    ->assertDontSee('class="panel chart-card budget-panel"', false)
+                    ->assertDontSee('id="budgetChart"', false);
+            } else {
+                $response->assertSee('class="panel chart-card budget-panel"', false)
+                    ->assertSee('id="budgetChart"', false);
             }
 
             if (in_array($dashboard['role'], ['admin', 'accounting'], true)) {
@@ -348,7 +353,7 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringNotContainsString("document.dispatchEvent(new CustomEvent('pfims:autorefresh'))", $sharedUi);
         $this->assertStringContainsString('function installHeaderClock()', $sharedUi);
         $this->assertStringContainsString("timeZone: 'Asia/Manila'", $sharedUi);
-        $this->assertStringContainsString(".format(now) + ' PST'", $sharedUi);
+        $this->assertStringNotContainsString(".format(now) + ' PST'", $sharedUi);
         $this->assertStringContainsString("time.className = 'header-clock-time'", $sharedUi);
         $this->assertStringContainsString("}).format(now) + ' ';", $sharedUi);
         $this->assertStringNotContainsString("}).format(now) + ' at ';", $sharedUi);
