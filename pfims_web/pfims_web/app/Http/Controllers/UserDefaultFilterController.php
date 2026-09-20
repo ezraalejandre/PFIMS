@@ -6,9 +6,12 @@ use App\Models\UserDefaultFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Services\AuditFeatureSchema;
 
 class UserDefaultFilterController extends Controller
 {
+    public function __construct(private readonly AuditFeatureSchema $schema) {}
+
     private const MODULES = [
         'dashboard', 'projects', 'finance.expenses', 'finance.budgets', 'finance.bonds',
         'inventory.items', 'inventory.transactions', 'suppliers', 'reports',
@@ -17,11 +20,13 @@ class UserDefaultFilterController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $this->schema->ensure();
         return response()->json($request->user()->defaultFilters()->pluck('filters', 'module'));
     }
 
     public function update(Request $request, string $module): JsonResponse
     {
+        $this->schema->ensure();
         $validated = $request->validate([
             'module' => [Rule::in(self::MODULES)],
             'filters' => ['present', 'array', 'max:30'],
@@ -44,6 +49,7 @@ class UserDefaultFilterController extends Controller
 
     public function destroy(Request $request, string $module): JsonResponse
     {
+        $this->schema->ensure();
         abort_unless(in_array($module, self::MODULES, true), 404);
         $request->user()->defaultFilters()->where('module', $module)->delete();
         return response()->json(['success' => true]);

@@ -83,4 +83,17 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
         $this->actingAs($operations)->get('/audit-logs')->assertRedirect('/odashboard');
         $this->actingAs($admin)->get('/audit-logs')->assertOk()->assertSee('AUDIT LOGS')->assertSee('Date &amp; Time', false);
     }
+
+    public function test_feature_tables_are_bootstrapped_when_git_deployment_has_not_run_migrations(): void
+    {
+        $admin = $this->user('admin', 'bootstrap@example.test');
+        Schema::dropIfExists('audit_logs');
+        Schema::dropIfExists('user_default_filters');
+
+        $this->actingAs($admin)->get('/audit-logs')->assertOk();
+
+        $this->assertTrue(Schema::hasTable('audit_logs'));
+        $this->assertTrue(Schema::hasTable('user_default_filters'));
+        $this->actingAs($admin)->getJson('/api/default-filters')->assertOk()->assertExactJson([]);
+    }
 }
