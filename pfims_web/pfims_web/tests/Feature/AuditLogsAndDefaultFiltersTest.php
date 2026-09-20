@@ -81,7 +81,15 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
         $admin = $this->user('admin', 'admin2@example.test');
         $operations = $this->user('operations', 'ops@example.test');
         $this->actingAs($operations)->get('/audit-logs')->assertRedirect('/odashboard');
-        $this->actingAs($admin)->get('/audit-logs')->assertOk()->assertSee('AUDIT LOGS')->assertSee('Date &amp; Time', false);
+        $this->actingAs($admin)->get('/audit-logs')
+            ->assertOk()
+            ->assertSee('centralized-dashboard.css')
+            ->assertSee('aria-label="Primary navigation"', false)
+            ->assertSee('AUDIT LOGS')
+            ->assertSee('Activity history')
+            ->assertSee('Date &amp; Time', false)
+            ->assertSee('data-filter-description=', false)
+            ->assertSee('pagination-wrapper');
     }
 
     public function test_feature_tables_are_bootstrapped_when_git_deployment_has_not_run_migrations(): void
