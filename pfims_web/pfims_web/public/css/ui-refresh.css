@@ -3428,11 +3428,30 @@ body.landing-page .pfims-page-loader {
     z-index: 620;
     isolation: isolate;
     background: var(--ui-surface-solid) !important;
-    box-shadow: 0 8px 16px rgba(15, 23, 42, .06);
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.pfims-sticky-filter.is-stuck {
+    border-color: var(--ui-border-strong) !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .12) !important;
+}
+
+/* A filter card is the sticky component; its control grid stays visually
+   integrated instead of rendering as a second card inside it. */
+.filter-panel.pfims-filter-component > .pfims-filter-panel {
+    margin: 12px 0 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
 }
 
 .pfims-default-filter-note {
-    align-self: center;
+    display: inline-flex;
+    width: max-content;
+    max-width: 100%;
+    align-items: center;
+    margin-top: 6px;
     padding: 5px 9px;
     border-radius: 999px;
     background: var(--ui-accent-soft);
@@ -3442,9 +3461,19 @@ body.landing-page .pfims-page-loader {
 }
 
 .pfims-reset-defaults {
+    display: inline-flex !important;
+    min-height: 34px !important;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px !important;
+    padding: 7px 12px !important;
     border: 1px solid var(--ui-accent) !important;
+    border-radius: 8px !important;
     background: transparent !important;
     color: var(--ui-accent-dark) !important;
+    font-size: .78rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap;
 }
 
 .pfims-reset-defaults[hidden] { display: none !important; }
@@ -3490,7 +3519,7 @@ body.landing-page .pfims-page-loader {
 /* Personal default-filter editor */
 .default-filter-config { display: grid; gap: 18px; padding: 20px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface-solid); }
 .default-filter-module-field, .default-filter-fields label { display: grid; gap: 6px; min-width: 0; font-weight: 650; }
-.default-filter-module-field select, .default-filter-fields input { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--ui-border-strong); border-radius: 8px; background: var(--ui-surface-solid); color: var(--ui-text); }
+.default-filter-module-field select, .default-filter-fields :is(input, select) { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--ui-border-strong); border-radius: 8px; background: var(--ui-surface-solid); color: var(--ui-text); }
 .default-filter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
 .default-filter-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .default-filter-status { margin: 0; color: var(--ui-muted); }
@@ -3553,6 +3582,11 @@ body.landing-page .pfims-page-loader {
 
 @media (max-width: 700px) {
     .pfims-sticky-filter { top: 64px; }
+    .pfims-filter-heading { flex-wrap: wrap; }
+    .pfims-filter-heading > .pfims-reset-defaults {
+        width: 100% !important;
+        margin: 8px 0 0 !important;
+    }
     .default-filter-actions { align-items: stretch; flex-direction: column-reverse; }
     .default-filter-actions > * { width: 100%; }
 }
