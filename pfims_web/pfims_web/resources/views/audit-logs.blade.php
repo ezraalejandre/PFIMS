@@ -70,15 +70,21 @@
             <div class="dashboard-title-block"><h1>AUDIT LOGS</h1><p>Review create, update, and delete activity across PFIMS.</p></div>
         </section>
 
-        <form class="panel filters audit-log-filters" method="GET" action="{{ route('audit-logs.index') }}" data-filter-description="Filters update the audit activity table below.">
-            <label>Search<input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="User, record, or details"></label>
-            <label>From<input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></label>
-            <label>To<input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></label>
-            <label>User<select name="user_id"><option value="">All users</option>@foreach($users as $user)<option value="{{ $user->id }}" @selected(($filters['user_id'] ?? '') == $user->id)>{{ $user->name }} — {{ $user->email }}</option>@endforeach</select></label>
-            <label>Role<select name="role"><option value="">All roles</option>@foreach(['ADMIN','ACCOUNTING','OPERATIONS'] as $role)<option value="{{ $role }}" @selected(($filters['role'] ?? '') === $role)>{{ ucfirst(strtolower($role)) }}</option>@endforeach</select></label>
-            <label>Action<select name="action"><option value="">All actions</option>@foreach(['CREATE','UPDATE','DELETE'] as $action)<option value="{{ $action }}" @selected(($filters['action'] ?? '') === $action)>{{ $action }}</option>@endforeach</select></label>
-            <label>Module<select name="module"><option value="">All modules</option>@foreach($modules as $module)<option value="{{ $module }}" @selected(($filters['module'] ?? '') === $module)>{{ $module }}</option>@endforeach</select></label>
-            <div class="audit-filter-actions"><a href="{{ route('audit-logs.index') }}" class="btn-secondary">Clear filters</a><button type="submit" class="btn-primary">Apply filters</button></div>
+        <form class="panel content-card filter-panel audit-log-filter-panel" method="GET" action="{{ route('audit-logs.index') }}">
+            <div class="panel-heading">
+                <div><h2>Filters</h2><p>Filters update the audit activity table below.</p></div>
+            </div>
+            <div class="filters-grid audit-log-filters" data-filter-description="Filters update the audit activity table below.">
+                <label class="filter-control">Search<input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="User, record, or details"></label>
+                <label class="filter-control">From<input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></label>
+                <label class="filter-control">To<input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></label>
+                <label class="filter-control">User<select name="user_id"><option value="">All users</option>@foreach($users as $user)<option value="{{ $user->id }}" @selected(($filters['user_id'] ?? '') == $user->id)>{{ $user->name }} — {{ $user->email }}</option>@endforeach</select></label>
+                <label class="filter-control">Role<select name="role"><option value="">All roles</option>@foreach(['ADMIN','ACCOUNTING','OPERATIONS'] as $role)<option value="{{ $role }}" @selected(($filters['role'] ?? '') === $role)>{{ ucfirst(strtolower($role)) }}</option>@endforeach</select></label>
+                <label class="filter-control">Action<select name="action"><option value="">All actions</option>@foreach(['CREATE','UPDATE','DELETE'] as $action)<option value="{{ $action }}" @selected(($filters['action'] ?? '') === $action)>{{ $action }}</option>@endforeach</select></label>
+                <label class="filter-control">Module<select name="module"><option value="">All modules</option>@foreach($modules as $module)<option value="{{ $module }}" @selected(($filters['module'] ?? '') === $module)>{{ $module }}</option>@endforeach</select></label>
+                <a href="{{ route('audit-logs.index') }}" class="btn btn-secondary pfims-clear-filters">Clear filters</a>
+                <button type="submit" class="btn btn-primary audit-apply-filters">Apply filters</button>
+            </div>
         </form>
 
         <section class="panel content-card audit-log-panel">
