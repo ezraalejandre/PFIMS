@@ -1902,31 +1902,33 @@ class MLService
     public function analyzeBudgetVariance(): Collection
     {
         try {
-            $latestBudgetIds = DB::table('budgets_tbl')
-                ->select('project_id', DB::raw('MAX(budget_id) as budget_id'))
-                ->groupBy('project_id');
             $expenseTotals = $this->financeActualExpenseTotalsQuery();
             $actual = $expenseTotals === null
                 ? 'COALESCE(budgets_tbl.actual_amount, 0)'
                 : 'COALESCE(expense_totals.actual_cost, budgets_tbl.actual_amount, 0)';
 
-            $query = DB::table('project_tbl')
-                ->joinSub($latestBudgetIds, 'latest_budget', fn ($join) => $join->on('project_tbl.project_id', '=', 'latest_budget.project_id'))
-                ->join('budgets_tbl', 'latest_budget.budget_id', '=', 'budgets_tbl.budget_id');
+            // Budgets is the source of truth for this comparison.  Start with
+            // every budget row (rather than the latest row per project) and
+            // left join its project so the comparison cannot silently omit a
+            // budget that is present in the Budgets module.
+            $query = DB::table('budgets_tbl')
+                ->leftJoin('project_tbl', 'project_tbl.project_id', '=', 'budgets_tbl.project_id');
 
             if ($expenseTotals !== null) {
                 $query->leftJoinSub($expenseTotals, 'expense_totals', fn ($join) => $join->on('project_tbl.project_id', '=', 'expense_totals.project_id'));
             }
 
             return $query
-                ->whereNotIn('project_tbl.status', ['Completed', 'Pending'])
                 ->select(
-                    'project_tbl.project_id', 'project_tbl.project_name',
-                    'budgets_tbl.budget_amount as budget', 'project_tbl.status',
+                    'budgets_tbl.budget_id', 'budgets_tbl.project_id',
+                    'project_tbl.project_name', 'budgets_tbl.budget_amount as budget', 'project_tbl.status',
                     DB::raw("{$actual} as actual_cost"),
                     DB::raw("budgets_tbl.budget_amount - {$actual} as variance"),
-                    DB::raw("CASE WHEN budgets_tbl.budget_amount > 0 THEN (budgets_tbl.budget_amount - {$actual}) / budgets_tbl.budget_amount * 100 ELSE 0 END as variance_percentage")
-                )->get();
+                    DB::raw("CASE WHEN budgets_tbl.budget_amount > 0 THEN (budgets_tbl.budget_amount - {$actual}) / budgets_tbl.budget_amount * 100 ELSE 0 END as variance_percentage"),
+                    DB::raw("CASE WHEN budgets_tbl.budget_amount - {$actual} < 0 THEN 'over' ELSE 'within' END as position")
+                )
+                ->orderByDesc('budgets_tbl.budget_id')
+                ->get();
         } catch (Throwable $exception) {
             Log::error('Budget variance analysis failed.', ['message' => $exception->getMessage()]);
 

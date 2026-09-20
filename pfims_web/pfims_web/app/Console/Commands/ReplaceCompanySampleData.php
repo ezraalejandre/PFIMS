@@ -174,6 +174,42 @@ class ReplaceCompanySampleData extends Command
                 throw new \RuntimeException("Missing table: {$t}");
             }
         }
+        $expenseRows = $rows['fin_expense_tbl'] ?? [];
+        if (count($expenseRows) < 1000) {
+            throw new \RuntimeException('Dataset must contain at least 1,000 finance expense records.');
+        }
+        $expenseYears = array_values(array_unique(array_map(
+            fn ($row) => (int) date('Y', strtotime((string) ($row['expense_date'] ?? ''))),
+            $expenseRows
+        )));
+        sort($expenseYears);
+        if ($expenseYears !== range(2019, 2026)) {
+            throw new \RuntimeException('Finance expenses must cover every year from 2019 through 2026.');
+        }
+        foreach ($rows['supplier_tbl'] as $supplier) {
+            if (blank($supplier['supplier_name'] ?? null) || blank($supplier['address'] ?? null) || blank($supplier['contact_number'] ?? null)) {
+                throw new \RuntimeException('Supplier records must include name, address, and contact number.');
+            }
+        }
+        foreach ($expenseRows as $expense) {
+            if (blank($expense['expense_description'] ?? null) || blank($expense['remarks'] ?? null)) {
+                throw new \RuntimeException('Finance expenses must include a description and remarks.');
+            }
+        }
+        $linkedExpenseTransactions = array_values(array_filter(array_map(
+            fn ($row) => $row['inventory_transaction_id'] ?? null,
+            $expenseRows
+        ), fn ($id) => $id !== null));
+        $transactionsById = [];
+        foreach ($rows['inventory_transaction_tbl'] as $transaction) {
+            $transactionsById[$transaction['inventory_transaction_id']] = $transaction;
+        }
+        foreach ($transactionsById as $transaction) {
+            if (($transaction['transaction_type'] ?? null) === 'IN' && ($transaction['project_id'] ?? null) !== null
+                && ! in_array($transaction['inventory_transaction_id'], $linkedExpenseTransactions, true)) {
+                throw new \RuntimeException('Every project-linked inventory stock-in must have a linked finance expense.');
+            }
+        }
         $inbound = DB::select('SELECT TABLE_NAME,COLUMN_NAME,REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IN ('.implode(',', array_fill(0, count($this->tables), '?')).') AND TABLE_NAME NOT IN ('.implode(',', array_fill(0, count($this->tables), '?')).')', array_merge($this->tables, $this->tables));
         $inbound = array_values(array_filter($inbound, fn ($fk) => ! (
             $fk->TABLE_NAME === 'ml_project_cost_snapshots'

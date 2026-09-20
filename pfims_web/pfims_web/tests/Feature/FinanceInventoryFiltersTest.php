@@ -52,6 +52,22 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->getJson('/api/reports/backhoe-profitability?period=2026-01-02')->assertUnprocessable();
     }
 
+    public function test_cash_accounts_endpoint_returns_database_accounts_for_the_add_modal(): void
+    {
+        DB::table('company_bank_account_tbl')->insert([
+            ['account_id' => 2, 'account_name' => 'Site revolving fund', 'account_type' => 'cash_on_hand_field'],
+            ['account_id' => 1, 'account_name' => 'Company treasury', 'account_type' => 'treasury'],
+        ]);
+
+        $this->getJson('/api/cash-accounts')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonPath('0.account_id', 1)
+            ->assertJsonPath('0.account_name', 'Company treasury')
+            ->assertJsonPath('1.account_id', 2)
+            ->assertJsonPath('1.account_name', 'Site revolving fund');
+    }
+
     public function test_expense_overall_summary_aggregates_source_rows_without_a_database_view(): void
     {
         $this->getJson('/api/reports/expovrall?period=2026-01-01')
@@ -187,6 +203,11 @@ class FinanceInventoryFiltersTest extends TestCase
             $table->string('remarks')->nullable();
             $table->string('proof_file_path')->nullable();
             $table->string('proof_file_name')->nullable();
+        });
+        Schema::create('company_bank_account_tbl', function (Blueprint $table) {
+            $table->increments('account_id');
+            $table->string('account_name');
+            $table->string('account_type');
         });
         Schema::create('inventory_category_tbl', function (Blueprint $table) {
             $table->increments('inventory_category_id');

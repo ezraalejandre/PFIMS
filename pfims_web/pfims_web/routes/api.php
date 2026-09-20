@@ -170,6 +170,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::delete('/construction-bonds/{id}', [FinConstructionBondController::class, 'destroy']);
 
     // 6. Cash Position
+    Route::get('/cash-accounts', [FinCashPositionController::class, 'accounts']);
     Route::get('/cash-positions', [FinCashPositionController::class, 'index']);
     Route::post('/cash-positions', [FinCashPositionController::class, 'store']);
     Route::put('/cash-positions/{id}', [FinCashPositionController::class, 'update']);

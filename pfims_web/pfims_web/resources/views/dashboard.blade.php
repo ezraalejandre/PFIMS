@@ -178,17 +178,19 @@
 
         <section class="kpis" id="kpis" aria-label="Dashboard key performance indicators"></section>
 
-        <section class="chart-grid" aria-label="Dashboard charts">
+        <section class="chart-grid{{ $portal === 'operations' ? ' single-chart' : '' }}" aria-label="Dashboard charts">
             <article class="panel chart-card">
                 <h2>Completion trend</h2>
                 <p>Average current completion of projects started in each month.</p>
                 <div class="chart"><canvas id="completionChart"></canvas></div>
             </article>
+            @if($portal !== 'operations')
             <article class="panel chart-card budget-panel">
                 <h2>Budget vs recorded expenses</h2>
                 <p>Cumulative allocation and finance-ledger spending.</p>
                 <div class="chart"><canvas id="budgetChart"></canvas></div>
             </article>
+            @endif
         </section>
         <section class="panel content-card project-panel">
             <div class="panel-heading">
@@ -360,18 +362,22 @@
                 renderChart('completionChart', 'line', state.data.completion_trend.months, [
                     { label: 'Completion %', values: state.data.completion_trend.values }
                 ]);
-                renderChart('budgetChart', 'bar', state.data.budget_vs_expense.months, [
-                    { label: 'Budget', values: state.data.budget_vs_expense.allocated_budget },
-                    { label: 'Expenses', values: state.data.budget_vs_expense.expenses }
-                ]);
+                if (document.getElementById('budgetChart')) {
+                    renderChart('budgetChart', 'bar', state.data.budget_vs_expense.months, [
+                        { label: 'Budget', values: state.data.budget_vs_expense.allocated_budget },
+                        { label: 'Expenses', values: state.data.budget_vs_expense.expenses }
+                    ]);
+                }
                 renderTable();
             }
 
             const dashboardCharts = {};
             function renderChart(id, type, labels, series) {
+                const canvas = document.getElementById(id);
+                if (!canvas) return;
                 if (dashboardCharts[id]) dashboardCharts[id].destroy();
                 const colors = ['#f08a1a', '#2563eb', '#16a34a', '#9333ea'];
-                dashboardCharts[id] = new Chart(document.getElementById(id), {
+                dashboardCharts[id] = new Chart(canvas, {
                     type,
                     data: { labels, datasets: series.map((item, index) => ({
                         label: item.label, data: item.values.map(Number), borderColor: colors[index],

@@ -3,12 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CompanyBankAccount;
 use App\Models\FinCashPosition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class FinCashPositionController extends Controller
 {
+    public function accounts()
+    {
+        return response()->json(
+            CompanyBankAccount::query()
+                ->select(['account_id', 'account_name', 'account_type'])
+                ->orderBy('account_name')
+                ->get()
+        );
+    }
+
     public function index()
     {
         return response()->json(FinCashPosition::with('account:account_id,account_name')->get());

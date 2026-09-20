@@ -297,11 +297,11 @@ class MLController extends Controller
     public function budgetVariance()
     {
         try {
-            $analysis = $this->ml->analyzeBudgetVariance()
-                ->filter(function ($row) {
-                    return strtolower(trim((string) ($row->status ?? ''))) !== 'completed';
-                })
-                ->values();
+            // The comparison is intentionally not restricted by project
+            // lifecycle status: the Budgets module exposes every recorded
+            // budget and this endpoint must remain a complete, synchronized
+            // view of that same source.
+            $analysis = $this->ml->analyzeBudgetVariance()->values();
 
             return response()->json([
                 'success' => true,

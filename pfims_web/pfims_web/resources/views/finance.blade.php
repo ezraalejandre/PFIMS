@@ -1691,6 +1691,7 @@
 
         var API_BASE = '/api';
         var assets = [];
+        var cashAccounts = [];
 
         // ─── ADMIN CATEGORY CODES ──────────────────────────────────────
         var ADMIN_CATEGORY_CODES = ['RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH'];
@@ -2230,6 +2231,17 @@
             }, 0);
         }
 
+        function calculateCanonicalBudgetRemaining() {
+            var budgets = budgetDataCache || budgetData || [];
+            var projectIds = new Set(budgets.map(function(item) { return String(item.project_id); }));
+            var totalBudget = calculateBudgetTotal(budgets);
+            var projectExpenses = financeExpenses.reduce(function(sum, expense) {
+                return sum + (expense.project_id != null && projectIds.has(String(expense.project_id))
+                    ? (parseFloat(expense.amount) || 0) : 0);
+            }, 0);
+            return totalBudget - projectExpenses;
+        }
+
         function updateFinanceTotals() {
             var filteredProjectIds = new Set(financeFilteredData.map(function(e) { return e.project_id == null ? '' : String(e.project_id); }).filter(Boolean));
             var totalBudget = (budgetDataCache || budgetData).reduce(function(sum, item) {
@@ -2239,7 +2251,7 @@
             var totalExpenses = financeFilteredData.reduce(function(sum, e) { 
                 return sum + (parseFloat(e.amount) || 0); 
             }, 0);
-            var netVariance = totalBudget - totalExpenses;
+            var netVariance = calculateCanonicalBudgetRemaining();
 
             if (document.getElementById('totalBudgetValue')) document.getElementById('totalBudgetValue').textContent = formatCurrency(totalBudget);
             if (document.getElementById('totalExpensesValue')) document.getElementById('totalExpensesValue').textContent = formatCurrency(totalExpenses);
@@ -2584,26 +2596,42 @@
                 }
             });
 
-            var cashSelect = document.getElementById('cashAccount');
-            if (cashSelect) {
-                var defaultAccounts = [
-                    { id: 1, name: 'Cash on Hand' },
-                    { id: 2, name: 'Cash on Hand - Field' },
-                    { id: 3, name: 'Treasury - EVCA' },
-                    { id: 4, name: 'Treasury - OB' },
-                    { id: 5, name: 'Treasury - OP' },
-                    { id: 6, name: 'Treasury' },
-                    { id: 7, name: 'Treasury - EVCA Corp' },
-                    { id: 8, name: 'Treasury (PhilHealth Purposes)' }
-                ];
-                cashSelect.innerHTML = '<option value="">Select Account...</option>';
-                defaultAccounts.forEach(function(acc) {
-                    var option = document.createElement('option');
-                    option.value = acc.id;
-                    option.textContent = acc.name;
-                    cashSelect.appendChild(option);
+        }
+
+        function populateCashAccountDropdown(message) {
+            var select = document.getElementById('cashAccount');
+            if (!select) return;
+            select.innerHTML = '';
+            var placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = message || (cashAccounts.length ? 'Select Account...' : 'No accounts available');
+            placeholder.disabled = Boolean(message) || cashAccounts.length === 0;
+            placeholder.selected = true;
+            select.appendChild(placeholder);
+            cashAccounts.forEach(function(account) {
+                var option = document.createElement('option');
+                option.value = account.account_id;
+                option.textContent = account.account_name;
+                select.appendChild(option);
+            });
+            select.disabled = Boolean(message) || cashAccounts.length === 0;
+        }
+
+        function fetchCashAccounts() {
+            cashAccounts = [];
+            populateCashAccountDropdown('Loading accounts...');
+            return apiFetch('/cash-accounts')
+                .then(function(data) {
+                    cashAccounts = Array.isArray(data) ? data.filter(function(account) {
+                        return account && account.account_id && account.account_name;
+                    }) : [];
+                    populateCashAccountDropdown();
+                    return cashAccounts;
+                })
+                .catch(function(error) {
+                    populateCashAccountDropdown('Unable to load accounts');
+                    throw error;
                 });
-            }
         }
 
         function populateBondProjectFilter() {
@@ -2870,7 +2898,7 @@
             var totalExpenses = budgetFilteredData.reduce(function(sum, item) {
                 return sum + (parseFloat(item.actual_amount) || 0);
             }, 0);
-            var netVariance = totalBudget - totalExpenses;
+            var netVariance = calculateCanonicalBudgetRemaining();
 
             if (document.getElementById('budgetTotalValue')) document.getElementById('budgetTotalValue').textContent = formatCurrency(totalBudget);
             if (document.getElementById('budgetSpentValue')) document.getElementById('budgetSpentValue').textContent = formatCurrency(totalExpenses);
@@ -3085,6 +3113,7 @@
             .then(function() {
                 closeBudgetDetailModal();
                 showSuccess('Budget updated successfully!');
+                budgetDataCache = null;
                 fetchBudgetData();
             })
             .catch(function(error) { showError(error.message); });
@@ -3102,18 +3131,11 @@
                 if (budget && budget.budget_id) {
                     apiFetch('/budgets/' + budget.budget_id, { method: 'DELETE' })
                         .then(function() {
-                            budgetData = budgetData.filter(function(item) {
-                                return String(item.project_id) !== String(projectId);
-                            });
-                            // Re-derive budgetFilteredData FROM budgetData via the
-                            // real filter pipeline instead of filtering it separately.
-                            // Filtering both arrays independently is what let them
-                            // drift apart and produce mismatched KPI totals.
-                            filterBudgetTable();
                             closeBudgetDeleteModal();
-                            updateFinanceTotals();
                             showSuccess('Budget deleted successfully!');
                             currentBudgetRow = null;
+                            budgetDataCache = null;
+                            fetchBudgetData();
                         })
                         .catch(function(error) { showError(error.message); });
                 } else {
@@ -3526,6 +3548,7 @@
             .then(function() {
                 closeAddBudgetModal();
                 showSuccess('Budget added successfully!');
+                budgetDataCache = null;
                 fetchBudgetData();
             })
             .catch(function(error) { showError(error.message); });
@@ -3583,7 +3606,7 @@
                 
                 // Hide delete button in add mode
                 deleteBtn.style.display = 'none';
-                document.getElementById('contractSaveBtn').textContent = 'Save Contract';
+                document.getElementById('contractSaveBtn').textContent = 'Continue';
                 
                 updateContractBudgetDisplay();
             }
@@ -3998,10 +4021,12 @@
         function openAddCashModal() {
             document.getElementById('addCashModal').classList.add('active');
             document.body.style.overflow = 'hidden';
-            document.getElementById('cashAccount').value = '';
             document.getElementById('cashPeriod').value = '{{ date("Y-m") }}';
             document.getElementById('cashBalance').value = '';
             document.getElementById('cashRemarks').value = '';
+            fetchCashAccounts().catch(function(error) {
+                showError(error.message || 'Unable to load cash accounts.');
+            });
         }
 
         function closeAddCashModal() {
@@ -5588,6 +5613,8 @@
                     initialLoad = fetchAssets().then(function() { switchReportTab(requestedTab); });
                     break;
                 case 'cash':
+                    initialLoad = fetchCashAccounts().then(function() { switchReportTab(requestedTab); });
+                    break;
                 case 'summary':
                     switchReportTab(requestedTab);
                     initialLoad = Promise.resolve();

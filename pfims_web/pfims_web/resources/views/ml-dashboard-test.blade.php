@@ -222,6 +222,11 @@
             height: 100%;
         }
 
+        .prediction-row .model-performance-card {
+            grid-column: 1 / -1;
+            height: auto;
+        }
+
         @media (max-width: 1024px) {
             .main-grid,
             .prediction-row {
@@ -410,6 +415,8 @@
         .prediction-result .result-row {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
+            gap: 18px;
             padding: 6px 0;
             border-bottom: 1px solid rgba(0,0,0,0.06);
         }
@@ -426,6 +433,22 @@
         .prediction-result .result-value {
             font-weight: 600;
             color: #1a237e;
+            text-align: right;
+            overflow-wrap: anywhere;
+        }
+
+        .prediction-result .result-value.narrative {
+            max-width: 72%;
+            font-size: 13px;
+            line-height: 1.55;
+            font-weight: 500;
+        }
+
+        .prediction-result .result-helper {
+            margin: 12px 0 4px;
+            color: #475569;
+            font-size: 12px;
+            line-height: 1.5;
         }
 
         .prediction-result .result-value.positive {
@@ -1060,6 +1083,51 @@
                     <div id="predictionResult" class="prediction-result"><div id="resultContent"></div></div>
                 </section>
             </div>
+            <!-- Model quality is part of the project cost prediction workflow. -->
+            <section class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title" id="modelPerformanceTitle">Model Performance</div>
+                        <p class="analytics-panel-description">Evaluation, selection, and governance details for the active prediction model.</p>
+                    </div>
+                    <span class="badge badge-info" id="samplesCount">0 samples</span>
+                </div>
+                <div id="modelMetrics">
+                    <section class="metric-section" aria-labelledby="modelQualityTitle">
+                        <h3 class="metric-section-title" id="modelQualityTitle">Prediction quality</h3>
+                        <div class="model-status-grid">
+                            <div class="metric-item"><span class="metric-label">Avg. Closeness</span><span class="metric-value" id="metricAccuracy">-</span></div>
+                            <div class="metric-item"><span class="metric-label">MAE</span><span class="metric-value" id="metricMAE">-</span></div>
+                            <div class="metric-item"><span class="metric-label">R-Squared</span><span class="metric-value" id="metricRSquared">-</span></div>
+                        </div>
+                    </section>
+                    <section class="metric-section" aria-labelledby="overrunDetectionTitle">
+                        <h3 class="metric-section-title" id="overrunDetectionTitle">Cost-overrun detection at 5%</h3>
+                        <div class="model-status-grid">
+                            <div class="metric-item"><span class="metric-label">Precision</span><span class="metric-value" id="metricPrecision">-</span></div>
+                            <div class="metric-item"><span class="metric-label">Recall</span><span class="metric-value" id="metricRecall">-</span></div>
+                            <div class="metric-item"><span class="metric-label">F1 Score</span><span class="metric-value" id="metricF1">-</span></div>
+                        </div>
+                    </section>
+                    <section class="metric-section" aria-labelledby="modelSelectionTitle">
+                        <h3 class="metric-section-title" id="modelSelectionTitle">Model selection</h3>
+                        <div class="model-status-grid">
+                            <div class="metric-item"><span class="metric-label">Selected Split</span><span class="metric-value" id="metricSplit">-</span></div>
+                            <div class="metric-item"><span class="metric-label">Feature Decision</span><span class="metric-value" id="metricFeatureDecision">-</span></div>
+                            <div class="metric-item"><span class="metric-label">Model Comparison</span><span class="metric-value" id="metricModelComparison">-</span></div>
+                        </div>
+                    </section>
+                    <section class="metric-section" aria-labelledby="modelGovernanceTitle">
+                        <h3 class="metric-section-title" id="modelGovernanceTitle">Validation and governance</h3>
+                        <div class="model-detail-grid">
+                            <div class="metric-item metric-detail"><span class="metric-label">Validation</span><span class="metric-value" id="metricValidation">-</span></div>
+                            <div class="metric-item metric-detail"><span class="metric-label">Finance Feature Gate</span><span class="metric-value" id="metricFinancePolicy">-</span></div>
+                            <div class="metric-item metric-detail"><span class="metric-label">Holdout Monitoring</span><span class="metric-value" id="metricMonitoring">-</span></div>
+                            <div class="metric-item metric-detail metric-interpretation"><span class="metric-label">Interpretation</span><span class="metric-value" id="metricInterpretation">-</span></div>
+                        </div>
+                    </section>
+                </div>
+            </section>
         </div>
         @endif
 
@@ -1119,7 +1187,7 @@
                     <div class="card-header">
                         <div>
                     <div class="card-title">Budget-Spending Comparison</div>
-                            <p class="analytics-panel-description">Latest recorded spending compared with project budgets.</p>
+                            <p class="analytics-panel-description">Every recorded budget compared with project spending. Position is <strong>Within budget</strong> when Budget − Actual is zero or positive, and <strong>Over budget</strong> when it is negative.</p>
                         </div>
                     </div>
                     <div class="filters-grid" aria-label="Budget comparison filters">
@@ -1161,52 +1229,6 @@
                     </div>
                 </section>
             </div>
-
-        <!-- Internal model diagnostics are intentionally hidden from end users. -->
-        <section class="card analytics-panel model-performance-card" hidden aria-hidden="true">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">Model Performance</div>
-                    <p class="analytics-panel-description">Evaluation, selection, and governance details for the active prediction model.</p>
-                </div>
-                <span class="badge badge-info" id="samplesCount">0 samples</span>
-            </div>
-            <div id="modelMetrics">
-                <section class="metric-section" aria-labelledby="modelQualityTitle">
-                    <h3 class="metric-section-title" id="modelQualityTitle">Prediction quality</h3>
-                    <div class="model-status-grid">
-                        <div class="metric-item"><span class="metric-label">Avg. Closeness</span><span class="metric-value" id="metricAccuracy">-</span></div>
-                        <div class="metric-item"><span class="metric-label">MAE</span><span class="metric-value" id="metricMAE">-</span></div>
-                        <div class="metric-item"><span class="metric-label">R-Squared</span><span class="metric-value" id="metricRSquared">-</span></div>
-                    </div>
-                </section>
-                <section class="metric-section" aria-labelledby="overrunDetectionTitle">
-                    <h3 class="metric-section-title" id="overrunDetectionTitle">Cost-overrun detection at 5%</h3>
-                    <div class="model-status-grid">
-                        <div class="metric-item"><span class="metric-label">Precision</span><span class="metric-value" id="metricPrecision">-</span></div>
-                        <div class="metric-item"><span class="metric-label">Recall</span><span class="metric-value" id="metricRecall">-</span></div>
-                        <div class="metric-item"><span class="metric-label">F1 Score</span><span class="metric-value" id="metricF1">-</span></div>
-                    </div>
-                </section>
-                <section class="metric-section" aria-labelledby="modelSelectionTitle">
-                    <h3 class="metric-section-title" id="modelSelectionTitle">Model selection</h3>
-                    <div class="model-status-grid">
-                        <div class="metric-item"><span class="metric-label">Selected Split</span><span class="metric-value" id="metricSplit">-</span></div>
-                        <div class="metric-item"><span class="metric-label">Feature Decision</span><span class="metric-value" id="metricFeatureDecision">-</span></div>
-                        <div class="metric-item"><span class="metric-label">Model Comparison</span><span class="metric-value" id="metricModelComparison">-</span></div>
-                    </div>
-                </section>
-                <section class="metric-section" aria-labelledby="modelGovernanceTitle">
-                    <h3 class="metric-section-title" id="modelGovernanceTitle">Validation and governance</h3>
-                    <div class="model-detail-grid">
-                        <div class="metric-item metric-detail"><span class="metric-label">Validation</span><span class="metric-value" id="metricValidation">-</span></div>
-                        <div class="metric-item metric-detail"><span class="metric-label">Finance Feature Gate</span><span class="metric-value" id="metricFinancePolicy">-</span></div>
-                        <div class="metric-item metric-detail"><span class="metric-label">Holdout Monitoring</span><span class="metric-value" id="metricMonitoring">-</span></div>
-                        <div class="metric-item metric-detail metric-interpretation"><span class="metric-label">Interpretation</span><span class="metric-value" id="metricInterpretation">-</span></div>
-                    </div>
-                </section>
-            </div>
-        </section>
 
         <!-- Footer -->
         <footer class="analytics-footer">Last updated <span id="lastUpdated">-</span></footer>
@@ -1419,15 +1441,21 @@
                 const recordedExpenses = parseFloat(result.input_features?.fin_total_expense || 0);
                 const completion = parseFloat(result.input_features?.completion_percentage || 0);
                 const remainingForecastCost = Math.max(predictedCost - recordedExpenses, 0);
+                const varianceAmount = Math.abs(variance);
+                const variancePercent = Math.abs(variancePercentage);
                 const displayedStatus = isOverBudget
                     ? (variancePercentage > 10 ? 'Critical cost exposure' : (variancePercentage > 5 ? 'High cost exposure' : 'Manageable cost exposure'))
                     : 'Within approved budget';
                 const businessDiagnostic = isOverBudget
                     ? `The project is forecast to exceed its approved budget by ${variancePercentage.toFixed(1)}%. Without corrective action, this reduces the expected project margin and may require additional funding approval.`
-                    : `The forecast remains ${Math.abs(variancePercentage).toFixed(1)}% within the approved budget, leaving a cost buffer that management should protect through the remaining work.`;
+                    : `The project is forecast to finish ${variancePercent.toFixed(1)}% below its approved budget, leaving a projected savings margin that management should protect through the remaining work.`;
                 const managementAction = isOverBudget
                     ? 'Review remaining commitments, validate high-cost work packages, and agree on a recovery plan before approving further discretionary spending.'
                     : 'Maintain current cost controls, confirm outstanding commitments, and monitor the remaining forecast against progress at the next management review.';
+                const varianceLabel = isOverBudget ? 'Projected budget overrun' : 'Projected budget savings';
+                const varianceDescription = isOverBudget
+                    ? `₱${varianceAmount.toLocaleString()} (${variancePercent.toFixed(1)}% over budget)`
+                    : `₱${varianceAmount.toLocaleString()} (${variancePercent.toFixed(1)}% under budget)`;
                 resultDiv.className = `prediction-result show ${resultTone}`;
                 
                 contentDiv.innerHTML = `
@@ -1440,11 +1468,8 @@
                         <span class="result-value">${escapeHtml(result.formatted || '₱0')}</span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Budget exposure</span>
-                        <span class="result-value ${isOverBudget ? 'negative' : 'positive'}">
-                            ${isOverBudget ? '+ ' : '- '}₱${Math.abs(variance).toLocaleString()}
-                            (${variancePercentage.toFixed(1)}%)
-                        </span>
+                        <span class="result-label">${varianceLabel}</span>
+                        <span class="result-value ${isOverBudget ? 'negative' : 'positive'}">${varianceDescription}</span>
                     </div>
                     <div class="result-row">
                         <span class="result-label">Business position</span>
@@ -1452,7 +1477,7 @@
                     </div>
                     <div class="result-row">
                         <span class="result-label">Management diagnostic</span>
-                        <span class="result-value" style="font-size:13px;">${escapeHtml(businessDiagnostic)}</span>
+                        <span class="result-value narrative">${escapeHtml(businessDiagnostic)}</span>
                     </div>
                     <div class="result-row">
                         <span class="result-label">Remaining forecast cost</span>
@@ -1460,8 +1485,9 @@
                     </div>
                     <div class="result-row" style="border-bottom: none;">
                         <span class="result-label">Recommended action</span>
-                        <span class="result-value" style="font-size:13px;">${escapeHtml(managementAction)}</span>
+                        <span class="result-value narrative">${escapeHtml(managementAction)}</span>
                     </div>
+                    <p class="result-helper"><strong>How to read this:</strong> A projected savings figure means the forecast is below the approved budget; an overrun means the forecast is above it. This view does not change the underlying prediction calculation.</p>
                 `;
                 showNotification('Prediction completed. The business diagnostic is ready.', 'success');
             } else {
@@ -1630,7 +1656,8 @@
             const matchesSearch = !query || projectName.toLowerCase().includes(query);
             const matchesProject = !project || projectName === project;
             const overBudget = Number(item.variance || 0) < 0;
-            return matchesSearch && matchesProject && (!position || (position === 'over' ? overBudget : !overBudget));
+            const rowPosition = String(item.position || (overBudget ? 'over' : 'within')).toLowerCase();
+            return matchesSearch && matchesProject && (!position || rowPosition === position);
         });
         const pageSize = Number(document.getElementById('budgetVariancePageSize')?.value || 5);
         const totalPages = Math.max(Math.ceil(filteredRows.length / pageSize), 1);

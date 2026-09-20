@@ -39,7 +39,7 @@
             time.textContent = new Intl.DateTimeFormat('en-PH', {
                 timeZone: 'Asia/Manila',
                 hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-            }).format(now) + ' PST';
+            }).format(now);
         }
         update();
         window.setInterval(update, 1000);
@@ -719,6 +719,147 @@
         input.addEventListener('keydown', function (event) { if (event.key === 'Escape') close(); });
     }
 
+    function installTableTooltips() {
+        if (document.body.dataset.pfimsTableTooltips === 'ready') return;
+        document.body.dataset.pfimsTableTooltips = 'ready';
+        var tooltip = document.createElement('div');
+        tooltip.id = 'pfimsTableTooltip';
+        tooltip.className = 'pfims-table-tooltip';
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.hidden = true;
+        document.body.appendChild(tooltip);
+        var activeCell = null;
+
+        function eligible(target) {
+            var cell = target.closest && target.closest('table tbody td');
+            if (!cell || cell.classList.contains('action-cell') || cell.querySelector('button, a, input, select, textarea')) return null;
+            return cell;
+        }
+        function position(x, y) {
+            var gap = 12;
+            var rect = tooltip.getBoundingClientRect();
+            var left = Math.min(Math.max(gap, x + gap), window.innerWidth - rect.width - gap);
+            var top = y + gap;
+            if (top + rect.height > window.innerHeight - gap) top = Math.max(gap, y - rect.height - gap);
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        }
+        function show(cell, x, y) {
+            var value = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+            if (!value) return;
+            activeCell = cell;
+            tooltip.textContent = value;
+            tooltip.hidden = false;
+            cell.setAttribute('aria-describedby', tooltip.id);
+            if (!cell.hasAttribute('tabindex')) cell.tabIndex = 0;
+            position(x, y);
+        }
+        function hide(cell) {
+            if (cell && activeCell !== cell) return;
+            if (activeCell) activeCell.removeAttribute('aria-describedby');
+            activeCell = null;
+            tooltip.hidden = true;
+        }
+        document.addEventListener('pointerover', function (event) {
+            var cell = eligible(event.target);
+            if (cell) show(cell, event.clientX, event.clientY);
+        });
+        document.addEventListener('pointermove', function (event) {
+            if (activeCell && !tooltip.hidden) position(event.clientX, event.clientY);
+        });
+        document.addEventListener('pointerout', function (event) {
+            var cell = eligible(event.target);
+            if (cell && !cell.contains(event.relatedTarget)) hide(cell);
+        });
+        document.addEventListener('focusin', function (event) {
+            var cell = eligible(event.target);
+            if (!cell) return;
+            var rect = cell.getBoundingClientRect();
+            show(cell, rect.left + rect.width / 2, rect.bottom);
+        });
+        document.addEventListener('focusout', function (event) {
+            var cell = eligible(event.target);
+            if (cell) hide(cell);
+        });
+    }
+
+    function installPageLoader() {
+        if (window.PFIMS_PAGE_LOADER) return;
+        var loader = document.createElement('div');
+        loader.id = 'pfimsPageLoader';
+        loader.className = 'pfims-page-loader';
+        loader.setAttribute('role', 'status');
+        loader.setAttribute('aria-live', 'polite');
+        loader.innerHTML = '<span class="pfims-page-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span>';
+        document.body.appendChild(loader);
+        var pending = 0;
+        var visible = document.readyState === 'loading';
+        loader.hidden = !visible;
+
+        function show() {
+            visible = true;
+            loader.hidden = false;
+            document.body.classList.add('pfims-is-loading');
+        }
+        function hide() {
+            if (pending > 0) return;
+            visible = false;
+            loader.hidden = true;
+            document.body.classList.remove('pfims-is-loading');
+        }
+        window.PFIMS_PAGE_LOADER = { show: show, hide: hide };
+
+        if (!window.fetch.__pfimsTracked) {
+            var originalFetch = window.fetch;
+            var trackedFetch = function () {
+                if (visible) pending += 1;
+                return originalFetch.apply(this, arguments).finally(function () {
+                    if (visible) {
+                        pending = Math.max(0, pending - 1);
+                        if (pending === 0 && document.readyState === 'complete') hide();
+                    }
+                });
+            };
+            trackedFetch.__pfimsTracked = true;
+            window.fetch = trackedFetch;
+        }
+        window.addEventListener('load', function () {
+            window.requestAnimationFrame(function () { window.requestAnimationFrame(hide); });
+        }, { once: true });
+        window.addEventListener('beforeunload', show);
+        document.addEventListener('click', function (event) {
+            var control = event.target.closest('a[href], [role="tab"], .tab, .nav-link, .nav-parent-toggle');
+            if (!control || event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            if (control.matches('a[href]')) {
+                var href = control.getAttribute('href') || '';
+                if (!href || href.charAt(0) === '#' || control.target === '_blank') return;
+                show();
+                return;
+            }
+            show();
+            window.requestAnimationFrame(function () { window.requestAnimationFrame(hide); });
+        }, true);
+    }
+
+    function installAccurateChartHover() {
+        if (!window.Chart || window.Chart.__pfimsAccuratePointer) return;
+        window.Chart.__pfimsAccuratePointer = true;
+        window.Chart.register({
+            id: 'pfimsAccuratePointer',
+            beforeEvent: function (chart, args) {
+                var event = args.event;
+                var nativeEvent = event && event.native;
+                var point = nativeEvent && nativeEvent.touches && nativeEvent.touches[0]
+                    ? nativeEvent.touches[0] : nativeEvent;
+                if (!point || typeof point.clientX !== 'number' || typeof point.clientY !== 'number') return;
+                var rect = chart.canvas.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                event.x = (point.clientX - rect.left) * (chart.width / rect.width);
+                event.y = (point.clientY - rect.top) * (chart.height / rect.height);
+            }
+        });
+    }
+
     function openCapturedRowAction(row, handler, editMode) {
         // Expose the action intent for modules whose row handler opens a
         // detail modal and must enter its edit state directly.
@@ -758,6 +899,159 @@
         return button;
     }
 
+    function visibleDetailsModal() {
+        var candidates = Array.from(document.querySelectorAll('.modal, .modal-overlay, [role="dialog"]'))
+            .filter(function (modal) {
+                return !modal.hidden && getComputedStyle(modal).display !== 'none'
+                    && !/delete|confirm/i.test(modal.id || '');
+            });
+        return candidates.filter(function (modal) {
+            return modal.matches('.active, :modal, [open]') || modal.getAttribute('aria-hidden') === 'false';
+        }).pop() || candidates.pop() || null;
+    }
+
+    function triggerDeleteThroughEdit(editAction) {
+        editAction();
+        window.setTimeout(function () {
+            var modal = visibleDetailsModal();
+            if (!modal) return;
+            var deleteButton = Array.from(modal.querySelectorAll('button')).find(function (button) {
+                return /^delete(?:\s|$)/i.test((button.textContent || '').trim())
+                    && !button.hidden && getComputedStyle(button).display !== 'none';
+            });
+            if (deleteButton) deleteButton.click();
+        }, 0);
+    }
+
+    function configureDetailsFooter(editAction, deleteAction) {
+        var modal = visibleDetailsModal();
+        if (!modal) return;
+        var footer = modal.querySelector('.modal-footer, .dialog-actions');
+        if (!footer) return;
+        footer.classList.add('pfims-detail-footer');
+
+        var buttons = Array.from(footer.querySelectorAll('button'));
+        var cancel = buttons.find(function (button) { return /^(close|cancel)$/i.test((button.textContent || '').trim()); });
+        var edit = buttons.find(function (button) { return /^edit(?:\s|$)/i.test((button.textContent || '').trim()); });
+        var remove = buttons.find(function (button) { return /^delete(?:\s|$)/i.test((button.textContent || '').trim()); });
+
+        if (cancel) {
+            cancel.textContent = 'Cancel';
+            cancel.classList.add('pfims-detail-cancel');
+        }
+        if (!edit && editAction) {
+            edit = document.createElement('button');
+            edit.type = 'button';
+            edit.className = 'btn-edit-project';
+            edit.textContent = 'Edit';
+            edit.addEventListener('click', editAction);
+            footer.appendChild(edit);
+        }
+        if (!remove && (deleteAction || editAction)) {
+            remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn-delete';
+            remove.textContent = 'Delete';
+            remove.addEventListener('click', deleteAction || function () { triggerDeleteThroughEdit(editAction); });
+            footer.appendChild(remove);
+        }
+        if (edit) {
+            edit.hidden = false;
+            edit.style.display = 'inline-flex';
+        }
+        if (remove) {
+            remove.hidden = false;
+            remove.style.display = 'inline-flex';
+        }
+        if (cancel) footer.insertBefore(cancel, footer.firstChild);
+        if (edit) footer.appendChild(edit);
+        if (remove) footer.appendChild(remove);
+    }
+
+    function openGeneratedDetailsModal(table, row, actionIndex, editAction, deleteAction) {
+        var modal = document.getElementById('pfimsGeneratedDetailsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'pfimsGeneratedDetailsModal';
+            modal.className = 'modal-overlay pfims-generated-details-modal';
+            modal.innerHTML = '<div class="modal-container"><div class="modal-header"><h2>View Details</h2>'
+                + '<button type="button" class="modal-close" aria-label="Close">×</button></div>'
+                + '<div class="modal-body view-details-grid"></div><div class="modal-footer">'
+                + '<button type="button" class="btn-cancel">Cancel</button></div></div>';
+            document.body.appendChild(modal);
+            modal.querySelector('.modal-close').addEventListener('click', function () { modal.classList.remove('active'); });
+            modal.querySelector('.btn-cancel').addEventListener('click', function () { modal.classList.remove('active'); });
+            modal.addEventListener('click', function (event) { if (event.target === modal) modal.classList.remove('active'); });
+        }
+        var sourceHeader = table.tHead && table.tHead.rows[0]
+            ? table.tHead.rows[0] : table.querySelector('tr:has(th)');
+        var headers = sourceHeader ? Array.from(sourceHeader.cells) : [];
+        var body = modal.querySelector('.modal-body');
+        body.replaceChildren();
+        Array.from(row.cells).forEach(function (cell, index) {
+            if (index === actionIndex) return;
+            var item = document.createElement('div');
+            item.className = 'view-item';
+            var label = document.createElement('label');
+            label.textContent = headers[index] ? (headers[index].textContent || '').trim() : 'Value';
+            var value = document.createElement('span');
+            value.className = 'view-value';
+            value.textContent = (cell.textContent || '').replace(/\s+/g, ' ').trim() || '—';
+            item.append(label, value);
+            body.appendChild(item);
+        });
+        modal.classList.add('active');
+        configureDetailsFooter(editAction, deleteAction);
+    }
+
+    function installStandardActions(table) {
+        if (table.classList.contains('analytics-table') || table.closest('.predictive-analytics-root')) return;
+        var headerRow = table.tHead && table.tHead.rows[0]
+            ? table.tHead.rows[0] : table.querySelector('tr:has(th)');
+        if (!headerRow) return;
+        var actionIndex = Array.from(headerRow.cells).findIndex(function (cell) {
+            return /^actions?$/i.test((cell.textContent || '').trim());
+        });
+        if (actionIndex < 0) return;
+        headerRow.cells[actionIndex].classList.add('pfims-actions-heading');
+        Array.from(table.tBodies || []).forEach(function (body) {
+            Array.from(body.rows).forEach(function (row) {
+                if (row.dataset.pfimsStandardAction === 'ready' || !row.cells[actionIndex]) return;
+                var cell = row.cells[actionIndex];
+                var controls = Array.from(cell.querySelectorAll('button, a'));
+                if (!controls.length) return;
+                var view = controls.find(function (control) { return /^view(?:\s|$)/i.test(control.getAttribute('aria-label') || control.title || control.textContent || ''); });
+                var edit = controls.find(function (control) { return /^edit(?:\s|$)/i.test(control.getAttribute('aria-label') || control.title || control.textContent || ''); });
+                var remove = controls.find(function (control) { return /^delete(?:\s|$)/i.test(control.getAttribute('aria-label') || control.title || control.textContent || ''); });
+                var editAction = edit ? function () { edit.click(); } : null;
+                var deleteAction = remove ? function () { remove.click(); } : null;
+                if (!view) {
+                    view = makeRowAction('view', 'View details', function () {
+                        openGeneratedDetailsModal(table, row, actionIndex, editAction, deleteAction);
+                    });
+                } else {
+                    view.addEventListener('click', function () {
+                        window.setTimeout(function () { configureDetailsFooter(editAction, deleteAction); }, 0);
+                    });
+                }
+                cell.className = 'action-cell';
+                cell.replaceChildren(view);
+                row.dataset.pfimsStandardAction = 'ready';
+            });
+        });
+    }
+
+    function installDetailsFooterBridge() {
+        if (document.body.dataset.pfimsDetailsFooterBridge === 'ready') return;
+        document.body.dataset.pfimsDetailsFooterBridge = 'ready';
+        document.addEventListener('click', function (event) {
+            var control = event.target.closest('button, a');
+            if (!control || !/^view(?:\s|$)/i.test(control.getAttribute('aria-label') || control.title || control.textContent || '')) return;
+            window.setTimeout(function () { configureDetailsFooter(null, null); }, 0);
+            window.setTimeout(function () { configureDetailsFooter(null, null); }, 80);
+        });
+    }
+
     function installActionsForClickableRows(table) {
         if (table.classList.contains('analytics-table') || table.closest('.predictive-analytics-root') || table.closest('.dashboard-page')) return;
         Array.from(table.tBodies || []).forEach(function (body) {
@@ -773,7 +1067,8 @@
                 row.removeAttribute('role');
                 row.removeAttribute('aria-label');
 
-                var headerRow = table.tHead && table.tHead.rows[0];
+                var headerRow = table.tHead && table.tHead.rows[0]
+                    ? table.tHead.rows[0] : table.querySelector('tr:has(th)');
                 var actionIndex = headerRow ? Array.from(headerRow.cells).findIndex(function (cell) {
                     return /^actions?$/i.test((cell.textContent || '').trim());
                 }) : -1;
@@ -787,8 +1082,10 @@
                 var actionCell = actionIndex >= 0 && row.cells[actionIndex] ? row.cells[actionIndex] : row.insertCell(-1);
                 actionCell.className = 'action-cell';
                 actionCell.replaceChildren(
-                    makeRowAction('view', 'View details', function () { openCapturedRowAction(row, handler, false); }),
-                    makeRowAction('edit', 'Edit record', function () { openCapturedRowAction(row, handler, true); })
+                    makeRowAction('view', 'View details', function () {
+                        openCapturedRowAction(row, handler, false);
+                        window.setTimeout(function () { configureDetailsFooter(null, null); }, 0);
+                    })
                 );
                 row.dataset.pfimsActions = 'ready';
             });
@@ -811,8 +1108,12 @@
         document.querySelectorAll('.pagination-wrapper select').forEach(normalizePageSize);
         normalizePaginationTotals();
         document.querySelectorAll('input[type="search"]').forEach(installSearchSuggestions);
+        installTableTooltips();
+        installAccurateChartHover();
+        installDetailsFooterBridge();
         installQuietScrollbars();
         document.querySelectorAll('table').forEach(installActionsForClickableRows);
+        document.querySelectorAll('table').forEach(installStandardActions);
         document.querySelectorAll('table').forEach(installTablePagination);
         document.querySelectorAll('table').forEach(installColumnChooser);
         new MutationObserver(function () {
@@ -827,14 +1128,17 @@
             document.querySelectorAll('input[type="search"]').forEach(installSearchSuggestions);
             installQuietScrollbars();
             document.querySelectorAll('table').forEach(installActionsForClickableRows);
+            document.querySelectorAll('table').forEach(installStandardActions);
             document.querySelectorAll('table').forEach(installTablePagination);
             document.querySelectorAll('table').forEach(installColumnChooser);
         }).observe(document.body, { childList: true, subtree: true });
     }
 
     if (document.readyState === 'loading') {
+        installPageLoader();
         document.addEventListener('DOMContentLoaded', initializeSystemUi, { once: true });
     } else {
+        installPageLoader();
         initializeSystemUi();
     }
 })();

@@ -89,17 +89,21 @@ class MLImprovementTest extends TestCase
             ->assertDontSee('id="retrainConfirmModal"', false)
             ->assertDontSee('Retrain prediction model?', false)
             ->assertDontSee("confirm('Retraining", false)
-            ->assertSee('model-performance-card" hidden', false)
+            ->assertSee('class="card analytics-panel model-performance-card"', false)
+            ->assertDontSee('model-performance-card" hidden', false)
             ->assertSee('Management diagnostic', false)
             ->assertSee('Recommended action', false)
+            ->assertSee('Projected budget savings', false)
+            ->assertSee('Projected budget overrun', false)
+            ->assertSee('How to read this:', false)
             ->assertSee('Prediction completed. The business diagnostic is ready.', false)
             ->assertDontSee('function refreshData()', false);
 
         $adminDashboard->assertSeeInOrder([
             'Project Cost Prediction',
+            'Model Performance',
             '30-Day Material Stock Projection',
             'Budget-Spending Comparison',
-            'Model Performance',
         ]);
 
         $this->actingAs($accounting)
@@ -188,6 +192,32 @@ class MLImprovementTest extends TestCase
             'finance_as_of_date' => now()->toDateString(),
         ])->assertOk()
             ->assertJsonPath('input_features.finance_as_of_date', now()->toDateString());
+    }
+
+    public function test_budget_variance_endpoint_returns_every_budget_with_a_server_position(): void
+    {
+        $completedId = $this->insertProject([
+            'project_name' => 'Closed-out roadworks',
+            'status' => 'Completed',
+            'completion_percentage' => 100,
+            'actual_end_date' => '2025-08-01',
+        ], 100000, 90000);
+        $pendingId = $this->insertProject([
+            'project_name' => 'Pending drainage works',
+            'status' => 'Pending',
+            'completion_percentage' => 0,
+        ], 50000, 60000);
+
+        $response = $this->actingAs($this->user('admin'))
+            ->getJson('/api/ml/analytics/budget-variance')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $rows = collect($response->json('data'));
+        $this->assertCount(2, $rows);
+        $this->assertSame(['within', 'over'], $rows->sortBy('project_id')->pluck('position')->values()->all());
+        $this->assertTrue($rows->contains('project_id', $completedId));
+        $this->assertTrue($rows->contains('project_id', $pendingId));
     }
 
     public function test_project_prediction_options_derive_inputs_from_current_project_and_finance_records(): void
@@ -422,8 +452,12 @@ class MLImprovementTest extends TestCase
         $this->assertStringContainsString('5%', $metrics['classification_definition']);
         $this->assertSame('experimental', $metrics['sample_sufficiency']['level']);
         $comparison = $service->analyzeBudgetVariance();
-        $this->assertCount(1, $comparison);
-        $this->assertSame('Active project', $comparison->first()->project_name);
+        // Budget-spending comparison mirrors every recorded Budgets row,
+        // including completed projects and historical duplicate revisions.
+        $this->assertCount(15, $comparison);
+        $this->assertTrue($comparison->contains('project_name', 'Active project'));
+        $this->assertTrue($comparison->contains('project_name', 'Unverified completion'));
+        $this->assertContains($comparison->first()->position, ['within', 'over']);
 
         $service->predictProjectCost(999999999, 500, 90000, 20, 500000000, 300000000);
         $this->assertNotEmpty($service->getLastPredictionWarnings());
