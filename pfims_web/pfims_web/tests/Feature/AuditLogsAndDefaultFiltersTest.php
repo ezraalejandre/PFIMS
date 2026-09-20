@@ -88,6 +88,8 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
             ->assertSee('AUDIT LOGS')
             ->assertSee('Activity history')
             ->assertSee('Date &amp; Time', false)
+            ->assertSee('panel content-card filter-panel', false)
+            ->assertSee('filters-grid audit-log-filters', false)
             ->assertSee('data-filter-description=', false)
             ->assertSee('pagination-wrapper');
     }

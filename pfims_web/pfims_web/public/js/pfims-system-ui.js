@@ -304,7 +304,7 @@
             if (!panel.closest('.modal, .modal-overlay, dialog')) panel.classList.add('pfims-sticky-filter');
             panel.dataset.pfimsFilters = 'ready';
 
-            if (!panel.closest('.reports-page')) {
+            if (!panel.closest('.reports-page') && !panel.closest('.filter-panel')) {
                 var subtitle = document.createElement('p');
                 subtitle.className = 'pfims-filter-subtitle';
                 subtitle.textContent = panel.dataset.filterDescription || 'Filters update the KPIs, live records, and graph together.';
