@@ -69,7 +69,7 @@
                 <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -315,9 +315,11 @@
                                             </td>
                                             <td>{{ $u->status ?? 'Active' }}</td>
                                             <td style="text-align: center;">
-                                                <button class="btn-edit-user" data-user-id="{{ $u->id }}" onclick="openUserConfig(Number(this.dataset.userId))">
+                                                <button type="button" class="btn-config-action btn-view-user" data-user-id="{{ $u->id }}" aria-label="View {{ $u->name }}" onclick="openUserDetails(Number(this.dataset.userId))">View</button>
+                                                <button type="button" class="btn-edit-user" data-user-id="{{ $u->id }}" aria-label="Edit {{ $u->name }}" onclick="openUserConfig(Number(this.dataset.userId))">
                                                     <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
                                                 </button>
+                                                <button type="button" class="btn-delete-user table-delete-user" data-user-id="{{ $u->id }}" aria-label="Delete {{ $u->name }}" onclick="deleteUserById(Number(this.dataset.userId))">Delete</button>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -325,41 +327,6 @@
                         </table>
                     </div>
 
-                    <div id="userConfigDetails" style="display: none; background: #faf8f5; border-radius: 12px; padding: 20px; border-left: 4px solid #c9a96e; margin-top: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <div>
-                                <span style="font-size: 1rem; font-weight: 600; color: #1a2b3c;" id="configUserName">User Name</span>
-                                <span class="role-badge" id="configUserRole" style="margin-left: 10px;">Role</span>
-                            </div>
-                            <button class="btn-close-config" onclick="closeUserConfig()" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #888;">×</button>
-                        </div>
-
-                        <div style="margin-bottom: 12px;">
-                            <label style="display:block; font-weight:600; margin-bottom:6px;">Full Name</label>
-                            <input type="text" id="configName" readonly style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; background:#f5f5f5;" />
-                        </div>
-                        <div style="margin-bottom: 12px;">
-                            <label style="display:block; font-weight:600; margin-bottom:6px;">Email</label>
-                            <input type="email" id="configEmail" readonly style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; background:#f5f5f5;" />
-                        </div>
-                        <div style="margin-bottom: 12px; display:flex; gap:12px;">
-                            <div style="flex:1;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px;">Role</label>
-                                <select id="configRole" style="width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px;">
-                                    <option value="admin">Admin</option>
-                                    <option value="accounting">Accounting</option>
-                                    <option value="operations">Operations</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px;">
-                            <button class="btn-delete-user" onclick="deleteUserFromConfig()" style="background: #d32f2f; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Delete User</button>
-                            <div style="display: flex; gap: 12px; margin-left: auto;">
-                                <button class="btn-cancel-config" onclick="closeUserConfig()" style="background: transparent; color: #888; border: 1px solid #ddd; padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Cancel</button>
-                                <button class="btn-save-config" onclick="saveUserConfig(this)" style="background: #c9a96e; color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Save Changes</button>
-                        </div>
-                    </div>
                 </div>
                 @endif
 
@@ -368,7 +335,45 @@
 
     </main>
 
-    <!-- ─── CONFIG ITEM MODAL (Add/Edit/Delete) ─── -->
+    <!-- ─── USER DETAILS MODAL ─── -->
+    <div id="userDetailsModal" class="modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userDetailsModalTitle">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="userDetailsModalTitle">User details</h2>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeUserDetails()">×</button>
+            </div>
+            <div id="userDetailsFields" class="modal-body"></div>
+            <div class="settings-modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeUserDetails()">Cancel</button>
+                <button type="button" class="btn-save" onclick="editUserFromDetails()">Edit</button>
+                <button type="button" class="btn-delete-user" onclick="deleteUserFromDetails()">Delete User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── USER EDIT MODAL ─── -->
+    <div id="userEditModal" class="modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userEditModalTitle">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="userEditModalTitle">Edit user</h2>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeUserEdit()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><label for="configName">Full Name</label><input type="text" id="configName"></div>
+                <div class="form-group"><label for="configEmail">Email</label><input type="email" id="configEmail"></div>
+                <div class="settings-user-fields">
+                    <div class="form-group"><label for="configRole">Role</label><select id="configRole"><option value="admin">Admin</option><option value="accounting">Accounting</option><option value="operations">Operations</option></select></div>
+                    <div class="form-group"><label for="configUserStatus">Status</label><select id="configUserStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+                </div>
+            </div>
+            <div class="settings-modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeUserEdit()">Cancel</button>
+                <button type="button" class="btn-save" onclick="saveUserConfig(this)">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── CONFIG ITEM MODAL (Add/Edit) ─── -->
     <div id="deleteUserConfirmModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
         <div class="modal-container" style="background:#fff; width:440px; max-width:95%; border-radius:16px; padding:28px 32px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
             <div style="text-align:center;">
@@ -383,7 +388,36 @@
         </div>
     </div>
 
-    <div id="configItemModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+    <div id="configDeleteConfirmModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3400; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
+        <div class="modal-container" style="background:#fff; width:440px; max-width:95%; border-radius:16px; padding:28px 32px; box-shadow:0 20px 60px rgba(0,0,0,.3);">
+            <div style="text-align:center;">
+                <div style="width:58px;height:58px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ffebee;color:#d32f2f;font-size:28px;font-weight:700;">!</div>
+                <h2 style="margin:0 0 10px;color:#1a2b3c;font-size:1.35rem;">Delete configuration?</h2>
+                <p id="configDeleteMessage" style="margin:0;color:#666;line-height:1.5;">This action cannot be undone.</p>
+            </div>
+            <div style="display:flex;justify-content:center;gap:12px;margin-top:26px;">
+                <button type="button" class="btn-cancel" onclick="closeConfigDeleteModal()">Cancel</button>
+                <button type="button" id="confirmDeleteConfigBtn" class="btn-delete-config" onclick="confirmDeleteConfig()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="configDetailsModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3200; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
+        <div class="modal-container" style="background:#fff; width:500px; max-width:95%; border-radius:16px; padding:30px 35px; box-shadow:0 20px 60px rgba(0,0,0,.3); max-height:90vh; overflow-y:auto;">
+            <div class="modal-header">
+                <h2 id="configDetailsModalTitle">Configuration details</h2>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeConfigDetailsModal()">×</button>
+            </div>
+            <div id="configDetailsFields" class="modal-body"></div>
+            <div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #e9ecef;padding-top:20px;margin-top:20px;">
+                <button type="button" class="btn-cancel" onclick="closeConfigDetailsModal()">Cancel</button>
+                <button type="button" class="btn-delete-config" onclick="deleteConfigFromDetails()">Delete</button>
+                <button type="button" class="btn-save" onclick="editConfigFromDetails()">Edit</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="configItemModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 3300; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
         <div class="modal-container" style="background: #fff; width: 500px; max-width: 95%; border-radius: 16px; padding: 30px 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="font-size: 1.4rem; font-weight: 600; color: #1a2b3c; margin: 0;" id="configItemModalTitle">Add New Item</h2>
@@ -392,14 +426,9 @@
             <div class="modal-body">
                 <input type="hidden" id="configItemId">
                 <div id="configItemFields"></div>
-                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e9ecef; padding-top: 20px;">
-                    <!-- Cancel on the LEFT -->
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end; align-items: center; gap: 12px; border-top: 1px solid #e9ecef; padding-top: 20px;">
                     <button class="btn-cancel" onclick="closeConfigItemModal()" style="background: transparent; color: #888; border: 1px solid #ddd; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
-                    <!-- Delete + Save on the RIGHT -->
-                    <div style="display: flex; gap: 12px;">
-                        <button class="btn-delete-config" id="deleteConfigBtn" onclick="deleteConfigItem()" style="display: none; background: #d32f2f; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Delete</button>
-                        <button class="btn-save" onclick="saveConfigItem(this)" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Save</button>
-                    </div>
+                    <button class="btn-save" onclick="saveConfigItem(this)" style="background: #c9a96e; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.3s;">Save</button>
                 </div>
             </div>
         </div>
@@ -542,7 +571,10 @@
             }
 
             closeUserConfig();
+            closeUserDetails();
             closeConfigItemModal();
+            closeConfigDetailsModal();
+            closeConfigDeleteModal();
             closeAddUserModal();
 
             console.log('Switched to: ' + section);
@@ -574,46 +606,107 @@
         var csrfToken = '{{ csrf_token() }}';
         var activeConfigUserId = null;
 
-        function openUserConfig(id) {
+        function fetchUserConfig(id) {
             activeConfigUserId = id;
-            fetch('/users/' + id, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(user) {
-                document.getElementById('configUserName').textContent = user.name;
-                document.getElementById('configUserRole').textContent = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User';
-                document.getElementById('configRole').value = user.role || 'operations';
-                document.getElementById('configName').value = user.name;
-                document.getElementById('configEmail').value = user.email;
-
-                var roleEl = document.getElementById('configUserRole');
-                roleEl.className = 'role-badge';
-                if (user.role === 'admin') roleEl.classList.add('admin');
-                else if (user.role === 'accounting') roleEl.classList.add('manager');
-                else roleEl.classList.add('staff');
-
-                var configDiv = document.getElementById('userConfigDetails');
-                configDiv.style.display = 'block';
-                configDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            })
-            .catch(function(err) {
-                alert('Failed to load user data.');
-                console.error(err);
+            return fetch('/users/' + id, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            }).then(function(res) {
+                if (!res.ok) throw new Error('Unable to load user');
+                return res.json();
             });
         }
 
-        function closeUserConfig() {
-            document.getElementById('userConfigDetails').style.display = 'none';
+        function populateUserConfig(user) {
+            document.getElementById('configRole').value = user.role || 'operations';
+            document.getElementById('configName').value = user.name || '';
+            document.getElementById('configEmail').value = user.email || '';
+            document.getElementById('configUserStatus').value = user.status || 'Active';
+        }
+
+        function userRoleLabel(role) {
+            return role ? role.charAt(0).toUpperCase() + role.slice(1) : 'User';
+        }
+
+        function openUserConfig(id) {
+            closeUserDetails(false);
+            fetchUserConfig(id).then(function(user) {
+                populateUserConfig(user);
+                document.getElementById('userEditModal').style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }).catch(function(err) {
+                alert('Failed to load user data.');
+                console.error(err);
+                activeConfigUserId = null;
+            });
+        }
+
+        function openUserDetails(id) {
+            closeUserEdit(false);
+            fetchUserConfig(id).then(function(user) {
+                var fields = document.getElementById('userDetailsFields');
+                fields.innerHTML = '';
+                [['Name', user.name], ['Email', user.email], ['Role', userRoleLabel(user.role)], ['Status', user.status || 'Active']].forEach(function(entry) {
+                    var row = document.createElement('div');
+                    row.className = 'settings-detail-row';
+                    var label = document.createElement('strong');
+                    label.textContent = entry[0];
+                    var value = document.createElement('span');
+                    value.textContent = entry[1] || '—';
+                    row.append(label, value);
+                    fields.appendChild(row);
+                });
+                document.getElementById('userDetailsModalTitle').textContent = 'View ' + (user.name || 'user');
+                document.getElementById('userDetailsModal').style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }).catch(function(err) {
+                alert('Failed to load user data.');
+                console.error(err);
+                activeConfigUserId = null;
+            });
+        }
+
+        function closeUserDetails(clearActive) {
+            document.getElementById('userDetailsModal').style.display = 'none';
+            if (clearActive !== false) activeConfigUserId = null;
+            restoreSettingsBodyOverflow();
+        }
+
+        function closeUserEdit() {
+            document.getElementById('userEditModal').style.display = 'none';
             activeConfigUserId = null;
+            restoreSettingsBodyOverflow();
+        }
+
+        function editUserFromDetails() {
+            var id = activeConfigUserId;
+            closeUserDetails(false);
+            if (id) openUserConfig(id);
+        }
+
+        function deleteUserFromDetails() {
+            if (!activeConfigUserId) return;
+            closeUserDetails(false);
+            deleteUserFromConfig();
+        }
+
+        function closeUserConfig() {
+            closeUserEdit();
         }
 
                 function saveUserConfig(btn) {
             if (!activeConfigUserId) return;
             var payload = {
+                name: document.getElementById('configName').value.trim(),
+                email: document.getElementById('configEmail').value.trim(),
                 role: document.getElementById('configRole').value,
+                status: document.getElementById('configUserStatus').value,
                 _token: csrfToken
             };
+
+            if (!payload.name || !payload.email) {
+                alert('Name and email are required.');
+                return;
+            }
 
             setButtonLoading(btn, true, 'Saving...');
 
@@ -622,13 +715,14 @@
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify(payload)
             })
-            .then(function(res) { return res.json(); })
+            .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
             .then(function(data) {
-                if (data.success) {
+                if (data.ok && data.data.success) {
                     showSuccess('User updated successfully!');
                     setTimeout(redirectToUserManagement, 700);
                 } else {
-                    alert('Failed to update user.');
+                    var message = data.data.errors ? Object.values(data.data.errors).flat().join('\n') : data.data.message;
+                    alert(message || 'Failed to update user.');
                 }
             })
             .catch(function(err) {
@@ -644,6 +738,12 @@
             if (!activeConfigUserId) return;
             document.getElementById('deleteUserConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
+        }
+
+        function deleteUserById(id) {
+            if (!id) return;
+            activeConfigUserId = id;
+            deleteUserFromConfig();
         }
 
         function closeDeleteUserModal() {
@@ -782,13 +882,26 @@
                 nameCell.appendChild(strong);
                 var actionCell = document.createElement('td');
                 actionCell.style.textAlign = 'center';
+                actionCell.style.whiteSpace = 'nowrap';
+                var view = document.createElement('button');
+                view.className = 'btn-config-action btn-view-config';
+                view.type = 'button';
+                view.textContent = 'View';
+                view.setAttribute('aria-label', 'View ' + item[fields.name]);
+                view.onclick = function() { openConfigDetailsModal(item[fields.id]); };
                 var edit = document.createElement('button');
-                edit.className = 'btn-edit-user';
+                edit.className = 'btn-config-action btn-edit-config';
                 edit.type = 'button';
+                edit.textContent = 'Edit';
                 edit.setAttribute('aria-label', 'Edit ' + item[fields.name]);
-                edit.innerHTML = `<img src="{{ asset('images/edit.jpg') }}" alt="">`;
                 edit.onclick = function() { openConfigEditModal(item[fields.id]); };
-                actionCell.appendChild(edit);
+                var remove = document.createElement('button');
+                remove.className = 'btn-config-action btn-delete-config';
+                remove.type = 'button';
+                remove.textContent = 'Delete';
+                remove.setAttribute('aria-label', 'Delete ' + item[fields.name]);
+                remove.onclick = function() { openConfigDeleteModal(item[fields.id]); };
+                actionCell.append(view, edit, remove);
                 tr.append(idCell, nameCell, actionCell);
                 tbody.appendChild(tr);
             });
@@ -798,27 +911,124 @@
             document.getElementById('configItemId').value = '';
             renderConfigFields(null);
             document.getElementById('configItemModalTitle').textContent = 'Add Configuration';
-            document.getElementById('deleteConfigBtn').style.display = 'none';
             document.getElementById('configItemModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
 
         function openConfigEditModal(id) {
-            var items = configData[currentConfigType] || [];
-            var fields = configFieldMap[currentConfigType];
-            var item = items.find(function(i) { return i[fields.id] === id; });
+            var item = findConfigItem(id);
             if (!item) return;
             document.getElementById('configItemId').value = id;
             renderConfigFields(item);
             document.getElementById('configItemModalTitle').textContent = 'Edit Configuration';
-            document.getElementById('deleteConfigBtn').style.display = 'inline-block';
             document.getElementById('configItemModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
 
         function closeConfigItemModal() {
             document.getElementById('configItemModal').style.display = 'none';
-            document.body.style.overflow = '';
+            restoreSettingsBodyOverflow();
+        }
+
+        var activeConfigItemId = null;
+
+        function findConfigItem(id) {
+            var fields = configFieldMap[currentConfigType];
+            return (configData[currentConfigType] || []).find(function(item) {
+                return String(item[fields.id]) === String(id);
+            });
+        }
+
+        function configValueLabel(definition, value) {
+            return definition && definition.options && definition.options[String(value)] !== undefined
+                ? definition.options[String(value)] : String(value === null || value === undefined ? '' : value);
+        }
+
+        function openConfigDetailsModal(id) {
+            var item = findConfigItem(id);
+            var meta = configMeta[currentConfigType];
+            if (!item || !meta) return;
+            activeConfigItemId = id;
+            document.getElementById('configDetailsModalTitle').textContent = 'View ' + (item[meta.name] || 'configuration');
+            var container = document.getElementById('configDetailsFields');
+            container.innerHTML = '';
+            Object.keys(meta.fields || {}).forEach(function(field) {
+                var definition = meta.fields[field];
+                var row = document.createElement('div');
+                row.style.cssText = 'display:flex;justify-content:space-between;gap:18px;padding:11px 0;border-bottom:1px solid #f0ebe2;';
+                var label = document.createElement('strong');
+                label.textContent = definition.label;
+                var value = document.createElement('span');
+                value.textContent = configValueLabel(definition, item[field]);
+                value.style.textAlign = 'right';
+                row.append(label, value);
+                container.appendChild(row);
+            });
+            document.getElementById('configDetailsModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeConfigDetailsModal() {
+            document.getElementById('configDetailsModal').style.display = 'none';
+            activeConfigItemId = null;
+            restoreSettingsBodyOverflow();
+        }
+
+        function editConfigFromDetails() {
+            var id = activeConfigItemId;
+            closeConfigDetailsModal();
+            if (id !== null) openConfigEditModal(id);
+        }
+
+        function deleteConfigFromDetails() {
+            if (activeConfigItemId === null) return;
+            openConfigDeleteModal(activeConfigItemId);
+        }
+
+        function openConfigDeleteModal(id) {
+            var item = findConfigItem(id);
+            if (!item) return;
+            activeConfigItemId = id;
+            var fields = configFieldMap[currentConfigType];
+            document.getElementById('configDeleteMessage').textContent = 'Delete “' + item[fields.name] + '”? This action cannot be undone.';
+            document.getElementById('configDetailsModal').style.display = 'none';
+            document.getElementById('configDeleteConfirmModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeConfigDeleteModal() {
+            document.getElementById('configDeleteConfirmModal').style.display = 'none';
+            activeConfigItemId = null;
+            restoreSettingsBodyOverflow();
+        }
+
+        function confirmDeleteConfig() {
+            if (activeConfigItemId === null) return;
+            var id = activeConfigItemId;
+            var button = document.getElementById('confirmDeleteConfigBtn');
+            setButtonLoading(button, true, 'Deleting...');
+            fetch(configApiBase + '/' + currentConfigType + '/' + id, {
+                credentials: 'same-origin', method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            }).then(function(res) {
+                return res.json().then(function(data) { return { ok: res.ok, data: data }; });
+            }).then(function(result) {
+                if (result.ok && result.data.success) {
+                    closeConfigDeleteModal();
+                    showSuccess(result.data.message || 'Configuration deleted successfully.');
+                    fetchConfigItems(currentConfigType);
+                } else {
+                    alert(result.data.message || 'Failed to delete configuration.');
+                }
+            }).catch(function(error) {
+                console.error(error);
+                alert('Failed to delete configuration.');
+            }).finally(function() { setButtonLoading(button, false); });
+        }
+
+        function restoreSettingsBodyOverflow() {
+            var openModal = document.querySelector('.settings-page .modal-overlay[style*="display: flex"]');
+            if (!openModal) document.body.style.overflow = '';
         }
 
         function renderConfigFields(item) {
@@ -847,6 +1057,11 @@
                     input = document.createElement('input');
                     input.type = 'text';
                     input.maxLength = definition.max || 255;
+                    if (field === 'category_code') {
+                        input.pattern = '[A-Za-z][A-Za-z0-9_ -]*';
+                        input.title = 'Start with a letter; use letters, numbers, spaces, hyphens, or underscores.';
+                        input.placeholder = 'e.g. CONST_SUPPLY';
+                    }
                 }
                 input.id = 'configField_' + field;
                 input.dataset.field = field;
@@ -856,6 +1071,12 @@
                 if (field === 'is_active' && value === '') value = '1';
                 input.value = String(value === true ? 1 : (value === false ? 0 : value));
                 wrapper.append(label, input);
+                if (field === 'category_code') {
+                    var help = document.createElement('small');
+                    help.textContent = 'Start with a letter. Use letters, numbers, spaces, hyphens, or underscores. The saved code is normalized to uppercase.';
+                    help.style.cssText = 'display:block;margin-top:5px;color:#6b7280;font-size:.78rem;line-height:1.35;';
+                    wrapper.appendChild(help);
+                }
                 container.appendChild(wrapper);
             });
         }
@@ -867,9 +1088,10 @@
             document.querySelectorAll('#configItemFields [data-field]').forEach(function(input) {
                 var value = input.value.trim();
                 if (input.required && !value) invalid = true;
+                if (value && input.pattern && !new RegExp('^(?:' + input.pattern + ')$').test(value)) invalid = true;
                 payload[input.dataset.field] = value;
             });
-            if (invalid) { alert('Complete every required configuration field.'); return; }
+            if (invalid) { alert('Complete every required field. Category codes must start with a letter and use only letters, numbers, spaces, hyphens, or underscores.'); return; }
 
             var url = configApiBase + '/' + currentConfigType;
             var method = 'POST';
@@ -910,45 +1132,6 @@
                 setButtonLoading(btn, false);
             });
         }
-
-        function deleteConfigItem() {
-            var id = document.getElementById('configItemId').value;
-            if (!id) return;
-            var fields = configFieldMap[currentConfigType];
-            var item = (configData[currentConfigType] || []).find(function(row) { return String(row[fields.id]) === String(id); });
-            var name = item ? item[fields.name] : 'this configuration';
-            if (!confirm('Are you sure you want to permanently delete "' + name + '"?')) return;
-
-            var btn = document.getElementById('deleteConfigBtn');
-            setButtonLoading(btn, true, 'Deleting...');
-
-            fetch(configApiBase + '/' + currentConfigType + '/' + id, {
-                credentials: 'same-origin',
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data.success) {
-                    closeConfigItemModal();
-                    showSuccess(data.message || 'Item deleted successfully!');
-                    fetchConfigItems(currentConfigType);
-                } else {
-                    alert(data.message || 'Failed to delete item.');
-                }
-            })
-            .catch(function(err) {
-                console.error(err);
-                alert('Failed to delete item.');
-            })
-            .finally(function() {
-                setButtonLoading(btn, false);
-            });
-        }
-        
 
         // ─── SUCCESS NOTIFICATION ───
         function showSuccess(message) {
@@ -1069,6 +1252,27 @@
             if (e.target === this) {
                 closeConfigItemModal();
             }
+        });
+        document.getElementById('configDetailsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeConfigDetailsModal();
+        });
+        document.getElementById('configDeleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) closeConfigDeleteModal();
+        });
+        document.getElementById('userDetailsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeUserDetails();
+        });
+        document.getElementById('userEditModal').addEventListener('click', function(e) {
+            if (e.target === this) closeUserEdit();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            if (document.getElementById('configDeleteConfirmModal').style.display === 'flex') return closeConfigDeleteModal();
+            if (document.getElementById('configDetailsModal').style.display === 'flex') return closeConfigDetailsModal();
+            if (document.getElementById('configItemModal').style.display === 'flex') return closeConfigItemModal();
+            if (document.getElementById('userEditModal').style.display === 'flex') return closeUserEdit();
+            if (document.getElementById('userDetailsModal').style.display === 'flex') return closeUserDetails();
+            if (document.getElementById('addUserModal').style.display === 'flex') return closeAddUserModal();
         });
         function openPasswordModal(password, username) {
             var field = document.getElementById('generatedPasswordField');

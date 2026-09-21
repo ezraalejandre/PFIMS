@@ -765,6 +765,44 @@ body {
     filter: brightness(0.7);
 }
 
+.table-delete-user {
+    padding: 5px 9px;
+    margin-left: 6px;
+    font-size: .72rem;
+}
+
+.btn-config-action {
+    border: 1px solid #d9dee5;
+    border-radius: 6px;
+    background: #fff;
+    color: #1a2b3c;
+    cursor: pointer;
+    font-size: .75rem;
+    font-weight: 600;
+    margin: 2px;
+    min-height: 30px;
+    padding: 5px 9px;
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.btn-config-action:hover {
+    background: #f5efe6;
+    border-color: #c9a96e;
+}
+
+.btn-config-action.btn-delete-config,
+.btn-delete-config {
+    background: #d32f2f;
+    border-color: #d32f2f;
+    color: #fff;
+}
+
+.btn-config-action.btn-delete-config:hover,
+.btn-delete-config:hover {
+    background: #b71c1c;
+    border-color: #b71c1c;
+}
+
 .btn-add-user {
     background: #1a2b3c;
     color: #fff;
@@ -838,6 +876,61 @@ body {
     background: rgba(0, 0, 0, 0.5);
     z-index: 2000;
     backdrop-filter: blur(4px);
+}
+
+/* User details/edit use the same centered dialog contract as configuration
+   modals. Keep the overlay above the settings surface so the dialog remains
+   interactive instead of appearing behind a blurred page. */
+.settings-user-modal {
+    z-index: 3600;
+    justify-content: center;
+    align-items: center;
+}
+
+.settings-user-modal .modal-container {
+    width: 500px;
+    max-width: 95%;
+}
+
+.settings-user-modal .settings-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    border-top: 1px solid #e9ecef;
+    margin-top: 20px;
+    padding-top: 20px;
+}
+
+.settings-user-modal .settings-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 18px;
+    padding: 11px 0;
+    border-bottom: 1px solid #f0ebe2;
+}
+
+.settings-user-modal .settings-detail-row span {
+    color: #4b5563;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.settings-user-fields {
+    display: flex;
+    gap: 12px;
+}
+
+.settings-user-fields > .form-group {
+    flex: 1;
+}
+
+@media (max-width: 560px) {
+    .settings-user-fields {
+        flex-direction: column;
+        gap: 0;
+    }
 }
 
 .modal-container {

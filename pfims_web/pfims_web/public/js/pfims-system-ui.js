@@ -259,6 +259,7 @@
                 }
 
                 function applyAvailableControls() {
+                    var appliedAny = false;
                     Object.keys(defaults).forEach(function (key) {
                         var control = document.getElementById(key) || document.querySelector('[name="' + CSS.escape(key) + '"]');
                         if (!control || control.dataset.pfimsDefaultApplied === 'ready') return;
@@ -266,6 +267,7 @@
                         if (control.tagName === 'SELECT' && !control.multiple && value !== ''
                             && !Array.from(control.options).some(function (option) { return option.value === String(value); })) return;
                         control.dataset.pfimsDefaultApplied = 'ready';
+                        appliedAny = true;
                         setControlValue(control, value);
                         var component = componentFor(control);
                         if (!component) return;
@@ -281,7 +283,10 @@
                             });
                         }
                     });
-                    componentControls.forEach(function (_, component) { syncComponent(component); });
+                    // The observer also sees the note/reset elements created above. Only
+                    // rewrite component state when a new filter was actually initialized;
+                    // otherwise those writes continuously retrigger the observer.
+                    if (appliedAny) componentControls.forEach(function (_, component) { syncComponent(component); });
                 }
                 applyAvailableControls();
                 new MutationObserver(applyAvailableControls).observe(document.body, { childList: true, subtree: true });
@@ -295,7 +300,7 @@
         if (!list) return;
         var item = document.createElement('li');
         if (window.location.pathname === '/audit-logs') item.className = 'active';
-        item.innerHTML = '<a href="/audit-logs"><span class="nav-link-icon pfims-audit-icon" aria-hidden="true">≡</span>AUDIT LOGS</a>';
+        item.innerHTML = '<a href="/audit-logs"><img src="/images/audit-log.svg" alt="" class="nav-link-icon" aria-hidden="true">AUDIT LOGS</a>';
         list.appendChild(item);
     }
 
@@ -996,25 +1001,40 @@
         loader.setAttribute('aria-live', 'polite');
         loader.innerHTML = '<span class="pfims-page-spinner" aria-hidden="true"></span><span class="sr-only">Loading</span>';
         host.appendChild(loader);
-        var pending = 0;
+        var pageGate = window.PFIMS_PAGE_PRELOADER = window.PFIMS_PAGE_PRELOADER || { active: true, pending: 0 };
+        var pending = Number(pageGate.pending || 0);
         var visible = false;
         loader.hidden = true;
 
         function show() {
             visible = true;
+            pageGate.active = true;
+            document.documentElement.classList.add('pfims-preload');
             loader.hidden = false;
             host.classList.add('pfims-is-loading');
         }
         var settleTimer;
         function hide() {
+            pending = Number(pageGate.pending || 0);
             if (pending > 0) return;
+            if (document.body.dataset.pfimsWaitForReady === 'true'
+                && document.documentElement.dataset.pfimsPageReady !== 'true') return;
             window.clearTimeout(settleTimer);
             settleTimer = window.setTimeout(function () {
+                pending = Number(pageGate.pending || 0);
                 if (pending > 0) return;
+                if (document.body.dataset.pfimsWaitForReady === 'true'
+                    && document.documentElement.dataset.pfimsPageReady !== 'true') return;
                 window.requestAnimationFrame(function () { window.requestAnimationFrame(function () {
+                    pending = Number(pageGate.pending || 0);
+                    if (pending > 0) return;
+                    if (document.body.dataset.pfimsWaitForReady === 'true'
+                        && document.documentElement.dataset.pfimsPageReady !== 'true') return;
                     visible = false;
+                    pageGate.active = false;
                     loader.hidden = true;
                     host.classList.remove('pfims-is-loading');
+                    document.documentElement.classList.remove('pfims-preload');
                 }); });
             }, 80);
         }
@@ -1023,17 +1043,25 @@
         if (!window.fetch.__pfimsTracked) {
             var originalFetch = window.fetch;
             var trackedFetch = function () {
-                if (visible) pending += 1;
+                if (pageGate.active) pageGate.pending += 1;
                 return originalFetch.apply(this, arguments).finally(function () {
-                    if (visible) {
-                        pending = Math.max(0, pending - 1);
-                        if (pending === 0 && document.readyState === 'complete') hide();
-                    }
+                    if (!pageGate.active) return;
+                    pageGate.pending = Math.max(0, Number(pageGate.pending || 0) - 1);
+                    pending = pageGate.pending;
+                    window.dispatchEvent(new CustomEvent('pfims:page-fetch-settled'));
                 });
             };
             trackedFetch.__pfimsTracked = true;
             window.fetch = trackedFetch;
         }
+        window.addEventListener('pfims:page-fetch-settled', function () {
+            pending = Number(pageGate.pending || 0);
+            if (document.readyState === 'complete') hide();
+        });
+        document.addEventListener('pfims:page-ready', function () {
+            document.documentElement.dataset.pfimsPageReady = 'true';
+            if (document.readyState === 'complete') hide();
+        });
         show();
         if (document.readyState === 'complete') hide();
         else window.addEventListener('load', hide, { once: true });

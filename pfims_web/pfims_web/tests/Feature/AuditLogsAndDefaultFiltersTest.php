@@ -88,10 +88,31 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
             ->assertSee('AUDIT LOGS')
             ->assertSee('Activity history')
             ->assertSee('Date &amp; Time', false)
-            ->assertSee('panel content-card filter-panel', false)
-            ->assertSee('filters-grid audit-log-filters', false)
-            ->assertSee('data-filter-description=', false)
+            ->assertSee('panel filters audit-log-filter-panel', false)
+            ->assertSee('id="auditLogFilters"', false)
+            ->assertSee('<th>Actions</th>', false)
+            ->assertDontSee('Apply filters')
+            ->assertSee("form.requestSubmit()", false)
+            ->assertSee('data-pfims-page-size="ready"', false)
+            ->assertSee('data-pfims-wait-for-ready="true"', false)
+            ->assertSee('if (requested === current) return false;', false)
+            ->assertSee('/audit-logs/latest', false)
             ->assertSee('pagination-wrapper');
+
+        $view = file_get_contents(resource_path('views/audit-logs.blade.php'));
+        $this->assertStringContainsString('class="pfims-row-action"', $view);
+        $this->assertStringContainsString("asset('images/view.jpg')", $view);
+    }
+
+    public function test_latest_audit_log_endpoint_only_reports_database_freshness_to_admins(): void
+    {
+        $admin = $this->user('admin', 'fresh-admin@example.test');
+        $operations = $this->user('operations', 'fresh-ops@example.test');
+
+        $this->actingAs($operations)->getJson('/audit-logs/latest')->assertForbidden();
+        $this->actingAs($admin)->getJson('/audit-logs/latest')
+            ->assertOk()
+            ->assertJsonStructure(['latest_id', 'latest_created_at']);
     }
 
     public function test_feature_tables_are_bootstrapped_when_git_deployment_has_not_run_migrations(): void

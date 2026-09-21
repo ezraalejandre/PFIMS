@@ -1,5 +1,31 @@
 (function () {
     const themeScript = document.currentScript;
+    // Authenticated pages must begin behind the shared loading surface.  The
+    // theme script runs in the document head, before the body and deferred
+    // module scripts exist, so this prevents a partially-rendered page from
+    // flashing while the page-specific data request is still in flight.
+    const isLandingPath = window.location.pathname === '/';
+    const pageGate = window.PFIMS_PAGE_PRELOADER = window.PFIMS_PAGE_PRELOADER || {
+        active: !isLandingPath,
+        pending: 0
+    };
+    if (!isLandingPath) {
+        document.documentElement.classList.add('pfims-preload');
+        if (window.fetch && !window.fetch.__pfimsPageGateTracked) {
+            const originalFetch = window.fetch;
+            const trackedFetch = function () {
+                if (pageGate.active) pageGate.pending += 1;
+                return originalFetch.apply(this, arguments).finally(function () {
+                    if (!pageGate.active) return;
+                    pageGate.pending = Math.max(0, pageGate.pending - 1);
+                    window.dispatchEvent(new CustomEvent('pfims:page-fetch-settled'));
+                });
+            };
+            trackedFetch.__pfimsPageGateTracked = true;
+            trackedFetch.__pfimsTracked = true;
+            window.fetch = trackedFetch;
+        }
+    }
     // Authenticated pages include the versioned shared UI script explicitly at
     // the end of the document. Wait until parsing is complete before deciding
     // whether a legacy page (currently the landing page) still needs the

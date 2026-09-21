@@ -1005,7 +1005,7 @@
                 <li class="{{ $parentModule === 'projects' ? 'active' : '' }}"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li class="{{ $parentModule === 'finance' ? 'active' : '' }}"><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li class="{{ $parentModule === 'inventory' ? 'active' : '' }}"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">

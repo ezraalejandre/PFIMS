@@ -114,7 +114,7 @@
                 <li class="active"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -430,7 +430,6 @@
             </div>
             <div class="modal-footer" style="justify-content: flex-end;">
                 <button class="btn-cancel" onclick="closeEditProjectModal()">Cancel</button>
-                <button class="btn-delete" id="deleteProjectBtn" onclick="deleteProject()">Delete</button>
                 <button class="btn-save" onclick="saveEditProject()">Save Changes</button>
             </div>
         </div>
@@ -1347,7 +1346,9 @@ if (new Date(endDate) <= new Date(startDate)) {
                 workers: workers || '',
                 startDate: startDateRaw || '',
                 endDate: endDateRaw || '',
-                actualEndDate: actualEndDate || '',
+                // The modal receives a formatted actual end date for display,
+                // while the row retains the ISO value needed by date inputs.
+                actualEndDate: (row && row.dataset && row.dataset.actualEndDate) || '',
                 phase: phase,
                 progress: progress || 0,
                 status: status || 'On Track',

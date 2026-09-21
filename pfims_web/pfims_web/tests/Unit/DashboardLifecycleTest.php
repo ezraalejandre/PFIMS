@@ -15,5 +15,7 @@ class DashboardLifecycleTest extends TestCase
             "if (!state.data) return;\n                const size = Number(document.getElementById('pageSize').value);",
             $view
         );
+        $this->assertStringContainsString('data-pfims-wait-for-ready="true"', $view);
+        $this->assertStringContainsString("document.dispatchEvent(new CustomEvent('pfims:page-ready'))", $view);
     }
 }

@@ -3371,6 +3371,68 @@ td:last-child:has(.pfims-row-action) {
     display: none !important;
 }
 
+/* The head-loaded theme script adds this class before the body is parsed.
+   Keep only the main content covered while the header and sidebar remain
+   visible, matching the established in-page loading experience. */
+html.pfims-preload body:not(.landing-page) main.main-content > * {
+    visibility: hidden !important;
+}
+
+html.pfims-preload body:not(.landing-page) main.main-content::before {
+    content: '';
+    position: fixed;
+    z-index: 2147483000;
+    inset: 72px 0 0 248px;
+    background: var(--ui-bg, #f7f8fa);
+}
+
+html.pfims-preload body:not(.landing-page) main.main-content::after {
+    content: '';
+    position: fixed;
+    z-index: 2147483001;
+    top: calc(50% + 36px);
+    left: calc(50% + 124px);
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+    border: 5px solid var(--ui-border-strong, #d1d5db);
+    border-top-color: var(--ui-accent, #f08a1a);
+    border-radius: 50%;
+    animation: pfims-spinner .75s linear infinite;
+}
+
+html.sidebar-collapsed.pfims-preload body:not(.landing-page) main.main-content::before {
+    left: 76px;
+}
+
+html.sidebar-collapsed.pfims-preload body:not(.landing-page) main.main-content::after {
+    left: calc(50% + 38px);
+}
+
+html.pfims-preload .pfims-page-loader {
+    display: none !important;
+}
+
+@media (max-width: 1024px) {
+    html.pfims-preload body:not(.landing-page) main.main-content::before {
+        inset: 72px 0 0 0;
+    }
+
+    html.pfims-preload body:not(.landing-page) main.main-content::after {
+        left: 50%;
+    }
+}
+
+@media (max-width: 700px) {
+    html.pfims-preload body:not(.landing-page) main.main-content::before {
+        top: 64px;
+    }
+
+    html.pfims-preload body:not(.landing-page) main.main-content::after {
+        top: calc(50% + 32px);
+    }
+}
+
 .pfims-page-loader {
     position: fixed;
     z-index: 900;
@@ -3494,14 +3556,6 @@ body.landing-page .pfims-page-loader {
 .audit-logs-page .audit-page-header { margin-bottom: 18px; }
 .audit-logs-page .audit-page-header p { margin: 6px 0 0; color: var(--ui-muted); }
 .audit-logs-page .audit-log-filter-panel { margin-bottom: 20px; }
-.audit-logs-page .audit-log-filter-panel > .panel-heading { margin-bottom: 0; }
-.audit-logs-page .audit-log-filters { margin-bottom: 0 !important; }
-.audit-logs-page .audit-log-filters .audit-apply-filters {
-    grid-column: -2 / -1;
-    min-height: 34px;
-    height: 34px;
-    align-self: end;
-}
 .audit-logs-page .audit-log-panel { min-width: 0; }
 .audit-log-table-wrap table { table-layout: auto; }
 .audit-log-table-wrap th:nth-child(1) { width: 180px; }
@@ -3510,11 +3564,6 @@ body.landing-page .pfims-page-loader {
 .audit-log-table-wrap th:nth-child(4) { width: 120px; text-align: center; }
 .audit-log-table-wrap td:nth-child(4) { text-align: center; }
 .audit-log-table-wrap .audit-details-cell { min-width: 300px; white-space: normal; line-height: 1.45; }
-.pfims-audit-icon { display: inline-grid; place-items: center; font-size: 1.2rem; }
-
-@media (max-width: 640px) {
-    .audit-logs-page .audit-log-filters .audit-apply-filters { grid-column: auto; width: 100%; }
-}
 
 /* Personal default-filter editor */
 .default-filter-config { display: grid; gap: 18px; padding: 20px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface-solid); }
@@ -5223,5 +5272,62 @@ html[data-theme="dark"] :where(
 
     html.sidebar-collapsed body:not(.landing-page) .sidebar {
         width: 75vw !important;
+    }
+}
+
+/* Keep the responsive drawer navigation visually consistent with Dashboard.
+   This final mobile-only rule intentionally follows every legacy tablet rule
+   above; desktop navigation (1025px and wider) is unchanged. */
+@media (max-width: 1024px) {
+    body:not(.landing-page) .sidebar nav ul li > a,
+    body:not(.landing-page) .sidebar .bottom-nav ul li > :is(a, button) {
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        text-align: center !important;
+    }
+
+    body:not(.landing-page) .sidebar nav ul li > a .nav-link-icon,
+    body:not(.landing-page) .sidebar .bottom-nav .nav-icon {
+        flex: 0 0 20px !important;
+        margin: 0 !important;
+    }
+
+    body:not(.landing-page) .sidebar .nav-parent-toggle .nav-chevron {
+        flex: 0 0 auto;
+        margin-left: 2px !important;
+    }
+
+    body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown {
+        padding-inline: 0 !important;
+    }
+
+    body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown a {
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding-inline: 8px !important;
+        text-align: center !important;
+    }
+
+    body:not(.landing-page) .sidebar .bottom-nav form,
+    body:not(.landing-page) .sidebar .bottom-nav form button {
+        width: 100% !important;
+    }
+
+    body:not(.landing-page) .sidebar .bottom-nav form button {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        text-align: center !important;
+    }
+
+    body:not(.landing-page) .config-tabs {
+        justify-content: center !important;
+    }
+
+    body:not(.landing-page) .config-tab {
+        text-align: center !important;
     }
 }

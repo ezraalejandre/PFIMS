@@ -12,6 +12,19 @@ class AuditLogController extends Controller
 {
     public function __construct(private readonly AuditFeatureSchema $schema) {}
 
+    public function latest(Request $request)
+    {
+        abort_unless(strtolower((string) $request->user()?->role) === 'admin', 403);
+        $this->schema->ensure();
+
+        $latest = AuditLog::query()->latest('id')->first(['id', 'created_at']);
+
+        return response()->json([
+            'latest_id' => $latest?->id,
+            'latest_created_at' => $latest?->created_at?->toISOString(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         abort_unless(strtolower((string) $request->user()?->role) === 'admin', 403);
@@ -24,8 +37,10 @@ class AuditLogController extends Controller
             'role' => ['nullable', 'in:ADMIN,ACCOUNTING,OPERATIONS'],
             'action' => ['nullable', 'in:CREATE,UPDATE,DELETE'],
             'module' => ['nullable', 'string', 'max:80'],
+            'per_page' => ['nullable', 'integer', 'in:10,20,50,100'],
         ]);
 
+        $latestAuditId = (int) (AuditLog::query()->max('id') ?? 0);
         $query = AuditLog::query()->latest('created_at')->latest('id');
         if ($search = trim((string) ($filters['search'] ?? ''))) {
             $escaped = addcslashes($search, '%_\\');
@@ -41,7 +56,7 @@ class AuditLogController extends Controller
         if (! empty($filters['action'])) $query->where('action_type', $filters['action']);
         if (! empty($filters['module'])) $query->where('module', $filters['module']);
 
-        $logs = $query->paginate(20)->withQueryString();
+        $logs = $query->paginate((int) ($filters['per_page'] ?? 20))->withQueryString();
         $logs->getCollection()->transform(function (AuditLog $log) {
             $log->view_available = $log->view_url && $log->action_type !== 'DELETE'
                 && DB::table($log->subject_table)->where($log->subject_key, $log->subject_id)->exists();
@@ -52,6 +67,7 @@ class AuditLogController extends Controller
             'portal' => 'admin', 'logs' => $logs, 'filters' => $filters,
             'users' => User::orderBy('name')->get(['id', 'name', 'email']),
             'modules' => AuditLog::query()->distinct()->orderBy('module')->pluck('module'),
+            'latestAuditId' => $latestAuditId,
         ]);
     }
 }

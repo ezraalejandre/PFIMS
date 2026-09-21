@@ -658,6 +658,69 @@ html.sidebar-collapsed .reports-page .main-content {
     padding-top: 4px;
 }
 
+.history-detail-dialog {
+    width: min(680px, calc(100vw - 28px));
+}
+
+.history-detail-content {
+    display: grid;
+    max-height: min(90vh, 760px);
+    gap: 18px;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.history-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.history-detail-grid > div {
+    min-width: 0;
+    padding: 12px 13px;
+    border: 1px solid var(--reports-border);
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.history-detail-grid .history-detail-wide {
+    grid-column: 1 / -1;
+}
+
+.history-detail-grid span,
+.history-detail-grid strong {
+    display: block;
+}
+
+.history-detail-grid span {
+    margin-bottom: 5px;
+    color: var(--reports-muted);
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.history-detail-grid strong {
+    color: var(--reports-text);
+    overflow-wrap: anywhere;
+}
+
+.history-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.history-view-button {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+}
+
 html[data-theme="dark"] .reports-page :where(.panel, .kpi-card, .export-dialog) {
     border-color: var(--ui-border) !important;
     background: var(--ui-surface-solid) !important;
@@ -683,6 +746,15 @@ html[data-theme="dark"] .reports-page :where(.choice-grid, .active-filter-summar
     color: var(--ui-text) !important;
 }
 
+html[data-theme="dark"] .reports-page .history-detail-grid > div {
+    border-color: var(--ui-border);
+    background: var(--ui-surface-raised);
+}
+
+html[data-theme="dark"] .reports-page .history-detail-grid strong {
+    color: var(--ui-text);
+}
+
 @media (max-width: 1000px) {
     .kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -698,6 +770,16 @@ html[data-theme="dark"] .reports-page :where(.choice-grid, .active-filter-summar
 
     .history-filters input:first-child {
         grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 600px) {
+    .history-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .history-detail-grid .history-detail-wide {
+        grid-column: auto;
     }
 }
 
