@@ -758,6 +758,8 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" id="viewCancelBtn" onclick="closeViewModal()">Close</button>
+                <button class="btn-save" id="viewEditBtn" onclick="enableEditMode()">Edit</button>
+                <button class="btn-delete" id="viewDeleteBtn" onclick="deleteTransaction()">Delete</button>
                 <button class="btn-save" id="viewSaveBtn" style="display: none;" onclick="saveEdit()">Save Changes</button>
             </div>
         </div>
@@ -2601,6 +2603,8 @@
             }
             
             document.getElementById('viewSaveBtn').style.display = 'inline-block';
+            document.getElementById('viewEditBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
         }
 
         function disableEditMode() {
@@ -2610,6 +2614,8 @@
             document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
             document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
             document.getElementById('viewSaveBtn').style.display = 'none';
+            document.getElementById('viewEditBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
             var projectRow = document.getElementById('viewProjectRow');
             if (projectRow.style.display !== 'none') {
                 document.getElementById('viewProjectDisplay').style.display = 'block';
@@ -2735,7 +2741,7 @@
                 showError('Transaction ID missing.');
                 return;
             }
-            openDeleteModal('Inventory transactions are part of the Finance audit trail and cannot be deleted.', function() {
+            openDeleteModal('Are you sure you want to permanently delete this transaction?', function() {
                 deleteTransaction(true);
             });
         }

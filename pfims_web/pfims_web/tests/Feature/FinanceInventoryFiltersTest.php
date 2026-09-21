@@ -130,6 +130,46 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->getJson('/api/inventory?stock_state=critical')->assertUnprocessable();
     }
 
+    public function test_inventory_transaction_can_be_edited_and_unlinked_transaction_can_be_deleted(): void
+    {
+        $this->patchJson('/api/inventory/transaction/1', [
+            'quantity' => 12,
+            'bar_code' => 111002,
+            'transaction_date' => '2026-01-11',
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'inventory_transaction_id' => 1,
+            'quantity' => 12,
+            'bar_code' => 111002,
+        ]);
+
+        DB::table('inventory_transaction_tbl')->insert([
+            'inventory_transaction_id' => 3,
+            'item_id' => 1,
+            'project_id' => 1,
+            'transaction_type' => 'IN',
+            'quantity' => 20,
+            'bar_code' => 111003,
+            'transaction_date' => '2026-01-12',
+        ]);
+
+        $this->deleteJson('/api/inventory/transaction/1')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+        $this->assertDatabaseMissing('inventory_transaction_tbl', ['inventory_transaction_id' => 1]);
+    }
+
+    public function test_finance_linked_inventory_transaction_remains_protected(): void
+    {
+        DB::table('fin_expense_tbl')->where('fin_expense_id', 1)->update(['inventory_transaction_id' => 2]);
+
+        $this->deleteJson('/api/inventory/transaction/2')
+            ->assertStatus(409)
+            ->assertJsonPath('success', false);
+        $this->assertDatabaseHas('inventory_transaction_tbl', ['inventory_transaction_id' => 2]);
+    }
+
     private function seedData(): void
     {
         DB::table('project_tbl')->insert([

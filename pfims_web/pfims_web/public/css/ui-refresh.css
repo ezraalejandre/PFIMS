@@ -649,7 +649,8 @@ button,
 }
 
 .btn-delete,
-.btn-delete-user {
+.btn-delete-user,
+.btn-delete-config {
     border-radius: 12px !important;
     background: linear-gradient(135deg, #ef4444, #c62828) !important;
     color: #fff !important;

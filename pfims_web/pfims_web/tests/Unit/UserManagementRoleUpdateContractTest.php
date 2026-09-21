@@ -29,15 +29,19 @@ class UserManagementRoleUpdateContractTest extends TestCase
         $settings = file_get_contents(__DIR__ . '/../../resources/views/settings.blade.php');
         $css = file_get_contents(__DIR__ . '/../../public/css/settings.css');
 
-        $this->assertStringContainsString('id="userDetailsModal" class="modal-overlay settings-user-modal"', $settings);
-        $this->assertStringContainsString('id="userEditModal" class="modal-overlay settings-user-modal"', $settings);
-        $this->assertStringContainsString('class="btn-delete-user" onclick="deleteUserFromDetails()">Delete User</button>', $settings);
+        $this->assertStringContainsString('id="userDetailsModal" class="modal-overlay settings-modal-overlay settings-user-modal"', $settings);
+        $this->assertStringContainsString('id="userEditModal" class="modal-overlay settings-modal-overlay settings-user-modal"', $settings);
+        $this->assertStringContainsString('class="btn-delete-config" onclick="deleteUserFromDetails()">Delete User</button>', $settings);
         $this->assertStringContainsString('function deleteUserFromDetails()', $settings);
+        $this->assertStringContainsString('class="settings-action-group"', $settings);
+        $this->assertStringContainsString('class="modal-container settings-confirm-dialog"', $settings);
         $this->assertStringContainsString('onclick="closeUserDetails()"', $settings);
         $this->assertStringContainsString('onclick="closeUserEdit()"', $settings);
         $this->assertStringContainsString('if (e.target === this) closeUserDetails();', $settings);
         $this->assertStringContainsString('if (document.getElementById(\'userEditModal\').style.display === \'flex\') return closeUserEdit();', $settings);
         $this->assertStringContainsString('.settings-user-modal {', $css);
-        $this->assertStringContainsString('z-index: 3600;', $css);
+        $this->assertStringContainsString('.settings-modal-overlay {', $css);
+        $this->assertStringContainsString('.settings-confirm-dialog {', $css);
+        $this->assertStringContainsString('.settings-confirm-actions {', $css);
     }
 }

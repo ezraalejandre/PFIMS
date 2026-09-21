@@ -314,12 +314,12 @@
                                                 <span class="role-badge {{ $u->role === 'admin' ? 'admin' : ($u->role === 'accounting' ? 'manager' : 'staff') }}">{{ $roleLabel }}</span>
                                             </td>
                                             <td>{{ $u->status ?? 'Active' }}</td>
-                                            <td style="text-align: center;">
-                                                <button type="button" class="btn-config-action btn-view-user" data-user-id="{{ $u->id }}" aria-label="View {{ $u->name }}" onclick="openUserDetails(Number(this.dataset.userId))">View</button>
-                                                <button type="button" class="btn-edit-user" data-user-id="{{ $u->id }}" aria-label="Edit {{ $u->name }}" onclick="openUserConfig(Number(this.dataset.userId))">
-                                                    <img src="{{ asset('images/edit.jpg') }}" alt="Edit">
-                                                </button>
-                                                <button type="button" class="btn-delete-user table-delete-user" data-user-id="{{ $u->id }}" aria-label="Delete {{ $u->name }}" onclick="deleteUserById(Number(this.dataset.userId))">Delete</button>
+                                            <td class="settings-actions-cell">
+                                                <div class="settings-action-group">
+                                                    <button type="button" class="btn-config-action btn-view-user" data-user-id="{{ $u->id }}" aria-label="View {{ $u->name }}" onclick="openUserDetails(Number(this.dataset.userId))">View</button>
+                                                    <button type="button" class="btn-config-action btn-edit-config" data-user-id="{{ $u->id }}" aria-label="Edit {{ $u->name }}" onclick="openUserConfig(Number(this.dataset.userId))">Edit</button>
+                                                    <button type="button" class="btn-config-action btn-delete-config" data-user-id="{{ $u->id }}" aria-label="Delete {{ $u->name }}" onclick="deleteUserById(Number(this.dataset.userId))">Delete</button>
+                                                </div>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -336,24 +336,24 @@
     </main>
 
     <!-- ─── USER DETAILS MODAL ─── -->
-    <div id="userDetailsModal" class="modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userDetailsModalTitle">
-        <div class="modal-container">
+    <div id="userDetailsModal" class="modal-overlay settings-modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userDetailsModalTitle">
+        <div class="modal-container settings-modal-dialog">
             <div class="modal-header">
                 <h2 id="userDetailsModalTitle">User details</h2>
                 <button type="button" class="modal-close" aria-label="Close" onclick="closeUserDetails()">×</button>
             </div>
             <div id="userDetailsFields" class="modal-body"></div>
-            <div class="settings-modal-footer">
+            <div class="modal-footer settings-modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeUserDetails()">Cancel</button>
                 <button type="button" class="btn-save" onclick="editUserFromDetails()">Edit</button>
-                <button type="button" class="btn-delete-user" onclick="deleteUserFromDetails()">Delete User</button>
+                <button type="button" class="btn-delete-config" onclick="deleteUserFromDetails()">Delete User</button>
             </div>
         </div>
     </div>
 
     <!-- ─── USER EDIT MODAL ─── -->
-    <div id="userEditModal" class="modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userEditModalTitle">
-        <div class="modal-container">
+    <div id="userEditModal" class="modal-overlay settings-modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userEditModalTitle">
+        <div class="modal-container settings-modal-dialog">
             <div class="modal-header">
                 <h2 id="userEditModalTitle">Edit user</h2>
                 <button type="button" class="modal-close" aria-label="Close" onclick="closeUserEdit()">×</button>
@@ -366,7 +366,7 @@
                     <div class="form-group"><label for="configUserStatus">Status</label><select id="configUserStatus"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
                 </div>
             </div>
-            <div class="settings-modal-footer">
+            <div class="modal-footer settings-modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeUserEdit()">Cancel</button>
                 <button type="button" class="btn-save" onclick="saveUserConfig(this)">Save Changes</button>
             </div>
@@ -374,42 +374,42 @@
     </div>
 
     <!-- ─── CONFIG ITEM MODAL (Add/Edit) ─── -->
-    <div id="deleteUserConfirmModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
-        <div class="modal-container" style="background:#fff; width:440px; max-width:95%; border-radius:16px; padding:28px 32px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-            <div style="text-align:center;">
-                <div style="width:58px; height:58px; margin:0 auto 16px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#ffebee; color:#d32f2f; font-size:28px; font-weight:700;">!</div>
-                <h2 style="margin:0 0 10px; color:#1a2b3c; font-size:1.35rem;">Delete User?</h2>
-                <p style="margin:0; color:#666; line-height:1.5;">Are you sure you want to permanently delete this user? This action cannot be undone.</p>
+    <div id="deleteUserConfirmModal" class="modal-overlay settings-modal-overlay settings-confirm-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="deleteUserModalTitle">
+        <div class="modal-container settings-confirm-dialog">
+            <div class="settings-confirm-content">
+                <div class="settings-confirm-icon" aria-hidden="true">!</div>
+                <h2 id="deleteUserModalTitle">Delete user?</h2>
+                <p>Are you sure you want to permanently delete this user? This action cannot be undone.</p>
             </div>
-            <div style="display:flex; justify-content:center; gap:12px; margin-top:26px;">
-                <button type="button" class="btn-cancel" onclick="closeDeleteUserModal()" style="padding:10px 22px; border-radius:8px; border:1px solid #ddd; background:#fff; color:#666; font-weight:600; cursor:pointer;">Cancel</button>
-                <button type="button" id="confirmDeleteUserBtn" onclick="confirmDeleteUser()" style="padding:10px 22px; border-radius:8px; border:0; background:#d32f2f; color:#fff; font-weight:600; cursor:pointer;">Delete User</button>
+            <div class="modal-footer settings-confirm-actions">
+                <button type="button" class="btn-cancel" onclick="closeDeleteUserModal()">Cancel</button>
+                <button type="button" id="confirmDeleteUserBtn" class="btn-delete-config" onclick="confirmDeleteUser()">Delete User</button>
             </div>
         </div>
     </div>
 
-    <div id="configDeleteConfirmModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3400; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
-        <div class="modal-container" style="background:#fff; width:440px; max-width:95%; border-radius:16px; padding:28px 32px; box-shadow:0 20px 60px rgba(0,0,0,.3);">
-            <div style="text-align:center;">
-                <div style="width:58px;height:58px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ffebee;color:#d32f2f;font-size:28px;font-weight:700;">!</div>
-                <h2 style="margin:0 0 10px;color:#1a2b3c;font-size:1.35rem;">Delete configuration?</h2>
-                <p id="configDeleteMessage" style="margin:0;color:#666;line-height:1.5;">This action cannot be undone.</p>
+    <div id="configDeleteConfirmModal" class="modal-overlay settings-modal-overlay settings-confirm-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="configDeleteModalTitle">
+        <div class="modal-container settings-confirm-dialog">
+            <div class="settings-confirm-content">
+                <div class="settings-confirm-icon" aria-hidden="true">!</div>
+                <h2 id="configDeleteModalTitle">Delete configuration?</h2>
+                <p id="configDeleteMessage">This action cannot be undone.</p>
             </div>
-            <div style="display:flex;justify-content:center;gap:12px;margin-top:26px;">
+            <div class="modal-footer settings-confirm-actions">
                 <button type="button" class="btn-cancel" onclick="closeConfigDeleteModal()">Cancel</button>
                 <button type="button" id="confirmDeleteConfigBtn" class="btn-delete-config" onclick="confirmDeleteConfig()">Delete</button>
             </div>
         </div>
     </div>
 
-    <div id="configDetailsModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3200; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
-        <div class="modal-container" style="background:#fff; width:500px; max-width:95%; border-radius:16px; padding:30px 35px; box-shadow:0 20px 60px rgba(0,0,0,.3); max-height:90vh; overflow-y:auto;">
+    <div id="configDetailsModal" class="modal-overlay settings-modal-overlay settings-details-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="configDetailsModalTitle">
+        <div class="modal-container settings-modal-dialog">
             <div class="modal-header">
                 <h2 id="configDetailsModalTitle">Configuration details</h2>
                 <button type="button" class="modal-close" aria-label="Close" onclick="closeConfigDetailsModal()">×</button>
             </div>
             <div id="configDetailsFields" class="modal-body"></div>
-            <div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #e9ecef;padding-top:20px;margin-top:20px;">
+            <div class="modal-footer settings-modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeConfigDetailsModal()">Cancel</button>
                 <button type="button" class="btn-delete-config" onclick="deleteConfigFromDetails()">Delete</button>
                 <button type="button" class="btn-save" onclick="editConfigFromDetails()">Edit</button>
@@ -955,12 +955,11 @@
             Object.keys(meta.fields || {}).forEach(function(field) {
                 var definition = meta.fields[field];
                 var row = document.createElement('div');
-                row.style.cssText = 'display:flex;justify-content:space-between;gap:18px;padding:11px 0;border-bottom:1px solid #f0ebe2;';
+                row.className = 'settings-detail-row';
                 var label = document.createElement('strong');
                 label.textContent = definition.label;
                 var value = document.createElement('span');
                 value.textContent = configValueLabel(definition, item[field]);
-                value.style.textAlign = 'right';
                 row.append(label, value);
                 container.appendChild(row);
             });

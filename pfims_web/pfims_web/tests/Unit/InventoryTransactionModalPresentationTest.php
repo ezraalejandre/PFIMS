@@ -23,14 +23,17 @@ class InventoryTransactionModalPresentationTest extends TestCase
         $this->assertStringContainsString("viewCancelBtn').textContent = 'Close'", $view);
     }
 
-    public function test_transaction_modal_edit_footer_omits_delete_and_keeps_save_changes(): void
+    public function test_transaction_view_actions_hide_during_edit_and_keep_save_changes(): void
     {
         $view = $this->view();
 
-        $this->assertStringNotContainsString('id="viewDeleteBtn"', $view);
+        $this->assertStringContainsString('id="viewEditBtn" onclick="enableEditMode()">Edit</button>', $view);
+        $this->assertStringContainsString('id="viewDeleteBtn" onclick="deleteTransaction()">Delete</button>', $view);
         $this->assertStringContainsString('id="viewSaveBtn"', $view);
         $this->assertStringContainsString('onclick="saveEdit()">Save Changes</button>', $view);
         $this->assertStringContainsString("viewSaveBtn').style.display = 'inline-block'", $view);
         $this->assertStringContainsString("viewSaveBtn').style.display = 'none'", $view);
+        $this->assertStringContainsString("viewEditBtn').style.display = 'none'", $view);
+        $this->assertStringContainsString("viewDeleteBtn').style.display = 'none'", $view);
     }
 }

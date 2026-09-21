@@ -8,6 +8,7 @@ use App\Models\InventoryTransaction;
 use App\Models\Supplier;
 use App\Models\SystemSetting;
 use App\Models\Unit;
+use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,8 @@ use Illuminate\Support\Str;
 
 class InventoryController extends Controller
 {
+    public function __construct(private readonly AuditLogService $audit) {}
+
     /**
      * Get all inventory items with relations
      */
@@ -315,6 +318,7 @@ class InventoryController extends Controller
         DB::beginTransaction();
         try {
             $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
+            $before = $transaction->getAttributes();
             $candidate = [
                 'item_id' => $transaction->item_id,
                 'project_id' => $transaction->project_id,
@@ -339,6 +343,8 @@ class InventoryController extends Controller
             ]);
 
             $this->recalculateItemStock($transaction->item_id);
+            $transaction->refresh();
+            $this->audit->record($transaction, 'UPDATE', $before, $transaction->getAttributes());
             DB::commit();
 
             return response()->json(['success' => true, 'data' => $transaction, 'message' => 'Transaction updated successfully!']);
@@ -352,12 +358,28 @@ class InventoryController extends Controller
 
     public function destroyTransaction($id): JsonResponse
     {
-        InventoryTransaction::findOrFail($id);
+        $transaction = InventoryTransaction::findOrFail($id);
+        if (DB::table('fin_expense_tbl')->where('inventory_transaction_id', $id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This transaction cannot be deleted because it is linked to a Finance expense.',
+            ], 409);
+        }
+
+        $proofPath = $transaction->proof_file_path;
+        DB::transaction(function () use ($transaction): void {
+            $before = $transaction->getAttributes();
+            $itemId = (int) $transaction->item_id;
+            $transaction->delete();
+            $this->recalculateItemStock($itemId);
+            $this->audit->record($transaction, 'DELETE', $before, []);
+        });
+        if ($proofPath) Storage::disk('public')->delete($proofPath);
 
         return response()->json([
-            'success' => false,
-            'message' => 'Inventory transactions cannot be deleted because they are part of the Finance audit trail.',
-        ], 409);
+            'success' => true,
+            'message' => 'Transaction deleted successfully!',
+        ]);
     }
 
     protected function recalculateItemStock(int $itemId): void

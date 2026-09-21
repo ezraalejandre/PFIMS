@@ -765,10 +765,17 @@ body {
     filter: brightness(0.7);
 }
 
-.table-delete-user {
-    padding: 5px 9px;
-    margin-left: 6px;
-    font-size: .72rem;
+.settings-actions-cell {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.settings-action-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 .btn-config-action {
@@ -878,21 +885,30 @@ body {
     backdrop-filter: blur(4px);
 }
 
+.settings-modal-overlay {
+    inset: 0;
+    width: auto;
+    height: auto;
+    z-index: 3200;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
 /* User details/edit use the same centered dialog contract as configuration
    modals. Keep the overlay above the settings surface so the dialog remains
    interactive instead of appearing behind a blurred page. */
 .settings-user-modal {
-    z-index: 3600;
-    justify-content: center;
-    align-items: center;
+    z-index: 3200;
 }
 
-.settings-user-modal .modal-container {
+.settings-modal-dialog {
     width: 500px;
-    max-width: 95%;
+    max-width: min(95%, 500px);
 }
 
-.settings-user-modal .settings-modal-footer {
+.settings-modal-footer,
+.settings-confirm-actions {
     display: flex;
     justify-content: flex-end;
     align-items: center;
@@ -902,7 +918,13 @@ body {
     padding-top: 20px;
 }
 
-.settings-user-modal .settings-detail-row {
+.settings-modal-footer > button,
+.settings-confirm-actions > button {
+    min-height: 42px;
+    padding: 10px 20px;
+}
+
+.settings-detail-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -911,10 +933,81 @@ body {
     border-bottom: 1px solid #f0ebe2;
 }
 
-.settings-user-modal .settings-detail-row span {
+.settings-detail-row span {
     color: #4b5563;
     text-align: right;
     overflow-wrap: anywhere;
+}
+
+.settings-confirm-modal {
+    z-index: 3400;
+}
+
+.settings-confirm-dialog {
+    width: 440px;
+    max-width: min(95%, 440px);
+    padding: 28px 32px;
+}
+
+.settings-confirm-content {
+    text-align: center;
+}
+
+.settings-confirm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: #ffebee;
+    color: #d32f2f;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.settings-confirm-content h2 {
+    margin: 0 0 10px;
+    color: #1a2b3c;
+    font-size: 1.35rem;
+}
+
+.settings-confirm-content p {
+    margin: 0;
+    color: #667085;
+    line-height: 1.5;
+}
+
+.settings-confirm-actions {
+    justify-content: center;
+    margin-top: 26px;
+}
+
+.settings-confirm-actions .btn-delete-config,
+.settings-modal-footer .btn-delete-config {
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+html[data-theme="dark"] .settings-detail-row {
+    border-bottom-color: #2c3749;
+}
+
+html[data-theme="dark"] .settings-detail-row span,
+html[data-theme="dark"] .settings-confirm-content p {
+    color: #b7c3d4;
+}
+
+html[data-theme="dark"] .settings-confirm-content h2 {
+    color: #f8fafc;
+}
+
+html[data-theme="dark"] .settings-confirm-icon {
+    background: rgba(239, 68, 68, 0.16);
+    color: #f87171;
 }
 
 .settings-user-fields {
@@ -930,6 +1023,20 @@ body {
     .settings-user-fields {
         flex-direction: column;
         gap: 0;
+    }
+
+    .settings-modal-overlay {
+        align-items: flex-start;
+        padding: 12px;
+        overflow-y: auto;
+    }
+
+    .settings-modal-footer {
+        flex-wrap: wrap;
+    }
+
+    .settings-modal-footer > button {
+        flex: 1 1 120px;
     }
 }
 
