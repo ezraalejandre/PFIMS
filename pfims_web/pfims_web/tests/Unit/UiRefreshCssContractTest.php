@@ -140,10 +140,17 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString("host.classList.add('pfims-loader-host')", $systemUi);
         $this->assertStringContainsString("control.matches('.nav-parent-toggle')", $systemUi);
         $this->assertStringNotContainsString("window.addEventListener('beforeunload', show)", $systemUi);
+        $this->assertStringContainsString('window.PFIMS_PAGE_PRELOADER', $theme);
+        $this->assertStringContainsString("document.documentElement.classList.add('pfims-preload')", $theme);
+        $this->assertStringContainsString('pageGate.pending', $theme);
+        $this->assertStringContainsString("document.documentElement.classList.remove('pfims-preload')", $systemUi);
         $this->assertStringContainsString('position: fixed;', $css);
         $this->assertStringContainsString('inset: 72px 0 0 248px;', $css);
         $this->assertStringContainsString('html.sidebar-collapsed .pfims-page-loader', $css);
         $this->assertStringContainsString('.pfims-loader-host', $css);
+        $this->assertStringContainsString('html.pfims-preload body:not(.landing-page) main.main-content > *', $css);
+        $this->assertStringContainsString('main.main-content::before', $css);
+        $this->assertStringContainsString('main.main-content::after', $css);
         $this->assertStringNotContainsString('setInterval(function() {'.PHP_EOL.'                loadNotifications();', $notifications);
     }
 }

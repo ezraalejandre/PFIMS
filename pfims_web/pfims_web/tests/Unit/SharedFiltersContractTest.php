@@ -40,4 +40,13 @@ class SharedFiltersContractTest extends TestCase
         $this->assertStringContainsString("definition[2] === 'select' ? document.createElement('select')", $settings);
         $this->assertStringNotContainsString("['stock_status','Stock status'", $settings);
     }
+
+    public function test_default_filter_observer_does_not_rewrite_its_own_ui_forever(): void
+    {
+        $script = file_get_contents(dirname(__DIR__, 2).'/public/js/pfims-system-ui.js');
+
+        $this->assertStringContainsString('var appliedAny = false;', $script);
+        $this->assertStringContainsString('appliedAny = true;', $script);
+        $this->assertStringContainsString('if (appliedAny) componentControls.forEach', $script);
+    }
 }

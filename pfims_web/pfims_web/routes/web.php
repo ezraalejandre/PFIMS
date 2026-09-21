@@ -186,6 +186,9 @@ Route::middleware('auth')->group(function () {
 Route::get('/audit-logs', [AuditLogController::class, 'index'])
     ->middleware(['auth', 'role.portal:admin'])
     ->name('audit-logs.index');
+Route::get('/audit-logs/latest', [AuditLogController::class, 'latest'])
+    ->middleware(['auth', 'role.portal:admin'])
+    ->name('audit-logs.latest');
 
 // Reports page
 Route::get('/reports', [ReportController::class, 'page'])->middleware(['auth', 'role.portal:admin']);
@@ -304,11 +307,15 @@ Route::patch('/users/{id}', function (Request $request, $id) {
     // status when it is omitted instead of rejecting an otherwise valid role
     // update with the required status validation rule.
     $request->merge([
+        'name' => preg_replace('/\s+/u', ' ', trim((string) ($request->input('name') ?? $user->name))),
+        'email' => mb_strtolower(trim((string) ($request->input('email') ?? $user->email))),
         'role' => strtolower(trim((string) $request->input('role'))),
         'status' => $request->input('status', $user->status ?? 'Active'),
     ]);
 
     $validated = $request->validate([
+        'name' => ['required', 'string', 'max:150'],
+        'email' => ['required', 'email:rfc', 'max:254', Rule::unique('users', 'email')->ignore($user->id)],
         'role' => ['required', 'in:admin,operations,accounting'],
         'status' => ['required', 'in:Active,Inactive'],
     ]);
@@ -321,6 +328,8 @@ Route::patch('/users/{id}', function (Request $request, $id) {
         return response()->json(['message' => 'At least one active administrator is required.'], 422);
     }
 
+    $user->name = $validated['name'];
+    $user->email = $validated['email'];
     $user->role = strtolower($validated['role']);
     $user->status = $validated['status'];
     $user->save();

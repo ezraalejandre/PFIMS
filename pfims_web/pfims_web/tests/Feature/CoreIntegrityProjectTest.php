@@ -220,7 +220,7 @@ class CoreIntegrityProjectTest extends TestCase
             $response = $this->actingAs($this->user($dashboard['role']))
                 ->get($dashboard['path'])
                 ->assertOk()
-                ->assertSee('<body class="dashboard-page" data-portal="'.$dashboard['role'].'">', false)
+                ->assertSee('<body class="dashboard-page" data-portal="'.$dashboard['role'].'"', false)
                 ->assertSee('class="top-header"', false)
                 ->assertSee('class="sidebar"', false)
                 ->assertSee('class="bottom-nav"', false)

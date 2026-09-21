@@ -739,8 +739,21 @@ body.modal-open {
     align-items: center;
     justify-content: center;
     padding: 8px 14px;
+    border: 1px solid #1d4ed8;
     border-radius: 7px;
+    background: #1d4ed8;
+    color: #ffffff;
+    font-weight: 700;
     text-decoration: none;
+    transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.dashboard-view-project:hover,
+.dashboard-view-project:focus-visible {
+    border-color: #1e40af;
+    background: #1e40af;
+    color: #ffffff;
+    transform: translateY(-1px);
 }
 
 html[data-theme="dark"] .dashboard-project-row:hover,

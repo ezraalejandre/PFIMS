@@ -36,7 +36,7 @@
         'projects' => ['label' => 'PROJECTS', 'icon' => 'projects.png'],
         'finance' => ['label' => 'FINANCE', 'icon' => 'finance.png'],
         'inventory' => ['label' => 'INVENTORY', 'icon' => 'inventory.png'],
-        'reports' => ['label' => 'REPORTS', 'icon' => 'reports.png'],
+        'reports' => ['label' => 'REPORTS', 'icon' => 'folder.svg'],
     ];
     $portalTitles = [
         'admin' => 'Admin',
@@ -62,7 +62,7 @@
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
     <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}" defer></script>
 </head>
-<body class="dashboard-page" data-portal="{{ $portal }}">
+<body class="dashboard-page" data-portal="{{ $portal }}" data-pfims-wait-for-ready="true">
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="PFIMS logo">
@@ -339,6 +339,9 @@
                     renderDashboard();
                 } catch (error) {
                     showError(error.message);
+                } finally {
+                    document.documentElement.dataset.pfimsPageReady = 'true';
+                    document.dispatchEvent(new CustomEvent('pfims:page-ready'));
                 }
             }
 

@@ -87,7 +87,9 @@ class ConfigController extends Controller
     {
         $this->authorizeAdmin($request);
         $config = $this->configuration($type);
-        $validated = $this->normalize($type, $request->validate($this->rules($config)));
+        $validated = $this->normalize($type, $request->validate($this->rules($config), [
+            'category_code.regex' => 'Category code must start with a letter and use only letters, numbers, spaces, hyphens, or underscores.',
+        ]));
         $this->rejectDuplicate($config, $validated);
         $model = $config['model'];
         $item = $model::create($validated);
@@ -102,7 +104,9 @@ class ConfigController extends Controller
         $model = $config['model'];
         /** @var Model $item */
         $item = $model::findOrFail($id);
-        $validated = $this->normalize($type, $request->validate($this->rules($config)));
+        $validated = $this->normalize($type, $request->validate($this->rules($config), [
+            'category_code.regex' => 'Category code must start with a letter and use only letters, numbers, spaces, hyphens, or underscores.',
+        ]));
         $this->rejectDuplicate($config, $validated, $id);
         $item->update($validated);
 

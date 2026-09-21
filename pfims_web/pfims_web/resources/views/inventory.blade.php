@@ -348,7 +348,7 @@
                 <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li class="active"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -639,6 +639,8 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeItemDetailModal()">Close</button>
+                <button class="btn-delete" type="button" onclick="deleteItem()">Delete</button>
+                <button class="btn-save" type="button" onclick="openItemEditModal()">Edit</button>
             </div>
         </div>
     </div>
@@ -681,7 +683,6 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeEditItemModal()">Cancel</button>
-                <button class="btn-delete" onclick="deleteItem()">Delete</button>
                 <button class="btn-save" onclick="saveEditItem()">Save Changes</button>
             </div>
         </div>
@@ -757,7 +758,6 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" id="viewCancelBtn" onclick="closeViewModal()">Close</button>
-                <button class="btn-delete" id="viewDeleteBtn" style="display: none;" onclick="deleteTransaction()">Delete</button>
                 <button class="btn-save" id="viewSaveBtn" style="display: none;" onclick="saveEdit()">Save Changes</button>
             </div>
         </div>
@@ -1030,6 +1030,7 @@
         var itemsCurrentPage = 1;
         var currentExpenseRow = null;
         var currentItemDetailRow = null;
+        var currentItemEditRow = null;
 
         function escapeHtml(value) {
             return String(value).replace(/[&<>'"]/g, function(character) {
@@ -1580,6 +1581,7 @@
                     <td style="text-align: center;">
                         <button class="pfims-row-action" onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr'));" title="View item" aria-label="View item"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
                         <button class="pfims-row-action" onclick="event.stopPropagation(); openItemDetailModal(this.closest('tr')); setTimeout(openItemEditModal, 0);" title="Edit item" aria-label="Edit item"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
+                        <button class="pfims-row-action" onclick="event.stopPropagation(); openItemDeleteModal(this.closest('tr'));" title="Delete item" aria-label="Delete item"><img src="{{ asset('images/delete.jpg') }}" alt=""></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1665,8 +1667,16 @@
                 if (supplierFilter !== 'all') {
                     matchesSupplier = String(item.supplier_id) === supplierFilter;
                 }
+
+                var stockFilter = document.getElementById('itemsStockFilter').value;
+                var stock = parseFloat(item.current_stock) || 0;
+                var reorder = parseFloat(item.reorder_level) || 0;
+                var matchesStock = stockFilter === 'all' ||
+                    (stockFilter === 'in_stock' && stock > reorder) ||
+                    (stockFilter === 'low_stock' && stock > 0 && stock <= reorder) ||
+                    (stockFilter === 'out_of_stock' && stock <= 0);
                 
-                return matchesSearch && matchesCategory && matchesSupplier;
+                return matchesSearch && matchesCategory && matchesSupplier && matchesStock;
             });
             
             renderItemsPage(1);
@@ -1745,6 +1755,7 @@
                         <div class="action-cell" style="display: flex; gap: 4px; justify-content: center; align-items: center;">
                             <button class="pfims-row-action" onclick="event.stopPropagation(); openViewModal(this.closest('tr'));" title="View transaction" aria-label="View transaction"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
                             <button class="pfims-row-action" onclick="event.stopPropagation(); openViewModal(this.closest('tr')); setTimeout(enableEditMode, 0);" title="Edit transaction" aria-label="Edit transaction"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
+                            <button class="pfims-row-action" onclick="event.stopPropagation(); openTransactionDeleteModal(this.closest('tr'));" title="Delete transaction" aria-label="Delete transaction"><img src="{{ asset('images/delete.jpg') }}" alt=""></button>
                         </div>
                     </td>
                 `;
@@ -2000,6 +2011,9 @@
         // ─── EDIT ITEM MODAL FUNCTIONS ──────────────────────────────
         function openItemEditModal() {
             if (!currentItemDetailRow) return;
+
+            // Keep a stable reference after the details modal is closed.
+            currentItemEditRow = currentItemDetailRow;
             
             var itemId = currentItemDetailRow.dataset.itemId || '';
             var itemName = currentItemDetailRow.dataset.itemName || '';
@@ -2119,12 +2133,14 @@
             .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
-        function deleteItem() {
-            if (!currentItemDetailRow) return;
-            var itemId = currentItemDetailRow.dataset.itemId || '';
+        function deleteItem(skipConfirmation) {
+            var targetRow = currentItemDetailRow || currentItemEditRow;
+            if (!targetRow) return;
+            currentItemEditRow = targetRow;
+            var itemId = targetRow.dataset.itemId || '';
             if (!itemId) { showError('Item ID missing.'); return; }
 
-            openDeleteModal('Deleting this item will also delete its inventory transactions. Continue?', function() {
+            var performDelete = function() {
                 var deleteBtn = document.getElementById('confirmDeleteBtn');
                 setButtonLoading(deleteBtn, true, 'Deleting...');
                 fetch('/api/inventory/item/' + itemId, {
@@ -2151,6 +2167,20 @@
                     showError('Failed to delete item.');
                 })
                 .finally(function() { setButtonLoading(deleteBtn, false); });
+            };
+            if (skipConfirmation) {
+                performDelete();
+            } else {
+                openDeleteModal('Deleting this item will also delete its inventory transactions. Continue?', performDelete);
+            }
+        }
+
+        function openItemDeleteModal(row) {
+            currentItemDetailRow = row;
+            currentItemEditRow = row;
+            var itemName = row && row.dataset.itemName ? row.dataset.itemName : 'this item';
+            openDeleteModal('Delete "' + itemName + '"? Items with transaction history cannot be deleted.', function() {
+                deleteItem(true);
             });
         }
 
@@ -2570,7 +2600,6 @@
                 document.getElementById('viewProjectInput').style.display = 'none';
             }
             
-            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
             document.getElementById('viewSaveBtn').style.display = 'inline-block';
         }
 
@@ -2580,7 +2609,6 @@
             document.getElementById('viewCancelBtn').textContent = 'Close';
             document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
             document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
-            document.getElementById('viewDeleteBtn').style.display = 'none';
             document.getElementById('viewSaveBtn').style.display = 'none';
             var projectRow = document.getElementById('viewProjectRow');
             if (projectRow.style.display !== 'none') {
@@ -2658,7 +2686,7 @@
             .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
-        function deleteTransaction() {
+        function deleteTransaction(skipConfirmation) {
             if (!currentRow) return;
             var transactionId = currentRow.dataset.id || '';
             if (!transactionId) {
@@ -2666,7 +2694,7 @@
                 return;
             }
 
-            openDeleteModal('Are you sure you want to permanently delete this transaction?', function() {
+            var performDelete = function() {
                 var deleteBtn = document.getElementById('confirmDeleteBtn');
                 setButtonLoading(deleteBtn, true, 'Deleting...');
                 fetch('/api/inventory/transaction/' + transactionId, {
@@ -2692,6 +2720,23 @@
                     showError('Failed to delete transaction.');
                 })
                 .finally(function() { setButtonLoading(deleteBtn, false); });
+            };
+            if (skipConfirmation) {
+                performDelete();
+            } else {
+                openDeleteModal('Are you sure you want to permanently delete this transaction?', performDelete);
+            }
+        }
+
+        function openTransactionDeleteModal(row) {
+            currentRow = row;
+            var transactionId = row && row.dataset.id ? row.dataset.id : '';
+            if (!transactionId) {
+                showError('Transaction ID missing.');
+                return;
+            }
+            openDeleteModal('Inventory transactions are part of the Finance audit trail and cannot be deleted.', function() {
+                deleteTransaction(true);
             });
         }
 

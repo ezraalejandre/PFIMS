@@ -784,7 +784,7 @@
                 </li>
                 <li>
                     <a href="{{ url('/reports') }}">
-                        <img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon" aria-hidden="true">
+                        <img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon" aria-hidden="true">
                         REPORTS
                     </a>
                 </li>
@@ -987,6 +987,7 @@
         <!-- ─── TAB 8: PROFIT/LOSS ─── -->
         <div id="tabProfit" class="report-section {{ $financeTab === 'profit' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+                <input type="search" id="profitSearch" maxlength="150" placeholder="Search project or contract..." aria-label="Search contracts" oninput="filterFinanceRows('profitSearch', 'profitBody')">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Report Type:
                     <select id="profitType" onchange="loadProfit()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                         <option value="direct">Direct Expenses</option>
@@ -1009,6 +1010,7 @@
         <!-- ─── TAB 9: AR/AP ─── -->
         <div id="tabReceivables" class="report-section {{ $financeTab === 'receivables' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+                <input type="search" id="receivableSearch" maxlength="150" placeholder="Search counterparty or project..." aria-label="Search accounts receivable and payable" oninput="filterFinanceRows('receivableSearch', 'receivableBody')">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Type:
                     <select id="receivableType" onchange="loadReceivables()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                         <option value="accounts_receivable">Accounts Receivable</option>
@@ -1059,8 +1061,8 @@
             </div>
             <div class="report-table-wrapper">
                 <table id="backhoeTable">
-                    <thead><tr><th>Asset</th><th>Period</th><th>Gas/Diesel</th><th>Payroll (Operator)</th><th>Repair</th><th>Other</th><th>Delivery</th><th>Transport</th><th>Total</th><th>Rental Income</th><th>Net Income</th></tr></thead>
-                    <tbody id="backhoeBody"><tr><td colspan="11" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
+                    <thead><tr><th>Asset</th><th>Period</th><th>Gas/Diesel</th><th>Payroll (Operator)</th><th>Repair</th><th>Other</th><th>Delivery</th><th>Transport</th><th>Total</th><th>Rental Income</th><th>Net Income</th><th>Actions</th></tr></thead>
+                    <tbody id="backhoeBody"><tr><td colspan="12" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -1068,6 +1070,7 @@
         <!-- ─── TAB 13: BONDS ─── -->
         <div id="tabBonds" class="report-section {{ $financeTab === 'bonds' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+                <input type="search" id="bondSearch" maxlength="150" placeholder="Search project or provider..." aria-label="Search bonds" oninput="filterFinanceRows('bondSearch', 'bondBody')">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">
                     Project:
                     <select id="bondProjectFilter" onchange="loadBonds()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
@@ -1252,7 +1255,6 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddContractModal()">Cancel</button>
-                <button class="btn-delete" id="contractDeleteBtn" onclick="deleteContract()" style="display:none;">Delete</button>
                 <button class="btn-edit" id="contractEditBtn" onclick="enableContractEdit()" style="display:none;">Edit</button>
                 <button class="btn-save" id="contractSaveBtn" onclick="saveContract()">Save Contract</button>
             </div>
@@ -1353,7 +1355,7 @@
     <!-- ─── ADD BACKHOE EXPENSE MODAL ─── -->
     <div id="addBackhoeExpenseModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
-            <div class="modal-header"><h2>Add Backhoe Expense</h2><button class="modal-close" onclick="closeAddBackhoeExpenseModal()">×</button></div>
+            <div class="modal-header"><h2 id="backhoeExpenseModalTitle">Add Backhoe Expense</h2><button class="modal-close" onclick="closeAddBackhoeExpenseModal()">×</button></div>
             <div class="modal-body">
                 <div class="form-group"><label>Asset <span class="required">*</span></label>
                     <select id="backhoeExpenseAsset">
@@ -1377,7 +1379,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddBackhoeExpenseModal()">Cancel</button>
-                <button class="btn-save" onclick="saveBackhoeExpense()">Add Expense</button>
+                <button class="btn-save" id="backhoeExpenseSaveBtn" onclick="saveBackhoeExpense()">Add Expense</button>
             </div>
         </div>
     </div>
@@ -1385,7 +1387,7 @@
     <!-- ─── ADD BACKHOE RENTAL MODAL ─── -->
     <div id="addBackhoeRentalModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
-            <div class="modal-header"><h2>Add Backhoe Rental Income</h2><button class="modal-close" onclick="closeAddBackhoeRentalModal()">×</button></div>
+            <div class="modal-header"><h2 id="backhoeRentalModalTitle">Add Backhoe Rental Income</h2><button class="modal-close" onclick="closeAddBackhoeRentalModal()">×</button></div>
             <div class="modal-body">
                 <div class="form-group"><label>Asset <span class="required">*</span></label>
                     <select id="backhoeRentalAsset">
@@ -1399,8 +1401,21 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddBackhoeRentalModal()">Cancel</button>
-                <button class="btn-save" onclick="saveBackhoeRental()">Add Rental Income</button>
+                <button class="btn-save" id="backhoeRentalSaveBtn" onclick="saveBackhoeRental()">Add Rental Income</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ─── EQUIPMENT RECORD DETAILS ─── -->
+    <div id="equipmentDetailModal" class="modal-overlay finance-edit-modal">
+        <div class="modal-container">
+            <div class="modal-header"><h2>Equipment Details</h2><button class="modal-close" onclick="closeEquipmentDetailModal()">×</button></div>
+            <div class="modal-body">
+                <div id="equipmentDetailSummary" class="detail-grid"></div>
+                <h3 style="margin:18px 0 10px;">Underlying records</h3>
+                <div class="report-table-wrapper"><table><thead><tr><th>Type</th><th>Date/Period</th><th>Project</th><th>Amount</th><th>Remarks</th><th>Actions</th></tr></thead><tbody id="equipmentDetailBody"></tbody></table></div>
+            </div>
+            <div class="modal-footer"><button class="btn-cancel" onclick="closeEquipmentDetailModal()">Close</button></div>
         </div>
     </div>
 
@@ -1692,6 +1707,10 @@
         var API_BASE = '/api';
         var assets = [];
         var cashAccounts = [];
+        var equipmentExpenseRecords = [];
+        var equipmentRentalRecords = [];
+        var equipmentRecordsByPeriod = {};
+        var equipmentEditState = { type: null, id: null };
 
         // ─── ADMIN CATEGORY CODES ──────────────────────────────────────
         var ADMIN_CATEGORY_CODES = ['RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH'];
@@ -2126,6 +2145,20 @@
         document.getElementById('deleteBondConfirmModal').addEventListener('click', function(e) {
             if (e.target === this) closeBondDeleteModal();
         });
+
+        // Lightweight client-side filtering for the report tabs whose data is
+        // loaded asynchronously. Keeping the rows in place preserves each
+        // row's existing detail-modal click handler.
+        function filterFinanceRows(inputId, bodyId) {
+            var input = document.getElementById(inputId);
+            var body = document.getElementById(bodyId);
+            if (!input || !body) return;
+            var term = input.value.toLowerCase().trim();
+            body.querySelectorAll('tr').forEach(function(row) {
+                if (row.classList.contains('total-row')) return;
+                row.style.display = !term || row.textContent.toLowerCase().includes(term) ? '' : 'none';
+            });
+        }
 
         // ─── EXPENSE FILTERS ───────────────────────────────────────────
         function setActiveTab(el, period) {
@@ -3564,7 +3597,6 @@
             
             var projectSelect = document.getElementById('contractProject');
             var projectDisplay = document.getElementById('contractProjectDisplay');
-            var deleteBtn = document.getElementById('contractDeleteBtn');
             
             if (row) {
                 // EDIT MODE - Project name is display-only
@@ -3586,9 +3618,6 @@
                 document.getElementById('contractRemarks').value = row.dataset.remarks || '';
                 document.getElementById('addContractModal').setAttribute('data-edit-id', row.dataset.contractId || '');
                 
-                // Show delete button in edit mode
-                deleteBtn.style.display = 'inline-block';
-                
                 // Update budget display
                 updateContractBudgetDisplayForProject(projectId);
             } else {
@@ -3604,8 +3633,6 @@
                 document.getElementById('contractAddlPayment').value = '0';
                 document.getElementById('contractRemarks').value = '';
                 
-                // Hide delete button in add mode
-                deleteBtn.style.display = 'none';
                 document.getElementById('contractSaveBtn').textContent = 'Continue';
                 
                 updateContractBudgetDisplay();
@@ -3619,7 +3646,6 @@
             document.querySelectorAll('#addContractModal input, #addContractModal select, #addContractModal textarea').forEach(function(control) {
                 control.disabled = true;
             });
-            document.getElementById('contractDeleteBtn').style.display = 'none';
             document.getElementById('contractEditBtn').style.display = 'inline-block';
             document.querySelector('#addContractModal .btn-save').style.display = 'none';
         }
@@ -3631,7 +3657,6 @@
                 control.disabled = false;
             });
             document.getElementById('contractProject').disabled = true;
-            document.getElementById('contractDeleteBtn').style.display = 'inline-block';
             document.getElementById('contractEditBtn').style.display = 'none';
             document.getElementById('contractSaveBtn').textContent = 'Save Changes';
             document.getElementById('contractSaveBtn').style.display = 'inline-block';
@@ -4110,6 +4135,9 @@
 
         // ─── ADD BACKHOE EXPENSE ──────────────────────────────────────
         function openAddBackhoeExpenseModal() {
+            equipmentEditState = { type: null, id: null };
+            document.getElementById('backhoeExpenseModalTitle').textContent = 'Add Backhoe Expense';
+            document.getElementById('backhoeExpenseSaveBtn').textContent = 'Add Expense';
             document.getElementById('addBackhoeExpenseModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             document.getElementById('backhoeExpenseAsset').value = '';
@@ -4148,10 +4176,12 @@
                 remarks: remarks || null
             };
 
-            apiFetch('/equipment-expenses', { method: 'POST', body: JSON.stringify(payload) })
+            var editId = equipmentEditState.type === 'expense' ? equipmentEditState.id : null;
+            apiFetch(editId ? '/equipment-expenses/' + editId : '/equipment-expenses', { method: editId ? 'PUT' : 'POST', body: JSON.stringify(payload) })
                 .then(function() {
                     closeAddBackhoeExpenseModal();
-                    showSuccess('Backhoe expense added successfully!');
+                    equipmentEditState = { type: null, id: null };
+                    showSuccess(editId ? 'Equipment expense updated successfully!' : 'Backhoe expense added successfully!');
                     loadBackhoe();
                 })
                 .catch(function(error) { showError(error.message); });
@@ -4159,6 +4189,9 @@
 
         // ─── ADD BACKHOE RENTAL ──────────────────────────────────────
         function openAddBackhoeRentalModal() {
+            equipmentEditState = { type: null, id: null };
+            document.getElementById('backhoeRentalModalTitle').textContent = 'Add Backhoe Rental Income';
+            document.getElementById('backhoeRentalSaveBtn').textContent = 'Add Rental Income';
             document.getElementById('addBackhoeRentalModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             document.getElementById('backhoeRentalAsset').value = '';
@@ -4193,10 +4226,12 @@
                 remarks: remarks || null
             };
 
-            apiFetch('/equipment-rental-income', { method: 'POST', body: JSON.stringify(payload) })
+            var editId = equipmentEditState.type === 'rental' ? equipmentEditState.id : null;
+            apiFetch(editId ? '/equipment-rental-income/' + editId : '/equipment-rental-income', { method: editId ? 'PUT' : 'POST', body: JSON.stringify(payload) })
                 .then(function() {
                     closeAddBackhoeRentalModal();
-                    showSuccess('Rental income added successfully!');
+                    equipmentEditState = { type: null, id: null };
+                    showSuccess(editId ? 'Rental income updated successfully!' : 'Rental income added successfully!');
                     loadBackhoe();
                 })
                 .catch(function(error) { showError(error.message); });
@@ -4881,6 +4916,7 @@
                     if (!hasData) {
                         tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:20px;">No projects with budgets found. Please add budgets to projects.</td></tr>';
                     }
+                    filterFinanceRows('profitSearch', 'profitBody');
                 })
                 .catch(function(error) {
                     showError('Error loading Profit/Loss: ' + error.message);
@@ -4942,6 +4978,7 @@
                     tr.className = 'total-row';
                     tr.innerHTML = '<td colspan="7"><strong>GRAND TOTAL</strong></td><td><strong>' + formatCurrency(total) + '</strong></td><td></td>';
                     tbody.appendChild(tr);
+                    filterFinanceRows('receivableSearch', 'receivableBody');
                 })
                 .catch(function(error) {
                     showError('Error loading Receivables/Payables: ' + error.message);
@@ -5197,18 +5234,65 @@
                 url += '?' + params.join('&');
             }
 
-            apiFetch(url)
-                .then(function(data) {
+            Promise.all([
+                apiFetch(url),
+                apiFetch('/equipment-expenses').catch(function() { return []; }),
+                apiFetch('/equipment-rental-income').catch(function() { return []; })
+            ])
+                .then(function(results) {
+                    var data = results[0];
+                    equipmentExpenseRecords = results[1] || [];
+                    equipmentRentalRecords = results[2] || [];
+                    equipmentRecordsByPeriod = {};
+                    equipmentExpenseRecords.forEach(function(record) {
+                        var key = record.asset_id + '|' + String(record.expense_date || '').substring(0, 7);
+                        if (!equipmentRecordsByPeriod[key]) equipmentRecordsByPeriod[key] = { expenses: [], rentals: [] };
+                        equipmentRecordsByPeriod[key].expenses.push(record);
+                    });
+                    equipmentRentalRecords.forEach(function(record) {
+                        var key = record.asset_id + '|' + String(record.period_month || '').substring(0, 7);
+                        if (!equipmentRecordsByPeriod[key]) equipmentRecordsByPeriod[key] = { expenses: [], rentals: [] };
+                        equipmentRecordsByPeriod[key].rentals.push(record);
+                    });
                     var tbody = document.getElementById('backhoeBody');
                     tbody.innerHTML = '';
 
-                    if (!data || !data.length) {
-                        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;">No data found.</td></tr>';
+                    var assetPeriodData = {};
+                    var reportRows = Array.isArray(data) ? data.slice() : [];
+
+                    // The profitability report is expense-anchored, so a valid
+                    // rental-income-only period has no report row. Add a
+                    // lightweight synthetic row for those existing records so
+                    // the period still exposes View/Edit actions and remains
+                    // editable through the rental-income API.
+                    var reportPeriodKeys = {};
+                    reportRows.forEach(function(row) {
+                        reportPeriodKeys[row.asset_id + '|' + String(row.period_month || '').substring(0, 7)] = true;
+                    });
+                    equipmentRentalRecords.forEach(function(record) {
+                        var rentalPeriod = String(record.period_month || '').substring(0, 7);
+                        var rentalAsset = assets.find(function(item) { return String(item.asset_id) === String(record.asset_id); });
+                        var rentalKey = record.asset_id + '|' + rentalPeriod;
+                        if (!rentalPeriod || reportPeriodKeys[rentalKey] || (assetId && String(assetId) !== String(record.asset_id)) || (month && rentalPeriod !== month)) return;
+                        if (!rentalAsset || rentalAsset.asset_type !== 'heavy_equipment') return;
+                        reportRows.push({
+                            asset_id: record.asset_id,
+                            asset_name: rentalAsset.asset_name,
+                            expense_type: null,
+                            amount: 0,
+                            period_month: rentalPeriod + '-01',
+                            rental_income: parseFloat(record.amount) || 0,
+                            net_income: parseFloat(record.amount) || 0
+                        });
+                        reportPeriodKeys[rentalKey] = true;
+                    });
+
+                    if (!reportRows.length) {
+                        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:20px;">No data found.</td></tr>';
                         return;
                     }
 
-                    var assetPeriodData = {};
-                    data.forEach(function(row) {
+                    reportRows.forEach(function(row) {
                         var key = row.asset_id + '|' + (row.period_month || '');
                         if (!assetPeriodData[key]) {
                             assetPeriodData[key] = {
@@ -5259,6 +5343,7 @@
                         var tr = document.createElement('tr');
                         var net = a.net_income;
                         
+                        var periodKey = a.asset_id + '|' + String(a.period_month || '').substring(0, 7);
                         tr.innerHTML = '<td><strong>' + a.asset_name + '</strong></td>' +
                             '<td>' + (a.period_month || '') + '</td>' +
                             '<td>' + formatCurrency(a.gas_diesel) + '</td>' +
@@ -5269,7 +5354,8 @@
                             '<td>' + formatCurrency(a.transportation) + '</td>' +
                             '<td><strong>' + formatCurrency(a.total_expense) + '</strong></td>' +
                             '<td>' + formatCurrency(a.rental_income) + '</td>' +
-                            '<td class="' + (net < 0 ? 'amount-negative' : 'amount-positive') + '">' + formatCurrency(net) + '</td>';
+                            '<td class="' + (net < 0 ? 'amount-negative' : 'amount-positive') + '">' + formatCurrency(net) + '</td>' +
+                            '<td class="action-cell"><button type="button" class="pfims-row-action" onclick="openEquipmentDetailModal(\'' + periodKey.replace(/'/g, "\\'") + '\')" title="View equipment details" aria-label="View equipment details"><img src="/images/view.jpg" alt=""></button><button type="button" class="pfims-row-action" onclick="openEquipmentEditForPeriod(\'' + periodKey.replace(/'/g, "\\'") + '\')" title="Edit equipment details" aria-label="Edit equipment details"><img src="/images/edit.jpg" alt=""></button><button type="button" class="pfims-row-action" onclick="openEquipmentDeleteForPeriod(\'' + periodKey.replace(/'/g, "\\'") + '\')" title="Delete equipment record" aria-label="Delete equipment record"><img src="/images/delete.jpg" alt=""></button></td>';
                         tbody.appendChild(tr);
                         grandExpense += a.total_expense;
                         grandIncome += a.rental_income;
@@ -5281,12 +5367,103 @@
                     tr.innerHTML = '<td colspan="8"><strong>GRAND TOTAL</strong></td>' +
                         '<td><strong>' + formatCurrency(grandExpense) + '</strong></td>' +
                         '<td><strong>' + formatCurrency(grandIncome) + '</strong></td>' +
-                        '<td class="' + (grandNet < 0 ? 'amount-negative' : 'amount-positive') + '"><strong>' + formatCurrency(grandNet) + '</strong></td>';
+                        '<td class="' + (grandNet < 0 ? 'amount-negative' : 'amount-positive') + '"><strong>' + formatCurrency(grandNet) + '</strong></td><td>—</td>';
                     tbody.appendChild(tr);
                 })
                 .catch(function(error) {
                     showError('Error loading Backhoe data: ' + error.message);
                 });
+        }
+
+        function closeEquipmentDetailModal() {
+            var modal = document.getElementById('equipmentDetailModal');
+            if (modal) modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function openEquipmentDetailModal(key) {
+            var records = equipmentRecordsByPeriod[key] || { expenses: [], rentals: [] };
+            var parts = key.split('|');
+            var asset = assets.find(function(item) { return String(item.asset_id) === String(parts[0]); });
+            var expensesTotal = records.expenses.reduce(function(sum, row) { return sum + (parseFloat(row.amount) || 0); }, 0);
+            var rentalTotal = records.rentals.reduce(function(sum, row) { return sum + (parseFloat(row.amount) || 0); }, 0);
+            document.getElementById('equipmentDetailSummary').innerHTML =
+                '<div class="detail-item"><label>Asset</label><span class="detail-value">' + escapeFinanceHtml(asset ? asset.asset_name : parts[0]) + '</span></div>' +
+                '<div class="detail-item"><label>Period</label><span class="detail-value">' + escapeFinanceHtml(parts[1]) + '</span></div>' +
+                '<div class="detail-item"><label>Total expenses</label><span class="detail-value">' + formatCurrency(expensesTotal) + '</span></div>' +
+                '<div class="detail-item"><label>Rental income</label><span class="detail-value">' + formatCurrency(rentalTotal) + '</span></div>';
+            var body = document.getElementById('equipmentDetailBody');
+            var rows = [];
+            records.expenses.forEach(function(row) {
+                rows.push('<tr><td>Expense (' + escapeFinanceHtml(String(row.expense_type || '').replace('_', ' ')) + ')</td><td>' + escapeFinanceHtml(row.expense_date || '—') + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Delete</button></td></tr>');
+            });
+            records.rentals.forEach(function(row) {
+                rows.push('<tr><td>Rental income</td><td>' + escapeFinanceHtml(row.period_month || '—') + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Delete</button></td></tr>');
+            });
+            body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;">No underlying records.</td></tr>';
+            document.getElementById('equipmentDetailModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function escapeFinanceHtml(value) {
+            return String(value == null ? '' : value).replace(/[&<>'"]/g, function(character) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[character];
+            });
+        }
+
+        function editEquipmentRecord(type, id) {
+            var source = type === 'expense' ? equipmentExpenseRecords : equipmentRentalRecords;
+            var row = source.find(function(item) { return String(type === 'expense' ? item.equip_expense_id : item.rental_income_id) === String(id); });
+            if (!row) { showError('Equipment record not found.'); return; }
+            closeEquipmentDetailModal();
+            if (type === 'expense') {
+                openAddBackhoeExpenseModal();
+                equipmentEditState = { type: type, id: id };
+                document.getElementById('backhoeExpenseAsset').value = row.asset_id;
+                document.getElementById('backhoeExpenseProject').value = row.project_id || '';
+                document.getElementById('backhoeExpenseType').value = row.expense_type;
+                document.getElementById('backhoeExpenseAmount').value = row.amount;
+                document.getElementById('backhoeExpenseDate').value = row.expense_date;
+                document.getElementById('backhoeExpenseRemarks').value = row.remarks || '';
+                document.getElementById('backhoeExpenseModalTitle').textContent = 'Edit Equipment Expense';
+                document.getElementById('backhoeExpenseSaveBtn').textContent = 'Save Changes';
+            } else {
+                openAddBackhoeRentalModal();
+                equipmentEditState = { type: type, id: id };
+                document.getElementById('backhoeRentalAsset').value = row.asset_id;
+                document.getElementById('backhoeRentalProject').value = row.project_id || '';
+                document.getElementById('backhoeRentalPeriod').value = String(row.period_month || '').substring(0, 7);
+                document.getElementById('backhoeRentalAmount').value = row.amount;
+                document.getElementById('backhoeRentalRemarks').value = row.remarks || '';
+                document.getElementById('backhoeRentalModalTitle').textContent = 'Edit Rental Income';
+                document.getElementById('backhoeRentalSaveBtn').textContent = 'Save Changes';
+            }
+        }
+
+        function deleteEquipmentRecord(type, id) {
+            openDeleteModal('Delete this equipment record?', function() {
+                apiFetch((type === 'expense' ? '/equipment-expenses/' : '/equipment-rental-income/') + id, { method: 'DELETE' })
+                    .then(function() { closeEquipmentDetailModal(); showSuccess('Equipment record deleted successfully.'); loadBackhoe(); })
+                    .catch(function(error) { showError(error.message); });
+            });
+        }
+
+        function openEquipmentEditForPeriod(key) {
+            var records = equipmentRecordsByPeriod[key] || { expenses: [], rentals: [] };
+            var row = records.expenses[0];
+            if (row) return editEquipmentRecord('expense', row.equip_expense_id);
+            row = records.rentals[0];
+            if (row) return editEquipmentRecord('rental', row.rental_income_id);
+            showError('No equipment record is available to edit.');
+        }
+
+        function openEquipmentDeleteForPeriod(key) {
+            var records = equipmentRecordsByPeriod[key] || { expenses: [], rentals: [] };
+            var row = records.expenses[0];
+            if (row) return deleteEquipmentRecord('expense', row.equip_expense_id);
+            row = records.rentals[0];
+            if (row) return deleteEquipmentRecord('rental', row.rental_income_id);
+            showError('No equipment record is available to delete.');
         }
 
         // BONDS
@@ -5363,6 +5540,7 @@
                         '<td><strong>' + formatCurrency(total) + '</strong></td>' +
                         '<td></td>';
                     tbody.appendChild(tr);
+                    filterFinanceRows('bondSearch', 'bondBody');
                 })
                 .catch(function(error) {
                     showError('Error loading Bonds: ' + error.message);
@@ -5553,7 +5731,7 @@
             var modals = ['addExpenseModal', 'addBudgetModal', 'addContractModal',
                           'addReceivableModal', 'addCashModal', 'addRepairModal', 'addBackhoeExpenseModal',
                           'addBackhoeRentalModal', 'addBondModal', 'expenseDetailModal', 'budgetDetailModal',
-                          'receivableDetailModal', 'bondDetailModal', 'cashDetailModal'];
+                          'receivableDetailModal', 'bondDetailModal', 'cashDetailModal', 'equipmentDetailModal'];
             modals.forEach(function(id) {
                 var modal = document.getElementById(id);
                 if (modal && e.target === modal) {
@@ -5571,7 +5749,8 @@
                         'budgetDetailModal': closeBudgetDetailModal,
                         'receivableDetailModal': closeReceivableModal,
                         'bondDetailModal': closeBondModal,
-                        'cashDetailModal': closeCashModal
+                        'cashDetailModal': closeCashModal,
+                        'equipmentDetailModal': closeEquipmentDetailModal
                     }[id];
                     if (closeFn) closeFn();
                 }
@@ -5610,7 +5789,7 @@
                     initialLoad = fetchProjects().then(function() { switchReportTab(requestedTab); });
                     break;
                 case 'backhoe':
-                    initialLoad = fetchAssets().then(function() { switchReportTab(requestedTab); });
+                    initialLoad = fetchProjects().then(function() { return fetchAssets(); }).then(function() { switchReportTab(requestedTab); });
                     break;
                 case 'cash':
                     initialLoad = fetchCashAccounts().then(function() { switchReportTab(requestedTab); });

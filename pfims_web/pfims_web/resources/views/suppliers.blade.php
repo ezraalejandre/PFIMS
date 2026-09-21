@@ -126,7 +126,7 @@
                 <li><a href="{{ url('/projects') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
                 <li><a href="{{ url('/finance') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
                 <li class="active"><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/reports.png') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/reports') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -281,8 +281,10 @@
                 <div class="view-item"><label>Supplier Address</label><span id="viewSupplierAddress" class="view-value">—</span></div>
                 <div class="view-item"><label>Supplier Contact no.</label><span id="viewSupplierContact" class="view-value">—</span></div>
             </div>
-                        <div class="modal-footer">
+            <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeViewModal()">Close</button>
+                <button class="btn-delete-supplier" type="button" onclick="openDeleteModal(currentSupplierId)">Delete</button>
+                <button class="btn-save" type="button" onclick="openEditFromView()">Edit</button>
             </div>
         </div>
     </div>
@@ -338,9 +340,8 @@
                 </div>
             </div>
 
-                        <div class="modal-footer">
+            <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-                <button class="btn-delete-supplier" onclick="openDeleteModal(currentSupplierId)" type="button">Delete</button>
                 <button class="btn-save" onclick="updateSupplier()">Save Changes</button>
             </div>
         </div>
@@ -454,6 +455,7 @@
                     <td style="text-align: center;">
                     <button class="pfims-row-action" onclick="openViewModal(${supplier.supplier_id}, this)" title="View supplier" aria-label="View supplier"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
                     <button class="pfims-row-action" onclick="openEditModal(${supplier.supplier_id})" title="Edit supplier" aria-label="Edit supplier"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
+                    <button class="pfims-row-action" onclick="openDeleteModal(${supplier.supplier_id})" title="Delete supplier" aria-label="Delete supplier"><img src="{{ asset('images/delete.jpg') }}" alt=""></button>
                 `;
                 tbody.appendChild(row);
             });
@@ -552,7 +554,7 @@
                 .finally(() => setButtonLoading(triggerBtn, false));
         }
 
-                function closeViewModal() {
+        function closeViewModal() {
             document.getElementById('viewSupplierModal').classList.remove('active');
             document.body.style.overflow = '';
         }
@@ -849,6 +851,9 @@
         });
         document.getElementById('editSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeEditModal(); }
+        });
+        document.getElementById('viewSupplierModal').addEventListener('click', function(e) {
+            if (e.target === this) { closeViewModal(); }
         });
         document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
             if (e.target === this) { closeDeleteModal(); }
