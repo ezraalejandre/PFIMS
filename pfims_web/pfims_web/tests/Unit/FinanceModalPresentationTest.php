@@ -6,6 +6,33 @@ use PHPUnit\Framework\TestCase;
 
 class FinanceModalPresentationTest extends TestCase
 {
+    public function test_finance_add_actions_render_in_the_page_header_for_their_relevant_tabs(): void
+    {
+        $view = $this->financeView();
+
+        $this->assertStringContainsString('id="financeHeaderActions"', $view);
+        $this->assertStringContainsString("in_array(\$financeTab, ['expenses', 'budgets'], true)", $view);
+        foreach ([
+            ['profit', 'openAddContractModal()', '+ Add Contract'],
+            ['receivables', 'openAddReceivableModal()', '+ Add Entry'],
+            ['cash', 'openAddCashModal()', '+ Add Cash Position'],
+            ['backhoe', 'openAddBackhoeExpenseModal()', '+ Add Expense'],
+            ['backhoe', 'openAddBackhoeRentalModal()', '+ Add Rental Income'],
+            ['bonds', 'openAddBondModal()', '+ Add Bond'],
+        ] as [$tab, $handler, $label]) {
+            $this->assertMatchesRegularExpression(
+                '/<div class="finance-header-action-group" data-finance-tabs="' . $tab . '".*?<button onclick="' . preg_quote($handler, '/') . '".*?>' . preg_quote($label, '/') . '<\/button>/s',
+                $view
+            );
+            $this->assertSame(1, substr_count($view, 'onclick="' . $handler . '"'));
+        }
+        $this->assertStringContainsString("headerActions.querySelectorAll('[data-finance-tabs]')", $view);
+        $this->assertStringContainsString('headerActions.hidden = !hasActiveHeaderAction;', $view);
+
+        $css = file_get_contents(__DIR__ . '/../../public/css/finance.css');
+        $this->assertStringContainsString('.page-header .finance-header-action-group', $css);
+    }
+
     private function financeView(): string
     {
         return file_get_contents(__DIR__ . '/../../resources/views/finance.blade.php');
@@ -65,6 +92,90 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString('.pfims-add-modal .form-group textarea', $css);
     }
 
+    public function test_pending_stock_in_add_details_modal_contains_only_project_and_amount_inputs(): void
+    {
+        $view = $this->financeView();
+        preg_match('/<div id="inventoryExpenseModal".*?<\/div>\s*<\/div>\s*<\/div>/s', $view, $matches);
+        $modal = $matches[0] ?? '';
+
+        $this->assertNotSame('', $modal, 'The pending stock-in Add Details modal must exist.');
+        $this->assertStringContainsString('<h2>Edit Stock-In Expense</h2>', $modal);
+        $this->assertStringContainsString('id="inventoryExpenseProject"', $modal);
+        $this->assertStringContainsString('>Project Name <span class="required">*</span>', $modal);
+        $this->assertStringContainsString('id="inventoryExpenseAmount"', $modal);
+        $this->assertSame(2, substr_count($modal, 'class="form-group"'));
+        $this->assertStringContainsString("'inventoryExpenseProject'", $view);
+        $this->assertStringContainsString('JSON.stringify({ project_id: Number(projectId), amount: amount })', $view);
+    }
+
+    public function test_expense_status_filter_and_pending_actions_cover_incomplete_records(): void
+    {
+        $view = $this->financeView();
+        $analytics = file_get_contents(__DIR__ . '/../../public/js/finance-analytics.js');
+
+        foreach ([
+            'id="expenseRecordStatusFilter"',
+            'id="expenseSourceFilter"',
+            '>All Records</option>',
+            '>Missing Amount</option>',
+            '>No Project</option>',
+            '>Missing Amount &amp; Project</option>',
+            "document.getElementById('expenseRecordStatusFilter').value = 'all';",
+            "var recordStatusFilter = document.getElementById('expenseRecordStatusFilter').value;",
+            "var sourceFilter = document.getElementById('expenseSourceFilter').value;",
+            "sourceFilter === 'inventory' ? isInventoryExpense : !isInventoryExpense",
+            'expense.is_pending_inventory === true',
+            'class="pfims-row-action"',
+            'src="/images/view.jpg"',
+            "row.dataset.isPendingInventory === 'true'",
+            "row.dataset.isInventoryExpense === 'true'",
+            'id="detailViewInventoryBtn"',
+            'class="expense-detail-footer-actions"',
+            'onclick="openLinkedInventoryTransaction(event)"',
+            'event.stopPropagation();',
+            "window.sessionStorage.setItem('pfims_inventory_transaction_to_open', transactionId)",
+            "openInventoryExpenseModal(transactionId)",
+            "window.location.assign('/inventory?section=transactions&transaction_id='",
+        ] as $contract) {
+            $this->assertStringContainsString($contract, $view);
+        }
+
+        foreach ([
+            "byId('expenseRecordStatusFilter').value = 'all'",
+            "byId('expenseSourceFilter').value = 'all'",
+            "var recordStatus = (byId('expenseRecordStatusFilter')",
+            "var source = (byId('expenseSourceFilter')",
+            "recordStatus === 'missing_amount' && isMissingAmount",
+            "recordStatus === 'no_project' && !hasProject",
+            "recordStatus === 'missing_amount_and_project' && isMissingAmount && !hasProject",
+            "source === 'inventory' && isInventoryExpense",
+            "source === 'manual' && !isInventoryExpense",
+            '&& matchesRecordStatus',
+            '&& matchesSource',
+        ] as $contract) {
+            $this->assertStringContainsString($contract, $analytics);
+        }
+    }
+
+    public function test_construction_supply_expense_collects_inventory_stock_in_details(): void
+    {
+        $view = $this->financeView();
+
+        foreach ([
+            'id="expenseInventoryFields"',
+            'id="expenseInventoryItem"',
+            'id="expenseInventoryQuantity"',
+            'id="expenseInventoryBarCode"',
+            "categoryCode === 'CONST_SUPPLY'",
+            "expenseFormData.append('inventory_item_id', inventoryItemId)",
+            "expenseFormData.append('inventory_quantity', inventoryQuantity)",
+            "apiFetch('/inventory-items-list')",
+            "'Purchased ' + displayQuantity",
+        ] as $contract) {
+            $this->assertStringContainsString($contract, $view);
+        }
+    }
+
     public function test_finance_add_flow_uses_inventory_numbered_stepper_and_navigation_contract(): void
     {
         $script = file_get_contents(__DIR__ . '/../../public/js/finance-review-flow.js');
@@ -116,7 +227,7 @@ class FinanceModalPresentationTest extends TestCase
             ['bondDetailModal', 'bondDetailEditBtn', 'bondDetailDeleteBtn', 'bondDetailSaveBtn'],
         ] as [$modalId, $editId, $deleteId, $saveId]) {
             $this->assertMatchesRegularExpression(
-                '/<div id="' . preg_quote($modalId, '/') . '".*?<div class="modal-footer".*?id="' . preg_quote($deleteId, '/') . '".*?id="' . preg_quote($editId, '/') . '".*?id="' . preg_quote($saveId, '/') . '"/s',
+                '/<div id="' . preg_quote($modalId, '/') . '".*?<div class="[^\"]*modal-footer[^\"]*".*?id="' . preg_quote($deleteId, '/') . '".*?id="' . preg_quote($editId, '/') . '".*?id="' . preg_quote($saveId, '/') . '"/s',
                 $view,
                 "{$modalId} must expose Edit, Delete, and Save footer controls."
             );
@@ -135,6 +246,11 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString("textContent = 'Save Changes'", $view);
         $this->assertStringContainsString("classList.add('is-editing')", $view);
         $this->assertStringContainsString("classList.remove('is-editing')", $view);
+
+        $css = file_get_contents(__DIR__ . '/../../public/css/finance.css');
+        $this->assertStringContainsString('#expenseDetailModal .expense-detail-footer-actions', $css);
+        $this->assertStringContainsString('justify-content: flex-end;', $css);
+        $this->assertStringContainsString('flex-wrap: nowrap;', $css);
     }
 
     public function test_equipment_repair_report_is_not_presented_as_editable_record(): void
@@ -144,5 +260,44 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString("'/reports/repair-total?period='", $view);
         $this->assertStringNotContainsString('openRepairModal(this)', $view);
         $this->assertStringNotContainsString('function openRepairModal', $view);
+    }
+
+    public function test_contract_ar_ap_and_bond_searches_reuse_the_expense_filter_pattern(): void
+    {
+        $view = $this->financeView();
+
+        foreach ([
+            ['profitSearch', 'clearProfitSearch()', 'profitType'],
+            ['receivableSearch', 'clearReceivableSearch()', 'receivableType'],
+            ['bondSearch', 'clearBondSearch()', 'bondProjectFilter'],
+        ] as [$searchId, $clearHandler, $filterId]) {
+            $this->assertMatchesRegularExpression(
+                '/<div class="filter-row">\s*<input type="search" id="' . $searchId . '" class="project-filter".*?id="' . $filterId . '".*?class="btn-clear-search" onclick="' . preg_quote($clearHandler, '/') . '"/s',
+                $view
+            );
+        }
+
+        $this->assertStringContainsString('function clearProfitSearch()', $view);
+        $this->assertStringContainsString('function clearReceivableSearch()', $view);
+        $this->assertStringContainsString('function clearBondSearch()', $view);
+    }
+
+    public function test_ar_ap_and_bond_project_identity_fields_are_editable_and_saved(): void
+    {
+        $view = $this->financeView();
+
+        foreach ([
+            "var editableFields = ['receivableDetailTypeEdit', 'receivableDetailCounterpartyEdit', 'receivableDetailProjectEdit'",
+            "entry_type: document.getElementById('receivableDetailTypeEdit').value",
+            "project_id: document.getElementById('receivableDetailProjectEdit').value || null",
+            "counterparty_name: document.getElementById('receivableDetailCounterpartyEdit').value.trim()",
+            "var editableFields = ['bondDetailProjectEdit', 'bondDetailDateEdit'",
+            "project_id: parseInt(document.getElementById('bondDetailProjectEdit').value)",
+        ] as $contract) {
+            $this->assertStringContainsString($contract, $view);
+        }
+
+        $this->assertStringNotContainsString("document.getElementById('receivableDetailTypeEdit').style.display = 'none';", $view);
+        $this->assertStringNotContainsString("document.getElementById('bondDetailProjectEdit').style.display = 'none';", $view);
     }
 }

@@ -9,7 +9,7 @@ use ZipArchive;
 
 class TabularImportReader
 {
-    private const MAX_ROWS = 2000;
+    public const MAX_ROWS = 10000;
 
     private const MAX_COLUMNS = 50;
 
@@ -106,10 +106,6 @@ class TabularImportReader
         $rows = [];
         while (($row = fgetcsv($handle, 0, $delimiter, '"', '\\')) !== false) {
             $rows[] = $row;
-            if (count($rows) > self::MAX_ROWS + 10) {
-                fclose($handle);
-                throw new ImportValidationException('The CSV file contains too many rows.');
-            }
         }
         fclose($handle);
 
@@ -154,10 +150,6 @@ class TabularImportReader
             $rows = [];
 
             foreach ($rowNodes as $rowNode) {
-                if (count($rows) > self::MAX_ROWS + 10) {
-                    throw new ImportValidationException('The XLSX file contains too many rows.');
-                }
-
                 $row = [];
                 foreach ($rowNode->c as $cell) {
                     $reference = (string) $cell['r'];

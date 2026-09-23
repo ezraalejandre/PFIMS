@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class FinanceInventoryFiltersTest extends TestCase
@@ -130,6 +132,174 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->getJson('/api/inventory?stock_state=critical')->assertUnprocessable();
     }
 
+    public function test_inventory_transaction_can_be_edited_and_stock_is_recalculated(): void
+    {
+        $this->patchJson('/api/inventory/transaction/1', [
+            'quantity' => 14,
+            'bar_code' => 111009,
+            'transaction_date' => '2026-01-11',
+        ])->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.quantity', 14);
+
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'inventory_transaction_id' => 1,
+            'bar_code' => 111009,
+            'transaction_date' => '2026-01-11',
+        ]);
+        $this->assertEquals(14.0, (float) DB::table('inventory_item_tbl')->where('item_id', 1)->value('current_stock'));
+    }
+
+    public function test_unlinked_inventory_transaction_can_be_deleted_and_stock_is_recalculated(): void
+    {
+        $this->deleteJson('/api/inventory/transaction/1')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('inventory_transaction_tbl', ['inventory_transaction_id' => 1]);
+        $this->assertEquals(0.0, (float) DB::table('inventory_item_tbl')->where('item_id', 1)->value('current_stock'));
+    }
+
+    public function test_finance_linked_inventory_transaction_cannot_be_deleted(): void
+    {
+        DB::table('fin_expense_tbl')->where('fin_expense_id', 1)->update(['inventory_transaction_id' => 1]);
+
+        $this->deleteJson('/api/inventory/transaction/1')
+            ->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'This transaction cannot be deleted because its Finance expense already has details.');
+
+        $this->assertDatabaseHas('inventory_transaction_tbl', ['inventory_transaction_id' => 1]);
+    }
+
+    public function test_stock_in_persists_a_pending_construction_supply_expense(): void
+    {
+        Storage::fake('public');
+
+        $this->post('/api/inventory/transaction', [
+            'item_id' => 1,
+            'transaction_type' => 'IN',
+            'quantity' => 4,
+            'bar_code' => 2800030,
+            'transaction_date' => '2026-09-20',
+            'proof_file' => UploadedFile::fake()->create('delivery.pdf', 20, 'application/pdf'),
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $transactionId = DB::table('inventory_transaction_tbl')->max('inventory_transaction_id');
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'inventory_transaction_id' => $transactionId,
+            'project_id' => null,
+            'fin_category_id' => 1,
+            'project_cost_component' => 'material',
+            'expense_description' => 'Purchased 4 bag of Cement',
+            'amount' => null,
+            'expense_date' => '2026-09-20',
+            'remarks' => 'Inventory stock-in transaction. Receiving reference: 2800030',
+        ]);
+    }
+
+    public function test_add_details_completes_the_persisted_stock_in_expense(): void
+    {
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => null,
+            'fin_category_id' => 1,
+            'inventory_transaction_id' => 1,
+            'project_cost_component' => 'material',
+            'expense_description' => 'Purchased 10 bag of Cement',
+            'amount' => null,
+            'expense_date' => '2026-01-10',
+            'remarks' => 'Inventory stock-in transaction. Receiving reference: 111001',
+        ]);
+
+        $this->postJson('/api/finance-expenses/from-inventory/1', ['project_id' => 1, 'amount' => 2500])
+            ->assertOk()
+            ->assertJsonPath('project_id', 1)
+            ->assertJsonPath('amount', 2500);
+
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'inventory_transaction_id' => 1,
+            'project_id' => 1,
+            'amount' => 2500,
+        ]);
+    }
+
+    public function test_construction_supply_expense_creates_inventory_stock_in(): void
+    {
+        $this->post('/api/finance-expenses', [
+            'fin_category_id' => 1,
+            'project_cost_component' => 'material',
+            'expense_description' => 'ignored for synchronized purchases',
+            'amount' => 1800,
+            'expense_date' => '2026-09-20',
+            'inventory_item_id' => 2,
+            'inventory_quantity' => 4,
+            'inventory_bar_code' => 2800030,
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $transactionId = DB::table('inventory_transaction_tbl')->max('inventory_transaction_id');
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'inventory_transaction_id' => $transactionId,
+            'item_id' => 2,
+            'project_id' => null,
+            'transaction_type' => 'IN',
+            'quantity' => 4,
+            'bar_code' => 2800030,
+        ]);
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'inventory_transaction_id' => $transactionId,
+            'project_id' => null,
+            'expense_description' => 'Purchased 4 box of Nails',
+            'amount' => 1800,
+        ]);
+        $this->assertEquals(44.0, (float) DB::table('inventory_item_tbl')->where('item_id', 2)->value('current_stock'));
+    }
+
+    public function test_add_details_can_assign_a_project_when_inventory_purchase_already_has_an_amount(): void
+    {
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => null,
+            'fin_category_id' => 1,
+            'inventory_transaction_id' => 1,
+            'project_cost_component' => 'material',
+            'expense_description' => 'Purchased 10 bag of Cement',
+            'amount' => 2500,
+            'expense_date' => '2026-01-10',
+            'remarks' => 'Inventory stock-in transaction. Receiving reference: 111001',
+        ]);
+
+        $this->postJson('/api/finance-expenses/from-inventory/1', ['project_id' => 2, 'amount' => 2500])
+            ->assertOk()
+            ->assertJsonPath('project_id', 2)
+            ->assertJsonPath('amount', 2500);
+    }
+
+    public function test_completed_stock_in_expense_details_can_be_edited_again(): void
+    {
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => 1,
+            'fin_category_id' => 1,
+            'inventory_transaction_id' => 1,
+            'project_cost_component' => 'material',
+            'expense_description' => 'Purchased 10 bag of Cement',
+            'amount' => 2500,
+            'expense_date' => '2026-01-10',
+            'remarks' => 'Inventory stock-in transaction. Receiving reference: 111001',
+        ]);
+
+        $this->postJson('/api/finance-expenses/from-inventory/1', ['project_id' => 2, 'amount' => 3000])
+            ->assertOk()
+            ->assertJsonPath('project_id', 2)
+            ->assertJsonPath('amount', 3000)
+            ->assertJsonPath('is_inventory_expense', true)
+            ->assertJsonPath('is_pending_inventory', false);
+
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'inventory_transaction_id' => 1,
+            'project_id' => 2,
+            'amount' => 3000,
+        ]);
+    }
+
     private function seedData(): void
     {
         DB::table('project_tbl')->insert([
@@ -198,11 +368,12 @@ class FinanceInventoryFiltersTest extends TestCase
             $table->unsignedInteger('inventory_transaction_id')->nullable();
             $table->string('project_cost_component', 20)->nullable();
             $table->string('expense_description');
-            $table->decimal('amount', 14, 2);
+            $table->decimal('amount', 14, 2)->nullable();
             $table->date('expense_date');
             $table->string('remarks')->nullable();
             $table->string('proof_file_path')->nullable();
             $table->string('proof_file_name')->nullable();
+            $table->timestamps();
         });
         Schema::create('company_bank_account_tbl', function (Blueprint $table) {
             $table->increments('account_id');
@@ -240,6 +411,18 @@ class FinanceInventoryFiltersTest extends TestCase
             $table->date('transaction_date');
             $table->string('proof_file_path')->nullable();
             $table->string('proof_file_name')->nullable();
+        });
+        Schema::create('notifications_tbl', function (Blueprint $table) {
+            $table->id('notification_id');
+            $table->string('title');
+            $table->text('message');
+            $table->string('type');
+            $table->string('kind')->default('info');
+            $table->string('filter')->default('alerts');
+            $table->string('reference_type')->nullable();
+            $table->unsignedBigInteger('reference_id')->nullable();
+            $table->boolean('is_read')->default(false);
+            $table->timestamps();
         });
     }
 }

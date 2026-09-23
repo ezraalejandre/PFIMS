@@ -790,17 +790,31 @@ body {
     border-color: #c9a96e;
 }
 
-.btn-config-action.btn-delete-config,
 .btn-delete-config {
     background: #d32f2f;
-    border-color: #d32f2f;
     color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
 }
 
-.btn-config-action.btn-delete-config:hover,
 .btn-delete-config:hover {
     background: #b71c1c;
+    transform: translateY(-2px);
+}
+
+.btn-config-action.btn-delete-config {
+    border: 1px solid #d32f2f;
+    border-radius: 6px;
+    padding: 5px 9px;
+}
+
+.btn-config-action.btn-delete-config:hover {
     border-color: #b71c1c;
+    transform: none;
 }
 
 .btn-add-user {

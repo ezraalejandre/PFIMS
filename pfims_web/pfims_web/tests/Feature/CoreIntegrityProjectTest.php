@@ -16,11 +16,14 @@ class CoreIntegrityProjectTest extends TestCase
         parent::setUp();
         Schema::dropAllTables();
         $this->createSchema();
+        foreach (['Planning', 'Foundation', 'Structure', 'Finishing', 'Complete'] as $index => $phase) {
+            DB::table('project_phase_tbl')->insert(['phase_name' => $phase, 'stage_order' => $index + 1]);
+        }
     }
 
     public function test_sensitive_project_lookup_budget_and_expense_routes_require_a_web_session(): void
     {
-        foreach (['/api/projects', '/api/projects/list', '/api/units', '/api/expense-categories', '/api/budgets', '/api/expenses'] as $uri) {
+        foreach (['/api/projects', '/api/projects/list', '/api/project-phases', '/api/units', '/api/expense-categories', '/api/budgets', '/api/expenses'] as $uri) {
             $this->getJson($uri)->assertUnauthorized();
         }
 
@@ -41,13 +44,12 @@ class CoreIntegrityProjectTest extends TestCase
             'start_date' => '1999-12-31',
             'estimated_end_date' => '1999-01-01',
             'worker_count' => 100001,
-            'completion_percentage' => 101,
             'phase' => 'Unknown',
             'status' => 'Unknown',
             'budget' => 1000000000000,
         ])->assertUnprocessable()->assertJsonValidationErrors([
             'project_name', 'start_date', 'estimated_end_date', 'worker_count',
-            'completion_percentage', 'phase', 'status', 'budget',
+            'phase', 'status', 'budget',
         ]);
 
         $payload = [
@@ -59,10 +61,11 @@ class CoreIntegrityProjectTest extends TestCase
             'worker_count' => 25,
             'phase' => 'Planning',
             'status' => 'On Track',
-            'completion_percentage' => 0,
+            'completion_percentage' => 99,
         ];
         $this->actingAs($admin)->postJson('/api/projects', $payload)
-            ->assertCreated()->assertJsonPath('project_name', 'North Tower');
+            ->assertCreated()->assertJsonPath('project_name', 'North Tower')
+            ->assertJsonPath('completion_percentage', 20);
 
         $payload['project_name'] = 'north tower';
         $payload['client_name'] = 'ACME HOLDINGS';
@@ -71,7 +74,7 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertDatabaseCount('project_tbl', 1);
     }
 
-    public function test_project_update_keeps_budget_out_of_project_table_and_updates_budget_atomically(): void
+    public function test_project_update_derives_completion_from_phase_and_updates_budget_atomically(): void
     {
         $admin = $this->user();
         $projectId = $this->project([
@@ -85,12 +88,18 @@ class CoreIntegrityProjectTest extends TestCase
 
         $this->actingAs($admin)->putJson("/api/projects/{$projectId}", [
             'project_name' => 'Updated Project',
+            'client_name' => 'Updated Client',
+            'project_manager' => 'B. Reyes',
+            'phase' => 'Finishing',
             'budget' => 125000,
             'completion_percentage' => 25,
-        ])->assertOk()->assertJsonPath('budget', 125000);
+        ])->assertOk()->assertJsonPath('budget', 125000)
+            ->assertJsonPath('completion_percentage', 80);
 
         $this->assertDatabaseHas('project_tbl', [
-            'project_id' => $projectId, 'project_name' => 'Updated Project', 'completion_percentage' => 25,
+            'project_id' => $projectId, 'project_name' => 'Updated Project',
+            'client_name' => 'Updated Client', 'project_manager' => 'B. Reyes',
+            'phase' => 'Finishing', 'completion_percentage' => 80,
         ]);
         $this->assertDatabaseHas('budgets_tbl', [
             'project_id' => $projectId, 'budget_amount' => 125000, 'actual_amount' => 500,
@@ -115,6 +124,9 @@ class CoreIntegrityProjectTest extends TestCase
         $this->actingAs($admin)->getJson('/api/projects?search=Maria&status=On%20Track&phase=Structure&start_date=2026-01-01&end_date=2026-12-31')
             ->assertOk()->assertJsonCount(1)->assertJsonPath('0.project_id', $matching);
         $this->actingAs($admin)->getJson('/api/projects?status=NotReal')->assertUnprocessable();
+        $this->actingAs($admin)->getJson('/api/project-phases')
+            ->assertOk()->assertJsonPath('0.phase_name', 'Planning')
+            ->assertJsonPath('3.phase_name', 'Finishing')->assertJsonPath('3.stage_order', 4);
     }
 
     public function test_budget_and_expense_validation_reject_duplicates_and_invalid_relations(): void
@@ -192,10 +204,22 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('id="projectPhaseFilter"', false)
                 ->assertSee('id="projectDateFrom"', false)
                 ->assertSee('id="projectDateTo"', false)
+                ->assertSee('id="editProjectName"', false)
+                ->assertSee('id="editClientName"', false)
+                ->assertSee('id="editProjectManager"', false)
+                ->assertDontSee('id="editCompletionPercentage"', false)
                 ->assertSee('id="activeProjectsCount"', false)
                 ->assertDontSee('id="avgCompletion"', false)
                 ->assertDontSee('id="projectStatusChart"', false)
                 ->assertSee('function filterProjects()', false)
+                ->assertSee("document.getElementById('editProjectName').value = currentEditData.name || '';", false)
+                ->assertSee("document.getElementById('editClientName').value = currentEditData.client || '';", false)
+                ->assertSee("var existingManager = currentEditData.manager || '';", false)
+                ->assertSee('managerSelect.add(currentManagerOption);', false)
+                ->assertSee("managerSelect.value = existingManager;", false)
+                ->assertSee("project_manager: manager,", false)
+                ->assertSee("currentEditData.manager = updatedProject.project_manager || manager;", false)
+                ->assertSee("currentEditData.progress = parseFloat(updatedProject.completion_percentage) || 0;", false)
                 ->assertSee('function refreshProjectAnalytics(projects)', false)
                 ->assertSee('function renderStatusChart(projects)', false);
         }
@@ -535,6 +559,11 @@ class CoreIntegrityProjectTest extends TestCase
             $table->string('phase');
             $table->decimal('completion_percentage', 5, 2)->default(0);
             $table->string('status');
+        });
+        Schema::create('project_phase_tbl', function (Blueprint $table) {
+            $table->increments('phase_id');
+            $table->string('phase_name')->unique();
+            $table->unsignedInteger('stage_order');
         });
         Schema::create('budgets_tbl', function (Blueprint $table) {
             $table->increments('budget_id');

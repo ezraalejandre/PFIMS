@@ -1,10 +1,14 @@
-@php($isInventoryImport = ($importModule ?? '') === 'inventory')
+@php
+    $isInventoryImport = ($importModule ?? '') === 'inventory';
+    $isProjectImport = ($importModule ?? '') === 'projects';
+    $importTitle = $isInventoryImport ? 'Inventory Data' : ($isProjectImport ? 'Projects' : 'Finance Expenses');
+@endphp
 <div id="pfimsImportModal" class="pfims-import-overlay" data-import-module="{{ $importModule ?? '' }}" hidden>
     <section class="pfims-import-card" role="dialog" aria-modal="true" aria-labelledby="pfimsImportTitle">
         <div class="pfims-import-titlebar">
             <div>
-                <h2 id="pfimsImportTitle">Import {{ $isInventoryImport ? 'Inventory Data' : 'Finance Expenses' }}</h2>
-                <p>CSV and XLSX files up to 5 MB. Imports are all-or-nothing.</p>
+                <h2 id="pfimsImportTitle">Import {{ $importTitle }}</h2>
+                <p>CSV and XLSX files up to 5 MB and 10,000 data rows. Imports are all-or-nothing.</p>
             </div>
             <button type="button" class="pfims-import-close" onclick="closePfimsImport()" aria-label="Close">&times;</button>
         </div>
@@ -26,7 +30,7 @@
             <a id="pfimsImportTemplate" class="pfims-template-link" href="#">Download CSV template</a>
             <div id="pfimsImportErrors" class="pfims-import-errors" hidden></div>
             <div class="pfims-import-actions">
-                <button type="button" class="btn-clear-search" onclick="closePfimsImport()">Cancel</button>
+                <button type="button" class="{{ $isProjectImport ? 'btn-cancel pfims-project-import-cancel' : 'btn-clear-search' }}" onclick="closePfimsImport()">Cancel</button>
                 <button id="pfimsImportSubmit" type="submit" class="btn-add-data gold">Validate &amp; Import</button>
             </div>
         </form>
@@ -42,7 +46,7 @@
     .pfims-import-titlebar p { margin: 0; color: #6f7780; font-size: .86rem; }
     .pfims-import-close { border: 0; background: transparent; color: #777; font-size: 1.8rem; line-height: 1; cursor: pointer; }
     .pfims-import-field { display: grid; gap: 7px; margin-bottom: 16px; color: #333; font-size: .88rem; font-weight: 600; }
-    .pfims-import-field input, .pfims-import-field select { width: 100%; padding: 11px 12px; border: 1px solid #d8dce0; border-radius: 8px; background: #fff; color: #222; }
+    .pfims-import-field input, .pfims-import-field select { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid #d8dce0; border-radius: 8px; background: #fff; color: #222; }
     .pfims-import-guidance { padding: 13px 15px; border-radius: 9px; background: #f7f4ee; color: #4e5964; font-size: .82rem; line-height: 1.55; word-break: break-word; }
     .pfims-template-link { display: inline-block; margin: 13px 0 6px; color: #8b6c34; font-weight: 600; font-size: .86rem; }
     .pfims-import-errors { margin-top: 12px; padding: 12px 14px; max-height: 210px; overflow: auto; border: 1px solid #efb4b4; border-radius: 8px; background: #fff4f4; color: #982c2c; font-size: .8rem; }
@@ -51,6 +55,9 @@
     .pfims-import-actions .btn-add-data { border: 0; border-radius: 7px; padding: 9px 16px; background: #e19a45; color: #fff; font-weight: 600; cursor: pointer; }
     .pfims-import-actions .btn-add-data:hover { background: #cf8735; }
     .pfims-import-actions .btn-clear-search { border: 1px solid #d8dce0; border-radius: 7px; padding: 9px 16px; background: #fff; color: #555; font-weight: 600; cursor: pointer; }
+    .pfims-import-actions .pfims-project-import-cancel { min-width: 104px; padding: 10px 22px; border: 1px solid #d8dce0; border-radius: 8px; background: #fff; color: #64748b; font-size: .9rem; font-weight: 700; cursor: pointer; transition: border-color .2s ease, background .2s ease, color .2s ease, box-shadow .2s ease; }
+    .pfims-import-actions .pfims-project-import-cancel:hover { border-color: #c5cbd2; background: #f5f5f5; color: #1a2b3c; box-shadow: 0 2px 6px rgba(15, 23, 42, .08); }
+    .pfims-import-actions .pfims-project-import-cancel:focus-visible { outline: 3px solid rgba(225, 154, 69, .25); outline-offset: 2px; }
 
     html[data-theme="dark"] .pfims-import-card {
         background: #111827;
@@ -89,6 +96,16 @@
         border-color: #46546a;
     }
     html[data-theme="dark"] .pfims-import-actions .btn-clear-search:hover { background: #34435b; }
+    html[data-theme="dark"] .pfims-import-actions .pfims-project-import-cancel { background: #263349; color: #f1f5f9; border-color: #46546a; }
+    html[data-theme="dark"] .pfims-import-actions .pfims-project-import-cancel:hover { background: #34435b; color: #fff; border-color: #5b6b82; }
+
+    @media (max-width: 600px) {
+        .pfims-import-overlay { align-items: flex-start; padding: 10px; overflow-y: auto; }
+        .pfims-import-card { width: 100%; max-height: calc(100dvh - 20px); padding: 18px; border-radius: 14px; }
+        .pfims-import-titlebar { gap: 12px; margin-bottom: 16px; }
+        .pfims-import-titlebar h2 { font-size: 1.15rem; }
+        .pfims-import-actions > button { flex: 1 1 0; min-width: 0; }
+    }
 </style>
 
 <script>
@@ -112,13 +129,14 @@
             document.body.style.overflow = '';
         };
         window.updatePfimsImportGuidance = function () {
-            var type = moduleName === 'inventory' ? document.getElementById('pfimsImportType').value : 'finance-expenses';
+            var type = moduleName === 'inventory' ? document.getElementById('pfimsImportType').value : (moduleName === 'projects' ? 'projects' : 'finance-expenses');
             var contracts = {
-                'finance-expenses': 'Required headers: category_code, expense_description, amount, expense_date. Optional: project_name, project_cost_component, remarks. Project/direct expenses need project_cost_component: material, labor, equipment, or other.',
-                'items': 'Required headers: item_name, category, supplier, unit, current_stock, reorder_level. Optional: opening_balance_date. Category, supplier, and unit names must already exist in Settings.',
-                'transactions': 'Required headers: item_name, transaction_type, quantity, transaction_date. Optional: project_name, bar_code. OUT rows are checked against available stock in file order.'
+                'projects': 'Required: project_name, client_name, project_manager, start_date, estimated_end_date, actual_end_date, worker_count, phase, status, budget. Only actual_end_date may be blank. Phase must already exist in Settings; completion is calculated automatically.',
+                'finance-expenses': 'Required with no blank cells: project_name, category_code, project_cost_component, expense_description, amount, expense_date, remarks. Project cost component must be material, labor, equipment, or other.',
+                'items': 'Required with no blank cells: item_name, category, supplier, unit, current_stock, reorder_level, opening_balance_date. Category, supplier, and unit names must already exist in Settings.',
+                'transactions': 'Required: item_name, project_name, transaction_type, quantity, bar_code, transaction_date. Only project_name may be blank, and only for IN transactions. OUT rows are checked against available stock in file order.'
             };
-            var templateType = type === 'items' ? 'inventory-items' : (type === 'transactions' ? 'inventory-transactions' : 'finance-expenses');
+            var templateType = type === 'items' ? 'inventory-items' : (type === 'transactions' ? 'inventory-transactions' : type);
             document.getElementById('pfimsImportGuidance').textContent = contracts[type];
             document.getElementById('pfimsImportTemplate').href = '/api/imports/templates/' + templateType;
         };
@@ -145,7 +163,7 @@
             }
 
             var payload = new FormData(form);
-            var endpoint = moduleName === 'inventory' ? '/api/imports/inventory' : '/api/imports/finance-expenses';
+            var endpoint = moduleName === 'inventory' ? '/api/imports/inventory' : (moduleName === 'projects' ? '/api/imports/projects' : '/api/imports/finance-expenses');
             submit.disabled = true;
             submit.textContent = 'Validating...';
             errors.hidden = true;
@@ -173,6 +191,7 @@
                 if (typeof showSuccess === 'function') showSuccess(result.data.message);
                 if (moduleName === 'inventory' && typeof loadInventoryItems === 'function') loadInventoryItems();
                 if (moduleName === 'finance' && typeof fetchExpenses === 'function') fetchExpenses();
+                if (moduleName === 'projects' && typeof fetchProjects === 'function') fetchProjects();
             }).catch(function () {
                 renderPfimsImportErrors('The import request could not be completed.', []);
             }).finally(function () {

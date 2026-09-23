@@ -7,6 +7,7 @@ use App\Models\FinanceComponent;
 use App\Models\InventoryCategory;
 use App\Models\ProjectPhase;
 use App\Models\Unit;
+use App\Services\ProjectPhaseProgressService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,6 +54,7 @@ class ConfigController extends Controller
             'name' => 'phase_name',
             'fields' => [
                 'phase_name' => ['label' => 'Project phase', 'type' => 'text', 'required' => true, 'max' => 100],
+                'stage_order' => ['label' => 'Stage', 'type' => 'number', 'required' => true, 'min' => 1, 'step' => 1],
             ],
         ],
         'finance_components' => [
@@ -66,12 +68,19 @@ class ConfigController extends Controller
         ],
     ];
 
+    public function __construct(private ProjectPhaseProgressService $phaseProgress) {}
+
     public function index(Request $request, string $type): JsonResponse
     {
         $this->authorizeAdmin($request);
         $config = $this->configuration($type);
         $model = $config['model'];
-        $query = $model::query()->orderBy($config['name']);
+        $query = $model::query();
+        if ($type === 'project_phases') {
+            $query->orderBy('stage_order')->orderBy('phase_id');
+        } else {
+            $query->orderBy($config['name']);
+        }
         if ($request->filled('search')) {
             $query->where($config['name'], 'like', '%'.trim((string) $request->input('search')).'%');
         }
@@ -92,7 +101,19 @@ class ConfigController extends Controller
         ]));
         $this->rejectDuplicate($config, $validated);
         $model = $config['model'];
-        $item = $model::create($validated);
+        $item = DB::transaction(function () use ($type, $validated, $model) {
+            if ($type !== 'project_phases') {
+                return $model::create($validated);
+            }
+
+            $stage = min((int) $validated['stage_order'], ProjectPhase::query()->count() + 1);
+            ProjectPhase::query()->where('stage_order', '>=', $stage)->increment('stage_order');
+            $validated['stage_order'] = $stage;
+            $item = $model::create($validated);
+            $this->phaseProgress->normalizeStageOrder();
+            $this->phaseProgress->syncAllProjects();
+            return $item;
+        });
 
         return response()->json(['success' => true, 'data' => $item, 'message' => 'Configuration added successfully.'], 201);
     }
@@ -108,7 +129,33 @@ class ConfigController extends Controller
             'category_code.regex' => 'Category code must start with a letter and use only letters, numbers, spaces, hyphens, or underscores.',
         ]));
         $this->rejectDuplicate($config, $validated, $id);
-        $item->update($validated);
+        DB::transaction(function () use ($type, $item, $validated) {
+            if ($type !== 'project_phases') {
+                $item->update($validated);
+                return;
+            }
+
+            $oldName = (string) $item->phase_name;
+            $oldStage = (int) $item->stage_order;
+            $newStage = min((int) $validated['stage_order'], ProjectPhase::query()->count());
+
+            if ($newStage < $oldStage) {
+                ProjectPhase::query()->where($item->getKeyName(), '!=', $item->getKey())
+                    ->whereBetween('stage_order', [$newStage, $oldStage - 1])->increment('stage_order');
+            } elseif ($newStage > $oldStage) {
+                ProjectPhase::query()->where($item->getKeyName(), '!=', $item->getKey())
+                    ->whereBetween('stage_order', [$oldStage + 1, $newStage])->decrement('stage_order');
+            }
+
+            $validated['stage_order'] = $newStage;
+            $item->update($validated);
+            if (trim($oldName) !== trim((string) $item->phase_name)) {
+                DB::table('project_tbl')->whereRaw('LOWER(TRIM(phase)) = ?', [Str::lower(trim($oldName))])
+                    ->update(['phase' => $item->phase_name]);
+            }
+            $this->phaseProgress->normalizeStageOrder();
+            $this->phaseProgress->syncAllProjects();
+        });
 
         return response()->json(['success' => true, 'data' => $item->fresh(), 'message' => 'Configuration updated successfully.']);
     }
@@ -131,7 +178,13 @@ class ConfigController extends Controller
         if ($dependency) {
             return response()->json(['success' => false, 'message' => "This configuration cannot be deleted because it is used by {$dependency}."], 409);
         }
-        $item->delete();
+        DB::transaction(function () use ($type, $item) {
+            $item->delete();
+            if ($type === 'project_phases') {
+                $this->phaseProgress->normalizeStageOrder();
+                $this->phaseProgress->syncAllProjects();
+            }
+        });
 
         return response()->json(['success' => true, 'message' => 'Configuration deleted successfully.']);
     }
@@ -150,6 +203,9 @@ class ConfigController extends Controller
             $fieldRules = [$definition['required'] ? 'required' : 'nullable'];
             if (($definition['type'] ?? 'text') === 'select') {
                 $fieldRules[] = 'in:'.implode(',', array_keys($definition['options']));
+            } elseif (($definition['type'] ?? 'text') === 'number') {
+                $fieldRules[] = 'integer';
+                $fieldRules[] = 'min:'.($definition['min'] ?? 0);
             } else {
                 $fieldRules[] = 'string';
                 $fieldRules[] = 'max:'.$definition['max'];

@@ -266,7 +266,7 @@
             <footer class="dashboard-modal-footer">
                 <button class="btn-secondary" id="closeProjectDetailFooter" type="button">Close</button>
                 @if(isset($links['projects']))
-                    <a class="btn-primary dashboard-view-project" id="viewProjectLink" href="{{ url($links['projects']) }}">View project</a>
+                    <a class="btn-refresh dashboard-view-project" id="viewProjectLink" href="{{ url($links['projects']) }}">View project</a>
                 @endif
             </footer>
         </section>

@@ -222,6 +222,8 @@
         if (byId('projectSearch')) byId('projectSearch').value = '';
         if (byId('projectFilter')) byId('projectFilter').value = 'all';
         if (byId('expenseScopeFilter')) byId('expenseScopeFilter').value = 'all';
+        if (byId('expenseRecordStatusFilter')) byId('expenseRecordStatusFilter').value = 'all';
+        if (byId('expenseSourceFilter')) byId('expenseSourceFilter').value = 'all';
         if (byId('expenseCategoryFilter')) byId('expenseCategoryFilter').value = 'all';
         if (byId('expenseComponentFilter')) byId('expenseComponentFilter').value = 'all';
         applyFilters();
@@ -232,6 +234,8 @@
         var search = ((byId('projectSearch') && byId('projectSearch').value) || '').toLocaleLowerCase().trim();
         var projectId = (byId('projectFilter') && byId('projectFilter').value) || 'all';
         var scope = (byId('expenseScopeFilter') && byId('expenseScopeFilter').value) || 'all';
+        var recordStatus = (byId('expenseRecordStatusFilter') && byId('expenseRecordStatusFilter').value) || 'all';
+        var source = (byId('expenseSourceFilter') && byId('expenseSourceFilter').value) || 'all';
         var categoryId = byId('expenseCategoryFilter') ? byId('expenseCategoryFilter').value : 'all';
         var componentId = byId('expenseComponentFilter') ? byId('expenseComponentFilter').value : 'all';
         currentSearchTerm = search;
@@ -249,9 +253,33 @@
                 || (scope === 'overall' && ['direct', 'admin'].includes(classification))
                 || (scope === 'direct' && classification === 'direct')
                 || (scope === 'admin' && classification === 'admin');
+            var hasProject = expense.project_id !== null
+                && expense.project_id !== undefined
+                && String(expense.project_id).trim() !== '';
+            var amount = expense.amount === null || expense.amount === undefined || String(expense.amount).trim() === ''
+                ? NaN
+                : Number(expense.amount);
+            var isMissingAmount = !Number.isFinite(amount) || amount <= 0;
+            var matchesRecordStatus = recordStatus === 'all'
+                || (recordStatus === 'missing_amount' && isMissingAmount)
+                || (recordStatus === 'no_project' && !hasProject)
+                || (recordStatus === 'missing_amount_and_project' && isMissingAmount && !hasProject);
+            var isInventoryExpense = expense.is_inventory_expense === true
+                || (expense.inventory_transaction_id !== null
+                    && expense.inventory_transaction_id !== undefined
+                    && String(expense.inventory_transaction_id).trim() !== '');
+            var matchesSource = source === 'all'
+                || (source === 'inventory' && isInventoryExpense)
+                || (source === 'manual' && !isInventoryExpense);
             var haystack = [expense.project_name, expense.expense_description, expense.category_name, expense.remarks]
                 .map(function (value) { return String(value || '').toLocaleLowerCase(); }).join(' ');
-            return matchesProject && matchesCategory && matchesComponent && matchesScope && (!search || haystack.includes(search));
+            return matchesProject
+                && matchesCategory
+                && matchesComponent
+                && matchesScope
+                && matchesRecordStatus
+                && matchesSource
+                && (!search || haystack.includes(search));
         }));
 
         renderFinancePage(1);

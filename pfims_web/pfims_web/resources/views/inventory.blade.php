@@ -816,14 +816,6 @@
                     <input type="text" id="transactionItemBarCode" placeholder="Enter transaction barcode" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                 </div>
 
-                <!-- Project Selection for OUT transactions -->
-                <div class="form-group" id="transactionProjectGroup" style="display: none;">
-                    <label>Project Name <span class="required" style="display:none;" id="transactionProjectRequired">*</span></label>
-                    <select id="transactionProject">
-                        <option value="">Select Project...</option>
-                    </select>
-                </div>
-
                 <!-- Separator Line -->
                 <hr style="border: none; border-top: 1px solid #e9ecef; margin: 15px 0 20px;">
 
@@ -858,6 +850,15 @@
                             <span class="radio-sub">Item Stock out</span>
                         </label>
                     </div>
+                </div>
+
+                <!-- Project Selection for OUT transactions -->
+                <div class="form-group" id="transactionProjectGroup" style="display: none;">
+                    <label>Project Name <span class="required" style="display:none;" id="transactionProjectRequired">*</span></label>
+                    <select id="transactionProject" onchange="clearTransactionProjectError()">
+                        <option value="">Select Project...</option>
+                    </select>
+                    <span id="transactionProjectError" class="field-error" style="display:none;"></span>
                 </div>
 
                 <div class="form-group">
@@ -1225,7 +1226,7 @@
 
         // ─── LOAD LOOKUP DATA ────────────────────────────────────────
         function loadLookupData() {
-            fetch('/api/inventory/lookup-data', {
+            return fetch('/api/inventory/lookup-data', {
                 headers: { 
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
@@ -1236,11 +1237,12 @@
                 if (data.success && data.data) {
                     lookupData = data.data;
                     populateAllDropdowns();
-                    loadInventoryItems();
                 }
+                return loadInventoryItems();
             })
             .catch(function(err) {
                 console.error('Error loading lookup data:', err);
+                return loadInventoryItems();
             });
         }
 
@@ -1467,15 +1469,23 @@
 
         // ─── POPULATE PROJECT DROPDOWN ───────────────────────────────
         function populateProjectDropdown() {
-            fetch('/api/projects/list', {
+            var select = document.getElementById('transactionProject');
+            select.disabled = true;
+            select.innerHTML = '<option value="">Loading projects...</option>';
+            clearTransactionProjectError();
+
+            return fetch('/api/projects/list', {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 }
             })
-            .then(function(res) { return res.json(); })
+            .then(function(res) {
+                if (!res.ok) throw new Error('Unable to load projects');
+                return res.json();
+            })
             .then(function(projects) {
-                var select = document.getElementById('transactionProject');
+                select.disabled = false;
                 select.innerHTML = '<option value="">Select Project...</option>';
                 if (Array.isArray(projects)) {
                     projects.forEach(function(project) {
@@ -1485,15 +1495,21 @@
                         select.appendChild(opt);
                     });
                 }
+                if (!Array.isArray(projects) || projects.length === 0) {
+                    showTransactionProjectError('No projects are available for a Stock Out transaction.');
+                }
             })
             .catch(function(err) {
                 console.error('Error loading projects:', err);
+                select.disabled = true;
+                select.innerHTML = '<option value="">Projects unavailable</option>';
+                showTransactionProjectError('Projects could not be loaded. Please close this window and try again.');
             });
         }
 
         // ─── LOAD INVENTORY ITEMS AND TRANSACTIONS ───────────────────
         function loadInventoryItems() {
-            Promise.all([
+            return Promise.all([
                 fetch('/api/inventory', {
                     headers: { 
                         'X-Requested-With': 'XMLHttpRequest',
@@ -1522,6 +1538,7 @@
                 renderItemsPage(1);
                 renderTransactionPage(1);
                 updateStats(allTransactions, inventoryItems, lookupData.categories);
+                openRequestedTransactionDetails();
             })
             .catch(function(err) {
                 console.error('Error loading inventory data:', err);
@@ -1530,6 +1547,47 @@
                 var itemsTbody = document.getElementById('itemsTableBody');
                 itemsTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #d32f2f;">Error loading items. Please refresh the page.</td></tr>';
             });
+        }
+
+        function openRequestedTransactionDetails() {
+            var transactionId = new URLSearchParams(window.location.search).get('transaction_id');
+            if (!transactionId) {
+                try {
+                    transactionId = window.sessionStorage.getItem('pfims_inventory_transaction_to_open');
+                } catch (storageError) {
+                    console.warn('Unable to restore the linked inventory transaction handoff.', storageError);
+                }
+            }
+            if (!transactionId) return;
+
+            var matchIndex = allTransactions.findIndex(function(transaction) {
+                return String(transaction.inventory_transaction_id) === String(transactionId);
+            });
+            if (matchIndex === -1) {
+                showError('The linked inventory transaction could not be found.');
+                return;
+            }
+
+            switchInventoryTab(null, 'transactions');
+            filteredData = allTransactions;
+            renderTransactionPage(Math.floor(matchIndex / inventoryPageSize) + 1);
+            var row = Array.from(document.querySelectorAll('#inventoryTableBody tr[data-id]')).find(function(candidate) {
+                return candidate.dataset.id === String(transactionId);
+            });
+            if (!row) {
+                showError('The linked inventory transaction details could not be opened.');
+                return;
+            }
+            openViewModal(row);
+            if (!document.getElementById('viewModal').classList.contains('active') || document.getElementById('viewTransactionId').value !== String(transactionId)) {
+                showError('The linked inventory transaction details could not be opened.');
+                return;
+            }
+            try {
+                window.sessionStorage.removeItem('pfims_inventory_transaction_to_open');
+            } catch (storageError) {
+                console.warn('Unable to clear the linked inventory transaction handoff.', storageError);
+            }
         }
 
         // ─── ITEMS TAB FUNCTIONS ─────────────────────────────────────
@@ -2212,6 +2270,7 @@
             document.getElementById('transactionProjectGroup').style.display = 'none';
             document.getElementById('transactionProjectRequired').style.display = 'none';
             document.getElementById('transactionProject').value = '';
+            clearTransactionProjectError();
             
             document.getElementById('reviewTransItemName').textContent = '—';
             document.getElementById('reviewTransItemCategory').textContent = '—';
@@ -2268,9 +2327,10 @@
             if (typeLabel === 'OUT') {
                 var projectId = document.getElementById('transactionProject').value;
                 if (!projectId) {
-                    showError('Please select a project for OUT transactions.');
+                    showTransactionProjectError('Please select a project for the Stock Out transaction.');
                     return;
                 }
+                clearTransactionProjectError();
                 var projectName = document.getElementById('transactionProject').options[document.getElementById('transactionProject').selectedIndex].text;
                 document.getElementById('reviewTransProjectRow').style.display = 'flex';
                 document.getElementById('reviewTransProject').textContent = projectName;
@@ -2321,7 +2381,27 @@
             } else {
                 projectGroup.style.display = 'none';
                 projectRequired.style.display = 'none';
+                document.getElementById('transactionProject').value = '';
+                clearTransactionProjectError();
             }
+        }
+
+        function showTransactionProjectError(message) {
+            var select = document.getElementById('transactionProject');
+            var error = document.getElementById('transactionProjectError');
+            error.textContent = message;
+            error.style.display = 'block';
+            select.style.borderColor = '#d32f2f';
+            select.focus();
+            select.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function clearTransactionProjectError() {
+            var select = document.getElementById('transactionProject');
+            var error = document.getElementById('transactionProjectError');
+            error.textContent = '';
+            error.style.display = 'none';
+            select.style.borderColor = '';
         }
 
         // ─── SAVE TRANSACTION ────────────────────────────────────────
@@ -2339,7 +2419,7 @@
             if (type === 'OUT') {
                 projectId = document.getElementById('transactionProject').value;
                 if (!projectId) {
-                    showError('Please select a project for OUT transactions.');
+                    showTransactionProjectError('Please select a project for the Stock Out transaction.');
                     return;
                 }
             }
@@ -2572,6 +2652,10 @@
             isEditMode = true;
             document.getElementById('viewModalTitle').textContent = 'Edit Transaction';
             document.getElementById('viewCancelBtn').textContent = 'Cancel';
+            document.getElementById('viewCancelBtn').style.display = 'inline-block';
+            Array.from(document.querySelectorAll('#viewModal .modal-footer button')).forEach(function(button) {
+                if (/^(Edit|Delete)$/.test((button.textContent || '').trim())) button.style.display = 'none';
+            });
             // Only show edit for Quantity and Date fields
             document.getElementById('viewQuantityDisplay').style.display = 'none';
             document.getElementById('viewQuantityInput').style.display = 'block';
@@ -2607,6 +2691,7 @@
             isEditMode = false;
             document.getElementById('viewModalTitle').textContent = 'Transaction Details';
             document.getElementById('viewCancelBtn').textContent = 'Close';
+            document.getElementById('viewCancelBtn').style.display = 'inline-block';
             document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
             document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
             document.getElementById('viewSaveBtn').style.display = 'none';
@@ -2735,7 +2820,7 @@
                 showError('Transaction ID missing.');
                 return;
             }
-            openDeleteModal('Inventory transactions are part of the Finance audit trail and cannot be deleted.', function() {
+            openDeleteModal('Are you sure you want to permanently delete this transaction? Stock will be recalculated. This action cannot be undone.', function() {
                 deleteTransaction(true);
             });
         }

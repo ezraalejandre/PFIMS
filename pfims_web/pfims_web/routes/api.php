@@ -94,6 +94,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     // ─── PROJECT ROUTES ──────────────────────────────────────────────
     Route::get('/projects', [ProjectController::class, 'index']);
     Route::get('/projects/list', [ProjectController::class, 'list']);
+    Route::get('/project-phases', [ProjectController::class, 'phases']);
     Route::post('/projects', [ProjectController::class, 'store']);
     Route::put('/projects/{id}', [ProjectController::class, 'update'])->whereNumber('id');
     Route::delete('/projects/{id}', [ProjectController::class, 'destroy'])->whereNumber('id');

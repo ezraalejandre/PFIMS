@@ -11,6 +11,7 @@ use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -128,6 +129,10 @@ class InventoryController extends Controller
 
             // Create transaction record
             $transaction = InventoryTransaction::create($validated);
+
+            if ($validated['transaction_type'] === 'IN') {
+                $this->createPendingExpenseForStockIn($transaction, $item);
+            }
 
             // Update inventory stock
             if ($validated['transaction_type'] === 'IN') {
@@ -338,6 +343,8 @@ class InventoryController extends Controller
                 'transaction_date' => $validated['transaction_date'],
             ]);
 
+            $this->syncLinkedStockInExpense($transaction);
+
             $this->recalculateItemStock($transaction->item_id);
             DB::commit();
 
@@ -352,12 +359,43 @@ class InventoryController extends Controller
 
     public function destroyTransaction($id): JsonResponse
     {
-        InventoryTransaction::findOrFail($id);
+        DB::beginTransaction();
+        try {
+            $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Inventory transactions cannot be deleted because they are part of the Finance audit trail.',
-        ], 409);
+            $linkedExpense = Schema::hasTable('fin_expense_tbl')
+                ? DB::table('fin_expense_tbl')->where('inventory_transaction_id', $transaction->getKey())->first()
+                : null;
+            if ($linkedExpense && ($linkedExpense->amount !== null || $linkedExpense->project_id !== null)) {
+                abort(409, 'This transaction cannot be deleted because its Finance expense already has details.');
+            }
+            if ($linkedExpense) {
+                DB::table('fin_expense_tbl')->where('fin_expense_id', $linkedExpense->fin_expense_id)->delete();
+            }
+
+            $itemId = (int) $transaction->item_id;
+            $proofPath = $transaction->proof_file_path;
+            $transaction->delete();
+            $this->recalculateItemStock($itemId);
+            DB::commit();
+
+            if ($proofPath) {
+                Storage::disk('public')->delete($proofPath);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaction deleted successfully!',
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage() ?: 'Failed to delete transaction.',
+            ], $status ?: 500);
+        }
     }
 
     protected function recalculateItemStock(int $itemId): void
@@ -371,6 +409,75 @@ class InventoryController extends Controller
         $item = InventoryItem::findOrFail($itemId);
         $item->current_stock = max(0, $runningStock);
         $item->save();
+    }
+
+    private function createPendingExpenseForStockIn(InventoryTransaction $transaction, InventoryItem $item): void
+    {
+        if (! Schema::hasTable('fin_expense_tbl') || ! Schema::hasTable('fin_expense_category_tbl')) {
+            return;
+        }
+
+        $category = DB::table('fin_expense_category_tbl')
+            ->where(function ($query) {
+                $query->where('category_code', 'CONST_SUPPLY')
+                    ->orWhereRaw('LOWER(category_name) LIKE ?', ['%construction suppl%']);
+            })
+            ->where('is_active', true)
+            ->first();
+        if (! $category) {
+            abort(422, 'The Construction Supply finance category is unavailable.');
+        }
+
+        $unit = DB::table('unit_tbl')->where('unit_id', $item->unit_id)->value('unit_name') ?: 'unit';
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => null,
+            'fin_category_id' => $category->fin_category_id,
+            'inventory_transaction_id' => $transaction->inventory_transaction_id,
+            'project_cost_component' => 'material',
+            'expense_description' => $this->stockInExpenseDescription($transaction, $item->item_name, $unit),
+            'amount' => null,
+            'expense_date' => $transaction->transaction_date,
+            'remarks' => $this->stockInExpenseRemarks($transaction->bar_code),
+            'proof_file_path' => $transaction->proof_file_path,
+            'proof_file_name' => $transaction->proof_file_name,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function syncLinkedStockInExpense(InventoryTransaction $transaction): void
+    {
+        if ($transaction->transaction_type !== 'IN' || ! Schema::hasTable('fin_expense_tbl')) {
+            return;
+        }
+
+        $item = InventoryItem::find($transaction->item_id);
+        if (! $item) {
+            return;
+        }
+        $unit = DB::table('unit_tbl')->where('unit_id', $item->unit_id)->value('unit_name') ?: 'unit';
+        DB::table('fin_expense_tbl')
+            ->where('inventory_transaction_id', $transaction->inventory_transaction_id)
+            ->update([
+                'expense_description' => $this->stockInExpenseDescription($transaction, $item->item_name, $unit),
+                'expense_date' => $transaction->transaction_date,
+                'remarks' => $this->stockInExpenseRemarks($transaction->bar_code),
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function stockInExpenseDescription(InventoryTransaction $transaction, string $itemName, string $unit): string
+    {
+        $quantity = rtrim(rtrim(number_format((float) $transaction->quantity, 2, '.', ''), '0'), '.');
+
+        return "Purchased {$quantity} ".strtolower($unit)." of {$itemName}";
+    }
+
+    private function stockInExpenseRemarks($barCode): string
+    {
+        $remarks = 'Inventory stock-in transaction.';
+
+        return $barCode === null || $barCode === '' ? $remarks : $remarks.' Receiving reference: '.$barCode;
     }
 
     private function duplicateItem(array $data, ?int $ignoreId = null): bool

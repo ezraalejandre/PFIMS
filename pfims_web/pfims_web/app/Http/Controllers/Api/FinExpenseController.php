@@ -24,11 +24,15 @@ class FinExpenseController extends Controller
 
     private function mapExpense($item)
     {
+        $amount = $item->amount === null ? null : (float) $item->amount;
+
         return [
             'fin_expense_id' => $item->fin_expense_id,
             'expense_id' => $item->fin_expense_id,
             'inventory_transaction_id' => $item->inventory_transaction_id ?? null,
-            'is_pending_inventory' => false,
+            'is_inventory_expense' => ! empty($item->inventory_transaction_id),
+            'is_pending_inventory' => ! empty($item->inventory_transaction_id)
+                && ($item->project_id === null || $amount === null),
             'project_id' => $item->project_id,
             'project_name' => $item->project_name,
             'project_cost_component' => $item->project_cost_component ?? null,
@@ -37,7 +41,7 @@ class FinExpenseController extends Controller
             'fin_category_id' => $item->fin_category_id,
             'expense_category_id' => $item->fin_category_id,
             'category_name' => $item->category_name ?? '',
-            'amount' => (float) $item->amount,
+            'amount' => $amount,
             'expense_date' => $item->expense_date,
             'remarks' => $item->remarks,
             'proof_file_path' => $item->proof_file_path,
@@ -136,7 +140,10 @@ class FinExpenseController extends Controller
             });
 
             $constructionSupply = DB::table('fin_expense_category_tbl')
-                ->where('category_name', 'Construction Supply')
+                ->where(function ($query) {
+                    $query->where('category_code', 'CONST_SUPPLY')
+                        ->orWhereRaw('LOWER(category_name) LIKE ?', ['%construction suppl%']);
+                })
                 ->first();
 
             $includePending = ! array_key_exists('include_pending', $filters) || (bool) $filters['include_pending'];
@@ -146,6 +153,7 @@ class FinExpenseController extends Controller
             if ($constructionSupply && $includePending && $pendingMatchesCategory) {
                 $pendingQuery = DB::table('inventory_transaction_tbl as transaction')
                     ->join('inventory_item_tbl as item', 'item.item_id', '=', 'transaction.item_id')
+                    ->join('unit_tbl as unit', 'unit.unit_id', '=', 'item.unit_id')
                     ->leftJoin('project_tbl as project', 'project.project_id', '=', 'transaction.project_id')
                     ->leftJoin('fin_expense_tbl as expense', 'expense.inventory_transaction_id', '=', 'transaction.inventory_transaction_id')
                     ->where('transaction.transaction_type', 'IN')
@@ -173,7 +181,10 @@ class FinExpenseController extends Controller
                     'transaction.project_id',
                     'project.project_name',
                     'transaction.transaction_date',
-                    'item.item_name'
+                    'transaction.quantity',
+                    'transaction.bar_code',
+                    'item.item_name',
+                    'unit.unit_name'
                 )
                     ->orderByDesc('transaction.transaction_date')
                     ->get()
@@ -182,18 +193,19 @@ class FinExpenseController extends Controller
                             'fin_expense_id' => null,
                             'expense_id' => null,
                             'inventory_transaction_id' => $transaction->inventory_transaction_id,
+                            'is_inventory_expense' => true,
                             'is_pending_inventory' => true,
                             'project_id' => $transaction->project_id,
                             'project_name' => $transaction->project_name,
                             'project_cost_component' => 'material',
                             'project_cost_component_label' => $this->costComponentLabel('material'),
-                            'expense_description' => 'Stock-in: '.$transaction->item_name,
+                            'expense_description' => $this->inventoryExpenseDescription($transaction),
                             'fin_category_id' => $constructionSupply->fin_category_id,
                             'expense_category_id' => $constructionSupply->fin_category_id,
                             'category_name' => $constructionSupply->category_name,
                             'amount' => null,
                             'expense_date' => $transaction->transaction_date,
-                            'remarks' => 'Pending amount',
+                            'remarks' => $this->inventoryExpenseRemarks($transaction->bar_code),
                             'proof_file_path' => null,
                             'proof_file_name' => null,
                         ];
@@ -210,35 +222,40 @@ class FinExpenseController extends Controller
 
     public function storeFromInventory(Request $request, int $transactionId)
     {
-        $validator = Validator::make($request->all(), ['amount' => 'required|numeric|min:0.01|max:999999999999.99']);
+        $validator = Validator::make($request->all(), [
+            'project_id' => 'required|integer|exists:project_tbl,project_id',
+            'amount' => 'required|numeric|min:0.01|max:999999999999.99',
+        ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         try {
-            $amount = (float) $validator->validated()['amount'];
-            $id = DB::transaction(function () use ($amount, $transactionId) {
+            $details = $validator->validated();
+            $amount = (float) $details['amount'];
+            $projectId = (int) $details['project_id'];
+            $result = DB::transaction(function () use ($amount, $projectId, $transactionId) {
                 $transaction = DB::table('inventory_transaction_tbl as transaction')
                     ->join('inventory_item_tbl as item', 'item.item_id', '=', 'transaction.item_id')
                     ->where('transaction.inventory_transaction_id', $transactionId)
                     ->lockForUpdate()
-                    ->select('transaction.*', 'item.item_name')
+                    ->join('unit_tbl as unit', 'unit.unit_id', '=', 'item.unit_id')
+                    ->select('transaction.*', 'item.item_name', 'unit.unit_name')
                     ->first();
 
                 if (! $transaction || $transaction->transaction_type !== 'IN') {
                     abort(404, 'Stock-in transaction not found.');
                 }
-                if (blank($transaction->project_id)) {
-                    abort(422, 'Stock-in finance expenses require a linked project.');
-                }
-
-                if (DB::table('fin_expense_tbl')->where('inventory_transaction_id', $transactionId)->exists()) {
-                    abort(409, 'An expense already exists for this stock-in transaction.');
-                }
-
+                $existing = DB::table('fin_expense_tbl')
+                    ->where('inventory_transaction_id', $transactionId)
+                    ->lockForUpdate()
+                    ->first();
                 $category = DB::table('fin_expense_category_tbl')
-                    ->where('category_name', 'Construction Supply')
+                    ->where(function ($query) {
+                        $query->where('category_code', 'CONST_SUPPLY')
+                            ->orWhereRaw('LOWER(category_name) LIKE ?', ['%construction suppl%']);
+                    })
                     ->where('is_active', true)
                     ->first();
 
@@ -246,25 +263,41 @@ class FinExpenseController extends Controller
                     abort(422, 'The Construction Supply finance category is unavailable.');
                 }
 
-                return DB::table('fin_expense_tbl')->insertGetId([
-                    'project_id' => $transaction->project_id,
+                $expenseData = [
+                    'project_id' => $projectId,
                     'fin_category_id' => $category->fin_category_id,
                     'inventory_transaction_id' => $transactionId,
                     'project_cost_component' => 'material',
-                    'expense_description' => 'Stock-in: '.$transaction->item_name,
+                    'expense_description' => $this->inventoryExpenseDescription($transaction),
                     'amount' => $amount,
                     'expense_date' => $transaction->transaction_date,
-                    'remarks' => 'Created from inventory stock-in',
-                    'created_at' => now(),
+                    'remarks' => $this->inventoryExpenseRemarks($transaction->bar_code),
                     'updated_at' => now(),
-                ]);
+                ];
+
+                if ($existing) {
+                    DB::table('fin_expense_tbl')->where('fin_expense_id', $existing->fin_expense_id)->update($expenseData);
+
+                    return ['id' => (int) $existing->fin_expense_id, 'before' => (array) $existing];
+                }
+
+                $expenseData['created_at'] = now();
+
+                return ['id' => DB::table('fin_expense_tbl')->insertGetId($expenseData), 'before' => null];
             });
 
-            $createdExpense = $this->findWithJoins($id);
-            if ($audited = FinExpense::find($id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
+            $createdExpense = $this->findWithJoins($result['id']);
+            if ($audited = FinExpense::find($result['id'])) {
+                $this->audit->record(
+                    $audited,
+                    $result['before'] ? 'UPDATE' : 'CREATE',
+                    $result['before'] ?? [],
+                    $audited->getAttributes()
+                );
+            }
             $this->modelRetraining->afterDataChange($createdExpense?->project_id === null ? [] : [(int) $createdExpense->project_id]);
 
-            return response()->json($this->mapExpense($createdExpense), 201);
+            return response()->json($this->mapExpense($createdExpense), $result['before'] ? 200 : 201);
         } catch (\Throwable $e) {
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
@@ -284,6 +317,9 @@ class FinExpenseController extends Controller
                 'expense_date' => 'required|date|before_or_equal:today',
                 'remarks' => 'nullable|string|max:255',
                 'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'inventory_item_id' => 'nullable|integer|exists:inventory_item_tbl,item_id',
+                'inventory_quantity' => 'nullable|numeric|min:0.01|max:999999999999.99',
+                'inventory_bar_code' => 'nullable|integer|min:0|max:2147483647',
             ]);
 
             if ($validator->fails()) {
@@ -291,8 +327,36 @@ class FinExpenseController extends Controller
             }
 
             $validated = $validator->validated();
-            if ($errors = $this->projectComponentErrors($validated)) {
+            $categoryRecord = DB::table('fin_expense_category_tbl')->where('fin_category_id', $validated['fin_category_id'])->first();
+            $isConstructionSupply = strtoupper((string) ($categoryRecord->category_code ?? '')) === 'CONST_SUPPLY';
+            $hasInventoryDetails = ! empty($validated['inventory_item_id']) || ! empty($validated['inventory_quantity']);
+            $isInventoryPurchase = $isConstructionSupply && $hasInventoryDetails;
+            if ($isInventoryPurchase && (empty($validated['inventory_item_id']) || empty($validated['inventory_quantity']))) {
+                return response()->json(['errors' => [
+                    'inventory_item_id' => ['Select the inventory item being purchased.'],
+                    'inventory_quantity' => ['Enter the purchased quantity.'],
+                ]], 422);
+            }
+            if (! $isInventoryPurchase && ($errors = $this->projectComponentErrors($validated))) {
                 return response()->json(['errors' => $errors], 422);
+            }
+
+            $inventoryItem = null;
+            if ($isInventoryPurchase) {
+                $inventoryItem = DB::table('inventory_item_tbl as item')
+                    ->join('unit_tbl as unit', 'unit.unit_id', '=', 'item.unit_id')
+                    ->where('item.item_id', $validated['inventory_item_id'])
+                    ->select('item.*', 'unit.unit_name')
+                    ->firstOrFail();
+                $validated['project_id'] = null;
+                $validated['project_cost_component'] = 'material';
+                $descriptionSource = (object) [
+                    'quantity' => $validated['inventory_quantity'],
+                    'unit_name' => $inventoryItem->unit_name,
+                    'item_name' => $inventoryItem->item_name,
+                ];
+                $validated['expense_description'] = $this->inventoryExpenseDescription($descriptionSource);
+                $validated['remarks'] = $this->inventoryExpenseRemarks($validated['inventory_bar_code'] ?? null);
             }
 
             $data = [
@@ -315,7 +379,27 @@ class FinExpenseController extends Controller
                 $data['proof_file_name'] = $request->file('proof_file')->getClientOriginalName();
             }
 
-            $id = DB::table('fin_expense_tbl')->insertGetId($data);
+            $id = DB::transaction(function () use ($data, $isInventoryPurchase, $inventoryItem, $validated) {
+                if ($isInventoryPurchase) {
+                    $lockedItem = DB::table('inventory_item_tbl')->where('item_id', $inventoryItem->item_id)->lockForUpdate()->firstOrFail();
+                    $transactionId = DB::table('inventory_transaction_tbl')->insertGetId([
+                        'item_id' => $lockedItem->item_id,
+                        'project_id' => null,
+                        'transaction_type' => 'IN',
+                        'quantity' => $validated['inventory_quantity'],
+                        'bar_code' => $validated['inventory_bar_code'] ?? null,
+                        'transaction_date' => $validated['expense_date'],
+                        'proof_file_path' => $data['proof_file_path'] ?? null,
+                        'proof_file_name' => $data['proof_file_name'] ?? null,
+                    ]);
+                    DB::table('inventory_item_tbl')->where('item_id', $lockedItem->item_id)->update([
+                        'current_stock' => (float) $lockedItem->current_stock + (float) $validated['inventory_quantity'],
+                    ]);
+                    $data['inventory_transaction_id'] = $transactionId;
+                }
+
+                return DB::table('fin_expense_tbl')->insertGetId($data);
+            });
             $expense = $this->findWithJoins($id);
             if ($audited = FinExpense::find($id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
 
@@ -488,5 +572,19 @@ class FinExpenseController extends Controller
             'other' => 'Other',
             default => null,
         };
+    }
+
+    private function inventoryExpenseDescription(object $transaction): string
+    {
+        $quantity = rtrim(rtrim(number_format((float) $transaction->quantity, 2, '.', ''), '0'), '.');
+
+        return "Purchased {$quantity} ".strtolower((string) $transaction->unit_name)." of {$transaction->item_name}";
+    }
+
+    private function inventoryExpenseRemarks($barCode): string
+    {
+        $remarks = 'Inventory stock-in transaction.';
+
+        return $barCode === null || $barCode === '' ? $remarks : $remarks.' Receiving reference: '.$barCode;
     }
 }

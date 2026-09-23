@@ -175,7 +175,7 @@
                 @if($isAdmin)
                 <div id="section-configurations" class="settings-section" style="display: none;">
                     <div class="section-title">Configurations</div>
-                    <div class="section-desc">Manage operational thresholds and the live values used by inventory and finance forms.</div>
+                    <div class="section-desc">Manage operational thresholds and live form values. Project phase stages determine completion automatically.</div>
 
                     <div class="config-tabs">
                         <button class="config-tab active" onclick="switchConfigType(this, 'units')">Units</button>
@@ -193,7 +193,7 @@
 
                         <div style="overflow-x: auto; margin-top: 15px;">
                             <table class="user-table" id="configTable">
-                                <thead><tr><th>ID</th><th>Name</th><th style="text-align: center;">Action</th></tr></thead>
+                                <thead><tr><th>ID</th><th>Name</th><th id="configStageHeader" style="display:none;">Stage</th><th style="text-align: center;">Action</th></tr></thead>
                                 <tbody id="configTableBody"></tbody>
                             </table>
                         </div>
@@ -861,6 +861,8 @@
             if (!tbody) return;
             tbody.innerHTML = '';
             var fields = configFieldMap[currentConfigType];
+            var showsStage = currentConfigType === 'project_phases';
+            document.getElementById('configStageHeader').style.display = showsStage ? '' : 'none';
             if (search) {
                 items = items.filter(function(item) {
                     return String(item[fields.name] || '').toLowerCase().indexOf(search) !== -1;
@@ -868,7 +870,7 @@
             }
 
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px;">No items found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="' + (showsStage ? '4' : '3') + '" style="text-align:center; padding: 16px;">No items found.</td></tr>';
                 return;
             }
 
@@ -880,6 +882,11 @@
                 var strong = document.createElement('strong');
                 strong.textContent = item[fields.name];
                 nameCell.appendChild(strong);
+                var stageCell = null;
+                if (showsStage) {
+                    stageCell = document.createElement('td');
+                    stageCell.textContent = item.stage_order;
+                }
                 var actionCell = document.createElement('td');
                 actionCell.style.textAlign = 'center';
                 actionCell.style.whiteSpace = 'nowrap';
@@ -901,8 +908,13 @@
                 remove.textContent = 'Delete';
                 remove.setAttribute('aria-label', 'Delete ' + item[fields.name]);
                 remove.onclick = function() { openConfigDeleteModal(item[fields.id]); };
-                actionCell.append(view, edit, remove);
-                tr.append(idCell, nameCell, actionCell);
+                actionCell.appendChild(view);
+                if (currentConfigType === 'project_phases') {
+                    actionCell.append(edit, remove);
+                }
+                tr.append(idCell, nameCell);
+                if (stageCell) tr.appendChild(stageCell);
+                tr.appendChild(actionCell);
                 tbody.appendChild(tr);
             });
         }
@@ -910,6 +922,8 @@
         function openConfigAddModal() {
             document.getElementById('configItemId').value = '';
             renderConfigFields(null);
+            var stageInput = document.getElementById('configField_stage_order');
+            if (stageInput) stageInput.value = String((configData.project_phases || []).length + 1);
             document.getElementById('configItemModalTitle').textContent = 'Add Configuration';
             document.getElementById('configItemModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -1055,8 +1069,13 @@
                     });
                 } else {
                     input = document.createElement('input');
-                    input.type = 'text';
-                    input.maxLength = definition.max || 255;
+                    input.type = definition.type === 'number' ? 'number' : 'text';
+                    if (definition.type === 'number') {
+                        input.min = definition.min === undefined ? '0' : String(definition.min);
+                        input.step = definition.step === undefined ? '1' : String(definition.step);
+                    } else {
+                        input.maxLength = definition.max || 255;
+                    }
                     if (field === 'category_code') {
                         input.pattern = '[A-Za-z][A-Za-z0-9_ -]*';
                         input.title = 'Start with a letter; use letters, numbers, spaces, hyphens, or underscores.';
@@ -1556,7 +1575,7 @@
         var defaultFilterDefinitions = {
             dashboard: [['search','Search','search'],['status','Project status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','in_stock','low_stock','out_of_stock']]],
             projects: [['projectSearch','Search','search'],['projectStatusFilter','Status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','select',['','Planning','Foundation','Structure','Finishing','Complete']],['projectDateFrom','From','date'],['projectDateTo','To','date']],
-            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project ID','number'],['expenseScopeFilter','Expense type','select',['all','direct','admin','overall']],['expenseCategoryFilter','Category ID','number'],['expenseComponentFilter','Component','select',['all','material','labor','equipment','other']]],
+            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project ID','number'],['expenseScopeFilter','Expense type','select',['all','direct','admin','overall']],['expenseRecordStatusFilter','Record status','select',['all','missing_amount','no_project','missing_amount_and_project']],['expenseSourceFilter','Expense source','select',['all','inventory','manual']],['expenseCategoryFilter','Category ID','number'],['expenseComponentFilter','Component','select',['all','material','labor','equipment','other']]],
             'finance.budgets': [['budgetSearch','Search','search'],['budgetProjectFilter','Project ID','number'],['budgetStatusFilter','Status','select',['all','On Track','Near Limit','Over Budget','No Budget']]],
             'finance.bonds': [['bondProjectFilter','Project ID','number'],['bondStatusFilter','Status','text']],
             'inventory.items': [['itemsSearchInput','Search','search'],['itemsCategoryFilter','Category ID','number'],['itemsSupplierFilter','Supplier ID','number'],['itemsStockFilter','Stock status','select',['all','in_stock','low_stock','out_of_stock']]],

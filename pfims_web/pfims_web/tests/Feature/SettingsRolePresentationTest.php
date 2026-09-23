@@ -93,11 +93,15 @@ class SettingsRolePresentationTest extends TestCase
             'status' => 'Active',
         ]);
 
-        $this->actingAs($user)->get('/settings')
+        $response = $this->actingAs($user)->get('/settings')
             ->assertOk()
             ->assertSee('System Administrator')
             ->assertSee('Configurations')
             ->assertSee('User Management');
+
+        $response->assertSee("if (currentConfigType === 'project_phases')", false);
+        $this->assertStringContainsString('padding: 10px 20px;', file_get_contents(public_path('css/settings.css')));
+        $this->assertStringContainsString('transform: translateY(-2px);', file_get_contents(public_path('css/settings.css')));
     }
 
     public function test_admin_can_update_a_user_role_without_resubmitting_status(): void

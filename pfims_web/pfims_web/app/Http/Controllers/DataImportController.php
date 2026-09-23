@@ -6,6 +6,7 @@ use App\Exceptions\ImportValidationException;
 use App\Services\AutomaticModelRetraining;
 use App\Services\FinanceImportService;
 use App\Services\InventoryImportService;
+use App\Services\ProjectImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,16 +37,35 @@ class DataImportController extends Controller
         return $this->runImport(fn () => $service->import($validated['file'], $validated['type']));
     }
 
+    public function projects(Request $request, ProjectImportService $service): JsonResponse
+    {
+        $this->authorizeRole($request, ['admin', 'operations']);
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'max:5120'],
+        ]);
+
+        return $this->runImport(fn () => $service->import($validated['file']));
+    }
+
     public function template(Request $request, string $type): StreamedResponse
     {
-        abort_unless(in_array($type, ['finance-expenses', 'inventory-items', 'inventory-transactions'], true), 404);
+        abort_unless(in_array($type, ['projects', 'finance-expenses', 'inventory-items', 'inventory-transactions'], true), 404);
         $this->authorizeRole($request, $type === 'finance-expenses' ? ['admin', 'accounting'] : ['admin', 'operations']);
 
         $rows = match ($type) {
+            'projects' => [
+                ['project_name', 'client_name', 'project_manager', 'start_date', 'estimated_end_date', 'actual_end_date', 'worker_count', 'phase', 'status', 'budget'],
+                [
+                    'Replace with project name', 'Replace with client name', 'Replace with project manager',
+                    now()->toDateString(), now()->addMonths(6)->toDateString(), '', '1',
+                    (string) (DB::table('project_phase_tbl')->orderBy('stage_order')->value('phase_name') ?? 'PHASE_NAME'),
+                    'Pending', '0',
+                ],
+            ],
             'finance-expenses' => [
                 ['project_name', 'category_code', 'project_cost_component', 'expense_description', 'amount', 'expense_date', 'remarks'],
                 [
-                    (string) (DB::table('project_tbl')->orderBy('project_name')->value('project_name') ?? ''),
+                    (string) (DB::table('project_tbl')->orderBy('project_name')->value('project_name') ?? 'PROJECT_NAME'),
                     (string) (DB::table('fin_expense_category_tbl')->where('is_active', true)->orderBy('category_name')->value('category_code') ?? 'CATEGORY_CODE'),
                     'material',
                     'Replace with expense description', '0.01', now()->toDateString(), 'Optional note',
@@ -66,7 +86,7 @@ class DataImportController extends Controller
                 [
                     (string) (DB::table('inventory_item_tbl')->orderBy('item_name')->value('item_name') ?? 'ITEM_NAME'),
                     (string) (DB::table('project_tbl')->orderBy('project_name')->value('project_name') ?? ''),
-                    'IN', '1', '', now()->toDateString(),
+                    'IN', '1', '100001', now()->toDateString(),
                 ],
             ],
         };
