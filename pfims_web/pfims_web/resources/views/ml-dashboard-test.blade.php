@@ -227,6 +227,10 @@
             height: auto;
         }
 
+        .prediction-row .model-performance-card[hidden] {
+            display: none !important;
+        }
+
         @media (max-width: 1024px) {
             .main-grid,
             .prediction-row {
@@ -1084,7 +1088,7 @@
                 </section>
             </div>
             <!-- Model quality is part of the project cost prediction workflow. -->
-            <section class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle">
+            <section class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle" hidden>
                 <div class="card-header">
                     <div>
                         <div class="card-title" id="modelPerformanceTitle">Model Performance</div>

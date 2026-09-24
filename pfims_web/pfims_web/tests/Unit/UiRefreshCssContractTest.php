@@ -139,6 +139,7 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString("document.body.classList.contains('landing-page')", $systemUi);
         $this->assertStringContainsString("host.classList.add('pfims-loader-host')", $systemUi);
         $this->assertStringContainsString("control.matches('.nav-parent-toggle')", $systemUi);
+        $this->assertStringContainsString("control.hasAttribute('download')", $systemUi);
         $this->assertStringNotContainsString("window.addEventListener('beforeunload', show)", $systemUi);
         $this->assertStringContainsString('window.PFIMS_PAGE_PRELOADER', $theme);
         $this->assertStringContainsString("document.documentElement.classList.add('pfims-preload')", $theme);

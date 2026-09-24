@@ -440,7 +440,10 @@ body {
     box-shadow: 0 0 0 3px rgba(240, 138, 26, 0.15);
 }
 
-#projectSearch {
+#projectSearch,
+#profitSearch,
+#receivableSearch,
+#bondSearch {
     cursor: text;
     flex: 1;
     min-width: 150px;
@@ -454,11 +457,17 @@ body {
     transition: 0.3s;
 }
 
-#projectSearch::placeholder {
+#projectSearch::placeholder,
+#profitSearch::placeholder,
+#receivableSearch::placeholder,
+#bondSearch::placeholder {
     color: #aaa;
 }
 
-#projectSearch:focus {
+#projectSearch:focus,
+#profitSearch:focus,
+#receivableSearch:focus,
+#bondSearch:focus {
     border-color: #f08a1a;
     box-shadow: 0 0 0 3px rgba(240, 138, 26, 0.15);
 }
@@ -820,6 +829,27 @@ body {
 .finance-edit-modal .modal-footer {
     justify-content: space-between;
     gap: 12px;
+}
+
+#expenseDetailModal .expense-detail-footer {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+#expenseDetailModal .expense-detail-footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 12px;
+    margin-left: auto;
+}
+
+#expenseDetailModal .expense-detail-footer > button,
+#expenseDetailModal .expense-detail-footer-actions > button {
+    flex: 0 0 auto;
+    width: auto;
 }
 
 .finance-edit-modal.is-editing .detail-grid,
@@ -1753,6 +1783,10 @@ body {
     .page-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+    .page-header #financeHeaderActions,
+    .page-header .finance-header-action-group {
+        width: 100%;
     }
     .btn-add-expense,
     .btn-add-budget,

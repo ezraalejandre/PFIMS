@@ -13,7 +13,7 @@ class FinanceImportService
 {
     private const PROJECT_COST_COMPONENTS = ['material', 'labor', 'equipment', 'other'];
 
-    private const REQUIRED_HEADERS = ['category_code', 'expense_description', 'amount', 'expense_date'];
+    private const REQUIRED_HEADERS = ['project_name', 'category_code', 'project_cost_component', 'expense_description', 'amount', 'expense_date', 'remarks'];
 
     private const ALLOWED_HEADERS = ['project_name', 'category_code', 'project_cost_component', 'expense_description', 'amount', 'expense_date', 'remarks'];
 
@@ -45,13 +45,13 @@ class FinanceImportService
             $values['expense_date'] = $this->normalizeDate($values['expense_date'] ?? null);
 
             $validator = Validator::make($values, [
-                'project_name' => ['nullable', 'string', 'max:100'],
+                'project_name' => ['required', 'string', 'max:100'],
                 'category_code' => ['required', 'string', 'max:100'],
-                'project_cost_component' => ['nullable', 'string', 'in:'.implode(',', self::PROJECT_COST_COMPONENTS)],
+                'project_cost_component' => ['required', 'string', 'in:'.implode(',', self::PROJECT_COST_COMPONENTS)],
                 'expense_description' => ['required', 'string', 'max:255'],
                 'amount' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
                 'expense_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-                'remarks' => ['nullable', 'string', 'max:255'],
+                'remarks' => ['required', 'string', 'max:255'],
             ]);
 
             if ($validator->fails()) {
@@ -196,13 +196,16 @@ class FinanceImportService
             ->whereRaw('LOWER(TRIM(expense_description)) = ?', [$this->key($record['expense_description'])]);
 
         $query = $record['project_id'] === null ? $query->whereNull('project_id') : $query->where('project_id', $record['project_id']);
+        $query = $record['project_cost_component'] === null ? $query->whereNull('project_cost_component') : $query->where('project_cost_component', $record['project_cost_component']);
 
-        return $record['project_cost_component'] === null ? $query->whereNull('project_cost_component') : $query->where('project_cost_component', $record['project_cost_component']);
+        return $record['remarks'] === null
+            ? $query->whereNull('remarks')
+            : $query->whereRaw('TRIM(remarks) = ?', [trim($record['remarks'])]);
     }
 
     private function naturalKey(array $record): string
     {
-        return implode('|', [$record['project_id'] ?? 'office', $record['fin_category_id'], $record['project_cost_component'] ?? 'none', $record['expense_date'], number_format($record['amount'], 2, '.', ''), $this->key($record['expense_description'])]);
+        return implode('|', [$record['project_id'] ?? 'office', $record['fin_category_id'], $record['project_cost_component'] ?? 'none', $record['expense_date'], number_format($record['amount'], 2, '.', ''), $this->key($record['expense_description']), trim((string) ($record['remarks'] ?? ''))]);
     }
 
     private function normalizeCostComponent(mixed $value): ?string

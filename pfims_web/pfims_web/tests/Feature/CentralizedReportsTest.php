@@ -160,6 +160,14 @@ class CentralizedReportsTest extends TestCase
                 ->assertSee('id="dataPageSize"', false)
                 ->assertSee('id="historyPagination"', false)
                 ->assertSee('id="historyPageSize"', false)
+                ->assertSee('data-pfims-standard-actions="off"', false)
+                ->assertSee('class="pfims-row-action history-view-button"', false)
+                ->assertSee('class="pfims-row-action history-download-button"', false)
+                ->assertSee('download title="Download report"', false)
+                ->assertSee('data-report-view-icon=', false)
+                ->assertSee('data-report-download-icon=', false)
+                ->assertSee('id="closeHistoryDetail" aria-label="Close">×</button>', false)
+                ->assertDontSee('id="cancelHistoryDetail"', false)
                 ->assertSee('action="http://localhost/logout"', false)
                 ->assertDontSee('Workforce Allocation');
 
@@ -198,6 +206,10 @@ class CentralizedReportsTest extends TestCase
 
         $history = $this->actingAs($admin)->getJson('/api/reports?dataset=project');
         $history->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.report_id', $report->report_id);
+
+        $download = $this->actingAs($admin)->get('/api/reports/download/'.$report->report_id);
+        $download->assertOk()->assertDownload($report->file_name);
+        $this->assertSame(Storage::disk('public')->get($report->file_path), $download->streamedContent());
     }
 
     public function test_dashboard_filters_update_kpis_charts_and_project_rows_together(): void

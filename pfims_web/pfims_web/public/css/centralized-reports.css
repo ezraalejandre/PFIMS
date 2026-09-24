@@ -709,16 +709,10 @@ html.sidebar-collapsed .reports-page .main-content {
 
 .history-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 4px;
     align-items: center;
-}
-
-.history-view-button {
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    font: inherit;
+    justify-content: center;
 }
 
 html[data-theme="dark"] .reports-page :where(.panel, .kpi-card, .export-dialog) {

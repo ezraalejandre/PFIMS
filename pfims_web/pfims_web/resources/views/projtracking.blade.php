@@ -143,7 +143,10 @@
 
         <div class="page-header-with-btn">
             <h1>PROJECTS</h1>
-            <button class="btn-new-project" onclick="openModal()">+ New Project</button>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn-new-project" onclick="openPfimsImport()">Import Projects</button>
+                <button class="btn-new-project" onclick="openModal()">+ New Project</button>
+            </div>
         </div>
 
         <div class="project-filter-panel" aria-label="Project filters">
@@ -157,7 +160,7 @@
             </div>
             <div class="project-filter-field" hidden>
                 <label for="projectPhaseFilter">Phase</label>
-                <select id="projectPhaseFilter" onchange="filterProjects()"><option value="">All phases</option><option>Planning</option><option>Foundation</option><option>Structure</option><option>Finishing</option><option>Complete</option></select>
+                <select id="projectPhaseFilter" onchange="filterProjects()"><option value="">All phases</option></select>
             </div>
             <div class="project-filter-field"><label for="projectDateFrom">Started from</label><input type="date" id="projectDateFrom" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
             <div class="project-filter-field"><label for="projectDateTo">Started to</label><input type="date" id="projectDateTo" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
@@ -384,14 +387,34 @@
                 <input type="hidden" id="editProjectOriginalName">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Phase</label>
-                        <select id="editPhase">
-                            <option value="Planning">Planning</option>
-                            <option value="Foundation">Foundation</option>
-                            <option value="Structure">Structure</option>
-                            <option value="Finishing">Finishing</option>
-                            <option value="Complete">Complete</option>
+                        <label>Project name <span class="required">*</span></label>
+                        <input type="text" id="editProjectName" maxlength="150" required>
+                        <span id="editProjectNameError" class="field-error"></span>
+                    </div>
+                    <div class="form-group">
+                        <label>Client name <span class="required">*</span></label>
+                        <input type="text" id="editClientName" maxlength="150" required>
+                        <span id="editClientNameError" class="field-error"></span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Project manager <span class="required">*</span></label>
+                        <select id="editProjectManager" required>
+                            <option value="">Select Project Manager</option>
+                            <option value="A. Santos">A. Santos</option>
+                            <option value="B. Reyes">B. Reyes</option>
+                            <option value="C. Mendoza">C. Mendoza</option>
+                            <option value="D. Cruz">D. Cruz</option>
+                            <option value="E. Villanueva">E. Villanueva</option>
                         </select>
+                        <span id="editProjectManagerError" class="field-error"></span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phase</label>
+                        <select id="editPhase" required></select>
                     </div>
                     <div class="form-group">
                         <label>Status</label>
@@ -421,11 +444,6 @@
     <input type="date" id="editActualEndDate" max="{{ date('Y-m-d') }}">
     <span id="editActualEndDateError" class="field-error"></span>
 </div>
-                    <div class="form-group">
-    <label>Completion Percentage</label>
-    <input type="number" id="editCompletionPercentage" min="0" max="100" placeholder="0-100">
-    <span id="editCompletionPercentageError" class="field-error"></span>
-</div>
                 </div>
             </div>
             <div class="modal-footer" style="justify-content: flex-end;">
@@ -434,6 +452,8 @@
             </div>
         </div>
     </div>
+
+    @include('partials.data-import', ['importModule' => 'projects'])
 
     <script>
         // ─── GLOBAL VARIABLES ───
@@ -671,7 +691,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var editStartDate = document.getElementById('editStartDate');
     var editEstEndDate = document.getElementById('editEstEndDate');
     var editActualEndDate = document.getElementById('editActualEndDate');
-    var editCompletionPercentage = document.getElementById('editCompletionPercentage');
 
     if (editStartDate) {
         editStartDate.addEventListener('change', function() {
@@ -736,21 +755,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (editCompletionPercentage) {
-        editCompletionPercentage.addEventListener('input', function() {
-            var value = this.value;
-
-            if (
-                value === '' ||
-                (parseFloat(value) >= 0 && parseFloat(value) <= 100)
-            ) {
-                clearFieldError(
-                    'editCompletionPercentage',
-                    'editCompletionPercentageError'
-                );
-            }
-        });
-    }
 });
 
         function nextStep(step) {
@@ -1084,7 +1088,7 @@ if (currentStep === 2) {
 
                 // ─── FETCH PROJECTS (modified) ───
         function fetchProjects() {
-            fetch('/api/projects', {
+            return fetch('/api/projects', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(response) {
@@ -1105,36 +1109,63 @@ if (currentStep === 2) {
                 var params = new URLSearchParams(window.location.search);
                 var targetId = params.get('project');
                 if (targetId) {
-                    var targetProject = projects.find(function(p) {
-                        return String(p.id) === String(targetId);
+                    var targetIndex = projectFilteredData.findIndex(function(project) {
+                        return String(project.id) === String(targetId);
                     });
-                    if (targetProject) {
-                        var tempRow = createProjectRow(targetProject);
-                        openUpdateModal(
-                            tempRow,
-                            targetProject.id,
-                            targetProject.name,
-                            targetProject.client,
-                            targetProject.budget,
-                            targetProject.startDateDisplay,
-                            targetProject.estEndDateDisplay,
-                            targetProject.actualEndDateDisplay,
-                            targetProject.duration,
-                            targetProject.phase,
-                            targetProject.status,
-                            targetProject.progress,
-                            targetProject.manager,
-                            targetProject.workers,
-                            targetProject.startDate,
-                            targetProject.endDate
-                        );
-                        if (params.get('edit') === '1') setTimeout(openEditProjectModal, 0);
+                    if (targetIndex === -1) {
+                        ['projectSearch', 'projectStatusFilter', 'projectPhaseFilter', 'projectDateFrom', 'projectDateTo']
+                            .forEach(function(id) { document.getElementById(id).value = ''; });
+                        projectSearchTerm = '';
+                        filterProjects();
+                        targetIndex = projectFilteredData.findIndex(function(project) {
+                            return String(project.id) === String(targetId);
+                        });
+                    }
+                    if (targetIndex !== -1) {
+                        renderProjectPage(Math.floor(targetIndex / projectPageSize) + 1);
+                        window.setTimeout(function() {
+                            var targetRow = Array.from(document.querySelectorAll('#projectTableBody tr[data-project-id]')).find(function(row) {
+                                return row.dataset.projectId === String(targetId);
+                            });
+                            var viewButton = targetRow && targetRow.querySelector('.pfims-row-action');
+                            if (viewButton) {
+                                viewButton.click();
+                                if (params.get('edit') === '1') window.setTimeout(openEditProjectModal, 0);
+                            }
+                        }, 0);
                     }
                 }
             })
             .catch(function(error) {
                 console.error(error);
                 showError('Failed to load projects.');
+            });
+        }
+
+        function loadProjectPhases() {
+            return fetch('/api/project-phases', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Unable to load project phases');
+                return response.json();
+            })
+            .then(function(phases) {
+                var filter = document.getElementById('projectPhaseFilter');
+                var edit = document.getElementById('editPhase');
+                filter.innerHTML = '<option value="">All phases</option>';
+                edit.innerHTML = '';
+                phases.forEach(function(phase) {
+                    var filterOption = document.createElement('option');
+                    filterOption.value = phase.phase_name;
+                    filterOption.textContent = phase.phase_name;
+                    filter.appendChild(filterOption);
+
+                    var editOption = document.createElement('option');
+                    editOption.value = phase.phase_name;
+                    editOption.textContent = phase.stage_order + '. ' + phase.phase_name;
+                    edit.appendChild(editOption);
+                });
             });
         }
 
@@ -1458,12 +1489,27 @@ if (new Date(endDate) <= new Date(startDate)) {
                 return;
             }
             document.getElementById('editProjectOriginalName').value = currentEditData.name;
+            document.getElementById('editProjectName').value = currentEditData.name || '';
+            document.getElementById('editClientName').value = currentEditData.client || '';
+            var managerSelect = document.getElementById('editProjectManager');
+            var existingManager = currentEditData.manager || '';
+            var previousCurrentManagerOption = managerSelect.querySelector('[data-current-manager]');
+            if (previousCurrentManagerOption) {
+                previousCurrentManagerOption.remove();
+            }
+            if (existingManager && !Array.from(managerSelect.options).some(function(option) {
+                return option.value === existingManager;
+            })) {
+                var currentManagerOption = new Option(existingManager, existingManager);
+                currentManagerOption.dataset.currentManager = 'true';
+                managerSelect.add(currentManagerOption);
+            }
+            managerSelect.value = existingManager;
             document.getElementById('editPhase').value = currentEditData.phase || 'Planning';
             document.getElementById('editStatus').value = currentEditData.status || 'On Track';
             document.getElementById('editStartDate').value = currentEditData.startDate || '';
             document.getElementById('editEstEndDate').value = currentEditData.endDate || '';
             document.getElementById('editActualEndDate').value = currentEditData.actualEndDate || '';
-            document.getElementById('editCompletionPercentage').value = currentEditData.progress || 0;
 
             closeUpdateModal();
             document.getElementById('editProjectModal').classList.add('active');
@@ -1483,17 +1529,34 @@ if (new Date(endDate) <= new Date(startDate)) {
 
             var editSaveBtn = document.querySelector('#editProjectModal .btn-save');
 
+            var projectName = document.getElementById('editProjectName').value.trim();
+            var clientName = document.getElementById('editClientName').value.trim();
+            var manager = document.getElementById('editProjectManager').value.trim();
             var phase = document.getElementById('editPhase').value;
             var status = document.getElementById('editStatus').value;
             var start = document.getElementById('editStartDate').value;
             var estEnd = document.getElementById('editEstEndDate').value;
             var actualEnd = document.getElementById('editActualEndDate').value;
-            var completion = document.getElementById('editCompletionPercentage').value;
+
+            clearFieldError('editProjectName', 'editProjectNameError');
+            clearFieldError('editClientName', 'editClientNameError');
+            clearFieldError('editProjectManager', 'editProjectManagerError');
+            if (!projectName) {
+                showFieldError('editProjectName', 'editProjectNameError', 'Please enter the project name.');
+                return;
+            }
+            if (!clientName) {
+                showFieldError('editClientName', 'editClientNameError', 'Please enter the client name.');
+                return;
+            }
+            if (!manager) {
+                showFieldError('editProjectManager', 'editProjectManagerError', 'Please select a project manager.');
+                return;
+            }
 
                         clearFieldError('editStartDate', 'editStartDateError');
 clearFieldError('editEstEndDate', 'editEstEndDateError');
 clearFieldError('editActualEndDate', 'editActualEndDateError');
-clearFieldError('editCompletionPercentage', 'editCompletionPercentageError');
 
 if (!start) {
     showFieldError('editStartDate', 'editStartDateError', 'Please select a start date.');
@@ -1502,15 +1565,6 @@ if (!start) {
 
 if (!estEnd) {
     showFieldError('editEstEndDate', 'editEstEndDateError', 'Please select an estimated end date.');
-    return;
-}
-
-if (completion !== '' && (parseFloat(completion) < 0 || parseFloat(completion) > 100)) {
-    showFieldError(
-        'editCompletionPercentage',
-        'editCompletionPercentageError',
-        'Completion percentage must be between 0 and 100.'
-    );
     return;
 }
 
@@ -1544,12 +1598,14 @@ if (actualEnd && new Date(actualEnd) < new Date(start)) {
 }
 
                         var payload = {
+                project_name: projectName,
+                client_name: clientName,
+                project_manager: manager,
                 phase: phase,
                 status: status,
                 start_date: start,
                 estimated_end_date: estEnd,
-                actual_end_date: actualEnd || null,
-                completion_percentage: parseFloat(completion) || 0
+                actual_end_date: actualEnd || null
             };
 
             setButtonLoading(editSaveBtn, true, 'Saving...');
@@ -1572,12 +1628,15 @@ if (actualEnd && new Date(actualEnd) < new Date(start)) {
                 return response.json();
             })
             .then(function(updatedProject) {
+                currentEditData.name = updatedProject.project_name || projectName;
+                currentEditData.client = updatedProject.client_name || clientName;
+                currentEditData.manager = updatedProject.project_manager || manager;
                 currentEditData.phase = phase;
                 currentEditData.status = status;
                 currentEditData.startDate = start;
                 currentEditData.endDate = estEnd;
                 currentEditData.actualEndDate = actualEnd || '';
-                currentEditData.progress = parseFloat(completion) || 0;
+                currentEditData.progress = parseFloat(updatedProject.completion_percentage) || 0;
                 currentEditData.startDateDisplay = formatDate(start);
                 currentEditData.estEndDateDisplay = formatDate(estEnd);
                 currentEditData.actualEndDateDisplay = actualEnd ? formatDate(actualEnd) : '—';
@@ -1666,7 +1725,12 @@ if (actualEnd && new Date(actualEnd) < new Date(start)) {
         }
 
         function initializeProjectPage() {
-            fetchProjects();
+            loadProjectPhases()
+                .then(fetchProjects)
+                .catch(function(error) {
+                    console.error(error);
+                    showError('Failed to load project phases.');
+                });
             fetchNotifBadge();
         }
 

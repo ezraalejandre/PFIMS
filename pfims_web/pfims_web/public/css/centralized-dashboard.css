@@ -735,25 +735,17 @@ body.modal-open {
 
 .dashboard-view-project {
     display: inline-flex;
-    min-height: 38px;
+    min-height: 40px;
     align-items: center;
     justify-content: center;
-    padding: 8px 14px;
-    border: 1px solid #1d4ed8;
-    border-radius: 7px;
-    background: #1d4ed8;
-    color: #ffffff;
-    font-weight: 700;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 12px;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-weight: 800;
     text-decoration: none;
-    transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
-}
-
-.dashboard-view-project:hover,
-.dashboard-view-project:focus-visible {
-    border-color: #1e40af;
-    background: #1e40af;
-    color: #ffffff;
-    transform: translateY(-1px);
+    cursor: pointer;
 }
 
 html[data-theme="dark"] .dashboard-project-row:hover,

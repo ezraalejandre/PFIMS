@@ -11,11 +11,11 @@ use Illuminate\Support\Str;
 
 class InventoryImportService
 {
-    private const ITEM_REQUIRED_HEADERS = ['item_name', 'category', 'supplier', 'unit', 'current_stock', 'reorder_level'];
+    private const ITEM_REQUIRED_HEADERS = ['item_name', 'category', 'supplier', 'unit', 'current_stock', 'reorder_level', 'opening_balance_date'];
 
     private const ITEM_ALLOWED_HEADERS = ['item_name', 'category', 'supplier', 'unit', 'current_stock', 'reorder_level', 'opening_balance_date'];
 
-    private const TRANSACTION_REQUIRED_HEADERS = ['item_name', 'transaction_type', 'quantity', 'transaction_date'];
+    private const TRANSACTION_REQUIRED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date'];
 
     private const TRANSACTION_ALLOWED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date'];
 
@@ -46,7 +46,7 @@ class InventoryImportService
         $fileKeys = [];
 
         foreach ($sheet['rows'] as $row) {
-            $values = $row['values'] + ['opening_balance_date' => now()->toDateString()];
+            $values = $row['values'];
             $values['opening_balance_date'] = $this->normalizeDate($values['opening_balance_date']);
             $validator = Validator::make($values, [
                 'item_name' => ['required', 'string', 'max:100'],
@@ -80,7 +80,7 @@ class InventoryImportService
                 'reorder_level' => round((float) $values['reorder_level'], 2),
                 'opening_balance_date' => $values['opening_balance_date'],
             ];
-            $key = implode('|', [$this->key($record['item_name']), $categoryId, $supplierId, $unitId]);
+            $key = implode('|', [$this->key($record['item_name']), $categoryId, $supplierId, $unitId, number_format($record['current_stock'], 2, '.', ''), number_format($record['reorder_level'], 2, '.', ''), $record['opening_balance_date']]);
             if (isset($fileKeys[$key])) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'Duplicates row '.$fileKeys[$key].' in this file.');
 
@@ -155,7 +155,7 @@ class InventoryImportService
                 'project_name' => ['nullable', 'string', 'max:100'],
                 'transaction_type' => ['required', 'in:IN,OUT'],
                 'quantity' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
-                'bar_code' => ['nullable', 'integer', 'min:0', 'max:2147483647'],
+                'bar_code' => ['required', 'integer', 'min:0', 'max:2147483647'],
                 'transaction_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             ]);
             if ($validator->fails()) {
@@ -164,6 +164,12 @@ class InventoryImportService
                 continue;
             }
             $data = $validator->validated();
+
+            if ($data['transaction_type'] === 'OUT' && blank($data['project_name'] ?? null)) {
+                $errors[] = $this->rowError($row['row'], 'project_name', 'Project name is required for OUT inventory transactions.');
+
+                continue;
+            }
 
             $itemMatches = $items->get($this->key($data['item_name']), collect());
             if ($itemMatches->count() !== 1) {
@@ -188,7 +194,7 @@ class InventoryImportService
                 'project_id' => $projectId,
                 'transaction_type' => $data['transaction_type'],
                 'quantity' => round((float) $data['quantity'], 2),
-                'bar_code' => blank($data['bar_code'] ?? null) ? null : (int) $data['bar_code'],
+                'bar_code' => (int) $data['bar_code'],
                 'transaction_date' => $data['transaction_date'],
             ];
             $key = $this->transactionKey($record);
@@ -269,11 +275,29 @@ class InventoryImportService
 
     private function duplicateItemQuery(array $record)
     {
-        return DB::table('inventory_item_tbl')
+        $query = DB::table('inventory_item_tbl')
             ->whereRaw('LOWER(TRIM(item_name)) = ?', [$this->key($record['item_name'])])
             ->where('inventory_category_id', $record['inventory_category_id'])
             ->where('supplier_id', $record['supplier_id'])
-            ->where('unit_id', $record['unit_id']);
+            ->where('unit_id', $record['unit_id'])
+            ->where('current_stock', $record['current_stock'])
+            ->where('reorder_level', $record['reorder_level']);
+
+        if ((float) $record['current_stock'] <= 0) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereExists(function ($opening) use ($record) {
+            $opening->selectRaw('1')
+                ->from('inventory_transaction_tbl as opening_transaction')
+                ->whereColumn('opening_transaction.item_id', 'inventory_item_tbl.item_id')
+                ->where('opening_transaction.transaction_type', 'IN')
+                ->where('opening_transaction.quantity', $record['current_stock'])
+                ->whereDate('opening_transaction.transaction_date', $record['opening_balance_date'])
+                ->whereNull('opening_transaction.project_id')
+                ->whereNull('opening_transaction.bar_code')
+                ->where('opening_transaction.proof_file_name', 'Imported opening balance');
+        });
     }
 
     private function duplicateTransactionQuery(array $record)

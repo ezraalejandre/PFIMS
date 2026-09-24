@@ -172,15 +172,17 @@ Route::middleware('auth')->group(function () {
     Route::delete('/api/config/{type}/{id}', [ConfigController::class, 'destroy']);
 
     Route::post('/api/finance-expenses/from-inventory/{transactionId}', [FinExpenseController::class, 'storeFromInventory'])
-        ->middleware('role.portal:admin,operations');
+        ->middleware('role.portal:admin,accounting,operations');
 
     // Validated, transactional CSV/XLSX imports and downloadable CSV templates.
     Route::post('/api/imports/finance-expenses', [DataImportController::class, 'finance'])
         ->middleware('throttle:10,1');
     Route::post('/api/imports/inventory', [DataImportController::class, 'inventory'])
         ->middleware('throttle:10,1');
+    Route::post('/api/imports/projects', [DataImportController::class, 'projects'])
+        ->middleware('throttle:10,1');
     Route::get('/api/imports/templates/{type}', [DataImportController::class, 'template'])
-        ->whereIn('type', ['finance-expenses', 'inventory-items', 'inventory-transactions']);
+        ->whereIn('type', ['projects', 'finance-expenses', 'inventory-items', 'inventory-transactions']);
 });
 
 Route::get('/audit-logs', [AuditLogController::class, 'index'])

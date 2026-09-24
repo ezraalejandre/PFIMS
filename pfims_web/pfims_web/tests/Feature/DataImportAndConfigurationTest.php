@@ -32,6 +32,53 @@ class DataImportAndConfigurationTest extends TestCase
         $accounting = $this->user('accounting');
         $file = UploadedFile::fake()->createWithContent('items.csv', "item_name,category,supplier,unit,current_stock,reorder_level\nCement,Materials,Build Supply,Bag,10,2\n");
         $this->actingAs($accounting)->postJson('/api/imports/inventory', ['type' => 'items', 'file' => $file])->assertForbidden();
+
+        $file = UploadedFile::fake()->createWithContent('projects.csv', "project_name,client_name,project_manager,start_date,estimated_end_date,actual_end_date,worker_count,phase,status,budget\nProject,Client,Manager,2026-01-01,2026-06-01,,1,Planning,Pending,1000\n");
+        $this->actingAs($accounting)->postJson('/api/imports/projects', ['file' => $file])->assertForbidden();
+    }
+
+    public function test_project_csv_import_is_transactional_creates_budget_and_derives_completion(): void
+    {
+        DB::table('project_phase_tbl')->insert([
+            ['phase_id' => 1, 'phase_name' => 'Planning', 'stage_order' => 1],
+            ['phase_id' => 2, 'phase_name' => 'Construction', 'stage_order' => 2],
+        ]);
+        $operations = $this->user('operations');
+        $header = "project_name,client_name,project_manager,start_date,estimated_end_date,actual_end_date,worker_count,phase,status,budget\n";
+        $csv = $header."Imported Project,Client One,Manager One,2026-01-01,2026-06-01,,12,Construction,On Track,500000.00\n";
+
+        $this->actingAs($operations)->postJson('/api/imports/projects', [
+            'file' => UploadedFile::fake()->createWithContent('projects.csv', $csv),
+        ])->assertCreated()->assertJsonPath('data.imported', 1);
+
+        $projectId = (int) DB::table('project_tbl')->where('project_name', 'Imported Project')->value('project_id');
+        $this->assertDatabaseHas('project_tbl', [
+            'project_id' => $projectId, 'client_name' => 'Client One', 'project_manager' => 'Manager One',
+            'phase' => 'Construction', 'completion_percentage' => 100, 'status' => 'On Track',
+        ]);
+        $this->assertDatabaseHas('budgets_tbl', ['project_id' => $projectId, 'budget_amount' => 500000, 'actual_amount' => 0]);
+
+        $duplicateAndNew = $header
+            ."Imported Project,Client One,Another Manager,2026-01-01,2026-07-01,,20,Planning,Pending,1000.00\n"
+            ."Must Roll Back,Client Two,Manager Two,2026-02-01,2026-08-01,,5,Planning,Pending,2000.00\n";
+        $this->actingAs($operations)->postJson('/api/imports/projects', [
+            'file' => UploadedFile::fake()->createWithContent('projects.csv', $duplicateAndNew),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.row', 2);
+        $this->assertDatabaseMissing('project_tbl', ['project_name' => 'Must Roll Back']);
+    }
+
+    public function test_project_import_template_and_shared_modal_are_available(): void
+    {
+        DB::table('project_phase_tbl')->insert(['phase_id' => 1, 'phase_name' => 'Planning', 'stage_order' => 1]);
+        $admin = $this->user('admin');
+        $template = $this->actingAs($admin)->get('/api/imports/templates/projects')->assertOk()->streamedContent();
+        $this->assertStringContainsString('project_name,client_name,project_manager,start_date,estimated_end_date,actual_end_date,worker_count,phase,status,budget', $template);
+
+        $this->actingAs($admin)->get('/projects')->assertOk()
+            ->assertSee('Import Projects')
+            ->assertSee('data-import-module="projects"', false)
+            ->assertSee('class="btn-cancel pfims-project-import-cancel"', false)
+            ->assertSee("'/api/imports/projects'", false);
     }
 
     public function test_finance_csv_import_is_transactional_and_reports_duplicate_row_numbers(): void
@@ -44,7 +91,7 @@ class DataImportAndConfigurationTest extends TestCase
         $response->assertCreated()->assertJsonPath('data.imported', 1);
         $this->assertDatabaseHas('fin_expense_tbl', ['expense_description' => 'Cement delivery', 'amount' => 25000, 'project_cost_component' => 'material']);
 
-        $duplicateAndNew = "project_name,category_code,project_cost_component,expense_description,amount,expense_date,remarks\nAlpha Project,CONST_SUPPLY,material,Cement delivery,25000.00,2026-01-10,Duplicate\nAlpha Project,CONST_SUPPLY,material,New valid row,99.00,2026-01-11,Must roll back\n";
+        $duplicateAndNew = "project_name,category_code,project_cost_component,expense_description,amount,expense_date,remarks\nAlpha Project,CONST_SUPPLY,material,Cement delivery,25000.00,2026-01-10,Initial import\nAlpha Project,CONST_SUPPLY,material,New valid row,99.00,2026-01-11,Must roll back\n";
         $response = $this->actingAs($admin)->postJson('/api/imports/finance-expenses', [
             'file' => UploadedFile::fake()->createWithContent('expenses.csv', $duplicateAndNew),
         ]);
@@ -104,14 +151,26 @@ class DataImportAndConfigurationTest extends TestCase
     {
         $admin = $this->user('admin');
 
-        $this->actingAs($admin)->postJson('/api/config/project_phases', ['phase_name' => 'Mobilization'])
+        $phase = $this->actingAs($admin)->postJson('/api/config/project_phases', ['phase_name' => 'Mobilization', 'stage_order' => 1])
             ->assertCreated()
-            ->assertJsonPath('data.phase_name', 'Mobilization');
+            ->assertJsonPath('data.phase_name', 'Mobilization')
+            ->assertJsonPath('data.stage_order', 1)
+            ->json('data');
+        DB::table('project_tbl')->where('project_id', 1)->update(['phase' => 'Mobilization']);
+        $this->actingAs($admin)->postJson('/api/config/project_phases', ['phase_name' => 'Planning', 'stage_order' => 1])
+            ->assertCreated()->assertJsonPath('data.stage_order', 1);
+        $this->assertDatabaseHas('project_tbl', ['project_id' => 1, 'completion_percentage' => 100]);
+        $this->actingAs($admin)->patchJson('/api/config/project_phases/'.$phase['phase_id'], [
+            'phase_name' => 'Mobilization', 'stage_order' => 1,
+        ])->assertOk()->assertJsonPath('data.stage_order', 1);
+        $this->assertDatabaseHas('project_tbl', ['project_id' => 1, 'completion_percentage' => 50]);
         $this->actingAs($admin)->getJson('/api/config/project_phases')
             ->assertOk()
             ->assertJsonPath('meta.id', 'phase_id')
             ->assertJsonPath('meta.fields.phase_name.label', 'Project phase')
-            ->assertJsonPath('data.0.phase_name', 'Mobilization');
+            ->assertJsonPath('meta.fields.stage_order.label', 'Stage')
+            ->assertJsonPath('data.0.phase_name', 'Mobilization')
+            ->assertJsonPath('data.1.phase_name', 'Planning');
 
         $component = $this->actingAs($admin)->postJson('/api/config/finance_components', ['component_name' => 'Equipment'])
             ->assertCreated()
@@ -167,7 +226,7 @@ class DataImportAndConfigurationTest extends TestCase
         ]);
     }
 
-    public function test_admin_finance_expense_import_remains_project_optional(): void
+    public function test_finance_import_rejects_every_blank_cell(): void
     {
         DB::table('fin_expense_category_tbl')->insert([
             'fin_category_id' => 2,
@@ -178,23 +237,18 @@ class DataImportAndConfigurationTest extends TestCase
         ]);
 
         $admin = $this->user('admin');
-        $csv = "project_name,category_code,expense_description,amount,expense_date,remarks\n,RENT,Office rent,5000.00,2026-01-15,Admin import\n";
+        $csv = "project_name,category_code,project_cost_component,expense_description,amount,expense_date,remarks\n,RENT,other,Office rent,5000.00,2026-01-15,Admin import\n";
         $this->actingAs($admin)->postJson('/api/imports/finance-expenses', [
             'file' => UploadedFile::fake()->createWithContent('admin-expenses.csv', $csv),
-        ])->assertCreated()->assertJsonPath('data.imported', 1);
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'project_name');
 
-        $this->assertDatabaseHas('fin_expense_tbl', [
-            'project_id' => null,
-            'fin_category_id' => 2,
-            'project_cost_component' => null,
-            'expense_description' => 'Office rent',
-        ]);
+        $this->assertDatabaseCount('fin_expense_tbl', 0);
     }
 
     public function test_finance_import_rejects_direct_rows_without_cost_component(): void
     {
         $admin = $this->user('admin');
-        $csv = "project_name,category_code,expense_description,amount,expense_date,remarks\nAlpha Project,CONST_SUPPLY,Cement delivery,25000.00,2026-01-10,Missing component\n";
+        $csv = "project_name,category_code,project_cost_component,expense_description,amount,expense_date,remarks\nAlpha Project,CONST_SUPPLY,,Cement delivery,25000.00,2026-01-10,Missing component\n";
         $this->actingAs($admin)->postJson('/api/imports/finance-expenses', [
             'file' => UploadedFile::fake()->createWithContent('expenses.csv', $csv),
         ])->assertUnprocessable()
@@ -213,6 +267,51 @@ class DataImportAndConfigurationTest extends TestCase
             'project_name,category_code,project_cost_component,expense_description,amount,expense_date,remarks',
             $response->streamedContent()
         );
+    }
+
+    public function test_import_duplicates_require_every_finance_or_inventory_field_to_match(): void
+    {
+        $admin = $this->user('admin');
+        $header = "project_name,category_code,project_cost_component,expense_description,amount,expense_date,remarks\n";
+        $this->actingAs($admin)->postJson('/api/imports/finance-expenses', [
+            'file' => UploadedFile::fake()->createWithContent('first.csv', $header."Alpha Project,CONST_SUPPLY,material,Cement,100.00,2026-01-10,First note\n"),
+        ])->assertCreated();
+        $this->actingAs($admin)->postJson('/api/imports/finance-expenses', [
+            'file' => UploadedFile::fake()->createWithContent('different-remarks.csv', $header."Alpha Project,CONST_SUPPLY,material,Cement,100.00,2026-01-10,Different note\n"),
+        ])->assertCreated();
+        $this->assertDatabaseCount('fin_expense_tbl', 2);
+
+        $itemHeader = "item_name,category,supplier,unit,current_stock,reorder_level,opening_balance_date\n";
+        $this->actingAs($admin)->postJson('/api/imports/inventory', [
+            'type' => 'items',
+            'file' => UploadedFile::fake()->createWithContent('items.csv', $itemHeader."Cement,Materials,Build Supply,Bag,10,2,2026-01-01\nCement,Materials,Build Supply,Bag,20,2,2026-01-01\n"),
+        ])->assertCreated()->assertJsonPath('data.imported', 2);
+        $this->assertDatabaseCount('inventory_item_tbl', 2);
+    }
+
+    public function test_inventory_import_only_allows_blank_project_for_in_transactions(): void
+    {
+        $operations = $this->user('operations');
+        DB::table('inventory_item_tbl')->insert([
+            'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
+            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 20, 'reorder_level' => 2,
+        ]);
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date\n";
+
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('in.csv', $header."Cement,,IN,5,200001,2026-01-10\n"),
+        ])->assertCreated();
+
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('out.csv', $header."Cement,,OUT,5,200002,2026-01-11\n"),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'project_name');
+
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('blank-barcode.csv', $header."Cement,,IN,5,,2026-01-12\n"),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'bar_code');
     }
 
     public function test_normal_inventory_and_finance_inputs_reject_natural_key_duplicates(): void
@@ -274,7 +373,21 @@ class DataImportAndConfigurationTest extends TestCase
         Schema::create('project_tbl', function (Blueprint $table) {
             $table->integer('project_id')->primary();
             $table->string('project_name');
+            $table->string('client_name')->nullable();
+            $table->string('project_manager')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('estimated_end_date')->nullable();
+            $table->date('actual_end_date')->nullable();
+            $table->integer('worker_count')->nullable();
             $table->string('phase')->nullable();
+            $table->decimal('completion_percentage', 5, 2)->default(0);
+            $table->string('status')->nullable();
+        });
+        Schema::create('budgets_tbl', function (Blueprint $table) {
+            $table->increments('budget_id');
+            $table->integer('project_id');
+            $table->decimal('budget_amount', 14, 2);
+            $table->decimal('actual_amount', 14, 2)->default(0);
         });
         Schema::create('fin_expense_category_tbl', function (Blueprint $table) {
             $table->increments('fin_category_id');
@@ -314,6 +427,7 @@ class DataImportAndConfigurationTest extends TestCase
         Schema::create('project_phase_tbl', function (Blueprint $table) {
             $table->increments('phase_id');
             $table->string('phase_name')->unique();
+            $table->unsignedInteger('stage_order');
         });
         Schema::create('fin_component_tbl', function (Blueprint $table) {
             $table->increments('component_id');

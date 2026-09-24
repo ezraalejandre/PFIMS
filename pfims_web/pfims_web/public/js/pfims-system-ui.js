@@ -1071,7 +1071,7 @@
             if (control.matches('.nav-parent-toggle') || control.closest('.nav-parent-toggle')) return;
             if (control.matches('a[href]')) {
                 var href = control.getAttribute('href') || '';
-                if (!href || href.charAt(0) === '#' || control.target === '_blank') return;
+                if (!href || href.charAt(0) === '#' || control.target === '_blank' || control.hasAttribute('download')) return;
                 var destination = new URL(control.href, window.location.href);
                 if (destination.href === window.location.href) return;
                 show();
@@ -1246,7 +1246,7 @@
     }
 
     function installStandardActions(table) {
-        if (table.classList.contains('analytics-table') || table.closest('.predictive-analytics-root')) return;
+        if (table.dataset.pfimsStandardActions === 'off' || table.classList.contains('analytics-table') || table.closest('.predictive-analytics-root')) return;
         var headerRow = table.tHead && table.tHead.rows[0]
             ? table.tHead.rows[0] : table.querySelector('tr:has(th)');
         if (!headerRow) return;
@@ -1264,8 +1264,20 @@
                 var view = controls.find(function (control) { return /^view(?:\s|$)/i.test(control.getAttribute('aria-label') || control.title || control.textContent || ''); });
                 var edit = controls.find(function (control) { return /^edit(?:\s|$)/i.test(control.getAttribute('aria-label') || control.title || control.textContent || ''); });
                 var remove = controls.find(function (control) { return /^delete(?:\s|$)/i.test(control.getAttribute('aria-label') || control.title || control.textContent || ''); });
-                var editAction = edit ? function () { edit.click(); } : null;
-                var deleteAction = remove ? function () { remove.click(); } : null;
+                var invokeRowControl = function (control) {
+                    // Keep the original control attached to its row while its handler runs.
+                    // Several module handlers resolve their record with this.closest('tr').
+                    control.hidden = true;
+                    cell.appendChild(control);
+                    try {
+                        control.click();
+                    } finally {
+                        control.remove();
+                        control.hidden = false;
+                    }
+                };
+                var editAction = edit ? function () { invokeRowControl(edit); } : null;
+                var deleteAction = remove ? function () { invokeRowControl(remove); } : null;
                 if (!view) {
                     view = makeRowAction('view', 'View details', function () {
                         openGeneratedDetailsModal(table, row, actionIndex, editAction, deleteAction);

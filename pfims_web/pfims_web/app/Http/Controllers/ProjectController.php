@@ -6,23 +6,24 @@ use App\Models\SystemSetting;
 use App\Services\AutomaticModelRetraining;
 use App\Services\NotificationService;
 use App\Services\AuditLogService;
+use App\Services\ProjectPhaseProgressService;
 use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
-    private const PHASES = ['Planning', 'Foundation', 'Structure', 'Finishing', 'Complete'];
-
     private const STATUSES = ['Pending', 'On Track', 'At Risk', 'Delayed', 'Completed'];
 
     public function __construct(
         private NotificationService $notifications,
         private AutomaticModelRetraining $modelRetraining,
         private AuditLogService $audit,
+        private ProjectPhaseProgressService $phaseProgress,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -31,7 +32,7 @@ class ProjectController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:150'],
             'status' => ['nullable', 'in:'.implode(',', self::STATUSES)],
-            'phase' => ['nullable', 'in:'.implode(',', self::PHASES)],
+            'phase' => ['nullable', Rule::exists('project_phase_tbl', 'phase_name')],
             'start_date' => ['nullable', 'date', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date', 'before_or_equal:2100-12-31'],
         ]);
@@ -87,6 +88,11 @@ class ProjectController extends Controller
         );
     }
 
+    public function phases(): JsonResponse
+    {
+        return response()->json($this->phaseProgress->phases());
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $this->validateProject($request, false);
@@ -97,6 +103,13 @@ class ProjectController extends Controller
         $projectId = DB::transaction(function () use ($data) {
             $this->assertUniqueNaturalKey($data['project_name'], $data['client_name'], $data['start_date']);
 
+            $phase = isset($data['phase'])
+                ? $this->phaseProgress->canonicalPhaseName($data['phase'])
+                : $this->phaseProgress->firstPhaseName();
+            if (! $phase) {
+                throw ValidationException::withMessages(['phase' => 'Configure at least one project phase before creating a project.']);
+            }
+
             $projectId = DB::table('project_tbl')->insertGetId([
                 'project_name' => $data['project_name'],
                 'client_name' => $data['client_name'],
@@ -105,8 +118,8 @@ class ProjectController extends Controller
                 'estimated_end_date' => $data['estimated_end_date'],
                 'actual_end_date' => $data['actual_end_date'] ?? null,
                 'worker_count' => $data['worker_count'] ?? 0,
-                'phase' => $data['phase'] ?? 'Planning',
-                'completion_percentage' => $data['completion_percentage'] ?? 0,
+                'phase' => $phase,
+                'completion_percentage' => $this->phaseProgress->completionForPhase($phase),
                 'status' => $data['status'] ?? 'Pending',
             ]);
 
@@ -148,6 +161,11 @@ class ProjectController extends Controller
             $start = $data['start_date'] ?? $existing->start_date;
             $this->assertUniqueNaturalKey($name, $client, $start, $id);
 
+            if (isset($data['phase'])) {
+                $data['phase'] = $this->phaseProgress->canonicalPhaseName($data['phase']);
+            }
+            $phase = $data['phase'] ?? $existing->phase;
+            $data['completion_percentage'] = $this->phaseProgress->completionForPhase((string) $phase);
             $projectData = array_intersect_key($data, array_flip([
                 'project_name', 'client_name', 'project_manager', 'start_date', 'estimated_end_date',
                 'actual_end_date', 'worker_count', 'phase', 'status', 'completion_percentage',
@@ -222,9 +240,8 @@ class ProjectController extends Controller
             'estimated_end_date' => [...$required, 'date', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'actual_end_date' => ['nullable', 'date', 'after_or_equal:2000-01-01', 'before_or_equal:today'],
             'worker_count' => [...$optionalOnCreate, 'integer', 'min:0', 'max:100000'],
-            'phase' => [...$optionalOnCreate, 'string', 'in:'.implode(',', self::PHASES)],
+            'phase' => [...$optionalOnCreate, 'string', Rule::exists('project_phase_tbl', 'phase_name')],
             'status' => [...$optionalOnCreate, 'string', 'in:'.implode(',', self::STATUSES)],
-            'completion_percentage' => [...$optionalOnCreate, 'numeric', 'min:0', 'max:100'],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
         ]);
 

@@ -52,7 +52,7 @@ class RoleAccessTest extends TestCase
 
         $this->actingAs($operations)->getJson('/api/finance-expenses')->assertForbidden();
         $this->actingAs($accounting)->postJson('/api/projects', [])->assertForbidden();
-        $this->actingAs($accounting)->postJson('/api/finance-expenses/from-inventory/1', [])->assertForbidden();
+        $this->actingAs($accounting)->postJson('/api/finance-expenses/from-inventory/1', [])->assertUnprocessable();
     }
 
     public function test_accounting_project_lookup_is_allowed_by_the_api_role_middleware(): void
