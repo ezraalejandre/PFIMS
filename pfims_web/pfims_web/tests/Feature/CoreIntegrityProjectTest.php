@@ -129,6 +129,22 @@ class CoreIntegrityProjectTest extends TestCase
             ->assertJsonPath('3.phase_name', 'Finishing')->assertJsonPath('3.stage_order', 4);
     }
 
+    public function test_project_phases_bootstrap_stage_order_when_a_deployment_has_the_legacy_schema(): void
+    {
+        Schema::table('project_phase_tbl', function (Blueprint $table) {
+            $table->dropColumn('stage_order');
+        });
+
+        $this->actingAs($this->user())->getJson('/api/project-phases')
+            ->assertOk()
+            ->assertJsonPath('0.phase_name', 'Planning')
+            ->assertJsonPath('0.stage_order', 1)
+            ->assertJsonPath('3.phase_name', 'Finishing')
+            ->assertJsonPath('3.stage_order', 4);
+
+        $this->assertTrue(Schema::hasColumn('project_phase_tbl', 'stage_order'));
+    }
+
     public function test_budget_and_expense_validation_reject_duplicates_and_invalid_relations(): void
     {
         $admin = $this->user();

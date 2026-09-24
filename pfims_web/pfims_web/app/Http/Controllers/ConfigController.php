@@ -192,6 +192,9 @@ class ConfigController extends Controller
     private function configuration(string $type): array
     {
         abort_unless(isset($this->map[$type]), 404, 'Configuration type not found.');
+        if ($type === 'project_phases') {
+            $this->phaseProgress->ensureSchema();
+        }
 
         return $this->map[$type];
     }
