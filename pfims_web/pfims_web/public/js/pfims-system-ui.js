@@ -190,6 +190,10 @@
             .then(function (response) { return response.ok ? response.json() : {}; })
             .then(function (allDefaults) {
                 var defaults = allDefaults[module] || {};
+                [
+                    'search', 'projectSearch', 'budgetSearch', 'itemsSearchInput', 'searchInput',
+                    'supplierSearch', 'filterSearch', 'materialForecastSearch', 'budgetVarianceSearch'
+                ].forEach(function (key) { delete defaults[key]; });
                 if (module === 'dashboard' && defaults.stockStatus) {
                     defaults.stockStatus = {
                         in_stock: 'In stock',

@@ -40,6 +40,7 @@ class SharedFiltersContractTest extends TestCase
         $this->assertStringContainsString("['typeFilter','Transaction type','select'", $settings);
         $this->assertStringContainsString("['select', 'lookup'].includes(definition[2]) ? document.createElement('select')", $settings);
         $this->assertStringNotContainsString("['stock_status','Stock status'", $settings);
+        $this->assertStringNotContainsString("['Search','search']", $settings);
     }
 
     public function test_default_filter_observer_does_not_rewrite_its_own_ui_forever(): void

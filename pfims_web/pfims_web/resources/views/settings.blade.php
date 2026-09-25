@@ -1572,17 +1572,17 @@
 
         var savedDefaultFilters = {};
         var defaultFilterDefinitions = {
-            dashboard: [['search','Search','search'],['status','Project status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','In stock','Low stock','Out of stock']]],
-            projects: [['projectSearch','Search','search'],['projectStatusFilter','Status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','lookup'],['projectDateFrom','From','date'],['projectDateTo','To','date']],
-            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project','lookup'],['expenseScopeFilter','Expense type','select',['all','direct','admin','overall']],['expenseRecordStatusFilter','Record status','select',['all','missing_amount','no_project','missing_amount_and_project']],['expenseSourceFilter','Expense source','select',['all','inventory','manual']],['expenseCategoryFilter','Category','lookup'],['expenseComponentFilter','Component','select',['all','material','labor','equipment','other']]],
-            'finance.budgets': [['budgetSearch','Search','search'],['budgetProjectFilter','Project','lookup'],['budgetStatusFilter','Status','select',['all','On Track','Near Limit','Over Budget','No Budget']]],
+            dashboard: [['status','Project status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','In stock','Low stock','Out of stock']]],
+            projects: [['projectStatusFilter','Status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','lookup'],['projectDateFrom','From','date'],['projectDateTo','To','date']],
+            'finance.expenses': [['projectFilter','Project','lookup'],['expenseScopeFilter','Expense type','select',['all','direct','admin','overall']],['expenseRecordStatusFilter','Record status','select',['all','missing_amount','no_project','missing_amount_and_project']],['expenseSourceFilter','Expense source','select',['all','inventory','manual']],['expenseCategoryFilter','Category','lookup'],['expenseComponentFilter','Component','select',['all','material','labor','equipment','other']]],
+            'finance.budgets': [['budgetProjectFilter','Project','lookup'],['budgetStatusFilter','Status','select',['all','On Track','Near Limit','Over Budget','No Budget']]],
             'finance.bonds': [['bondProjectFilter','Project','lookup'],['bondStatusFilter','Status','select',['all','active','released','forfeited']]],
-            'inventory.items': [['itemsSearchInput','Search','search'],['itemsCategoryFilter','Category','lookup'],['itemsSupplierFilter','Supplier','lookup'],['itemsStockFilter','Stock status','select',['all','in_stock','low_stock','out_of_stock']]],
-            'inventory.transactions': [['searchInput','Search','search'],['typeFilter','Transaction type','select',['all','IN','OUT']],['transactionCategoryFilter','Category','lookup'],['transactionProjectFilter','Project','lookup'],['startDate','From','date'],['endDate','To','date']],
-            suppliers: [['supplierSearch','Search','search'],['supplierSort','Sort order','select',['name','items','alerts']]],
-            reports: [['filterSearch','Search','search'],['filterProject','Project','lookup'],['filterStatus','Status','lookup'],['filterClassification','Classification','lookup'],['filterCategory','Category','lookup'],['filterSupplier','Supplier','lookup'],['filterStockStatus','Stock status','lookup'],['filterStart','From','date'],['filterEnd','To','date']],
-            'analytics.material': [['materialForecastSearch','Search','search'],['materialForecastStatus','Status','select',['','Healthy','Low Stock','Reorder Needed']]],
-            'analytics.budget': [['budgetVarianceSearch','Search','search'],['budgetVarianceProject','Project','lookup'],['budgetVarianceStatus','Position','select',['','within','over']]]
+            'inventory.items': [['itemsCategoryFilter','Category','lookup'],['itemsSupplierFilter','Supplier','lookup'],['itemsStockFilter','Stock status','select',['all','in_stock','low_stock','out_of_stock']]],
+            'inventory.transactions': [['typeFilter','Transaction type','select',['all','IN','OUT']],['transactionCategoryFilter','Category','lookup'],['transactionProjectFilter','Project','lookup'],['startDate','From','date'],['endDate','To','date']],
+            suppliers: [['supplierSort','Sort order','select',['name','items','alerts']]],
+            reports: [['filterProject','Project','lookup'],['filterStatus','Status','lookup'],['filterClassification','Classification','lookup'],['filterCategory','Category','lookup'],['filterSupplier','Supplier','lookup'],['filterStockStatus','Stock status','lookup'],['filterStart','From','date'],['filterEnd','To','date']],
+            'analytics.material': [['materialForecastStatus','Status','select',['','Healthy','Low Stock','Reorder Needed']]],
+            'analytics.budget': [['budgetVarianceProject','Project','lookup'],['budgetVarianceStatus','Position','select',['','within','over']]]
         };
         var defaultFilterLookups = {
             projectPhaseFilter: ['/api/project-phases', 'phase_name', 'phase_name'],
@@ -1672,7 +1672,10 @@
                         .catch(function() { document.getElementById('defaultFilterStatus').textContent = 'Some filter options could not be loaded.'; });
                 }
             });
-            document.getElementById('defaultFilterStatus').textContent = Object.keys(values).length ? 'Saved defaults are active for this module.' : 'No defaults saved for this module.';
+            var hasConfiguredDefault = (defaultFilterDefinitions[module] || []).some(function(definition) {
+                return values[definition[0]] !== undefined && values[definition[0]] !== '';
+            });
+            document.getElementById('defaultFilterStatus').textContent = hasConfiguredDefault ? 'Saved defaults are active for this module.' : 'No defaults saved for this module.';
         }
 
         function saveDefaultFilters() {

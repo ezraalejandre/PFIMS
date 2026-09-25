@@ -37,8 +37,8 @@ function setup(defaults, initialOptions = ['all', 'Delayed'], module = 'projects
     component.closest = () => component;
     component.querySelector = selector => selector.includes(', .btn-clear-search') ? clear : null;
     const search = element('INPUT');
-    search.id = module === 'dashboard' ? 'search' : 'projectSearch';
-    search.type = 'search';
+    search.id = module === 'dashboard' ? 'search' : 'projectDateFrom';
+    search.type = module === 'dashboard' ? 'search' : 'date';
     search.value = '';
     search.closest = () => component;
     const status = element('SELECT');
@@ -87,11 +87,11 @@ function setup(defaults, initialOptions = ['all', 'Delayed'], module = 'projects
 }
 
 test('all saved values are set before filter handlers run; clear and reset remain usable', async () => {
-    const ui = setup({ projectSearch: 'cement', projectStatusFilter: 'Delayed' });
+    const ui = setup({ projectDateFrom: '2026-09-01', projectStatusFilter: 'Delayed' });
     await ui.ready();
-    assert.equal(ui.search.value, 'cement');
+    assert.equal(ui.search.value, '2026-09-01');
     assert.equal(ui.status.value, 'Delayed');
-    assert.deepEqual(ui.snapshots, [['cement', 'Delayed'], ['cement', 'Delayed']]);
+    assert.deepEqual(ui.snapshots, [['2026-09-01', 'Delayed'], ['2026-09-01', 'Delayed']]);
 
     ui.clear.dispatchEvent({ type: 'click', isTrusted: true });
     ui.search.value = '';
@@ -103,22 +103,30 @@ test('all saved values are set before filter handlers run; clear and reset remai
     ui.snapshots.length = 0;
     const reset = ui.component.children.find(child => child.className === 'pfims-reset-defaults');
     reset.dispatchEvent({ type: 'click', isTrusted: true });
-    assert.deepEqual(ui.snapshots, [['cement', 'Delayed'], ['cement', 'Delayed']]);
+    assert.deepEqual(ui.snapshots, [['2026-09-01', 'Delayed'], ['2026-09-01', 'Delayed']]);
 });
 
 test('a saved dropdown value applies after its options load and after they are rebuilt', async () => {
-    const ui = setup({ projectSearch: 'cement', projectStatusFilter: 'Delayed' }, ['all']);
+    const ui = setup({ projectDateFrom: '2026-09-01', projectStatusFilter: 'Delayed' }, ['all']);
     await ui.ready();
     assert.equal(ui.status.value, 'all');
     ui.status.options.push({ value: 'Delayed' });
     ui.notifyMutation();
     assert.equal(ui.status.value, 'Delayed');
-    assert.deepEqual(ui.snapshots.at(-1), ['cement', 'Delayed']);
+    assert.deepEqual(ui.snapshots.at(-1), ['2026-09-01', 'Delayed']);
 
     ui.status.options = [{ value: 'all' }, { value: 'Delayed' }];
     ui.status.value = 'all';
     ui.notifyMutation();
     assert.equal(ui.status.value, 'Delayed');
+});
+
+test('a legacy saved search value is ignored while other defaults still apply', async () => {
+    const ui = setup({ projectSearch: 'cement', projectStatusFilter: 'Delayed' });
+    await ui.ready();
+    assert.equal(ui.search.value, '');
+    assert.equal(ui.status.value, 'Delayed');
+    assert.deepEqual(ui.snapshots, [['', 'Delayed']]);
 });
 
 test('a previously saved dashboard stock code applies to its current labeled option', async () => {
