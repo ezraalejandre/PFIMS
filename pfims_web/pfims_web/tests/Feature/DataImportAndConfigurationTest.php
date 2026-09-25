@@ -77,6 +77,7 @@ class DataImportAndConfigurationTest extends TestCase
         $this->actingAs($admin)->get('/projects')->assertOk()
             ->assertSee('Import Projects')
             ->assertSee('data-import-module="projects"', false)
+            ->assertSee('id="pfimsImportTemplate" class="pfims-template-link" href="#" download', false)
             ->assertSee('class="btn-cancel pfims-project-import-cancel"', false)
             ->assertSee("'/api/imports/projects'", false);
     }
