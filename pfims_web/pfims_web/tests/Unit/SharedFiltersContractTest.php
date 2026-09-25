@@ -35,9 +35,10 @@ class SharedFiltersContractTest extends TestCase
         $this->assertIsString($settings);
         $this->assertStringContainsString("['stockStatus','Stock status','select'", $settings);
         $this->assertStringContainsString("['expenseScopeFilter','Expense type','select'", $settings);
+        $this->assertStringContainsString("['stockStatus','Stock status','select',['','In stock','Low stock','Out of stock']]", $settings);
         $this->assertStringContainsString("['itemsStockFilter','Stock status','select'", $settings);
         $this->assertStringContainsString("['typeFilter','Transaction type','select'", $settings);
-        $this->assertStringContainsString("definition[2] === 'select' ? document.createElement('select')", $settings);
+        $this->assertStringContainsString("['select', 'lookup'].includes(definition[2]) ? document.createElement('select')", $settings);
         $this->assertStringNotContainsString("['stock_status','Stock status'", $settings);
     }
 

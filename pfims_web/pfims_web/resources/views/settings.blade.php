@@ -1572,17 +1572,35 @@
 
         var savedDefaultFilters = {};
         var defaultFilterDefinitions = {
-            dashboard: [['search','Search','search'],['status','Project status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','in_stock','low_stock','out_of_stock']]],
-            projects: [['projectSearch','Search','search'],['projectStatusFilter','Status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','select',['','Planning','Foundation','Structure','Finishing','Complete']],['projectDateFrom','From','date'],['projectDateTo','To','date']],
-            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project ID','number'],['expenseScopeFilter','Expense type','select',['all','direct','admin','overall']],['expenseRecordStatusFilter','Record status','select',['all','missing_amount','no_project','missing_amount_and_project']],['expenseSourceFilter','Expense source','select',['all','inventory','manual']],['expenseCategoryFilter','Category ID','number'],['expenseComponentFilter','Component','select',['all','material','labor','equipment','other']]],
-            'finance.budgets': [['budgetSearch','Search','search'],['budgetProjectFilter','Project ID','number'],['budgetStatusFilter','Status','select',['all','On Track','Near Limit','Over Budget','No Budget']]],
-            'finance.bonds': [['bondProjectFilter','Project ID','number'],['bondStatusFilter','Status','text']],
-            'inventory.items': [['itemsSearchInput','Search','search'],['itemsCategoryFilter','Category ID','number'],['itemsSupplierFilter','Supplier ID','number'],['itemsStockFilter','Stock status','select',['all','in_stock','low_stock','out_of_stock']]],
-            'inventory.transactions': [['searchInput','Search','search'],['typeFilter','Transaction type','select',['all','IN','OUT']],['transactionCategoryFilter','Category ID','number'],['transactionProjectFilter','Project ID','number'],['startDate','From','date'],['endDate','To','date']],
+            dashboard: [['search','Search','search'],['status','Project status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','In stock','Low stock','Out of stock']]],
+            projects: [['projectSearch','Search','search'],['projectStatusFilter','Status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','lookup'],['projectDateFrom','From','date'],['projectDateTo','To','date']],
+            'finance.expenses': [['projectSearch','Search','search'],['projectFilter','Project','lookup'],['expenseScopeFilter','Expense type','select',['all','direct','admin','overall']],['expenseRecordStatusFilter','Record status','select',['all','missing_amount','no_project','missing_amount_and_project']],['expenseSourceFilter','Expense source','select',['all','inventory','manual']],['expenseCategoryFilter','Category','lookup'],['expenseComponentFilter','Component','select',['all','material','labor','equipment','other']]],
+            'finance.budgets': [['budgetSearch','Search','search'],['budgetProjectFilter','Project','lookup'],['budgetStatusFilter','Status','select',['all','On Track','Near Limit','Over Budget','No Budget']]],
+            'finance.bonds': [['bondProjectFilter','Project','lookup'],['bondStatusFilter','Status','select',['all','active','released','forfeited']]],
+            'inventory.items': [['itemsSearchInput','Search','search'],['itemsCategoryFilter','Category','lookup'],['itemsSupplierFilter','Supplier','lookup'],['itemsStockFilter','Stock status','select',['all','in_stock','low_stock','out_of_stock']]],
+            'inventory.transactions': [['searchInput','Search','search'],['typeFilter','Transaction type','select',['all','IN','OUT']],['transactionCategoryFilter','Category','lookup'],['transactionProjectFilter','Project','lookup'],['startDate','From','date'],['endDate','To','date']],
             suppliers: [['supplierSearch','Search','search'],['supplierSort','Sort order','select',['name','items','alerts']]],
-            reports: [['filterSearch','Search','search'],['filterProject','Project ID','number'],['filterStatus','Status','text'],['filterClassification','Classification','text'],['filterCategory','Category ID','number'],['filterSupplier','Supplier ID','number'],['filterStockStatus','Stock status','text'],['filterStart','From','date'],['filterEnd','To','date']],
+            reports: [['filterSearch','Search','search'],['filterProject','Project','lookup'],['filterStatus','Status','lookup'],['filterClassification','Classification','lookup'],['filterCategory','Category','lookup'],['filterSupplier','Supplier','lookup'],['filterStockStatus','Stock status','lookup'],['filterStart','From','date'],['filterEnd','To','date']],
             'analytics.material': [['materialForecastSearch','Search','search'],['materialForecastStatus','Status','select',['','Healthy','Low Stock','Reorder Needed']]],
-            'analytics.budget': [['budgetVarianceSearch','Search','search'],['budgetVarianceProject','Project ID','number'],['budgetVarianceStatus','Position','select',['','within','over']]]
+            'analytics.budget': [['budgetVarianceSearch','Search','search'],['budgetVarianceProject','Project','lookup'],['budgetVarianceStatus','Position','select',['','within','over']]]
+        };
+        var defaultFilterLookups = {
+            projectPhaseFilter: ['/api/project-phases', 'phase_name', 'phase_name'],
+            projectFilter: ['/api/projects/list', 'project_name', 'project_name'],
+            budgetProjectFilter: ['/api/projects/list', 'project_name', 'project_name'],
+            bondProjectFilter: ['/api/projects/list', 'project_id', 'project_name'],
+            expenseCategoryFilter: ['/api/finance-categories', 'fin_category_id', 'category_name'],
+            itemsCategoryFilter: ['/api/inventory-categories', 'inventory_category_id', 'inventory_category_name'],
+            transactionCategoryFilter: ['/api/inventory-categories', 'inventory_category_id', 'inventory_category_name'],
+            itemsSupplierFilter: ['/api/suppliers', 'supplier_id', 'supplier_name'],
+            transactionProjectFilter: ['/api/projects/list', 'project_id', 'project_name'],
+            filterProject: ['/api/projects/list', 'project_id', 'project_name'],
+            filterStatus: ['/api/reports/catalog', null, null, 'statuses'],
+            filterClassification: ['/api/reports/catalog', null, null, 'classifications'],
+            filterCategory: ['/api/reports/catalog', 'value', 'label', 'categories'],
+            filterSupplier: ['/api/suppliers', 'supplier_id', 'supplier_name'],
+            filterStockStatus: ['/api/reports/catalog', null, null, 'stock_statuses'],
+            budgetVarianceProject: ['/api/projects/list', 'project_name', 'project_name']
         };
 
         function loadDefaultFilters() {
@@ -1600,20 +1618,59 @@
             (defaultFilterDefinitions[module] || []).forEach(function(definition) {
                 var label = document.createElement('label');
                 var title = document.createElement('span');
-                var input = definition[2] === 'select' ? document.createElement('select') : document.createElement('input');
+                var input = ['select', 'lookup'].includes(definition[2]) ? document.createElement('select') : document.createElement('input');
                 title.textContent = definition[1];
                 if (input.tagName === 'INPUT') input.type = definition[2];
-                else (definition[3] || []).forEach(function(value) {
+                else (definition[2] === 'lookup' ? [''] : (definition[3] || [])).forEach(function(value) {
                     var option = document.createElement('option');
                     option.value = value;
                     option.textContent = value || 'No default';
                     input.appendChild(option);
                 });
                 input.dataset.filterKey = definition[0];
-                input.value = values[definition[0]] || '';
+                var savedValue = values[definition[0]] || '';
+                if (module === 'dashboard' && definition[0] === 'stockStatus') {
+                    savedValue = {in_stock: 'In stock', low_stock: 'Low stock', out_of_stock: 'Out of stock'}[savedValue] || savedValue;
+                }
+                if (definition[2] === 'lookup' && savedValue !== '') {
+                    var savedOption = document.createElement('option');
+                    savedOption.value = savedValue;
+                    savedOption.textContent = 'Saved: ' + savedValue;
+                    input.appendChild(savedOption);
+                }
+                input.value = savedValue;
                 if (input.tagName === 'INPUT') input.placeholder = 'Leave blank for no default';
                 label.append(title, input);
                 host.appendChild(label);
+                if (definition[2] === 'lookup') {
+                    var lookup = defaultFilterLookups[definition[0]];
+                    fetch(lookup[0], {headers: {'Accept':'application/json'}})
+                        .then(function(response) { if (!response.ok) throw new Error('Unable to load filter options.'); return response.json(); })
+                        .then(function(data) {
+                            var rows = lookup[3] ? (data.options?.[lookup[3]] || [])
+                                : (Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []));
+                            var selectedValue = input.value;
+                            input.replaceChildren();
+                            var blank = document.createElement('option');
+                            blank.value = '';
+                            blank.textContent = 'No default';
+                            input.appendChild(blank);
+                            rows.forEach(function(row) {
+                                var option = document.createElement('option');
+                                option.value = String(lookup[1] ? row[lookup[1]] : row);
+                                option.textContent = lookup[2] ? row[lookup[2]] : row;
+                                input.appendChild(option);
+                            });
+                            if (savedValue !== '' && !Array.from(input.options).some(function(option) { return option.value === savedValue; })) {
+                                var missing = document.createElement('option');
+                                missing.value = savedValue;
+                                missing.textContent = 'Saved: ' + savedValue + ' (unavailable)';
+                                input.appendChild(missing);
+                            }
+                            input.value = selectedValue;
+                        })
+                        .catch(function() { document.getElementById('defaultFilterStatus').textContent = 'Some filter options could not be loaded.'; });
+                }
             });
             document.getElementById('defaultFilterStatus').textContent = Object.keys(values).length ? 'Saved defaults are active for this module.' : 'No defaults saved for this module.';
         }

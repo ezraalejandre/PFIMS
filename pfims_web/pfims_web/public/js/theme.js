@@ -238,9 +238,10 @@
             : [];
 
         instances.forEach(function (chart) {
-            if (!chart || !chart.options) return;
+            if (!chart || !chart.config || !chart.config.options) return;
             try {
-                const plugins = chart.options.plugins = chart.options.plugins || {};
+                const options = chart.config.options;
+                const plugins = options.plugins = options.plugins || {};
                 plugins.legend = plugins.legend || {};
                 plugins.legend.labels = plugins.legend.labels || {};
                 plugins.legend.labels.color = textColor;
@@ -253,7 +254,7 @@
                 plugins.tooltip.borderColor = gridColor;
                 plugins.tooltip.borderWidth = 1;
 
-                Object.values(chart.options.scales || {}).forEach(function (scale) {
+                Object.values(options.scales || {}).forEach(function (scale) {
                     if (Array.isArray(scale)) return;
                     scale.ticks = scale.ticks || {};
                     scale.grid = scale.grid || {};

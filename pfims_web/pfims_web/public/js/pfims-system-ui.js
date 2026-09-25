@@ -190,9 +190,17 @@
             .then(function (response) { return response.ok ? response.json() : {}; })
             .then(function (allDefaults) {
                 var defaults = allDefaults[module] || {};
+                if (module === 'dashboard' && defaults.stockStatus) {
+                    defaults.stockStatus = {
+                        in_stock: 'In stock',
+                        low_stock: 'Low stock',
+                        out_of_stock: 'Out of stock'
+                    }[defaults.stockStatus] || defaults.stockStatus;
+                }
                 document.body.dataset.pfimsDefaultFilters = 'ready';
                 if (!Object.keys(defaults).length) return;
                 var componentControls = new Map();
+                var appliedOptions = new WeakMap();
 
                 function componentFor(control) {
                     var panel = control.closest('.pfims-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters');
@@ -206,8 +214,13 @@
                     } else {
                         control.value = expected == null ? '' : String(expected);
                     }
-                    control.dispatchEvent(new Event('input', { bubbles: true }));
-                    control.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                function notifyFilterControls(controls) {
+                    controls.forEach(function (control) {
+                        control.dispatchEvent(new Event('input', { bubbles: true }));
+                        control.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
                 }
 
                 function syncComponent(component) {
@@ -251,24 +264,47 @@
                     componentControls.set(component, state);
                     reset.addEventListener('click', function () {
                         state.controls.forEach(function (control) {
+                            delete control.dataset.pfimsDefaultUserChanged;
                             setControlValue(control, defaults[control.id || control.name]);
+                            if (control.tagName === 'SELECT') appliedOptions.set(control, Array.from(control.options));
                         });
+                        notifyFilterControls(state.controls);
                         syncComponent(component);
+                    });
+                    var clearControl = component.querySelector('.pfims-clear-filters, .btn-clear-search, .btn-clear-filters, #clearFilters');
+                    if (clearControl) clearControl.addEventListener('click', function () {
+                        state.controls.forEach(function (control) { control.dataset.pfimsDefaultUserChanged = 'true'; });
                     });
                     return state;
                 }
 
                 function applyAvailableControls() {
                     var appliedAny = false;
+                    var changedControls = [];
                     Object.keys(defaults).forEach(function (key) {
                         var control = document.getElementById(key) || document.querySelector('[name="' + CSS.escape(key) + '"]');
-                        if (!control || control.dataset.pfimsDefaultApplied === 'ready') return;
+                        if (!control || control.dataset.pfimsDefaultUserChanged === 'true') return;
                         var value = defaults[key];
-                        if (control.tagName === 'SELECT' && !control.multiple && value !== ''
-                            && !Array.from(control.options).some(function (option) { return option.value === String(value); })) return;
+                        if (control.tagName === 'SELECT' && value !== '') {
+                            var expectedOptions = Array.isArray(value) ? value.map(String) : [String(value)];
+                            if (!expectedOptions.every(function (expected) {
+                                return Array.from(control.options).some(function (option) { return option.value === expected; });
+                            })) return;
+                        }
+                        var alreadyApplied = control.dataset.pfimsDefaultApplied === 'ready';
+                        if (alreadyApplied) {
+                            if (control.tagName !== 'SELECT') return;
+                            var previousOptions = appliedOptions.get(control) || [];
+                            var currentOptions = Array.from(control.options);
+                            if (previousOptions.length === currentOptions.length
+                                && previousOptions.every(function (option, index) { return option === currentOptions[index]; })) return;
+                        }
                         control.dataset.pfimsDefaultApplied = 'ready';
                         appliedAny = true;
                         setControlValue(control, value);
+                        if (control.tagName === 'SELECT') appliedOptions.set(control, Array.from(control.options));
+                        changedControls.push(control);
+                        if (alreadyApplied) return;
                         var component = componentFor(control);
                         if (!component) return;
                         component.classList.add('pfims-using-defaults');
@@ -277,12 +313,14 @@
                         if (control.dataset.pfimsDefaultWatch !== 'ready') {
                             control.dataset.pfimsDefaultWatch = 'ready';
                             ['input', 'change'].forEach(function (eventName) {
-                                control.addEventListener(eventName, function () {
+                                control.addEventListener(eventName, function (event) {
+                                    if (event.isTrusted) control.dataset.pfimsDefaultUserChanged = 'true';
                                     window.setTimeout(function () { syncComponent(component); }, 0);
                                 });
                             });
                         }
                     });
+                    notifyFilterControls(changedControls);
                     // The observer also sees the note/reset elements created above. Only
                     // rewrite component state when a new filter was actually initialized;
                     // otherwise those writes continuously retrigger the observer.
