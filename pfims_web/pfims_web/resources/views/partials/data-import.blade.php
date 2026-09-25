@@ -27,7 +27,7 @@
                 <input id="pfimsImportFile" name="file" type="file" accept=".csv,.xlsx" required>
             </label>
             <div class="pfims-import-guidance" id="pfimsImportGuidance"></div>
-            <a id="pfimsImportTemplate" class="pfims-template-link" href="#">Download CSV template</a>
+            <a id="pfimsImportTemplate" class="pfims-template-link" href="#" download>Download CSV template</a>
             <div id="pfimsImportErrors" class="pfims-import-errors" hidden></div>
             <div class="pfims-import-actions">
                 <button type="button" class="{{ $isProjectImport ? 'btn-cancel pfims-project-import-cancel' : 'btn-clear-search' }}" onclick="closePfimsImport()">Cancel</button>
