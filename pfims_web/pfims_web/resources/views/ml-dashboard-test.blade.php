@@ -1088,7 +1088,7 @@
                 </section>
             </div>
             <!-- Model quality is part of the project cost prediction workflow. -->
-            <section class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle" hidden>
+            <section class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle">
                 <div class="card-header">
                     <div>
                         <div class="card-title" id="modelPerformanceTitle">Model Performance</div>

@@ -89,7 +89,7 @@ class MLImprovementTest extends TestCase
             ->assertDontSee('id="retrainConfirmModal"', false)
             ->assertDontSee('Retrain prediction model?', false)
             ->assertDontSee("confirm('Retraining", false)
-            ->assertSee('class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle" hidden', false)
+            ->assertSee('class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle">', false)
             ->assertSee('Management diagnostic', false)
             ->assertSee('Recommended action', false)
             ->assertSee('Projected budget savings', false)
