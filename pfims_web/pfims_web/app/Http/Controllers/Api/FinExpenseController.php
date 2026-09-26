@@ -319,7 +319,7 @@ class FinExpenseController extends Controller
                 'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
                 'inventory_item_id' => 'nullable|integer|exists:inventory_item_tbl,item_id',
                 'inventory_quantity' => 'nullable|numeric|min:0.01|max:999999999999.99',
-                'inventory_bar_code' => 'nullable|integer|min:0|max:2147483647',
+                'inventory_bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             ]);
 
             if ($validator->fails()) {

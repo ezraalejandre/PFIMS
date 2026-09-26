@@ -155,7 +155,7 @@ class InventoryImportService
                 'project_name' => ['nullable', 'string', 'max:100'],
                 'transaction_type' => ['required', 'in:IN,OUT'],
                 'quantity' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
-                'bar_code' => ['required', 'integer', 'min:0', 'max:2147483647'],
+                'bar_code' => ['required', 'regex:/\A[0-9]{1,64}\z/'],
                 'transaction_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             ]);
             if ($validator->fails()) {
@@ -194,7 +194,7 @@ class InventoryImportService
                 'project_id' => $projectId,
                 'transaction_type' => $data['transaction_type'],
                 'quantity' => round((float) $data['quantity'], 2),
-                'bar_code' => (int) $data['bar_code'],
+                'bar_code' => (string) $data['bar_code'],
                 'transaction_date' => $data['transaction_date'],
             ];
             $key = $this->transactionKey($record);

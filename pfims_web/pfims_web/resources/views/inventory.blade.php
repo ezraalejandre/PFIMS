@@ -727,7 +727,7 @@
                 <div class="view-item">
                     <label>Bar Code</label>
                     <span id="viewBarCodeDisplay" class="view-value">—</span>
-                    <input type="text" id="viewBarCodeInput" class="view-input" style="display: none;" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    <input type="text" id="viewBarCodeInput" class="view-input" style="display: none;" inputmode="numeric" pattern="[0-9]*" maxlength="64" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                 </div>
                 <div class="view-item">
                     <label>Supplier</label>
@@ -813,7 +813,7 @@
 
                 <div class="form-group">
                     <label>Barcode</label>
-                    <input type="text" id="transactionItemBarCode" placeholder="Enter transaction barcode" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    <input type="text" id="transactionItemBarCode" placeholder="Enter transaction barcode" inputmode="numeric" pattern="[0-9]*" maxlength="64" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                 </div>
 
                 <!-- Separator Line -->
@@ -2431,7 +2431,7 @@
             if (projectId) payload.append('project_id', projectId);
             payload.append('transaction_type', type);
             payload.append('quantity', quantity);
-            if (barCode !== '') payload.append('bar_code', parseInt(barCode, 10));
+            if (barCode !== '') payload.append('bar_code', barCode);
             payload.append('transaction_date', date);
             payload.append('proof_file', proofFile);
 
@@ -2726,7 +2726,7 @@
 
             var payload = {
                 quantity: quantity,
-                bar_code: barCode === '' ? null : parseInt(barCode, 10),
+                bar_code: barCode === '' ? null : barCode,
                 transaction_date: date
             };
 

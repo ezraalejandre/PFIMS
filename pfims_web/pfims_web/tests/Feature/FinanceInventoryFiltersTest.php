@@ -136,7 +136,7 @@ class FinanceInventoryFiltersTest extends TestCase
     {
         $this->patchJson('/api/inventory/transaction/1', [
             'quantity' => 14,
-            'bar_code' => 111009,
+            'bar_code' => '01234567890123',
             'transaction_date' => '2026-01-11',
         ])->assertOk()
             ->assertJsonPath('success', true)
@@ -144,7 +144,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->assertDatabaseHas('inventory_transaction_tbl', [
             'inventory_transaction_id' => 1,
-            'bar_code' => 111009,
+            'bar_code' => '01234567890123',
             'transaction_date' => '2026-01-11',
         ]);
         $this->assertEquals(14.0, (float) DB::table('inventory_item_tbl')->where('item_id', 1)->value('current_stock'));
@@ -180,7 +180,7 @@ class FinanceInventoryFiltersTest extends TestCase
             'item_id' => 1,
             'transaction_type' => 'IN',
             'quantity' => 4,
-            'bar_code' => 2800030,
+            'bar_code' => '01234567890123',
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('delivery.pdf', 20, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
@@ -194,7 +194,7 @@ class FinanceInventoryFiltersTest extends TestCase
             'expense_description' => 'Purchased 4 bag of Cement',
             'amount' => null,
             'expense_date' => '2026-09-20',
-            'remarks' => 'Inventory stock-in transaction. Receiving reference: 2800030',
+            'remarks' => 'Inventory stock-in transaction. Receiving reference: 01234567890123',
         ]);
     }
 
@@ -407,7 +407,7 @@ class FinanceInventoryFiltersTest extends TestCase
             $table->integer('project_id')->nullable();
             $table->string('transaction_type');
             $table->decimal('quantity', 14, 2);
-            $table->integer('bar_code')->nullable();
+            $table->string('bar_code', 64)->nullable();
             $table->date('transaction_date');
             $table->string('proof_file_path')->nullable();
             $table->string('proof_file_name')->nullable();

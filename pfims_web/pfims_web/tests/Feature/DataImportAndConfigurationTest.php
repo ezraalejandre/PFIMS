@@ -315,6 +315,54 @@ class DataImportAndConfigurationTest extends TestCase
         ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'bar_code');
     }
 
+    public function test_inventory_transaction_import_preserves_long_and_zero_prefixed_barcodes(): void
+    {
+        $operations = $this->user('operations');
+        DB::table('inventory_item_tbl')->insert([
+            'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
+            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
+        ]);
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date\n";
+
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('barcodes.csv', $header
+                ."Cement,,IN,5,01234567890123,2026-01-10\n"
+                ."Cement,,IN,3,98765432109876,2026-01-11\n"),
+        ])->assertCreated()->assertJsonPath('data.imported', 2);
+
+        $this->assertSame(
+            ['01234567890123', '98765432109876'],
+            DB::table('inventory_transaction_tbl')->orderBy('transaction_date')->pluck('bar_code')->all()
+        );
+
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('invalid-barcode.csv', $header."Cement,,IN,1,123ABC,2026-01-12\n"),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'bar_code');
+    }
+
+    public function test_barcode_migration_preserves_existing_values_and_widens_the_column(): void
+    {
+        Schema::table('inventory_transaction_tbl', function (Blueprint $table) {
+            $table->integer('bar_code')->nullable()->change();
+        });
+        DB::table('inventory_transaction_tbl')->insert([
+            'item_id' => 1, 'project_id' => null, 'transaction_type' => 'IN',
+            'quantity' => 1, 'bar_code' => '200001', 'transaction_date' => '2026-01-10',
+        ]);
+
+        $migration = require database_path('migrations/2026_09_26_000001_expand_inventory_transaction_barcodes.php');
+        $migration->up();
+
+        $this->assertSame('200001', DB::table('inventory_transaction_tbl')->value('bar_code'));
+        DB::table('inventory_transaction_tbl')->insert([
+            'item_id' => 1, 'project_id' => null, 'transaction_type' => 'IN',
+            'quantity' => 1, 'bar_code' => '01234567890123', 'transaction_date' => '2026-01-11',
+        ]);
+        $this->assertDatabaseHas('inventory_transaction_tbl', ['bar_code' => '01234567890123']);
+    }
+
     public function test_normal_inventory_and_finance_inputs_reject_natural_key_duplicates(): void
     {
         $admin = $this->user('admin');
@@ -449,7 +497,7 @@ class DataImportAndConfigurationTest extends TestCase
             $table->integer('project_id')->nullable();
             $table->string('transaction_type');
             $table->decimal('quantity', 14, 2);
-            $table->integer('bar_code')->nullable();
+            $table->string('bar_code', 64)->nullable();
             $table->date('transaction_date');
             $table->string('proof_file_path')->nullable();
             $table->string('proof_file_name')->nullable();

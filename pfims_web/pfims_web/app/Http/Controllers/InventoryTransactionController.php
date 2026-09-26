@@ -23,7 +23,7 @@ class InventoryTransactionController extends Controller
             'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'transaction_type' => 'required|string|in:IN,OUT',
             'quantity' => 'required|numeric|min:0.01|max:999999999999.99',
-            'bar_code' => 'nullable|integer|min:0|max:2147483647',
+            'bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             'transaction_date' => 'required|date|before_or_equal:today',
             'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
 

@@ -113,7 +113,7 @@ class InventoryController extends Controller
             'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'transaction_type' => 'required|in:IN,OUT',
             'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
-            'bar_code' => 'nullable|integer|min:0|max:2147483647',
+            'bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             'transaction_date' => 'required|date|before_or_equal:today',
             'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
@@ -316,7 +316,7 @@ class InventoryController extends Controller
         $maxQuantity = (float) SystemSetting::value('inventory_max_transaction_quantity', 999999999999.99);
         $validated = $request->validate([
             'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
-            'bar_code' => 'nullable|integer|min:0|max:2147483647',
+            'bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             'transaction_date' => 'required|date|before_or_equal:today',
         ]);
 
