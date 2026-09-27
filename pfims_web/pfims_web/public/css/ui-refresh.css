@@ -5331,4 +5331,18 @@ html[data-theme="dark"] :where(
     body:not(.landing-page) .config-tab {
         text-align: center !important;
     }
+
+    /* Mobile and tablet pages use the full viewport width. Individual cards
+       keep their own internal padding, while the shared page shell no longer
+       creates blank gutters down both sides of every screen. */
+    body:not(.landing-page) .main-content,
+    body.dashboard-page > .main-content,
+    body.reports-page .main-content,
+    html.sidebar-collapsed body.dashboard-page > .main-content,
+    html.sidebar-collapsed .reports-page .main-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-inline: 0 !important;
+        padding-inline: 0 !important;
+    }
 }

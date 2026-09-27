@@ -9,8 +9,10 @@ class UiRefreshCssContractTest extends TestCase
     public function test_desktop_density_is_applied_once_and_breakpoint_is_preserved(): void
     {
         $css = file_get_contents(dirname(__DIR__, 2).'/public/css/ui-refresh.css');
+        $landingCss = file_get_contents(dirname(__DIR__, 2).'/public/css/landing.css');
 
         $this->assertIsString($css);
+        $this->assertIsString($landingCss);
         $this->assertStringContainsString('--pfims-desktop-scale: 75%;', $css);
         $this->assertStringContainsString('@media (min-width: 1025px)', $css);
         $this->assertStringContainsString('zoom: var(--pfims-desktop-scale);', $css);
@@ -101,6 +103,13 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('@media (max-width: 700px)', $css);
         $this->assertStringContainsString('height: calc(100dvh - 64px) !important;', $css);
         $this->assertStringContainsString('width: 75vw !important;', $css);
+        $this->assertStringContainsString('Mobile and tablet pages use the full viewport width.', $css);
+        $this->assertStringContainsString('padding-inline: 0 !important;', substr($css, strrpos($css, '@media (max-width: 1024px)')));
+        $this->assertStringContainsString('padding: 20px 0;', $landingCss);
+        $this->assertStringContainsString('@media (max-width: 1024px)', $landingCss);
+        $this->assertStringContainsString('padding-inline: 0;', $landingCss);
+        $this->assertStringContainsString('padding: 0 20px;', $landingCss);
+        $this->assertStringContainsString('border-radius: 0;', $landingCss);
         $legacyResponsiveSidebar = strpos($css, '@media (max-width: 900px)');
         $finalDrawerContract = strpos($css, '/* Final responsive drawer contract.');
         $this->assertNotFalse($legacyResponsiveSidebar);
