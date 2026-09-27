@@ -30,6 +30,7 @@ class SharedFiltersContractTest extends TestCase
         $this->assertStringContainsString("component.classList.add('pfims-phone-filter-modal');", $script);
         $this->assertStringContainsString("component.setAttribute('aria-modal', 'true');", $script);
         $this->assertStringContainsString("if (event.key === 'Escape' && activePhoneFilter)", $script);
+        $this->assertStringContainsString('.pfims-phone-filter-modal-header, .pfims-phone-filter-modal-footer', $script);
         $this->assertStringContainsString('.pfims-phone-filter-modal.is-phone-filter-open', $css);
         $this->assertStringContainsString('max-height: min(88dvh, 760px)', $css);
         $this->assertStringContainsString('padding-bottom: max(14px, env(safe-area-inset-bottom))', $css);

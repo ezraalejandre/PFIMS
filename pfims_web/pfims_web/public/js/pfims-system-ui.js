@@ -861,7 +861,7 @@
     function installExpandableActionButtons() {
         document.querySelectorAll('button, a').forEach(function (control) {
             if (control.dataset.pfimsActionLabel === 'ready'
-                || control.closest('.sidebar, .pagination-links, .pfims-select-options, .pfims-column-chooser-menu')) return;
+                || control.closest('.sidebar, .pagination-links, .pfims-select-options, .pfims-column-chooser-menu, .pfims-phone-filter-modal-header, .pfims-phone-filter-modal-footer')) return;
 
             var visibleText = (control.textContent || '').replace(/\s+/g, ' ').trim();
             var accessibleText = (control.getAttribute('aria-label') || control.title || visibleText).replace(/\s+/g, ' ').trim();
