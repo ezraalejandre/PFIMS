@@ -27,6 +27,7 @@ class SharedFiltersContractTest extends TestCase
         $this->assertStringContainsString('.filter-panel.pfims-filter-component > .pfims-filter-panel', $css);
         $this->assertStringContainsString('.pfims-reset-defaults[hidden]', $css);
         $this->assertStringContainsString("trigger.className = 'pfims-phone-filter-trigger';", $script);
+        $this->assertStringContainsString('.audit-log-filter-panel, section.filters', $script);
         $this->assertStringContainsString("component.classList.add('pfims-phone-filter-modal');", $script);
         $this->assertStringContainsString("component.setAttribute('aria-modal', 'true');", $script);
         $this->assertStringContainsString("if (event.key === 'Escape' && activePhoneFilter)", $script);

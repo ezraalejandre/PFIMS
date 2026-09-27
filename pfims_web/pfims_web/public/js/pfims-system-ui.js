@@ -453,7 +453,7 @@
             backdrop.addEventListener('click', function () { closePhoneFilter(activePhoneFilter, true); });
             document.body.appendChild(backdrop);
         }
-        document.querySelectorAll('.project-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters').forEach(function (panel) {
+        document.querySelectorAll('.project-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, .audit-log-filter-panel, section.filters').forEach(function (panel) {
             if (panel.dataset.pfimsFilters === 'ready') return;
             panel.classList.add('pfims-filter-panel');
             var component = panel.closest('.filter-panel') || panel;
