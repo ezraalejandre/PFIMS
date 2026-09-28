@@ -9,6 +9,10 @@ use App\Models\Supplier;
 use App\Models\SystemSetting;
 use App\Models\Unit;
 use App\Services\AuditLogService;
+use App\Services\InventoryCostAllocator;
+use App\Services\ProjectCostLedger;
+use App\Services\ProjectCostSnapshotService;
+use App\Services\InventoryPurchaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +22,11 @@ use Illuminate\Support\Str;
 
 class InventoryController extends Controller
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly InventoryCostAllocator $costAllocator,
+        private readonly InventoryPurchaseService $purchaseService,
+    ) {}
 
     /**
      * Get all inventory items with relations
@@ -112,6 +120,8 @@ class InventoryController extends Controller
             'item_id' => 'required|integer|exists:inventory_item_tbl,item_id',
             'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'transaction_type' => 'required|in:IN,OUT',
+            'movement_reason' => 'required_if:transaction_type,IN|nullable|in:purchase,adjustment',
+            'purchase_amount' => 'required_if:movement_reason,purchase|nullable|numeric|min:0.01|max:9999999999.99',
             'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
             'bar_code' => 'nullable|integer|min:0|max:2147483647',
             'transaction_date' => 'required|date|before_or_equal:today',
@@ -119,8 +129,22 @@ class InventoryController extends Controller
         ]);
 
         $proofFile = $validated['proof_file'];
-        unset($validated['proof_file']);
-        if ($this->duplicateTransaction($validated)) {
+        $purchaseAmount = $validated['purchase_amount'] ?? null;
+        unset($validated['proof_file'], $validated['purchase_amount']);
+        if ($validated['transaction_type'] === 'OUT') {
+            if (empty($validated['project_id'])) {
+                return response()->json(['success' => false, 'message' => 'Stock-out requires a project.'], 422);
+            }
+            if (($validated['movement_reason'] ?? null) !== null || $purchaseAmount !== null) {
+                return response()->json(['success' => false, 'message' => 'Stock-out cannot have a stock-in reason or purchase amount.'], 422);
+            }
+            $validated['movement_reason'] = null;
+        } elseif (! empty($validated['project_id'])) {
+            return response()->json(['success' => false, 'message' => 'Stock-in is for storage and cannot be assigned to a project.'], 422);
+        } elseif ($validated['movement_reason'] !== 'purchase' && $purchaseAmount !== null) {
+            return response()->json(['success' => false, 'message' => 'Only a purchase stock-in may have a purchase amount.'], 422);
+        }
+        if ($this->duplicateTransaction($validated, null, $purchaseAmount)) {
             return response()->json(['success' => false, 'message' => 'This inventory transaction already exists.'], 409);
         }
         $validated['proof_file_path'] = $proofFile->store('inventory-transaction-proofs', 'public');
@@ -128,13 +152,13 @@ class InventoryController extends Controller
 
         DB::beginTransaction();
         try {
-            $item = InventoryItem::findOrFail($validated['item_id']);
+            $item = InventoryItem::lockForUpdate()->findOrFail($validated['item_id']);
 
             // Create transaction record
-            $transaction = InventoryTransaction::create($validated);
+            $transaction = InventoryTransaction::create($validated + ['recorded_at' => now()]);
 
-            if ($validated['transaction_type'] === 'IN') {
-                $this->createPendingExpenseForStockIn($transaction, $item);
+            if ($validated['transaction_type'] === 'IN' && $validated['movement_reason'] === 'purchase') {
+                $this->purchaseService->createLinkedExpense((int) $transaction->getKey(), $purchaseAmount);
             }
 
             // Update inventory stock
@@ -147,8 +171,14 @@ class InventoryController extends Controller
                 $item->current_stock -= $validated['quantity'];
             }
             $item->save();
+            if ($validated['transaction_type'] === 'OUT') {
+                $this->costAllocator->allocate((int) $transaction->getKey());
+            }
 
             DB::commit();
+            if ($transaction->transaction_type === 'OUT') {
+                app(ProjectCostSnapshotService::class)->captureAfterCommit((int) $transaction->project_id, 'stock_out_created');
+            }
 
             return response()->json(['success' => true, 'data' => $transaction, 'message' => 'Transaction added successfully!'], 201);
         } catch (\Throwable $e) {
@@ -250,7 +280,8 @@ class InventoryController extends Controller
                 'inventory_transaction_id' => $transaction->inventory_transaction_id,
                 'item_id' => $transaction->item_id,
                 'project_id' => $transaction->project_id,
-                'project' => $transaction->project?->project_name,
+                'project' => $transaction->project?->project_name
+                    ?? ($transaction->transaction_type === 'IN' && $transaction->movement_reason === 'purchase' ? 'For Storage' : null),
                 'item_name' => $transaction->item?->item_name ?? 'N/A',
                 'description' => null,
                 'inventory_category_id' => $transaction->item?->inventory_category_id,
@@ -324,6 +355,12 @@ class InventoryController extends Controller
         try {
             $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
             $before = $transaction->getAttributes();
+            $quantityChanged = (float) $transaction->quantity !== (float) $validated['quantity'];
+            $wasAllocated = DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', $id)->exists();
+            if ($quantityChanged && ($this->hasLaterStockOut($transaction)
+                || $this->hasLaterCostAllocation($transaction, $transaction->transaction_type !== 'OUT'))) {
+                abort(409, 'Quantity cannot be changed because a later stock-out depends on this movement.');
+            }
             $candidate = [
                 'item_id' => $transaction->item_id,
                 'project_id' => $transaction->project_id,
@@ -341,6 +378,9 @@ class InventoryController extends Controller
             if (((float) $item->current_stock - $oldEffect + $newEffect) < 0) {
                 abort(422, 'The updated OUT quantity exceeds available stock.');
             }
+            if ($quantityChanged && $wasAllocated) {
+                DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', $id)->delete();
+            }
             $transaction->update([
                 'quantity' => $validated['quantity'],
                 'bar_code' => $validated['bar_code'] ?? null,
@@ -350,9 +390,18 @@ class InventoryController extends Controller
             $this->syncLinkedStockInExpense($transaction);
 
             $this->recalculateItemStock($transaction->item_id);
+            if ($quantityChanged && $wasAllocated) {
+                $this->costAllocator->allocate((int) $id);
+            }
+            if ($wasAllocated && ! $quantityChanged && $transaction->project_id !== null) {
+                app(ProjectCostLedger::class)->syncBudget((int) $transaction->project_id);
+            }
             $transaction->refresh();
             $this->audit->record($transaction, 'UPDATE', $before, $transaction->getAttributes());
             DB::commit();
+            if ($transaction->transaction_type === 'OUT') {
+                app(ProjectCostSnapshotService::class)->captureAfterCommit((int) $transaction->project_id, 'stock_out_updated');
+            }
 
             return response()->json(['success' => true, 'data' => $transaction, 'message' => 'Transaction updated successfully!']);
         } catch (\Throwable $e) {
@@ -368,11 +417,16 @@ class InventoryController extends Controller
         DB::beginTransaction();
         try {
             $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
+            if ($this->hasLaterStockOut($transaction)
+                || $this->hasLaterCostAllocation($transaction, $transaction->transaction_type !== 'OUT')) {
+                abort(409, 'This transaction cannot be deleted because a later stock-out depends on it.');
+            }
 
             $linkedExpense = Schema::hasTable('fin_expense_tbl')
                 ? DB::table('fin_expense_tbl')->where('inventory_transaction_id', $transaction->getKey())->first()
                 : null;
-            if ($linkedExpense && ($linkedExpense->amount !== null || $linkedExpense->project_id !== null)) {
+            if ($linkedExpense && ($linkedExpense->amount !== null || $linkedExpense->project_id !== null)
+                && ($linkedExpense->entry_kind ?? null) !== 'inventory_purchase') {
                 abort(409, 'This transaction cannot be deleted because its Finance expense already has details.');
             }
             if ($linkedExpense) {
@@ -382,10 +436,17 @@ class InventoryController extends Controller
             $before = $transaction->getAttributes();
             $itemId = (int) $transaction->item_id;
             $proofPath = $transaction->proof_file_path;
+            DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', $id)->delete();
             $transaction->delete();
+            if ($transaction->transaction_type === 'OUT' && $transaction->project_id !== null) {
+                app(ProjectCostLedger::class)->syncBudget((int) $transaction->project_id);
+            }
             $this->recalculateItemStock($itemId);
             $this->audit->record($transaction, 'DELETE', $before, []);
             DB::commit();
+            if ($transaction->transaction_type === 'OUT') {
+                app(ProjectCostSnapshotService::class)->captureAfterCommit((int) $transaction->project_id, 'stock_out_deleted');
+            }
 
             if ($proofPath) {
                 Storage::disk('public')->delete($proofPath);
@@ -419,38 +480,21 @@ class InventoryController extends Controller
         $item->save();
     }
 
-    private function createPendingExpenseForStockIn(InventoryTransaction $transaction, InventoryItem $item): void
+    private function hasLaterCostAllocation(InventoryTransaction $transaction, bool $includeSelf = true): bool
     {
-        if (! Schema::hasTable('fin_expense_tbl') || ! Schema::hasTable('fin_expense_category_tbl')) {
-            return;
-        }
+        return DB::table('inventory_cost_allocation_tbl as allocation')
+            ->join('inventory_transaction_tbl as withdrawal', 'withdrawal.inventory_transaction_id', '=', 'allocation.out_transaction_id')
+            ->where('withdrawal.item_id', $transaction->item_id)
+            ->where('withdrawal.inventory_transaction_id', $includeSelf ? '>=' : '>', $transaction->getKey())
+            ->exists();
+    }
 
-        $category = DB::table('fin_expense_category_tbl')
-            ->where(function ($query) {
-                $query->where('category_code', 'CONST_SUPPLY')
-                    ->orWhereRaw('LOWER(category_name) LIKE ?', ['%construction suppl%']);
-            })
-            ->where('is_active', true)
-            ->first();
-        if (! $category) {
-            abort(422, 'The Construction Supply finance category is unavailable.');
-        }
-
-        $unit = DB::table('unit_tbl')->where('unit_id', $item->unit_id)->value('unit_name') ?: 'unit';
-        DB::table('fin_expense_tbl')->insert([
-            'project_id' => null,
-            'fin_category_id' => $category->fin_category_id,
-            'inventory_transaction_id' => $transaction->inventory_transaction_id,
-            'project_cost_component' => 'material',
-            'expense_description' => $this->stockInExpenseDescription($transaction, $item->item_name, $unit),
-            'amount' => null,
-            'expense_date' => $transaction->transaction_date,
-            'remarks' => $this->stockInExpenseRemarks($transaction->bar_code),
-            'proof_file_path' => $transaction->proof_file_path,
-            'proof_file_name' => $transaction->proof_file_name,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+    private function hasLaterStockOut(InventoryTransaction $transaction): bool
+    {
+        return InventoryTransaction::where('item_id', $transaction->item_id)
+            ->where('inventory_transaction_id', '>', $transaction->getKey())
+            ->where('transaction_type', 'OUT')
+            ->exists();
     }
 
     private function syncLinkedStockInExpense(InventoryTransaction $transaction): void
@@ -502,7 +546,7 @@ class InventoryController extends Controller
         return $query->exists();
     }
 
-    private function duplicateTransaction(array $data, ?int $ignoreId = null): bool
+    private function duplicateTransaction(array $data, ?int $ignoreId = null, $purchaseAmount = null): bool
     {
         $query = InventoryTransaction::query()
             ->where('item_id', $data['item_id'])
@@ -511,6 +555,16 @@ class InventoryController extends Controller
             ->whereDate('transaction_date', $data['transaction_date']);
         $query = empty($data['project_id']) ? $query->whereNull('project_id') : $query->where('project_id', $data['project_id']);
         $query = ($data['bar_code'] ?? null) === null ? $query->whereNull('bar_code') : $query->where('bar_code', $data['bar_code']);
+        if ($ignoreId === null && array_key_exists('movement_reason', $data)) {
+            $query->where('movement_reason', $data['movement_reason']);
+            if ($data['movement_reason'] === 'purchase') {
+                $query->whereExists(function ($expense) use ($purchaseAmount) {
+                    $expense->selectRaw('1')->from('fin_expense_tbl')
+                        ->whereColumn('fin_expense_tbl.inventory_transaction_id', 'inventory_transaction_tbl.inventory_transaction_id')
+                        ->where('fin_expense_tbl.amount', $purchaseAmount);
+                });
+            }
+        }
         if ($ignoreId !== null) {
             $query->where('inventory_transaction_id', '!=', $ignoreId);
         }

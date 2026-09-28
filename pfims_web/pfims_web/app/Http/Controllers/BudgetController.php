@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Budget;
 use App\Services\NotificationService;
+use App\Services\ProjectCostLedger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -71,7 +72,7 @@ class BudgetController extends Controller
                 return Budget::create([
                     'project_id' => $data['project_id'],
                     'budget_amount' => $data['budget_amount'],
-                    'actual_amount' => 0,
+                    'actual_amount' => app(ProjectCostLedger::class)->forProject((int) $data['project_id'])['total'],
                     'proof_file_path' => $path,
                     'proof_file_name' => $path ? mb_substr($request->file('proof_file')->getClientOriginalName(), 0, 255) : null,
                 ]);
@@ -154,7 +155,8 @@ class BudgetController extends Controller
         if (! $budget) {
             return response()->json(['message' => 'Budget not found'], 404);
         }
-        if ((float) $budget->actual_amount > 0) {
+        $cost = app(ProjectCostLedger::class)->forProject((int) $budget->project_id);
+        if ($cost['total'] > 0 || $cost['unvalued_count'] > 0) {
             return response()->json(['message' => 'A budget with recorded expenses cannot be deleted.'], 409);
         }
 
@@ -169,12 +171,16 @@ class BudgetController extends Controller
 
     private function present(Budget $budget): array
     {
+        $cost = app(ProjectCostLedger::class)->forProject((int) $budget->project_id);
         return [
             'budget_id' => $budget->budget_id,
             'project_id' => $budget->project_id,
             'project_name' => $budget->project?->project_name,
             'budget_amount' => $budget->budget_amount,
-            'actual_amount' => $budget->actual_amount,
+            'actual_amount' => $cost['total'],
+            'direct_cost' => $cost['direct'],
+            'inventory_usage_cost' => $cost['allocated'],
+            'unvalued_withdrawals' => $cost['unvalued_count'],
             'proof_file_path' => $budget->proof_file_path,
             'proof_file_name' => $budget->proof_file_name,
         ];

@@ -92,7 +92,7 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString('.pfims-add-modal .form-group textarea', $css);
     }
 
-    public function test_pending_stock_in_add_details_modal_contains_only_project_and_amount_inputs(): void
+    public function test_stock_in_amount_edit_modal_does_not_offer_project_assignment(): void
     {
         $view = $this->financeView();
         preg_match('/<div id="inventoryExpenseModal".*?<\/div>\s*<\/div>\s*<\/div>/s', $view, $matches);
@@ -100,12 +100,10 @@ class FinanceModalPresentationTest extends TestCase
 
         $this->assertNotSame('', $modal, 'The pending stock-in Add Details modal must exist.');
         $this->assertStringContainsString('<h2>Edit Stock-In Expense</h2>', $modal);
-        $this->assertStringContainsString('id="inventoryExpenseProject"', $modal);
-        $this->assertStringContainsString('>Project Name <span class="required">*</span>', $modal);
+        $this->assertStringNotContainsString('id="inventoryExpenseProject"', $modal);
         $this->assertStringContainsString('id="inventoryExpenseAmount"', $modal);
-        $this->assertSame(2, substr_count($modal, 'class="form-group"'));
-        $this->assertStringContainsString("'inventoryExpenseProject'", $view);
-        $this->assertStringContainsString('JSON.stringify({ project_id: Number(projectId), amount: amount })', $view);
+        $this->assertSame(1, substr_count($modal, 'class="form-group"'));
+        $this->assertStringContainsString('JSON.stringify({ amount: amount })', $view);
     }
 
     public function test_expense_status_filter_and_pending_actions_cover_incomplete_records(): void

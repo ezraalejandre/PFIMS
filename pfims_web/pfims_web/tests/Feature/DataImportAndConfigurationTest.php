@@ -73,6 +73,14 @@ class DataImportAndConfigurationTest extends TestCase
         $admin = $this->user('admin');
         $template = $this->actingAs($admin)->get('/api/imports/templates/projects')->assertOk()->streamedContent();
         $this->assertStringContainsString('project_name,client_name,project_manager,start_date,estimated_end_date,actual_end_date,worker_count,phase,status,budget', $template);
+        $projectExample = str_getcsv(explode("\n", trim($template))[1]);
+        $this->assertSame(['YYYY-MM-DD', 'YYYY-MM-DD', ''], array_slice($projectExample, 3, 3));
+
+        foreach (['finance-expenses' => 5, 'inventory-items' => 6, 'inventory-transactions' => 5] as $type => $dateColumn) {
+            $content = $this->actingAs($admin)->get('/api/imports/templates/'.$type)->assertOk()->streamedContent();
+            $example = str_getcsv(explode("\n", trim($content))[1]);
+            $this->assertSame('YYYY-MM-DD', $example[$dateColumn], $type.' must display the ISO date format.');
+        }
 
         $this->actingAs($admin)->get('/projects')->assertOk()
             ->assertSee('Import Projects')
@@ -110,7 +118,9 @@ class DataImportAndConfigurationTest extends TestCase
         ])->assertCreated()->assertJsonPath('data.imported', 1);
 
         $this->assertDatabaseHas('inventory_item_tbl', ['item_name' => 'Portland Cement', 'current_stock' => 100]);
-        $this->assertDatabaseHas('inventory_transaction_tbl', ['transaction_type' => 'IN', 'quantity' => 100]);
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'transaction_type' => 'IN', 'quantity' => 100, 'movement_reason' => 'opening_balance',
+        ]);
 
         $xlsxPath = $this->xlsx([
             ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date'],
@@ -122,6 +132,9 @@ class DataImportAndConfigurationTest extends TestCase
 
         $this->assertDatabaseHas('inventory_item_tbl', ['item_name' => 'Portland Cement', 'current_stock' => 90]);
         $this->assertDatabaseHas('inventory_transaction_tbl', ['transaction_type' => 'OUT', 'quantity' => 10, 'bar_code' => 100001]);
+        $this->assertDatabaseHas('inventory_cost_allocation_tbl', [
+            'project_id' => 1, 'quantity' => 10, 'valuation_status' => 'unvalued', 'allocated_amount' => null,
+        ]);
         @unlink($xlsxPath);
     }
 
@@ -302,7 +315,9 @@ class DataImportAndConfigurationTest extends TestCase
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
             'file' => UploadedFile::fake()->createWithContent('in.csv', $header."Cement,,IN,5,200001,2026-01-10\n"),
-        ])->assertCreated();
+        ])->assertCreated()->assertJsonPath('data.unpriced_stock_in_count', 1)
+            ->assertSee('flagged for review');
+        $this->assertDatabaseHas('inventory_transaction_tbl', ['bar_code' => 200001, 'movement_reason' => 'legacy_unpriced']);
 
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
@@ -313,6 +328,131 @@ class DataImportAndConfigurationTest extends TestCase
             'type' => 'transactions',
             'file' => UploadedFile::fake()->createWithContent('blank-barcode.csv', $header."Cement,,IN,5,,2026-01-12\n"),
         ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'bar_code');
+    }
+
+    public function test_inventory_transaction_template_prices_storage_purchases(): void
+    {
+        $admin = $this->user('admin');
+        $template = $this->actingAs($admin)->get('/api/imports/templates/inventory-transactions')->assertOk()->streamedContent();
+        $template = preg_replace('/^\xEF\xBB\xBF/', '', $template);
+        $rows = array_map('str_getcsv', explode("\n", trim($template)));
+        $this->assertSame([
+            'item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code',
+            'transaction_date', 'stock_in_reason', 'total_purchase_amount',
+        ], $rows[0]);
+        $this->assertSame('For Storage', $rows[1][1]);
+        $this->assertSame('purchase', $rows[1][6]);
+        $this->assertSame('100.00', $rows[1][7]);
+    }
+
+    public function test_priced_inventory_import_links_one_purchase_and_allocates_out_to_project(): void
+    {
+        $operations = $this->user('operations');
+        DB::table('inventory_item_tbl')->insert([
+            'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
+            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
+        ]);
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
+        $csv = $header
+            ."Cement,For Storage,IN,4,300001,2026-01-10,purchase,1200.00\n"
+            ."Cement,Alpha Project,OUT,2,300002,2026-01-11,N/A,N/A\n";
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions', 'file' => UploadedFile::fake()->createWithContent('transactions.csv', $csv),
+        ])->assertCreated()->assertJsonPath('data.imported', 2)
+            ->assertJsonPath('data.unpriced_stock_in_count', 0);
+
+        $purchaseId = DB::table('inventory_transaction_tbl')->where('bar_code', 300001)->value('inventory_transaction_id');
+        $outId = DB::table('inventory_transaction_tbl')->where('bar_code', 300002)->value('inventory_transaction_id');
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'inventory_transaction_id' => $purchaseId, 'project_id' => null, 'movement_reason' => 'purchase',
+        ]);
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'inventory_transaction_id' => $purchaseId, 'project_id' => null,
+            'entry_kind' => 'inventory_purchase', 'amount' => 1200,
+        ]);
+        $this->assertDatabaseHas('inventory_cost_allocation_tbl', [
+            'in_transaction_id' => $purchaseId, 'out_transaction_id' => $outId,
+            'project_id' => 1, 'quantity' => 2, 'valuation_status' => 'valued', 'allocated_amount' => 600,
+        ]);
+        $this->assertDatabaseCount('fin_expense_tbl', 1);
+    }
+
+    public function test_priced_inventory_import_rejects_project_link_or_missing_purchase_amount_atomically(): void
+    {
+        $operations = $this->user('operations');
+        DB::table('inventory_item_tbl')->insert([
+            'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
+            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
+        ]);
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
+        foreach ([
+            ["Cement,Alpha Project,IN,4,300011,2026-01-10,purchase,1200.00\n", 'project_name'],
+            ["Cement,For Storage,IN,4,300012,2026-01-10,purchase,N/A\n", 'total_purchase_amount'],
+        ] as [$invalid, $field]) {
+            $this->actingAs($operations)->postJson('/api/imports/inventory', [
+                'type' => 'transactions',
+                'file' => UploadedFile::fake()->createWithContent('invalid.csv', $header.$invalid),
+            ])->assertUnprocessable()->assertJsonPath('errors.0.field', $field);
+        }
+        DB::table('fin_expense_category_tbl')->where('fin_category_id', 1)->update(['is_active' => false]);
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('missing-category.csv',
+                $header."Cement,For Storage,IN,4,300013,2026-01-10,purchase,1200.00\n"),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'total_purchase_amount');
+        $this->assertDatabaseCount('inventory_transaction_tbl', 0);
+        $this->assertDatabaseCount('fin_expense_tbl', 0);
+    }
+
+    public function test_inventory_import_purchase_duplicate_requires_identical_amount(): void
+    {
+        $operations = $this->user('operations');
+        DB::table('inventory_item_tbl')->insert([
+            'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
+            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
+        ]);
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
+        foreach ([1200, 1300] as $amount) {
+            $this->actingAs($operations)->postJson('/api/imports/inventory', [
+                'type' => 'transactions',
+                'file' => UploadedFile::fake()->createWithContent('purchase.csv',
+                    $header."Cement,For Storage,IN,4,300051,2026-01-10,purchase,{$amount}.00\n"),
+            ])->assertCreated();
+        }
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('duplicate.csv',
+                $header."Cement,For Storage,IN,4,300051,2026-01-10,purchase,1200.00\n"),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'duplicate');
+        $this->assertDatabaseCount('inventory_transaction_tbl', 2);
+        $this->assertDatabaseCount('fin_expense_tbl', 2);
+    }
+
+    public function test_nonpurchase_inventory_import_has_no_finance_purchase_and_old_project_link_is_rejected(): void
+    {
+        $operations = $this->user('operations');
+        DB::table('inventory_item_tbl')->insert([
+            'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
+            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
+        ]);
+        $newHeader = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('adjustment.csv',
+                $newHeader."Cement,For Storage,IN,5,300021,2026-01-10,adjustment,N/A\n"),
+        ])->assertCreated();
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'bar_code' => 300021, 'project_id' => null, 'movement_reason' => 'adjustment',
+        ]);
+        $this->assertDatabaseCount('fin_expense_tbl', 0);
+
+        $oldHeader = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date\n";
+        $this->actingAs($operations)->postJson('/api/imports/inventory', [
+            'type' => 'transactions',
+            'file' => UploadedFile::fake()->createWithContent('project-in.csv',
+                $oldHeader."Cement,Alpha Project,IN,5,300022,2026-01-11\n"),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'project_name');
+        $this->assertDatabaseCount('inventory_transaction_tbl', 1);
     }
 
     public function test_normal_inventory_and_finance_inputs_reject_natural_key_duplicates(): void
@@ -402,6 +542,7 @@ class DataImportAndConfigurationTest extends TestCase
             $table->integer('project_id')->nullable();
             $table->unsignedInteger('fin_category_id');
             $table->unsignedInteger('inventory_transaction_id')->nullable();
+            $table->string('entry_kind', 32)->nullable();
             $table->string('project_cost_component', 20)->nullable();
             $table->string('expense_description');
             $table->decimal('amount', 14, 2);
@@ -448,11 +589,24 @@ class DataImportAndConfigurationTest extends TestCase
             $table->unsignedInteger('item_id');
             $table->integer('project_id')->nullable();
             $table->string('transaction_type');
+            $table->string('movement_reason', 32)->nullable();
+            $table->dateTime('recorded_at', 6)->nullable();
             $table->decimal('quantity', 14, 2);
             $table->integer('bar_code')->nullable();
             $table->date('transaction_date');
             $table->string('proof_file_path')->nullable();
             $table->string('proof_file_name')->nullable();
+        });
+        Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
+            $table->bigIncrements('allocation_id');
+            $table->integer('in_transaction_id');
+            $table->integer('out_transaction_id');
+            $table->integer('project_id');
+            $table->decimal('quantity', 10, 2);
+            $table->string('valuation_status', 16);
+            $table->decimal('unit_cost', 18, 6)->nullable();
+            $table->decimal('allocated_amount', 14, 2)->nullable();
+            $table->dateTime('allocated_at', 6);
         });
     }
 

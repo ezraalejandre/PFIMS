@@ -134,7 +134,7 @@
                 'projects': 'Required: project_name, client_name, project_manager, start_date, estimated_end_date, actual_end_date, worker_count, phase, status, budget. Only actual_end_date may be blank. Phase must already exist in Settings; completion is calculated automatically.',
                 'finance-expenses': 'Required with no blank cells: project_name, category_code, project_cost_component, expense_description, amount, expense_date, remarks. Project cost component must be material, labor, equipment, or other.',
                 'items': 'Required with no blank cells: item_name, category, supplier, unit, current_stock, reorder_level, opening_balance_date. Category, supplier, and unit names must already exist in Settings.',
-                'transactions': 'Required: item_name, project_name, transaction_type, quantity, bar_code, transaction_date. Only project_name may be blank, and only for IN transactions. OUT rows are checked against available stock in file order.'
+                'transactions': 'New format: item_name, project_name, transaction_type, quantity, bar_code, transaction_date, stock_in_reason, total_purchase_amount. Use For Storage and a positive total amount for purchase IN; use N/A for reason and amount on OUT. Other IN reasons use N/A amount. Old six-column files remain accepted, but their IN rows are flagged unpriced. OUT rows require a real project and are checked against available stock in file order.'
             };
             var templateType = type === 'items' ? 'inventory-items' : (type === 'transactions' ? 'inventory-transactions' : type);
             document.getElementById('pfimsImportGuidance').textContent = contracts[type];

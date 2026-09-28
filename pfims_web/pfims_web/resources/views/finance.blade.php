@@ -1125,7 +1125,6 @@
         <div class="modal-container">
             <div class="modal-header"><h2>Edit Stock-In Expense</h2><button class="modal-close" onclick="closeInventoryExpenseModal()">×</button></div>
             <div class="modal-body">
-                <div class="form-group"><label>Project Name <span class="required">*</span></label><select id="inventoryExpenseProject"><option value="">Select Project...</option></select></div>
                 <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" id="inventoryExpenseAmount" min="0.01" step="0.01" placeholder="0.00"></div>
             </div>
             <div class="modal-footer"><button class="btn-cancel" onclick="closeInventoryExpenseModal()">Cancel</button><button class="btn-save" id="inventoryExpenseSaveBtn" onclick="saveInventoryExpense()">Save Changes</button></div>
@@ -2534,8 +2533,8 @@
                             project_id: b.project_id,
                             project_name: project.project_name || 'Unknown Project',
                             budget_amount: budgetAmount,
-                            actual_amount: 0,
-                            remaining: budgetAmount,
+                            actual_amount: parseFloat(b.actual_amount) || 0,
+                            remaining: budgetAmount - (parseFloat(b.actual_amount) || 0),
                             budget_id: b.budget_id,
                             proof_file_path: b.proof_file_path || '',
                             proof_file_name: b.proof_file_name || '',
@@ -2582,12 +2581,9 @@
         }
 
         function updateBudgetActualAmounts() {
-            // Calculate actual spend for each project from financeExpenses (unfiltered)
+            // Use the server's canonical project cost (direct expenses plus stock-out allocations).
             budgetData.forEach(function(item) {
-                var actualSpend = financeExpenses
-                    .filter(function(e) { return e.project_id == item.project_id; })
-                    .reduce(function(sum, e) { return sum + (parseFloat(e.amount) || 0); }, 0);
-                item.actual_amount = actualSpend;
+                var actualSpend = parseFloat(item.actual_amount) || 0;
                 item.remaining = item.budget_amount - actualSpend;
                 var budgetAmount = item.budget_amount;
                 item.status = budgetAmount === 0 ? 'No Budget' : 
@@ -2598,16 +2594,13 @@
 
         // ─── POPULATE DROPDOWNS ───────────────────────────────────────
         function populateProjectDropdowns() {
-            var selects = ['expenseProject', 'inventoryExpenseProject', 'budgetProject', 'detailProjectEdit', 'bondProject', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
+            var selects = ['expenseProject', 'budgetProject', 'detailProjectEdit', 'bondProject', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
             selects.forEach(function(id) {
                 var select = document.getElementById(id);
                 if (!select) return;
                 select.innerHTML = '<option value="">Select Project...</option>';
                 if (id === 'expenseProject' || id === 'detailProjectEdit') {
                     select.innerHTML = '<option value="">Office/Admin (no project)</option>';
-                }
-                if (id === 'inventoryExpenseProject') {
-                    select.innerHTML = '<option value="">Select Project...</option>';
                 }
                 financeProjects.forEach(function(project) {
                     var option = document.createElement('option');
@@ -2791,6 +2784,7 @@
                 row.setAttribute('data-inventory-transaction-id', expense.inventory_transaction_id || '');
                 row.setAttribute('data-is-inventory-expense', expense.is_inventory_expense === true || Boolean(expense.inventory_transaction_id) ? 'true' : 'false');
                 row.setAttribute('data-is-pending-inventory', expense.is_pending_inventory === true ? 'true' : 'false');
+                row.setAttribute('data-entry-kind', expense.entry_kind || '');
                 row.setAttribute('data-date', expense.expense_date || '');
                 row.setAttribute('data-remarks', expense.remarks || '');
                 row.setAttribute('data-proof-file-path', expense.proof_file_path || '');
@@ -2815,7 +2809,7 @@
                 if (isAdmin) categoryClass = 'admin';
                 else if (['labor', 'material', 'equipment', 'other'].indexOf(categoryClass) === -1) categoryClass = 'other';
 
-                var projectDisplay = expense.project_name || '—';
+                var projectDisplay = expense.project_name || (expense.entry_kind === 'inventory_purchase' ? 'For Storage' : '—');
                 var amountDisplay = expense.amount === null || expense.amount === undefined || String(expense.amount).trim() === ''
                     ? '—'
                     : formatCurrency(expense.amount);
@@ -2838,12 +2832,14 @@
         }
 
         function openInventoryExpenseModal(transactionId) {
-            pendingInventoryTransactionId = transactionId;
-            document.getElementById('inventoryExpenseAmount').value = '';
             var pendingExpense = financeExpenses.find(function(expense) {
                 return String(expense.inventory_transaction_id) === String(transactionId);
             });
-            document.getElementById('inventoryExpenseProject').value = pendingExpense && pendingExpense.project_id ? String(pendingExpense.project_id) : '';
+            if (!pendingExpense || pendingExpense.entry_kind !== 'inventory_purchase') {
+                showError('Historical stock-in needs inventory cost reconciliation before it can be edited.');
+                return;
+            }
+            pendingInventoryTransactionId = transactionId;
             document.getElementById('inventoryExpenseAmount').value = pendingExpense && pendingExpense.amount !== null && pendingExpense.amount !== undefined ? pendingExpense.amount : '';
             document.getElementById('inventoryExpenseModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -2852,17 +2848,15 @@
         function closeInventoryExpenseModal() {
             document.getElementById('inventoryExpenseModal').classList.remove('active');
             document.body.style.overflow = '';
-            document.getElementById('inventoryExpenseProject').value = '';
             document.getElementById('inventoryExpenseAmount').value = '';
             pendingInventoryTransactionId = null;
         }
 
         function saveInventoryExpense() {
             var transactionId = pendingInventoryTransactionId;
-            var projectId = document.getElementById('inventoryExpenseProject').value;
             var amount = parseFloat(document.getElementById('inventoryExpenseAmount').value);
-            if (!transactionId || !projectId || !amount || amount < 0.01) {
-                showError('Please select a project and enter a valid amount.');
+            if (!transactionId || !amount || amount < 0.01) {
+                showError('Please enter a valid amount.');
                 return;
             }
 
@@ -2872,7 +2866,7 @@
 
             apiFetch('/finance-expenses/from-inventory/' + transactionId, {
                 method: 'POST',
-                body: JSON.stringify({ project_id: Number(projectId), amount: amount })
+                body: JSON.stringify({ amount: amount })
             }).then(function() {
                 return fetchExpenses();
             }).then(function() {
@@ -3054,19 +3048,9 @@
             // ALWAYS start from the cached budget data (same source for both tabs)
             var filtered = (budgetDataCache || budgetData).slice();
 
-            // Budgets are project-level allocations; they are not filtered by expense period.
-            var periodExpenses = financeExpenses;
-            
-            var periodSpendMap = {};
-            periodExpenses.forEach(function(e) {
-                if (e.project_id) {
-                    periodSpendMap[e.project_id] = (periodSpendMap[e.project_id] || 0) + (parseFloat(e.amount) || 0);
-                }
-            });
-
-            // --- Update each item with period-specific spend ---
+            // Budgets use the same project-cost ledger as the server and reports.
             filtered = filtered.map(function(item) {
-                var actualSpend = periodSpendMap[item.project_id] || 0;
+                var actualSpend = parseFloat(item.actual_amount) || 0;
                 var budgetAmount = parseFloat(item.budget_amount) || 0;
                 var remaining = budgetAmount - actualSpend;
                 return {
@@ -3296,7 +3280,7 @@
             var isInventoryExpense = row.dataset.isInventoryExpense === 'true';
             var openInEditMode = window.PFIMS_ROW_EDIT_MODE === true && !isInventoryExpense;
             document.getElementById('detailModalTitle').textContent = isInventoryExpense ? 'Stock-In Expense Details' : 'Expense Details';
-            document.getElementById('detailProjectDisplay').textContent = row.dataset.project || '—';
+            document.getElementById('detailProjectDisplay').textContent = row.dataset.project || (row.dataset.entryKind === 'inventory_purchase' ? 'For Storage' : '—');
             document.getElementById('detailDescDisplay').textContent = row.dataset.desc;
             document.getElementById('detailCategoryDisplay').textContent = row.dataset.category;
             document.getElementById('detailCostComponentDisplay').textContent = formatCostComponent(row.dataset.costComponent);
@@ -3344,7 +3328,7 @@
             document.getElementById('expenseDetailModal').classList.remove('is-editing');
             var canViewInventory = document.body.dataset.portal === 'admin';
             document.getElementById('detailViewInventoryBtn').style.display = isInventoryExpense && canViewInventory ? 'inline-block' : 'none';
-            document.getElementById('detailEditBtn').style.display = 'inline-block';
+            document.getElementById('detailEditBtn').style.display = isInventoryExpense && row.dataset.entryKind !== 'inventory_purchase' ? 'none' : 'inline-block';
             document.getElementById('detailDeleteBtn').style.display = 'none';
             document.getElementById('detailSaveBtn').style.display = 'none';
             document.querySelectorAll('.detail-edit').forEach(function(el) { el.style.display = 'none'; });

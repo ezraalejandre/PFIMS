@@ -67,7 +67,7 @@
 
     <main class="main-content">
         <section class="dashboard-page-header audit-page-header">
-            <div class="dashboard-title-block"><h1>AUDIT LOGS</h1><p>Review create, update, and delete activity across PFIMS.</p></div>
+            <div class="dashboard-title-block"><h1>AUDIT LOGS</h1><p>Review security, data changes, imports, and exports across PFIMS.</p></div>
         </section>
 
         <form id="auditLogFilters" class="panel filters audit-log-filter-panel" method="GET" action="{{ route('audit-logs.index') }}" aria-label="Audit log filters">
@@ -76,7 +76,7 @@
             <label>To<input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></label>
             <label>User<select name="user_id"><option value="">All users</option>@foreach($users as $user)<option value="{{ $user->id }}" @selected(($filters['user_id'] ?? '') == $user->id)>{{ $user->name }} — {{ $user->email }}</option>@endforeach</select></label>
             <label>Role<select name="role"><option value="">All roles</option>@foreach(['ADMIN','ACCOUNTING','OPERATIONS'] as $role)<option value="{{ $role }}" @selected(($filters['role'] ?? '') === $role)>{{ ucfirst(strtolower($role)) }}</option>@endforeach</select></label>
-            <label>Action<select name="action"><option value="">All actions</option>@foreach(['CREATE','UPDATE','DELETE'] as $action)<option value="{{ $action }}" @selected(($filters['action'] ?? '') === $action)>{{ $action }}</option>@endforeach</select></label>
+            <label>Action<select name="action"><option value="">All actions</option>@foreach(['CREATE','UPDATE','DELETE','IMPORT','EXPORT'] as $action)<option value="{{ $action }}" @selected(($filters['action'] ?? '') === $action)>{{ $action }}</option>@endforeach</select></label>
             <label>Module<select name="module"><option value="">All modules</option>@foreach($modules as $module)<option value="{{ $module }}" @selected(($filters['module'] ?? '') === $module)>{{ $module }}</option>@endforeach</select></label>
             <input type="hidden" name="per_page" value="{{ request('per_page', 20) }}">
             <a href="{{ route('audit-logs.index') }}" class="btn-secondary pfims-clear-filters">Clear filters</a>

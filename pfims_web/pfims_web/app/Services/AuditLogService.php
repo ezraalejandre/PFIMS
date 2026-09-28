@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 
 class AuditLogService
 {
-    private const SENSITIVE = ['password', 'remember_token', 'first_login_otp', 'first_login_otp_expires_at'];
+    private const SENSITIVE = ['password', 'remember_token', 'first_login_otp', 'first_login_otp_expires_at', 'profile_photo_data', 'profile_photo', 'profile_photo_mime'];
 
     private const META = [
         'project_tbl' => ['Projects', 'project_name', '/projects'],
@@ -33,7 +34,6 @@ class AuditLogService
         'fin_expense_category_tbl' => ['Configurations', 'category_name', '/settings?section=configurations'],
         'project_phase_tbl' => ['Configurations', 'phase_name', '/settings?section=configurations'],
         'fin_component_tbl' => ['Configurations', 'component_name', '/settings?section=configurations'],
-        'user_default_filters' => ['Default Filters', 'module', '/settings?section=defaultfilters'],
         'system_settings' => ['System Settings', 'setting_key', '/settings?section=configurations'],
         'expense_category_tbl' => ['Configurations', 'category_name', '/settings?section=configurations'],
     ];
@@ -50,11 +50,29 @@ class AuditLogService
         $attributes = $action === 'DELETE' ? $before : $after;
         $label = trim((string) ($attributes[$labelField] ?? $model->getKey() ?? 'record'));
         $changes = $this->meaningfulChanges($before, $after);
+        $passwordChanged = $model instanceof User && $action === 'UPDATE'
+            && isset($before['password'], $after['password'])
+            && $before['password'] !== $after['password'];
+        $photoChanged = $model instanceof User && $action === 'UPDATE'
+            && ($before['profile_photo_data'] ?? null) !== ($after['profile_photo_data'] ?? null);
+        if ($action === 'UPDATE' && ! $changes && ! $passwordChanged && ! $photoChanged) {
+            return;
+        }
         $verb = match ($action) { 'CREATE' => 'Added', 'UPDATE' => 'Updated', default => 'Deleted' };
         $details = "{$verb} {$module}: {$label}";
+        if ($passwordChanged) {
+            $details .= '; changed password';
+        }
+        if ($photoChanged) {
+            $details .= '; changed profile photo';
+        }
         if ($action === 'UPDATE' && $changes) {
             $fields = collect(array_keys($changes))->map(fn ($field) => str($field)->replace('_', ' ')->headline())->join(', ');
             $details .= "; changed {$fields}";
+        }
+        if ($table === 'reports' && $action === 'CREATE' && ($after['generation_method'] ?? null) === 'system_export') {
+            $action = 'EXPORT';
+            $details = "Exported report: {$label}";
         }
 
         $separator = $baseUrl && str_contains($baseUrl, '?') ? '&' : '?';
@@ -73,6 +91,56 @@ class AuditLogService
             'details' => $details,
             'changes' => $changes ?: null,
             'view_url' => $baseUrl ? $baseUrl.$separator.'audit_subject='.rawurlencode((string) $model->getKey()) : null,
+        ]);
+    }
+
+    public function recordOperation(string $action, string $module, string $table, string $details): void
+    {
+        $user = Auth::user();
+        if (! $user || ! Schema::hasTable('audit_logs')) {
+            return;
+        }
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'user_name' => $user->name ?: 'Unknown user',
+            'user_email' => $user->email ?: '',
+            'user_role' => strtoupper((string) ($user->role ?: 'USER')),
+            'action_type' => $action,
+            'module' => $module,
+            'subject_type' => self::class,
+            'subject_table' => $table,
+            'subject_key' => 'id',
+            'subject_id' => null,
+            'record_label' => $module,
+            'details' => $details,
+            'changes' => null,
+            'view_url' => null,
+        ]);
+    }
+
+    public function recordPasswordReset(User $user): void
+    {
+        if (! Schema::hasTable('audit_logs')) {
+            return;
+        }
+
+        $actor = Auth::user() ?? $user;
+        AuditLog::create([
+            'user_id' => $actor->id,
+            'user_name' => $actor->name ?: 'Unknown user',
+            'user_email' => $actor->email ?: '',
+            'user_role' => strtoupper((string) ($actor->role ?: 'USER')),
+            'action_type' => 'UPDATE',
+            'module' => 'User Management',
+            'subject_type' => User::class,
+            'subject_table' => 'users',
+            'subject_key' => $user->getKeyName(),
+            'subject_id' => (string) $user->getKey(),
+            'record_label' => $user->name,
+            'details' => 'Password reset for user: '.$user->name,
+            'changes' => null,
+            'view_url' => '/settings?section=usermanagement&audit_subject='.rawurlencode((string) $user->getKey()),
         ]);
     }
 

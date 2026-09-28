@@ -68,20 +68,23 @@ class ProjectCostSnapshotService
 
             $capturedAt = now();
             $finance = $this->financeTotals($projectId, $capturedAt);
+            $activity = $this->activityForProject($projectId, $capturedAt, $finance);
             $isCompleted = strcasecmp((string) ($project->status ?? ''), 'Completed') === 0
                 && $completion >= 100
                 && ! empty($project->actual_end_date)
                 && Carbon::parse($project->actual_end_date)->startOfDay()->betweenIncluded($start, $capturedAt->copy()->startOfDay());
-            // The finance ledger is authoritative when it contains rows. The
-            // budget actual is only a compatibility fallback for older data.
-            $finalCost = $isCompleted
-                ? ($finance['has_ledger_rows'] ? (float) $finance['total'] : (float) ($budget->actual_amount ?? 0))
+            // An unvalued withdrawal is missing cost, not a zero-cost material.
+            $reconciled = $finance['unvalued_count'] === 0
+                && abs((float) $budget->actual_amount - (float) $finance['total']) <= 0.01;
+            $finalCost = $isCompleted && (! Schema::hasTable('inventory_cost_allocation_tbl') || $reconciled)
+                ? ($finance['has_ledger_rows'] || Schema::hasTable('inventory_cost_allocation_tbl')
+                    ? (float) $finance['total'] : (float) ($budget->actual_amount ?? 0))
                 : null;
             if ($finalCost !== null && $finalCost <= 0) {
-                return false;
+                $finalCost = null;
             }
 
-            DB::table('ml_project_cost_snapshots')->insert([
+            $snapshot = [
                 'project_id' => $projectId,
                 'captured_at' => $capturedAt,
                 'capture_reason' => mb_substr($reason, 0, 32),
@@ -102,7 +105,13 @@ class ProjectCostSnapshotService
                 'data_source' => Schema::hasColumn('project_tbl', 'data_source')
                     ? ($project->data_source ?: 'operational')
                     : 'operational',
-            ]);
+            ];
+            foreach ($activity as $column => $value) {
+                if (Schema::hasColumn('ml_project_cost_snapshots', $column)) {
+                    $snapshot[$column] = $value;
+                }
+            }
+            DB::table('ml_project_cost_snapshots')->insert($snapshot);
 
             // A final cost becomes a valid label only when completion is
             // recorded. Attach it to that project's earlier genuine snapshots.
@@ -110,6 +119,11 @@ class ProjectCostSnapshotService
                 DB::table('ml_project_cost_snapshots')
                     ->where('project_id', $projectId)
                     ->update(['final_actual_cost' => $finalCost, 'finalized_at' => $capturedAt]);
+            } elseif ($isCompleted && Schema::hasTable('inventory_cost_allocation_tbl')) {
+                // Corrections can invalidate a previously reconciled outcome.
+                DB::table('ml_project_cost_snapshots')
+                    ->where('project_id', $projectId)
+                    ->update(['final_actual_cost' => null, 'finalized_at' => null]);
             }
 
             return true;
@@ -118,15 +132,19 @@ class ProjectCostSnapshotService
 
     private function financeTotals(int $projectId, Carbon $capturedAt): array
     {
-        $result = ['total' => 0.0, 'material' => 0.0, 'labor' => 0.0, 'equipment' => 0.0, 'other' => 0.0, 'as_of_date' => null, 'has_ledger_rows' => false];
+        $result = ['total' => 0.0, 'material' => 0.0, 'labor' => 0.0, 'equipment' => 0.0, 'other' => 0.0, 'as_of_date' => null, 'has_ledger_rows' => false, 'unvalued_count' => 0, 'allocated_material' => 0.0];
         if (! Schema::hasTable('fin_expense_tbl')) {
             return $result;
         }
 
-        $rows = DB::table('fin_expense_tbl as expense')
+        $query = DB::table('fin_expense_tbl as expense')
             ->leftJoin('fin_expense_category_tbl as category', 'category.fin_category_id', '=', 'expense.fin_category_id')
             ->where('expense.project_id', $projectId)
-            ->whereDate('expense.expense_date', '<=', $capturedAt->toDateString())
+            ->whereDate('expense.expense_date', '<=', $capturedAt->toDateString());
+        if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
+            $query->whereNull('expense.inventory_transaction_id');
+        }
+        $rows = $query
             ->select('expense.amount', 'expense.expense_date', 'expense.project_cost_component', 'category.category_code', 'category.category_name')
             ->get();
 
@@ -141,7 +159,83 @@ class ProjectCostSnapshotService
             }
         }
 
+        if (Schema::hasTable('inventory_cost_allocation_tbl')) {
+            $allocations = DB::table('inventory_cost_allocation_tbl as allocation')
+                ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'allocation.out_transaction_id')
+                ->where('allocation.project_id', $projectId)
+                ->whereDate('movement.transaction_date', '<=', $capturedAt->toDateString())
+                ->get(['allocation.valuation_status', 'allocation.allocated_amount', 'movement.transaction_date']);
+            foreach ($allocations as $allocation) {
+                if ($allocation->valuation_status !== 'valued') {
+                    $result['unvalued_count']++;
+                    continue;
+                }
+                $amount = (float) $allocation->allocated_amount;
+                $result['has_ledger_rows'] = true;
+                $result['total'] += $amount;
+                $result['material'] += $amount;
+                $result['allocated_material'] += $amount;
+                if ($result['as_of_date'] === null || $allocation->transaction_date > $result['as_of_date']) {
+                    $result['as_of_date'] = $allocation->transaction_date;
+                }
+            }
+        }
+        if (Schema::hasTable('inventory_transaction_tbl')
+            && Schema::hasColumn('inventory_transaction_tbl', 'project_id')) {
+            $unallocated = DB::table('inventory_transaction_tbl as withdrawal')
+                ->where('withdrawal.project_id', $projectId)
+                ->where('withdrawal.transaction_type', 'OUT')
+                ->whereDate('withdrawal.transaction_date', '<=', $capturedAt->toDateString());
+            if (Schema::hasTable('inventory_cost_allocation_tbl')) {
+                $unallocated->whereNotExists(function ($query) {
+                    $query->selectRaw('1')->from('inventory_cost_allocation_tbl as allocation')
+                        ->whereColumn('allocation.out_transaction_id', 'withdrawal.inventory_transaction_id');
+                });
+            }
+            $result['unvalued_count'] += $unallocated->count();
+            $result['unvalued_count'] += DB::table('inventory_transaction_tbl')
+                ->where('project_id', $projectId)->where('transaction_type', 'IN')
+                ->whereDate('transaction_date', '<=', $capturedAt->toDateString())->count();
+        }
+
         return $result;
+    }
+
+    public function activityForProject(int $projectId, ?Carbon $capturedAt = null, ?array $finance = null): array
+    {
+        $capturedAt ??= now();
+        $finance ??= $this->financeTotals($projectId, $capturedAt);
+        $features = [
+            'direct_expense_count_7d' => 0, 'direct_expense_count_30d' => 0,
+            'direct_expense_amount_30d' => 0, 'stock_out_count_7d' => 0,
+            'stock_out_count_30d' => 0, 'stock_out_quantity_30d' => 0,
+            'valued_stock_out_cost' => $finance['allocated_material'],
+            'unvalued_stock_out_count' => $finance['unvalued_count'],
+        ];
+        $asOf = $capturedAt->toDateString();
+        $sevenDaysAgo = $capturedAt->copy()->subDays(6)->toDateString();
+        $thirtyDaysAgo = $capturedAt->copy()->subDays(29)->toDateString();
+
+        if (Schema::hasTable('fin_expense_tbl')) {
+            $direct = DB::table('fin_expense_tbl')->where('project_id', $projectId);
+            if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
+                $direct->whereNull('inventory_transaction_id');
+            }
+            $features['direct_expense_count_7d'] = (clone $direct)->whereBetween('expense_date', [$sevenDaysAgo, $asOf])->count();
+            $month = (clone $direct)->whereBetween('expense_date', [$thirtyDaysAgo, $asOf]);
+            $features['direct_expense_count_30d'] = (clone $month)->count();
+            $features['direct_expense_amount_30d'] = (float) $month->sum('amount');
+        }
+        if (Schema::hasTable('inventory_transaction_tbl')) {
+            $withdrawals = DB::table('inventory_transaction_tbl')
+                ->where('project_id', $projectId)->where('transaction_type', 'OUT');
+            $features['stock_out_count_7d'] = (clone $withdrawals)->whereBetween('transaction_date', [$sevenDaysAgo, $asOf])->count();
+            $month = (clone $withdrawals)->whereBetween('transaction_date', [$thirtyDaysAgo, $asOf]);
+            $features['stock_out_count_30d'] = (clone $month)->count();
+            $features['stock_out_quantity_30d'] = (float) $month->sum('quantity');
+        }
+
+        return $features;
     }
 
     private function normalizeComponent(object $row): string

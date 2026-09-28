@@ -19,7 +19,7 @@ use Throwable;
 
 class MLService
 {
-    private const MODEL_SCHEMA_VERSION = 9;
+    private const MODEL_SCHEMA_VERSION = 10;
 
     private const MINIMUM_REAL_SAMPLES = 10;
 
@@ -52,6 +52,14 @@ class MLService
         'fin_equipment_expense', 'fin_other_expense',
     ];
 
+    private const SNAPSHOT_ACTIVITY_FEATURE_NAMES = [
+        'budget', 'duration_months', 'worker_count', 'completion_percentage',
+        'fin_total_expense', 'fin_material_expense', 'fin_labor_expense',
+        'fin_equipment_expense', 'fin_other_expense',
+        'expense_frequency_30d', 'stock_out_frequency_30d',
+        'expense_amount_per_day_30d', 'has_unvalued_stock_out',
+    ];
+
     private const FIN_FEATURE_NAMES = [
         'fin_total_expense', 'fin_material_expense', 'fin_labor_expense',
         'fin_equipment_expense', 'fin_other_expense',
@@ -64,7 +72,13 @@ class MLService
         'fin_equipment_expense', 'fin_other_expense',
     ];
 
-    private const FEATURE_NAMES = self::FINANCE_ENRICHED_FEATURE_NAMES;
+    private const FEATURE_NAMES = [
+        'budget', 'duration_months', 'worker_count', 'completion_percentage',
+        'material_cost', 'labor_cost', 'fin_total_expense', 'fin_material_expense',
+        'fin_labor_expense', 'fin_equipment_expense', 'fin_other_expense',
+        'expense_frequency_30d', 'stock_out_frequency_30d',
+        'expense_amount_per_day_30d', 'has_unvalued_stock_out',
+    ];
 
     protected ?LeastSquares $model = null;
 
@@ -168,6 +182,33 @@ class MLService
             $evaluation = $splitSelection['selected']['evaluation'];
             $comparison = $this->compareRegressionModels($trainingData, $testData, $featureNames);
             $baselineComparison = $this->budgetBaselineComparison($testData, $evaluation);
+
+            // A snapshot candidate must beat the simple recorded-budget estimate
+            // on projects it never saw before replacing the established model.
+            if ($strategy === 'progress_snapshot_model'
+                && (! ($baselineComparison['model_outperforms_budget_baseline'] ?? false)
+                    || ! ($comparison['production_model_is_best_option'] ?? false))) {
+                $cohortSelection['snapshot_readiness']['note'] = 'Snapshot candidate did not pass independent holdout comparison; planning model retained.';
+                $trainingCohort = $this->getTrainingData()
+                    ->unique(fn ($row) => (string) $row->project_id)
+                    ->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])->values();
+                $featureNames = self::PLANNING_FEATURE_NAMES;
+                $strategy = 'planning_only_baseline';
+                if ($trainingCohort->count() < self::MINIMUM_REAL_SAMPLES) {
+                    $this->createFallbackModel($trainingCohort->count(), 'Snapshot candidate failed holdout comparison and planning data are insufficient.');
+                    return false;
+                }
+                $sampleCount = $trainingCohort->where('data_source', 'company_inspired_sample')->count();
+                $realSampleCount = $trainingCohort->count() - $sampleCount;
+                $usesSampleData = $sampleCount > 0;
+                $featureSelection = $this->trainingFeatureSetMetadata($trainingCohort, $featureNames, $strategy);
+                $splitSelection = $this->selectChronologicalSplit($trainingCohort, $featureNames);
+                $trainingData = $splitSelection['training_data'];
+                $testData = $splitSelection['test_data'];
+                $evaluation = $splitSelection['selected']['evaluation'];
+                $comparison = $this->compareRegressionModels($trainingData, $testData, $featureNames);
+                $baselineComparison = $this->budgetBaselineComparison($testData, $evaluation);
+            }
 
             // Deploy on all verified records after independent chronological evaluation.
             [$candidateModel, $productionTransformer] = $this->buildLeastSquaresModel($trainingCohort, $featureNames);
@@ -283,9 +324,14 @@ class MLService
                 ->groupBy('project_id');
             $finExpenses = $this->finExpenseAggregateQuery();
             $actualExpenses = $this->finExpenseAggregateQuery(false);
-            $actualCost = $actualExpenses === null
-                ? 'COALESCE(budgets_tbl.actual_amount, 0)'
-                : 'COALESCE(NULLIF(fin_actuals.fin_total_expense, 0), budgets_tbl.actual_amount, 0)';
+            $allocations = $this->allocationAggregateQuery(false);
+            $featureAllocations = $this->allocationAggregateQuery(true);
+            $allocated = $allocations === null ? '0' : 'COALESCE(fin_allocations.material_cost, 0)';
+            $featureAllocated = $featureAllocations === null ? '0' : 'COALESCE(fin_feature_allocations.material_cost, 0)';
+            $direct = $actualExpenses === null ? '0' : 'COALESCE(fin_actuals.fin_total_expense, 0)';
+            $actualCost = $allocations === null
+                ? ($actualExpenses === null ? 'COALESCE(budgets_tbl.actual_amount, 0)' : 'COALESCE(NULLIF(fin_actuals.fin_total_expense, 0), budgets_tbl.actual_amount, 0)')
+                : "{$direct} + {$allocated}";
             $projectTypeSelect = $this->projectTypeSelect();
             $hasDataSource = Schema::hasColumn('project_tbl', 'data_source');
             $query = DB::table('project_tbl')
@@ -298,6 +344,13 @@ class MLService
             if ($actualExpenses !== null) {
                 $query->leftJoinSub($actualExpenses, 'fin_actuals', fn ($join) => $join->on('project_tbl.project_id', '=', 'fin_actuals.project_id'));
             }
+            if ($allocations !== null) {
+                $query->leftJoinSub($allocations, 'fin_allocations', fn ($join) => $join->on('project_tbl.project_id', '=', 'fin_allocations.project_id'));
+                $query->whereRaw('COALESCE(fin_allocations.unvalued_count, 0) = 0');
+            }
+            if ($featureAllocations !== null) {
+                $query->leftJoinSub($featureAllocations, 'fin_feature_allocations', fn ($join) => $join->on('project_tbl.project_id', '=', 'fin_feature_allocations.project_id'));
+            }
 
             return $query
                 ->select(
@@ -309,11 +362,11 @@ class MLService
                         ? "COALESCE(project_tbl.data_source, 'operational') as data_source"
                         : "'operational' as data_source"),
                     DB::raw($projectTypeSelect.' as raw_project_type'),
-                    'budgets_tbl.budget_amount as budget', DB::raw("{$actualCost} as actual_cost"),
-                    DB::raw($finExpenses === null ? '0 as material_cost' : 'COALESCE(fin_expenses.fin_material_expense, 0) as material_cost'),
+                    'budgets_tbl.budget_amount as budget', 'budgets_tbl.actual_amount as budget_actual', DB::raw("{$actualCost} as actual_cost"),
+                    DB::raw(($finExpenses === null ? '0' : 'COALESCE(fin_expenses.fin_material_expense, 0)')." + {$featureAllocated} as material_cost"),
                     DB::raw($finExpenses === null ? '0 as labor_cost' : 'COALESCE(fin_expenses.fin_labor_expense, 0) as labor_cost'),
-                    DB::raw($finExpenses === null ? '0 as fin_total_expense' : 'COALESCE(fin_expenses.fin_total_expense, 0) as fin_total_expense'),
-                    DB::raw($finExpenses === null ? '0 as fin_material_expense' : 'COALESCE(fin_expenses.fin_material_expense, 0) as fin_material_expense'),
+                    DB::raw(($finExpenses === null ? '0' : 'COALESCE(fin_expenses.fin_total_expense, 0)')." + {$featureAllocated} as fin_total_expense"),
+                    DB::raw(($finExpenses === null ? '0' : 'COALESCE(fin_expenses.fin_material_expense, 0)')." + {$featureAllocated} as fin_material_expense"),
                     DB::raw($finExpenses === null ? '0 as fin_labor_expense' : 'COALESCE(fin_expenses.fin_labor_expense, 0) as fin_labor_expense'),
                     DB::raw($finExpenses === null ? '0 as fin_equipment_expense' : 'COALESCE(fin_expenses.fin_equipment_expense, 0) as fin_equipment_expense'),
                     DB::raw($finExpenses === null ? '0 as fin_other_expense' : 'COALESCE(fin_expenses.fin_other_expense, 0) as fin_other_expense')
@@ -332,9 +385,17 @@ class MLService
                 ->orderByDesc('project_tbl.actual_end_date')->orderByDesc('project_tbl.project_id')->limit(500)->get()
                 ->filter(function ($row) {
                     try {
-                        return Carbon::parse($row->completed_at)->startOfDay()
+                        $valid = Carbon::parse($row->completed_at)->startOfDay()
                             ->greaterThanOrEqualTo(Carbon::parse($row->start_date)->startOfDay())
                             && is_numeric($row->worker_count) && (float) $row->worker_count >= 1;
+                        if (! $valid || ! Schema::hasTable('inventory_cost_allocation_tbl')) {
+                            return $valid;
+                        }
+                        $cost = app(ProjectCostLedger::class)->forProject((int) $row->project_id);
+
+                        return $cost['unvalued_count'] === 0
+                            && abs((float) $row->actual_cost - $cost['total']) <= 0.01
+                            && abs((float) $row->budget_actual - $cost['total']) <= 0.01;
                     } catch (Throwable) {
                         return false;
                     }
@@ -389,9 +450,10 @@ class MLService
         ];
 
         if ($ready) {
+            $hasActivity = Schema::hasColumn('ml_project_cost_snapshots', 'direct_expense_count_30d');
             return [
                 'records' => $operationalSnapshots,
-                'feature_names' => self::SNAPSHOT_FEATURE_NAMES,
+                'feature_names' => $hasActivity ? self::SNAPSHOT_ACTIVITY_FEATURE_NAMES : self::SNAPSHOT_FEATURE_NAMES,
                 'strategy' => 'progress_snapshot_model',
                 'snapshot_readiness' => $readiness,
             ];
@@ -413,11 +475,12 @@ class MLService
             return collect();
         }
 
-        return DB::table('ml_project_cost_snapshots as snapshot')
+        $hasActivity = Schema::hasColumn('ml_project_cost_snapshots', 'direct_expense_count_30d');
+        $query = DB::table('ml_project_cost_snapshots as snapshot')
             ->join('project_tbl as project', 'project.project_id', '=', 'snapshot.project_id')
             ->select(
                 'snapshot.snapshot_id', 'snapshot.project_id', 'snapshot.captured_at',
-                'project.actual_end_date as completed_at', 'snapshot.planned_budget as budget',
+                'project.actual_end_date as completed_at', 'project.start_date as planned_start_date', 'snapshot.planned_budget as budget',
                 'snapshot.planned_duration_months as duration_months', 'snapshot.elapsed_duration_months',
                 'snapshot.worker_count', 'snapshot.phase',
                 'snapshot.completion_percentage',
@@ -429,7 +492,7 @@ class MLService
                 'snapshot.cumulative_equipment_expense as fin_equipment_expense',
                 'snapshot.cumulative_other_expense as fin_other_expense',
                 'snapshot.final_actual_cost as actual_cost', 'snapshot.data_source',
-                'project.project_name'
+                'project.project_name', 'snapshot.final_actual_cost as reconciled_final_cost'
             )
             ->whereNotNull('snapshot.final_actual_cost')
             ->whereNotNull('snapshot.finalized_at')
@@ -442,15 +505,43 @@ class MLService
             ->where('project.status', 'Completed')
             ->where('project.completion_percentage', '>=', 100)
             ->whereNotNull('project.actual_end_date')
-            ->orderBy('project.actual_end_date')->orderBy('snapshot.project_id')->orderBy('snapshot.captured_at')
-            ->get()
+            ->orderBy('project.actual_end_date')->orderBy('snapshot.project_id')->orderBy('snapshot.captured_at');
+        if ($hasActivity) {
+            $query->addSelect('snapshot.direct_expense_count_30d', 'snapshot.direct_expense_amount_30d',
+                'snapshot.stock_out_count_30d', 'snapshot.stock_out_quantity_30d',
+                'snapshot.unvalued_stock_out_count')
+                ->whereNotNull('snapshot.direct_expense_count_30d')
+                ->whereNotNull('snapshot.stock_out_count_30d');
+        }
+
+        return $query->get()
             ->map(function ($row) {
                 $row->actual_cost = max(0.0, (float) $row->actual_cost - (float) $row->fin_total_expense);
                 $row->project_type = $this->normalizeProjectType(null, $row->project_name ?? null);
                 $row->project_type_source = 'normalized_project_name';
+                $days = max(1, min(30, (int) Carbon::parse($row->planned_start_date)->startOfDay()
+                    ->diffInDays(Carbon::parse($row->captured_at)->startOfDay()) + 1));
+                $row->expense_frequency_30d = (float) ($row->direct_expense_count_30d ?? 0) / $days * 7;
+                $row->stock_out_frequency_30d = (float) ($row->stock_out_count_30d ?? 0) / $days * 7;
+                $row->expense_amount_per_day_30d = (float) ($row->direct_expense_amount_30d ?? 0) / $days;
+                $row->has_unvalued_stock_out = (int) (($row->unvalued_stock_out_count ?? 0) > 0);
 
                 return $row;
-            });
+            })
+            ->filter(function ($row) use ($hasActivity, &$ledgerByProject) {
+                if (! $hasActivity || ! Schema::hasTable('inventory_cost_allocation_tbl')) {
+                    return true;
+                }
+                $ledgerByProject ??= [];
+                $cost = $ledgerByProject[$row->project_id] ??= app(ProjectCostLedger::class)->forProject((int) $row->project_id);
+
+                $budgetActual = DB::table('budgets_tbl')->where('project_id', $row->project_id)
+                    ->orderByDesc('budget_id')->value('actual_amount');
+
+                return $cost['unvalued_count'] === 0
+                    && abs((float) $row->reconciled_final_cost - $cost['total']) <= 0.01
+                    && $budgetActual !== null && abs((float) $budgetActual - $cost['total']) <= 0.01;
+            })->values();
     }
 
     /**
@@ -484,6 +575,9 @@ class MLService
             ->whereNotNull('fin_expense.project_id')
             ->selectRaw("COALESCE(SUM({$amount}), 0) as fin_total_expense")
             ->selectRaw('MAX(fin_expense.expense_date) as finance_as_of_date');
+        if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
+            $query->whereNull('fin_expense.inventory_transaction_id');
+        }
 
         if ($beforeProjectCompletion) {
             $query->whereNotNull('fin_expense.expense_date')
@@ -499,6 +593,26 @@ class MLService
         return $query->groupBy('fin_expense.project_id');
     }
 
+    protected function allocationAggregateQuery(bool $beforeProjectCompletion = false): mixed
+    {
+        if (! Schema::hasTable('inventory_cost_allocation_tbl') || ! Schema::hasTable('inventory_transaction_tbl')) {
+            return null;
+        }
+
+        $query = DB::table('inventory_cost_allocation_tbl as allocation')
+            ->join('inventory_transaction_tbl as withdrawal', 'withdrawal.inventory_transaction_id', '=', 'allocation.out_transaction_id')
+            ->join('project_tbl as allocation_project', 'allocation_project.project_id', '=', 'allocation.project_id')
+            ->select('allocation.project_id')
+            ->selectRaw("COALESCE(SUM(CASE WHEN allocation.valuation_status = 'valued' THEN allocation.allocated_amount ELSE 0 END), 0) as material_cost")
+            ->selectRaw("SUM(CASE WHEN allocation.valuation_status = 'unvalued' THEN 1 ELSE 0 END) as unvalued_count")
+            ->selectRaw('MAX(withdrawal.transaction_date) as allocation_as_of_date');
+        if ($beforeProjectCompletion) {
+            $query->whereColumn('withdrawal.transaction_date', '<', 'allocation_project.actual_end_date');
+        }
+
+        return $query->groupBy('allocation.project_id');
+    }
+
     /** Current, incomplete projects whose model inputs can be derived from recorded system data. */
     public function getPredictionProjects(): Collection
     {
@@ -506,6 +620,7 @@ class MLService
             ->select('project_id', DB::raw('MAX(budget_id) as budget_id'))
             ->groupBy('project_id');
         $finance = $this->finExpenseAggregateQuery(false);
+        $allocations = $this->allocationAggregateQuery(false);
         if ($finance !== null) {
             $finance->whereDate('fin_expense.expense_date', '<=', now()->toDateString());
         }
@@ -516,18 +631,25 @@ class MLService
         if ($finance !== null) {
             $query->leftJoinSub($finance, 'prediction_finance', fn ($join) => $join->on('project_tbl.project_id', '=', 'prediction_finance.project_id'));
         }
+        if ($allocations !== null) {
+            $query->leftJoinSub($allocations, 'prediction_allocations', fn ($join) => $join->on('project_tbl.project_id', '=', 'prediction_allocations.project_id'));
+        }
+        $allocated = $allocations === null ? '0' : 'COALESCE(prediction_allocations.material_cost, 0)';
 
         return $query->select(
             'project_tbl.project_id', 'project_tbl.project_name', 'project_tbl.status',
             'project_tbl.start_date', 'project_tbl.estimated_end_date',
             'project_tbl.worker_count', 'project_tbl.completion_percentage',
             'budgets_tbl.budget_amount as budget',
-            DB::raw($finance === null ? '0 as fin_total_expense' : 'COALESCE(prediction_finance.fin_total_expense, 0) as fin_total_expense'),
-            DB::raw($finance === null ? '0 as fin_material_expense' : 'COALESCE(prediction_finance.fin_material_expense, 0) as fin_material_expense'),
+            DB::raw(($finance === null ? '0' : 'COALESCE(prediction_finance.fin_total_expense, 0)')." + {$allocated} as fin_total_expense"),
+            DB::raw(($finance === null ? '0' : 'COALESCE(prediction_finance.fin_material_expense, 0)')." + {$allocated} as fin_material_expense"),
             DB::raw($finance === null ? '0 as fin_labor_expense' : 'COALESCE(prediction_finance.fin_labor_expense, 0) as fin_labor_expense'),
             DB::raw($finance === null ? '0 as fin_equipment_expense' : 'COALESCE(prediction_finance.fin_equipment_expense, 0) as fin_equipment_expense'),
             DB::raw($finance === null ? '0 as fin_other_expense' : 'COALESCE(prediction_finance.fin_other_expense, 0) as fin_other_expense'),
-            DB::raw($finance === null ? 'NULL as finance_as_of_date' : 'prediction_finance.finance_as_of_date')
+            DB::raw($finance === null && $allocations === null ? 'NULL as finance_as_of_date'
+                : ($finance === null ? 'prediction_allocations.allocation_as_of_date as finance_as_of_date'
+                    : ($allocations === null ? 'prediction_finance.finance_as_of_date'
+                        : 'CASE WHEN prediction_finance.finance_as_of_date IS NULL THEN prediction_allocations.allocation_as_of_date WHEN prediction_allocations.allocation_as_of_date IS NULL THEN prediction_finance.finance_as_of_date WHEN prediction_finance.finance_as_of_date >= prediction_allocations.allocation_as_of_date THEN prediction_finance.finance_as_of_date ELSE prediction_allocations.allocation_as_of_date END as finance_as_of_date')))
         )
             ->whereNotNull('project_tbl.start_date')
             ->whereNotNull('project_tbl.estimated_end_date')
@@ -541,6 +663,8 @@ class MLService
             ->map(function ($project) {
                 $duration = max(1, Carbon::parse($project->start_date)->startOfDay()
                     ->diffInMonths(Carbon::parse($project->estimated_end_date)->startOfDay()));
+                $activity = app(ProjectCostSnapshotService::class)->activityForProject((int) $project->project_id);
+                $days = max(1, min(30, (int) Carbon::parse($project->start_date)->startOfDay()->diffInDays(now()->startOfDay()) + 1));
 
                 return [
                     'project_id' => (int) $project->project_id,
@@ -558,6 +682,10 @@ class MLService
                     'fin_equipment_expense' => (float) $project->fin_equipment_expense,
                     'fin_other_expense' => (float) $project->fin_other_expense,
                     'finance_as_of_date' => $project->finance_as_of_date,
+                    'expense_frequency_30d' => $activity['direct_expense_count_30d'] / $days * 7,
+                    'stock_out_frequency_30d' => $activity['stock_out_count_30d'] / $days * 7,
+                    'expense_amount_per_day_30d' => $activity['direct_expense_amount_30d'] / $days,
+                    'has_unvalued_stock_out' => $activity['unvalued_stock_out_count'] > 0 ? 1 : 0,
                 ];
             })->values();
     }
@@ -944,9 +1072,10 @@ class MLService
                 'ml_project_cost_snapshots.completion_percentage',
                 'ml_project_cost_snapshots.cumulative_total_expense',
             ],
-            'recommendation' => 'Keep planned schedules, completion, and dated finance expenses current. PFIMS records genuine append-only progress snapshots and never reconstructs historical progress.',
+            'recommendation' => 'Keep planned schedules, completion, direct expenses, and valued inventory withdrawals current. PFIMS records genuine append-only progress snapshots and never reconstructs historical progress.',
             'finance_fields_considered' => [
                 'fin_expense_tbl.amount grouped by fin_expense_category_tbl category_code/category_name inference.',
+                'Storage purchases are excluded from project cost until FIFO stock-out allocation assigns their value to a project; unvalued withdrawals cannot finalize a project-cost label.',
                 'fin_expense_category_tbl is the authoritative finance expense category source; expense_category_tbl is not used for ML preparation.',
                 'Only finance records with expense_date strictly before the completed project actual_end_date are eligible for historical feature selection.',
                 'At prediction time, finance totals must be cumulative through the supplied finance_as_of_date; otherwise they are rejected.',
@@ -1123,7 +1252,9 @@ class MLService
             'completion_percentage' => min(100, max(0, (float) $row->completion_percentage)),
             'material_cost', 'labor_cost',
             'fin_total_expense', 'fin_material_expense', 'fin_labor_expense',
-            'fin_equipment_expense', 'fin_other_expense' => max(0, (float) ($row->{$name} ?? 0)),
+            'fin_equipment_expense', 'fin_other_expense', 'expense_frequency_30d',
+            'stock_out_frequency_30d', 'expense_amount_per_day_30d',
+            'has_unvalued_stock_out' => max(0, (float) ($row->{$name} ?? 0)),
             default => 0.0,
         };
     }
@@ -1423,11 +1554,16 @@ class MLService
         $finMaterialExpense = 0,
         $finLaborExpense = 0,
         $finEquipmentExpense = 0,
-        $finOtherExpense = 0
+        $finOtherExpense = 0,
+        $expenseFrequency30d = 0,
+        $stockOutFrequency30d = 0,
+        $expenseAmountPerDay30d = 0,
+        $hasUnvaluedStockOut = 0
     ): float {
         return $this->predict(array_map('floatval', [
             $budget, $durationMonths, $workerCount, $completionPercentage, $materialCost, $laborCost,
             $finTotalExpense, $finMaterialExpense, $finLaborExpense, $finEquipmentExpense, $finOtherExpense,
+            $expenseFrequency30d, $stockOutFrequency30d, $expenseAmountPerDay30d, $hasUnvaluedStockOut,
         ]));
     }
 
@@ -1478,6 +1614,14 @@ class MLService
                 'support_level' => 'safeguard_only',
                 'forecast_context' => $context,
                 'status_reason' => 'The raw model estimate failed the recorded-spend floor.',
+            ];
+        }
+        if (in_array('Project inventory withdrawals include unvalued material; known material cost is incomplete.', $this->lastPredictionWarnings, true)) {
+            return [
+                'prediction_usable' => false,
+                'support_level' => 'unvalued_material',
+                'forecast_context' => $context,
+                'status_reason' => 'Project material cost is incomplete because one or more withdrawals are unvalued.',
             ];
         }
         if (collect($this->lastPredictionWarnings)->contains(fn ($warning) => str_contains($warning, 'outside the'))) {
@@ -1538,6 +1682,9 @@ class MLService
     protected function predictionWarnings(array $features): array
     {
         $warnings = [];
+        if (($features[14] ?? 0) > 0) {
+            $warnings[] = 'Project inventory withdrawals include unvalued material; known material cost is incomplete.';
+        }
         $source = $this->metadata['model_source'] ?? 'unknown';
         if ($source === 'synthetic_fallback_model') {
             $warnings[] = 'Insufficient verified company data: this prediction uses a synthetic fallback model and is experimental.';
@@ -1903,9 +2050,10 @@ class MLService
     {
         try {
             $expenseTotals = $this->financeActualExpenseTotalsQuery();
-            $actual = $expenseTotals === null
-                ? 'COALESCE(budgets_tbl.actual_amount, 0)'
-                : 'COALESCE(expense_totals.actual_cost, budgets_tbl.actual_amount, 0)';
+            $allocationTotals = $this->allocationAggregateQuery(false);
+            $actual = $allocationTotals === null
+                ? ($expenseTotals === null ? 'COALESCE(budgets_tbl.actual_amount, 0)' : 'COALESCE(expense_totals.actual_cost, budgets_tbl.actual_amount, 0)')
+                : 'COALESCE(expense_totals.actual_cost, 0) + COALESCE(allocation_totals.material_cost, 0)';
 
             // Budgets is the source of truth for this comparison.  Start with
             // every budget row (rather than the latest row per project) and
@@ -1916,6 +2064,9 @@ class MLService
 
             if ($expenseTotals !== null) {
                 $query->leftJoinSub($expenseTotals, 'expense_totals', fn ($join) => $join->on('project_tbl.project_id', '=', 'expense_totals.project_id'));
+            }
+            if ($allocationTotals !== null) {
+                $query->leftJoinSub($allocationTotals, 'allocation_totals', fn ($join) => $join->on('project_tbl.project_id', '=', 'allocation_totals.project_id'));
             }
 
             return $query
@@ -1953,6 +2104,8 @@ class MLService
             ->select('project_id')
             ->selectRaw("COALESCE(SUM(COALESCE({$amountColumn}, 0)), 0) as actual_cost")
             ->whereNotNull('project_id')
+            ->when(Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id'),
+                fn ($query) => $query->whereNull('inventory_transaction_id'))
             ->groupBy('project_id');
     }
 }

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\OtpMail;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -136,7 +137,7 @@ class ForgotPasswordControllerWeb extends Controller
     /**
      * STEP 3: Person submits the new password along with the reset token from step 2.
      */
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request, AuditLogService $audit)
     {
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email'],
@@ -178,6 +179,8 @@ class ForgotPasswordControllerWeb extends Controller
 
         $user->password = Hash::make($request->password);
         $user->save();
+
+        $audit->recordPasswordReset($user);
 
         DB::table('password_reset_otps')->where('email', $request->email)->delete();
 

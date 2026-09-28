@@ -141,6 +141,9 @@ class FinanceImportService
                     'updated_at' => now(),
                 ]);
             }
+            foreach (collect($prepared)->pluck('data.project_id')->filter()->unique() as $projectId) {
+                app(ProjectCostLedger::class)->syncBudget((int) $projectId);
+            }
         });
 
         return [

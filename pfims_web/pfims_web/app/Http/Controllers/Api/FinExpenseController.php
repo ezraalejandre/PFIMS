@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\AutomaticModelRetraining;
 use App\Services\NotificationService;
 use App\Services\AuditLogService;
+use App\Services\InventoryPurchaseService;
+use App\Services\ProjectCostLedger;
 use App\Models\FinExpense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +22,8 @@ class FinExpenseController extends Controller
         private NotificationService $notifications,
         private AutomaticModelRetraining $modelRetraining,
         private AuditLogService $audit,
+        private InventoryPurchaseService $purchaseService,
+        private ProjectCostLedger $projectCosts,
     ) {}
 
     private function mapExpense($item)
@@ -30,9 +34,9 @@ class FinExpenseController extends Controller
             'fin_expense_id' => $item->fin_expense_id,
             'expense_id' => $item->fin_expense_id,
             'inventory_transaction_id' => $item->inventory_transaction_id ?? null,
+            'entry_kind' => $item->entry_kind ?? null,
             'is_inventory_expense' => ! empty($item->inventory_transaction_id),
-            'is_pending_inventory' => ! empty($item->inventory_transaction_id)
-                && ($item->project_id === null || $amount === null),
+            'is_pending_inventory' => ! empty($item->inventory_transaction_id) && $amount === null,
             'project_id' => $item->project_id,
             'project_name' => $item->project_name,
             'project_cost_component' => $item->project_cost_component ?? null,
@@ -58,6 +62,7 @@ class FinExpenseController extends Controller
                 'fin_expense_tbl.fin_expense_id',
                 'fin_expense_tbl.project_id',
                 'fin_expense_tbl.inventory_transaction_id',
+                'fin_expense_tbl.entry_kind',
                 'fin_expense_tbl.project_cost_component',
                 'project_tbl.project_name',
                 'fin_expense_tbl.fin_category_id',
@@ -93,6 +98,7 @@ class FinExpenseController extends Controller
                     'fin_expense_tbl.fin_expense_id',
                     'fin_expense_tbl.project_id',
                     'fin_expense_tbl.inventory_transaction_id',
+                    'fin_expense_tbl.entry_kind',
                     'fin_expense_tbl.project_cost_component',
                     'project_tbl.project_name',
                     'fin_expense_tbl.fin_category_id',
@@ -157,6 +163,10 @@ class FinExpenseController extends Controller
                     ->leftJoin('project_tbl as project', 'project.project_id', '=', 'transaction.project_id')
                     ->leftJoin('fin_expense_tbl as expense', 'expense.inventory_transaction_id', '=', 'transaction.inventory_transaction_id')
                     ->where('transaction.transaction_type', 'IN')
+                    ->where(function ($query) {
+                        $query->whereNull('transaction.movement_reason')
+                            ->orWhere('transaction.movement_reason', 'purchase');
+                    })
                     ->whereNull('expense.fin_expense_id');
 
                 if (! empty($filters['project_id'])) {
@@ -195,6 +205,7 @@ class FinExpenseController extends Controller
                             'inventory_transaction_id' => $transaction->inventory_transaction_id,
                             'is_inventory_expense' => true,
                             'is_pending_inventory' => true,
+                            'entry_kind' => null,
                             'project_id' => $transaction->project_id,
                             'project_name' => $transaction->project_name,
                             'project_cost_component' => 'material',
@@ -223,8 +234,7 @@ class FinExpenseController extends Controller
     public function storeFromInventory(Request $request, int $transactionId)
     {
         $validator = Validator::make($request->all(), [
-            'project_id' => 'required|integer|exists:project_tbl,project_id',
-            'amount' => 'required|numeric|min:0.01|max:999999999999.99',
+            'amount' => 'required|numeric|min:0.01|max:9999999999.99',
         ]);
 
         if ($validator->fails()) {
@@ -234,8 +244,10 @@ class FinExpenseController extends Controller
         try {
             $details = $validator->validated();
             $amount = (float) $details['amount'];
-            $projectId = (int) $details['project_id'];
-            $result = DB::transaction(function () use ($amount, $projectId, $transactionId) {
+            if ($request->filled('project_id')) {
+                return response()->json(['error' => 'A storage purchase cannot be assigned to a project. Use stock-out for project usage.'], 422);
+            }
+            $result = DB::transaction(function () use ($amount, $transactionId) {
                 $transaction = DB::table('inventory_transaction_tbl as transaction')
                     ->join('inventory_item_tbl as item', 'item.item_id', '=', 'transaction.item_id')
                     ->where('transaction.inventory_transaction_id', $transactionId)
@@ -251,39 +263,16 @@ class FinExpenseController extends Controller
                     ->where('inventory_transaction_id', $transactionId)
                     ->lockForUpdate()
                     ->first();
-                $category = DB::table('fin_expense_category_tbl')
-                    ->where(function ($query) {
-                        $query->where('category_code', 'CONST_SUPPLY')
-                            ->orWhereRaw('LOWER(category_name) LIKE ?', ['%construction suppl%']);
-                    })
-                    ->where('is_active', true)
-                    ->first();
-
-                if (! $category) {
-                    abort(422, 'The Construction Supply finance category is unavailable.');
-                }
-
-                $expenseData = [
-                    'project_id' => $projectId,
-                    'fin_category_id' => $category->fin_category_id,
-                    'inventory_transaction_id' => $transactionId,
-                    'project_cost_component' => 'material',
-                    'expense_description' => $this->inventoryExpenseDescription($transaction),
-                    'amount' => $amount,
-                    'expense_date' => $transaction->transaction_date,
-                    'remarks' => $this->inventoryExpenseRemarks($transaction->bar_code),
-                    'updated_at' => now(),
-                ];
-
-                if ($existing) {
-                    DB::table('fin_expense_tbl')->where('fin_expense_id', $existing->fin_expense_id)->update($expenseData);
+                if (($existing->entry_kind ?? null) === 'inventory_purchase') {
+                    if (DB::table('inventory_cost_allocation_tbl')->where('in_transaction_id', $transactionId)->exists()) {
+                        abort(409, 'This purchase amount cannot be changed after its stock has been allocated to a project.');
+                    }
+                    DB::table('fin_expense_tbl')->where('fin_expense_id', $existing->fin_expense_id)
+                        ->update(['amount' => $amount, 'updated_at' => now()]);
 
                     return ['id' => (int) $existing->fin_expense_id, 'before' => (array) $existing];
                 }
-
-                $expenseData['created_at'] = now();
-
-                return ['id' => DB::table('fin_expense_tbl')->insertGetId($expenseData), 'before' => null];
+                abort(422, 'Historical stock-in requires inventory cost reconciliation before editing.');
             });
 
             $createdExpense = $this->findWithJoins($result['id']);
@@ -386,6 +375,8 @@ class FinExpenseController extends Controller
                         'item_id' => $lockedItem->item_id,
                         'project_id' => null,
                         'transaction_type' => 'IN',
+                        'movement_reason' => 'purchase',
+                        'recorded_at' => now(),
                         'quantity' => $validated['inventory_quantity'],
                         'bar_code' => $validated['inventory_bar_code'] ?? null,
                         'transaction_date' => $validated['expense_date'],
@@ -395,12 +386,19 @@ class FinExpenseController extends Controller
                     DB::table('inventory_item_tbl')->where('item_id', $lockedItem->item_id)->update([
                         'current_stock' => (float) $lockedItem->current_stock + (float) $validated['inventory_quantity'],
                     ]);
-                    $data['inventory_transaction_id'] = $transactionId;
+                    return $this->purchaseService->createLinkedExpense(
+                        (int) $transactionId,
+                        $validated['amount'],
+                        (int) $validated['fin_category_id'],
+                    );
                 }
 
                 return DB::table('fin_expense_tbl')->insertGetId($data);
             });
             $expense = $this->findWithJoins($id);
+            if ($expense->project_id !== null) {
+                $this->projectCosts->syncBudget((int) $expense->project_id);
+            }
             if ($audited = FinExpense::find($id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
 
             // Send notification
@@ -432,6 +430,9 @@ class FinExpenseController extends Controller
             $existing = DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->first();
             if (! $existing) {
                 return response()->json(['error' => 'Expense not found'], 404);
+            }
+            if (($existing->inventory_transaction_id ?? null) !== null) {
+                return response()->json(['error' => 'Linked stock-in expenses cannot be reassigned or edited here.'], 422);
             }
 
             $validator = Validator::make($request->all(), [
@@ -485,6 +486,9 @@ class FinExpenseController extends Controller
             }
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->update($data);
+            foreach (array_unique(array_filter([$oldProjectId, $data['project_id']])) as $projectId) {
+                $this->projectCosts->syncBudget((int) $projectId);
+            }
             $expense = $this->findWithJoins($id);
             if ($audited = FinExpense::find($id)) $this->audit->record($audited, 'UPDATE', (array) $existing, $audited->getAttributes());
             $projectIds = array_values(array_filter([$oldProjectId, $expense->project_id === null ? null : (int) $expense->project_id]));
@@ -503,12 +507,18 @@ class FinExpenseController extends Controller
             if (! $existing) {
                 return response()->json(['error' => 'Expense not found'], 404);
             }
+            if (($existing->inventory_transaction_id ?? null) !== null) {
+                return response()->json(['error' => 'A linked inventory purchase cannot be deleted from Finance.'], 409);
+            }
 
             if ($existing->proof_file_path) {
                 Storage::disk('public')->delete($existing->proof_file_path);
             }
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->delete();
+            if ($existing->project_id !== null) {
+                $this->projectCosts->syncBudget((int) $existing->project_id);
+            }
             $deleted = new FinExpense();
             $deleted->setRawAttributes((array) $existing, true);
             $this->audit->record($deleted, 'DELETE', (array) $existing, []);

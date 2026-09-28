@@ -76,7 +76,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::get('/inventory/transactions', [InventoryController::class, 'getAllTransactions']);
     Route::get('/inventory/{itemId}/transactions', [InventoryController::class, 'getTransactions'])->whereNumber('itemId');
 
-    Route::post('/inventory-transactions', [InventoryTransactionController::class, 'store']);
+    Route::post('/inventory-transactions', [InventoryController::class, 'addTransaction']);
     Route::get('/inventory-transactions', [InventoryTransactionController::class, 'index']);
     Route::get('/inventory-categories', [InventoryController::class, 'categories']);
     Route::get('/inventory-items', [InventoryController::class, 'items']);

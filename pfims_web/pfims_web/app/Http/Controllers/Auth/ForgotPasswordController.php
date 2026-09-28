@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PasswordOtp;
 use App\Models\User;
 use App\Notifications\ForgotPasswordOtpNotification;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -75,7 +76,7 @@ class ForgotPasswordController extends Controller
         return response()->json(['message' => 'Code verified']);
     }
 
-    public function reset(Request $request)
+    public function reset(Request $request, AuditLogService $audit)
     {
         $request->validate([
             'email' => 'required|email',
@@ -99,6 +100,8 @@ class ForgotPasswordController extends Controller
         $user->forceFill([
             'password' => Hash::make($request->password),
         ])->save();
+
+        $audit->recordPasswordReset($user);
 
         $record->delete();
 

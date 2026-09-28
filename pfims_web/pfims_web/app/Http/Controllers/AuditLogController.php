@@ -35,7 +35,7 @@ class AuditLogController extends Controller
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'user_id' => ['nullable', 'integer'],
             'role' => ['nullable', 'in:ADMIN,ACCOUNTING,OPERATIONS'],
-            'action' => ['nullable', 'in:CREATE,UPDATE,DELETE'],
+            'action' => ['nullable', 'in:CREATE,UPDATE,DELETE,IMPORT,EXPORT'],
             'module' => ['nullable', 'string', 'max:80'],
             'per_page' => ['nullable', 'integer', 'in:10,20,50,100'],
         ]);

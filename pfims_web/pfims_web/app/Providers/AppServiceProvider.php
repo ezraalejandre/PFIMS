@@ -57,7 +57,6 @@ class AppServiceProvider extends ServiceProvider
             \App\Models\Unit::class,
             \App\Models\Report::class,
             \App\Models\User::class,
-            \App\Models\UserDefaultFilter::class,
             \App\Models\SystemSetting::class,
             \App\Models\ExpenseCategory::class,
         ] as $auditableModel) {

@@ -17,9 +17,13 @@ class InventoryImportService
 
     private const TRANSACTION_REQUIRED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date'];
 
-    private const TRANSACTION_ALLOWED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date'];
+    private const TRANSACTION_ALLOWED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date', 'stock_in_reason', 'total_purchase_amount'];
 
-    public function __construct(private TabularImportReader $reader) {}
+    public function __construct(
+        private TabularImportReader $reader,
+        private InventoryCostAllocator $costAllocator,
+        private InventoryPurchaseService $purchaseService,
+    ) {}
 
     public function import(UploadedFile $file, string $type): array
     {
@@ -115,6 +119,8 @@ class InventoryImportService
                         'item_id' => $itemId,
                         'project_id' => null,
                         'transaction_type' => 'IN',
+                        'movement_reason' => 'opening_balance',
+                        'recorded_at' => now(),
                         'quantity' => $stock,
                         'bar_code' => null,
                         'transaction_date' => $openingBalanceDate,
@@ -136,6 +142,12 @@ class InventoryImportService
         if ($missing !== [] || $unexpected !== []) {
             throw new ImportValidationException($this->headerMessage('inventory-transaction', $missing, $unexpected));
         }
+        $hasReason = in_array('stock_in_reason', $sheet['headers'], true);
+        $hasAmount = in_array('total_purchase_amount', $sheet['headers'], true);
+        if ($hasReason !== $hasAmount) {
+            throw new ImportValidationException('Include both stock_in_reason and total_purchase_amount, or use the legacy six-column format.');
+        }
+        $pricedFormat = $hasReason && $hasAmount;
 
         $items = DB::table('inventory_item_tbl')->select('item_id', 'item_name', 'current_stock')->get()
             ->groupBy(fn ($row) => $this->key($row->item_name));
@@ -145,11 +157,16 @@ class InventoryImportService
         $errors = [];
         $fileKeys = [];
         $simulatedStock = [];
+        $unpricedCount = 0;
 
         foreach ($sheet['rows'] as $row) {
             $values = $row['values'] + ['project_name' => null, 'bar_code' => null];
             $values['transaction_type'] = strtoupper(trim((string) ($values['transaction_type'] ?? '')));
             $values['transaction_date'] = $this->normalizeDate($values['transaction_date'] ?? null);
+            if ($pricedFormat) {
+                $values['stock_in_reason'] = str_replace([' ', '-'], '_', strtolower(trim((string) ($values['stock_in_reason'] ?? ''))));
+                $values['total_purchase_amount'] = trim((string) ($values['total_purchase_amount'] ?? ''));
+            }
             $validator = Validator::make($values, [
                 'item_name' => ['required', 'string', 'max:100'],
                 'project_name' => ['nullable', 'string', 'max:100'],
@@ -157,6 +174,8 @@ class InventoryImportService
                 'quantity' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
                 'bar_code' => ['required', 'integer', 'min:0', 'max:2147483647'],
                 'transaction_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+                'stock_in_reason' => $pricedFormat ? ['required', 'in:purchase,return,adjustment,opening_balance,n/a'] : ['prohibited'],
+                'total_purchase_amount' => $pricedFormat ? ['required'] : ['prohibited'],
             ]);
             if ($validator->fails()) {
                 $this->appendValidationErrors($errors, $row['row'], $validator->errors()->toArray());
@@ -165,10 +184,38 @@ class InventoryImportService
             }
             $data = $validator->validated();
 
-            if ($data['transaction_type'] === 'OUT' && blank($data['project_name'] ?? null)) {
+            $projectName = trim((string) ($data['project_name'] ?? ''));
+            $forStorage = strcasecmp($projectName, 'For Storage') === 0;
+            if ($data['transaction_type'] === 'OUT' && ($projectName === '' || $forStorage)) {
                 $errors[] = $this->rowError($row['row'], 'project_name', 'Project name is required for OUT inventory transactions.');
 
                 continue;
+            }
+            if ($data['transaction_type'] === 'IN' && $projectName !== '' && ! $forStorage) {
+                $errors[] = $this->rowError($row['row'], 'project_name', 'Stock-in is for storage; use For Storage or leave the project blank.');
+
+                continue;
+            }
+            $reason = $data['transaction_type'] === 'IN'
+                ? ($pricedFormat ? $data['stock_in_reason'] : 'legacy_unpriced') : null;
+            $purchaseAmount = null;
+            if ($pricedFormat) {
+                $rawAmount = $data['total_purchase_amount'];
+                if ($data['transaction_type'] === 'IN' && $reason === 'purchase') {
+                    if (! is_numeric($rawAmount) || (float) $rawAmount < 0.01 || (float) $rawAmount > 9999999999.99) {
+                        $errors[] = $this->rowError($row['row'], 'total_purchase_amount', 'Purchase IN requires a positive total amount within the Finance limit.');
+                        continue;
+                    }
+                    $purchaseAmount = round((float) $rawAmount, 2);
+                } elseif ($rawAmount !== 'N/A' && $rawAmount !== 'n/a') {
+                    $errors[] = $this->rowError($row['row'], 'total_purchase_amount', 'Use N/A when this row is not a purchase IN.');
+                    continue;
+                }
+                if (($data['transaction_type'] === 'OUT' && $data['stock_in_reason'] !== 'n/a')
+                    || ($data['transaction_type'] === 'IN' && $reason === 'n/a')) {
+                    $errors[] = $this->rowError($row['row'], 'stock_in_reason', 'Choose a stock-in reason for IN, or N/A for OUT.');
+                    continue;
+                }
             }
 
             $itemMatches = $items->get($this->key($data['item_name']), collect());
@@ -179,7 +226,7 @@ class InventoryImportService
             }
             $item = $itemMatches->first();
             $projectId = null;
-            if (! blank($data['project_name'] ?? null)) {
+            if ($data['transaction_type'] === 'OUT') {
                 $projectMatches = $projects->get($this->key($data['project_name']), collect());
                 if ($projectMatches->count() !== 1) {
                     $errors[] = $this->rowError($row['row'], 'project_name', $projectMatches->isEmpty() ? 'Project not found.' : 'Project name is ambiguous.');
@@ -196,15 +243,16 @@ class InventoryImportService
                 'quantity' => round((float) $data['quantity'], 2),
                 'bar_code' => (int) $data['bar_code'],
                 'transaction_date' => $data['transaction_date'],
+                'movement_reason' => $reason,
             ];
-            $key = $this->transactionKey($record);
+            $key = $this->transactionKey($record, $purchaseAmount);
             if (isset($fileKeys[$key])) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'Duplicates row '.$fileKeys[$key].' in this file.');
 
                 continue;
             }
             $fileKeys[$key] = $row['row'];
-            if ($this->duplicateTransactionQuery($record)->exists()) {
+            if ($this->duplicateTransactionQuery($record, $purchaseAmount)->exists()) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'This inventory transaction already exists in PFIMS.');
 
                 continue;
@@ -218,7 +266,10 @@ class InventoryImportService
                 continue;
             }
             $simulatedStock[$record['item_id']] = $stock;
-            $prepared[] = ['row' => $row['row'], 'data' => $record];
+            $prepared[] = ['row' => $row['row'], 'data' => $record, 'purchase_amount' => $purchaseAmount];
+            if ($reason === 'legacy_unpriced') {
+                $unpricedCount++;
+            }
         }
 
         $this->throwWhenErrors($errors);
@@ -231,7 +282,7 @@ class InventoryImportService
                         $this->rowError($row['row'], 'item_name', 'Inventory item no longer exists.'),
                     ]);
                 }
-                if ($this->duplicateTransactionQuery($row['data'])->lockForUpdate()->exists()) {
+                if ($this->duplicateTransactionQuery($row['data'], $row['purchase_amount'])->lockForUpdate()->exists()) {
                     throw new ImportValidationException('No rows were imported because a duplicate was created while the file was being checked.', [
                         $this->rowError($row['row'], 'duplicate', 'This inventory transaction now already exists in PFIMS.'),
                     ]);
@@ -242,15 +293,39 @@ class InventoryImportService
                         $this->rowError($row['row'], 'quantity', 'Available stock is now insufficient.'),
                     ]);
                 }
-                DB::table('inventory_transaction_tbl')->insert($row['data'] + [
+                $transactionId = DB::table('inventory_transaction_tbl')->insertGetId($row['data'] + [
+                    'recorded_at' => now(),
                     'proof_file_path' => null,
                     'proof_file_name' => 'Imported data',
                 ]);
                 DB::table('inventory_item_tbl')->where('item_id', $item->item_id)->update(['current_stock' => $newStock]);
+                if ($row['data']['movement_reason'] === 'purchase') {
+                    try {
+                        $this->purchaseService->createLinkedExpense((int) $transactionId, $row['purchase_amount']);
+                    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                        throw new ImportValidationException('No rows were imported because a purchase could not be recorded.', [
+                            $this->rowError($row['row'], 'total_purchase_amount', $e->getMessage()),
+                        ]);
+                    }
+                }
+                if ($row['data']['transaction_type'] === 'OUT') {
+                    try {
+                        $this->costAllocator->allocate((int) $transactionId);
+                    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                        throw new ImportValidationException('No rows were imported because a stock-out could not be costed.', [
+                            $this->rowError($row['row'], 'quantity', $e->getMessage()),
+                        ]);
+                    }
+                }
             }
         });
 
-        return ['imported' => count($prepared), 'type' => 'inventory_transactions'];
+        return [
+            'imported' => count($prepared), 'type' => 'inventory_transactions',
+            'unpriced_stock_in_count' => $unpricedCount,
+            'project_ids' => collect($prepared)->pluck('data.project_id')->filter()
+                ->map(fn ($id) => (int) $id)->unique()->values()->all(),
+        ];
     }
 
     private function lookupGroups(string $table, string $id, string $name)
@@ -300,7 +375,7 @@ class InventoryImportService
         });
     }
 
-    private function duplicateTransactionQuery(array $record)
+    private function duplicateTransactionQuery(array $record, $purchaseAmount = null)
     {
         $query = DB::table('inventory_transaction_tbl')
             ->where('item_id', $record['item_id'])
@@ -308,13 +383,30 @@ class InventoryImportService
             ->where('quantity', $record['quantity'])
             ->whereDate('transaction_date', $record['transaction_date']);
         $query = $record['project_id'] === null ? $query->whereNull('project_id') : $query->where('project_id', $record['project_id']);
+        $query = $record['bar_code'] === null ? $query->whereNull('bar_code') : $query->where('bar_code', $record['bar_code']);
+        if ($record['movement_reason'] === 'legacy_unpriced') {
+            $query->where(function ($reason) {
+                $reason->whereNull('movement_reason')->orWhere('movement_reason', 'legacy_unpriced');
+            });
+        } elseif ($record['movement_reason'] === null) {
+            $query->whereNull('movement_reason');
+        } else {
+            $query->where('movement_reason', $record['movement_reason']);
+        }
+        if ($record['movement_reason'] === 'purchase') {
+            $query->whereExists(function ($expense) use ($purchaseAmount) {
+                $expense->selectRaw('1')->from('fin_expense_tbl')
+                    ->whereColumn('fin_expense_tbl.inventory_transaction_id', 'inventory_transaction_tbl.inventory_transaction_id')
+                    ->where('fin_expense_tbl.amount', $purchaseAmount);
+            });
+        }
 
-        return $record['bar_code'] === null ? $query->whereNull('bar_code') : $query->where('bar_code', $record['bar_code']);
+        return $query;
     }
 
-    private function transactionKey(array $record): string
+    private function transactionKey(array $record, $purchaseAmount = null): string
     {
-        return implode('|', [$record['item_id'], $record['project_id'] ?? '', $record['transaction_type'], number_format($record['quantity'], 2, '.', ''), $record['bar_code'] ?? '', $record['transaction_date']]);
+        return implode('|', [$record['item_id'], $record['project_id'] ?? '', $record['transaction_type'], number_format($record['quantity'], 2, '.', ''), $record['bar_code'] ?? '', $record['transaction_date'], $record['movement_reason'] ?? '', $purchaseAmount === null ? '' : number_format($purchaseAmount, 2, '.', '')]);
     }
 
     private function normalizeDate(mixed $value): mixed

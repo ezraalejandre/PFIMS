@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\ProjectCostLedger;
+
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\SystemSetting;
@@ -140,13 +142,17 @@ class DashboardController extends Controller
 
     private function projects(array $filters): array
     {
+        $ledger = app(ProjectCostLedger::class);
+        $direct = $ledger->directTotals()->pluck('direct_cost', 'project_id');
+        $allocated = $ledger->allocatedTotals()?->pluck('allocated_cost', 'project_id') ?? collect();
         return $this->projectQuery($filters)->leftJoin('budgets_tbl as b', 'b.project_id', '=', 'project_tbl.project_id')
             ->select(['project_tbl.project_id', 'project_tbl.project_name as name', 'project_tbl.client_name', 'project_tbl.project_manager',
                 'project_tbl.start_date', 'project_tbl.estimated_end_date', 'project_tbl.phase', 'project_tbl.status',
                 'project_tbl.actual_end_date',
                 'project_tbl.completion_percentage', 'project_tbl.worker_count', DB::raw('COALESCE(b.budget_amount, 0) as budget_amount'),
                 DB::raw('COALESCE(b.actual_amount, 0) as actual_amount')])
-            ->orderByDesc('project_tbl.start_date')->limit(500)->get()->map(function ($project) {
+            ->orderByDesc('project_tbl.start_date')->limit(500)->get()->map(function ($project) use ($direct, $allocated) {
+                $project->actual_amount = round((float) ($direct[$project->project_id] ?? 0) + (float) ($allocated[$project->project_id] ?? 0), 2);
                 $project->budget = $this->currency((float) $project->budget_amount);
 
                 return $project;

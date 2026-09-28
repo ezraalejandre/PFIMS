@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ProjectCostLedger;
+
 use App\Models\Report;
 use App\Models\SystemSetting;
+use App\Services\AuditLogService;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +23,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    public function __construct(private AuditLogService $audit) {}
+
     private const DATASETS = [
         'project' => [
             'title' => 'Project', 'type' => 'project', 'roles' => ['admin', 'operations'],
@@ -28,7 +33,9 @@ class ReportController extends Controller
                 'project_manager' => 'Project Manager', 'phase' => 'Phase', 'status' => 'Status',
                 'start_date' => 'Start Date', 'estimated_end_date' => 'Estimated End',
                 'completion_percentage' => 'Completion (%)', 'worker_count' => 'Workers',
-                'budget_amount' => 'Budget', 'actual_amount' => 'Actual Cost', 'variance' => 'Budget Difference',
+                'budget_amount' => 'Budget', 'direct_cost' => 'Direct Project Expenses',
+                'inventory_usage_cost' => 'Inventory Usage Cost', 'unvalued_withdrawals' => 'Unvalued Withdrawals',
+                'actual_amount' => 'Actual Cost', 'variance' => 'Budget Difference',
             ],
             'filters' => ['search', 'project_id', 'status', 'start_date', 'end_date'],
         ],
@@ -37,7 +44,7 @@ class ReportController extends Controller
             'columns' => [
                 'fin_expense_id' => 'Expense ID', 'expense_date' => 'Expense Date',
                 'project_name' => 'Project / Cost Center', 'category_name' => 'Category',
-                'classification' => 'Classification', 'expense_description' => 'Description',
+                'classification' => 'Classification', 'cost_role' => 'Cost Role', 'expense_description' => 'Description',
                 'amount' => 'Amount', 'remarks' => 'Remarks',
             ],
             'filters' => ['search', 'project_id', 'classification', 'start_date', 'end_date'],
@@ -46,7 +53,9 @@ class ReportController extends Controller
             'title' => 'Budget', 'type' => 'budget', 'roles' => ['admin', 'accounting'],
             'columns' => [
                 'budget_id' => 'Budget ID', 'project_name' => 'Project', 'client_name' => 'Client',
-                'status' => 'Project Status', 'budget_amount' => 'Budget', 'actual_amount' => 'Actual Cost',
+                'status' => 'Project Status', 'budget_amount' => 'Budget',
+                'direct_cost' => 'Direct Project Expenses', 'inventory_usage_cost' => 'Inventory Usage Cost',
+                'unvalued_withdrawals' => 'Unvalued Withdrawals', 'actual_amount' => 'Actual Cost',
                 'remaining_amount' => 'Remaining', 'utilization_percentage' => 'Utilization (%)',
             ],
             'filters' => ['search', 'project_id', 'status', 'start_date', 'end_date'],
@@ -242,6 +251,8 @@ class ReportController extends Controller
             return response()->json(['message' => 'The exported file is no longer available.'], 404);
         }
 
+        $this->audit->recordOperation('EXPORT', 'Reports', 'reports', 'Downloaded exported report: '.$report->title.' ('.$report->report_id.')');
+
         /** @var FilesystemAdapter $publicDisk */
         $publicDisk = Storage::disk('public');
 
@@ -288,12 +299,17 @@ class ReportController extends Controller
 
     private function projectQuery(array $filters): Builder
     {
-        $query = DB::table('project_tbl as p')->leftJoin('budgets_tbl as b', 'b.project_id', '=', 'p.project_id')
+        $query = DB::table('project_tbl as p')->leftJoin('budgets_tbl as b', 'b.project_id', '=', 'p.project_id');
+        $actual = $this->joinProjectCosts($query, 'p.project_id');
+        $query
             ->select(['p.project_id', 'p.project_name', 'p.client_name', 'p.project_manager', 'p.phase', 'p.status',
                 'p.start_date', 'p.estimated_end_date', 'p.completion_percentage', 'p.worker_count',
                 DB::raw('COALESCE(b.budget_amount, 0) as budget_amount'),
-                DB::raw('COALESCE(b.actual_amount, 0) as actual_amount'),
-                DB::raw('COALESCE(b.budget_amount, 0) - COALESCE(b.actual_amount, 0) as variance')]);
+                DB::raw('COALESCE(project_direct_cost.direct_cost, 0) as direct_cost'),
+                DB::raw($this->allocationColumn('allocated_cost').' as inventory_usage_cost'),
+                DB::raw($this->allocationColumn('unvalued_count').' as unvalued_withdrawals'),
+                DB::raw("{$actual} as actual_amount"),
+                DB::raw("COALESCE(b.budget_amount, 0) - {$actual} as variance")]);
         $this->applyProjectFilters($query, $filters, 'p');
 
         return $query->orderByDesc('p.start_date')->orderBy('p.project_name');
@@ -305,6 +321,11 @@ class ReportController extends Controller
             ->leftJoin('project_tbl as p', 'p.project_id', '=', 'fe.project_id')
             ->select(['fe.fin_expense_id', 'fe.expense_date', DB::raw("COALESCE(p.project_name, 'OFFICE') as project_name"),
                 'fc.category_name', 'fc.classification', 'fe.expense_description', 'fe.amount', 'fe.remarks']);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
+            $query->addSelect(DB::raw("CASE WHEN fe.inventory_transaction_id IS NOT NULL THEN 'Storage Purchase' WHEN fe.project_id IS NOT NULL THEN 'Direct Project Expense' ELSE 'Other Expense' END as cost_role"));
+        } else {
+            $query->addSelect(DB::raw("CASE WHEN fe.project_id IS NOT NULL THEN 'Direct Project Expense' ELSE 'Other Expense' END as cost_role"));
+        }
         if (! empty($filters['project_id'])) {
             $query->where('fe.project_id', $filters['project_id']);
         }
@@ -324,14 +345,40 @@ class ReportController extends Controller
 
     private function budgetQuery(array $filters): Builder
     {
-        $query = DB::table('budgets_tbl as b')->join('project_tbl as p', 'p.project_id', '=', 'b.project_id')
+        $query = DB::table('budgets_tbl as b')->join('project_tbl as p', 'p.project_id', '=', 'b.project_id');
+        $actual = $this->joinProjectCosts($query, 'p.project_id');
+        $query
             ->select(['b.budget_id', 'p.project_name', 'p.client_name', 'p.status', 'b.budget_amount',
-                DB::raw('COALESCE(b.actual_amount, 0) as actual_amount'),
-                DB::raw('b.budget_amount - COALESCE(b.actual_amount, 0) as remaining_amount'),
-                DB::raw('CASE WHEN b.budget_amount > 0 THEN ROUND(COALESCE(b.actual_amount, 0) / b.budget_amount * 100, 2) ELSE 0 END as utilization_percentage')]);
+                DB::raw('COALESCE(project_direct_cost.direct_cost, 0) as direct_cost'),
+                DB::raw($this->allocationColumn('allocated_cost').' as inventory_usage_cost'),
+                DB::raw($this->allocationColumn('unvalued_count').' as unvalued_withdrawals'),
+                DB::raw("{$actual} as actual_amount"),
+                DB::raw("b.budget_amount - {$actual} as remaining_amount"),
+                DB::raw("CASE WHEN b.budget_amount > 0 THEN ROUND({$actual} / b.budget_amount * 100, 2) ELSE 0 END as utilization_percentage")]);
         $this->applyProjectFilters($query, $filters, 'p');
 
         return $query->orderByDesc('p.start_date')->orderBy('p.project_name');
+    }
+
+    private function joinProjectCosts(Builder $query, string $projectColumn): string
+    {
+        $ledger = app(ProjectCostLedger::class);
+        $query->leftJoinSub($ledger->directTotals(), 'project_direct_cost',
+            fn ($join) => $join->on('project_direct_cost.project_id', '=', $projectColumn));
+        if ($allocated = $ledger->allocatedTotals()) {
+            $query->leftJoinSub($allocated, 'project_allocated_cost',
+                fn ($join) => $join->on('project_allocated_cost.project_id', '=', $projectColumn));
+
+            return 'COALESCE(project_direct_cost.direct_cost, 0) + COALESCE(project_allocated_cost.allocated_cost, 0)';
+        }
+
+        return 'COALESCE(project_direct_cost.direct_cost, 0)';
+    }
+
+    private function allocationColumn(string $column): string
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('inventory_cost_allocation_tbl')
+            ? "COALESCE(project_allocated_cost.{$column}, 0)" : '0';
     }
 
     private function inventoryQuery(array $filters): Builder
@@ -439,12 +486,14 @@ class ReportController extends Controller
                 ['label' => 'Total Expenses', 'value' => $money((float) $rows->sum('amount'))],
                 ['label' => 'Direct Expenses', 'value' => $money((float) $rows->where('classification', 'direct')->sum('amount'))],
                 ['label' => 'Admin Expenses', 'value' => $money((float) $rows->where('classification', 'admin')->sum('amount'))],
+                ['label' => 'Storage Purchases', 'value' => $money((float) $rows->where('cost_role', 'Storage Purchase')->sum('amount'))],
             ],
             'budget' => [
                 ['label' => 'Projects', 'value' => (string) $rows->count()],
                 ['label' => 'Total Budget', 'value' => $money((float) $rows->sum('budget_amount'))],
                 ['label' => 'Actual Cost', 'value' => $money((float) $rows->sum('actual_amount'))],
                 ['label' => 'Remaining', 'value' => $money((float) $rows->sum('remaining_amount'))],
+                ['label' => 'Inventory Usage', 'value' => $money((float) $rows->sum('inventory_usage_cost'))],
             ],
             'inventory' => [
                 ['label' => 'Total Items', 'value' => (string) $rows->count()],

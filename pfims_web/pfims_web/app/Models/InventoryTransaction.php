@@ -14,6 +14,8 @@ class InventoryTransaction extends Model
         'item_id',
         'project_id',
         'transaction_type',
+        'movement_reason',
+        'recorded_at',
         'quantity',
         'bar_code',
         'transaction_date',

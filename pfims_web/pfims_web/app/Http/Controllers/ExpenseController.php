@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Services\NotificationService;
 use App\Services\AuditLogService;
+use App\Services\ProjectCostLedger;
+use App\Services\AutomaticModelRetraining;
 use App\Models\FinExpense;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +17,8 @@ use Illuminate\Validation\ValidationException;
 
 class ExpenseController extends Controller
 {
-    public function __construct(private NotificationService $notifications, private AuditLogService $audit) {}
+    public function __construct(private NotificationService $notifications, private AuditLogService $audit,
+        private AutomaticModelRetraining $modelRetraining) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -53,6 +56,9 @@ class ExpenseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if ($request->filled('inventory_transaction_id')) {
+            return response()->json(['message' => 'Record inventory purchases through Stock In, then assign project usage through Stock Out.'], 422);
+        }
         $data = $this->validateExpense($request);
         $data['expense_description'] = $this->normalizeLabel($data['expense_description']);
         $data['remarks'] = isset($data['remarks']) ? $this->normalizeLabel($data['remarks']) : null;
@@ -104,6 +110,9 @@ class ExpenseController extends Controller
             referenceType: 'fin_expense', referenceId: (int) $expense->fin_expense_id,
         );
         if ($audited = FinExpense::find($expense->fin_expense_id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
+        if ($expense->project_id !== null) {
+            $this->modelRetraining->afterDataChange([(int) $expense->project_id]);
+        }
 
         return response()->json($this->present($expense), 201);
     }
@@ -113,6 +122,9 @@ class ExpenseController extends Controller
         $expense = DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->first();
         if (! $expense) {
             return response()->json(['message' => 'Expense not found'], 404);
+        }
+        if (($expense->inventory_transaction_id ?? null) !== null) {
+            return response()->json(['message' => 'Linked inventory purchases cannot be edited here.'], 422);
         }
 
         $data = $this->validateExpense($request);
@@ -170,6 +182,7 @@ class ExpenseController extends Controller
 
         $updatedExpense = FinExpense::find($id);
         if ($updatedExpense) $this->audit->record($updatedExpense, 'UPDATE', (array) $expense, $updatedExpense->getAttributes());
+        $this->modelRetraining->afterDataChange(array_values(array_filter(array_unique([$oldProjectId, $data['project_id'] ?? null]))));
         return response()->json($this->present($this->find($id)));
     }
 
@@ -178,6 +191,9 @@ class ExpenseController extends Controller
         $expense = DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->first();
         if (! $expense) {
             return response()->json(['message' => 'Expense not found'], 404);
+        }
+        if (($expense->inventory_transaction_id ?? null) !== null) {
+            return response()->json(['message' => 'Linked inventory purchases cannot be deleted here.'], 409);
         }
 
         $projectId = $expense->project_id;
@@ -191,6 +207,9 @@ class ExpenseController extends Controller
         $deleted = new FinExpense();
         $deleted->setRawAttributes((array) $expense, true);
         $this->audit->record($deleted, 'DELETE', (array) $expense, []);
+        if ($projectId !== null) {
+            $this->modelRetraining->afterDataChange([(int) $projectId]);
+        }
         if ($path) {
             Storage::disk('public')->delete($path);
         }
@@ -272,8 +291,7 @@ class ExpenseController extends Controller
 
     private function recalcBudgetActual(int $projectId): void
     {
-        $total = (float) (DB::table('fin_expense_tbl')->where('project_id', $projectId)->sum('amount') ?? 0);
-        DB::table('budgets_tbl')->where('project_id', $projectId)->update(['actual_amount' => $total]);
+        app(ProjectCostLedger::class)->syncBudget($projectId);
     }
 
     private function present(object $expense): array

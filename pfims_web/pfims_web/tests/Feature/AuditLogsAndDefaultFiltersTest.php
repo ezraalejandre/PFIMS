@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\Report;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\AuditLogService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -18,7 +20,9 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
         foreach (['audit_logs', 'user_default_filters', 'supplier_tbl', 'users'] as $table) Schema::dropIfExists($table);
         Schema::create('users', function (Blueprint $table) {
             $table->id(); $table->string('name'); $table->string('email')->unique(); $table->string('password');
-            $table->string('role'); $table->string('status')->default('Active'); $table->rememberToken(); $table->timestamps();
+            $table->string('role'); $table->string('status')->default('Active');
+            $table->longText('profile_photo_data')->nullable(); $table->string('profile_photo_mime')->nullable();
+            $table->rememberToken(); $table->timestamps();
         });
         Schema::create('supplier_tbl', function (Blueprint $table) {
             $table->id('supplier_id'); $table->string('supplier_name'); $table->string('address'); $table->string('contact_number');
@@ -59,6 +63,60 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
         $this->actingAs($first)->getJson('/api/default-filters')->assertJsonPath('projects.projectStatusFilter', 'Delayed');
         $this->actingAs($first)->deleteJson('/api/default-filters/projects')->assertOk();
         $this->actingAs($first)->getJson('/api/default-filters')->assertExactJson([]);
+        $this->assertSame(0, AuditLog::count(), 'Saving or using filters must not create audit activity.');
+    }
+
+    public function test_account_changes_are_logged_without_password_or_photo_contents(): void
+    {
+        $admin = $this->user('admin', 'security@example.test');
+        $this->actingAs($admin);
+
+        $admin->update(['name' => 'Renamed Admin', 'role' => 'operations']);
+        $admin->update(['password' => Hash::make('new-password')]);
+        $admin->forceFill(['profile_photo_data' => base64_encode('private image'), 'profile_photo_mime' => 'image/png'])->save();
+
+        $logs = AuditLog::orderBy('id')->get();
+        $this->assertCount(3, $logs);
+        $this->assertSame(['name', 'role'], array_keys($logs[0]->changes));
+        $this->assertStringContainsString('changed password', $logs[1]->details);
+        $this->assertNull($logs[1]->changes);
+        $this->assertStringContainsString('changed profile photo', $logs[2]->details);
+        $this->assertNull($logs[2]->changes);
+        $this->assertStringNotContainsString('private image', $logs->toJson());
+        $this->assertStringNotContainsString('new-password', $logs->toJson());
+    }
+
+    public function test_successful_imports_have_one_summary_entry(): void
+    {
+        $admin = $this->user('admin', 'importer@example.test');
+        $this->actingAs($admin);
+
+        app(AuditLogService::class)->recordOperation('IMPORT', 'Projects', 'project_tbl', 'Imported 12 Projects record(s)');
+
+        $log = AuditLog::sole();
+        $this->assertSame('IMPORT', $log->action_type);
+        $this->assertSame('Imported 12 Projects record(s)', $log->details);
+        $this->assertNull($log->view_url);
+    }
+
+    public function test_report_generation_and_password_reset_are_audited_without_secrets(): void
+    {
+        $admin = $this->user('admin', 'reports@example.test');
+        $this->actingAs($admin);
+        $report = new Report(['title' => 'Project Summary', 'generation_method' => 'system_export']);
+        $report->report_id = 'RPT-TEST';
+        app(AuditLogService::class)->record($report, 'CREATE', [], $report->getAttributes());
+
+        $this->assertSame('EXPORT', AuditLog::firstOrFail()->action_type);
+
+        auth()->logout();
+        app(AuditLogService::class)->recordPasswordReset($admin);
+
+        $reset = AuditLog::latest('id')->firstOrFail();
+        $this->assertSame('UPDATE', $reset->action_type);
+        $this->assertSame($admin->id, $reset->user_id);
+        $this->assertStringContainsString('Password reset', $reset->details);
+        $this->assertNull($reset->changes);
     }
 
     public function test_supplier_crud_is_audited_with_field_level_changes(): void

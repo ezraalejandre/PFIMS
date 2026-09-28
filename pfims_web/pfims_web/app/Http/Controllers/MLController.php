@@ -72,6 +72,10 @@ class MLController extends Controller
             'fin_labor_expense' => $selectedProject['fin_labor_expense'] ?? ($request->filled('fin_labor_expense') ? $request->input('fin_labor_expense') : 0),
             'fin_equipment_expense' => $selectedProject['fin_equipment_expense'] ?? ($request->filled('fin_equipment_expense') ? $request->input('fin_equipment_expense') : 0),
             'fin_other_expense' => $selectedProject['fin_other_expense'] ?? ($request->filled('fin_other_expense') ? $request->input('fin_other_expense') : 0),
+            'expense_frequency_30d' => $selectedProject['expense_frequency_30d'] ?? 0,
+            'stock_out_frequency_30d' => $selectedProject['stock_out_frequency_30d'] ?? 0,
+            'expense_amount_per_day_30d' => $selectedProject['expense_amount_per_day_30d'] ?? 0,
+            'has_unvalued_stock_out' => $selectedProject['has_unvalued_stock_out'] ?? 0,
             'finance_as_of_date' => $selectedProject['finance_as_of_date'] ?? $request->input('finance_as_of_date'),
         ];
 
@@ -87,6 +91,10 @@ class MLController extends Controller
             'fin_labor_expense' => ['bail', 'required', 'numeric', 'between:0,9999999999.99'],
             'fin_equipment_expense' => ['bail', 'required', 'numeric', 'between:0,9999999999.99'],
             'fin_other_expense' => ['bail', 'required', 'numeric', 'between:0,9999999999.99'],
+            'expense_frequency_30d' => ['bail', 'required', 'numeric', 'between:0,9999999999.99'],
+            'stock_out_frequency_30d' => ['bail', 'required', 'numeric', 'between:0,9999999999.99'],
+            'expense_amount_per_day_30d' => ['bail', 'required', 'numeric', 'between:0,9999999999.99'],
+            'has_unvalued_stock_out' => ['bail', 'required', 'integer', 'between:0,1'],
             'finance_as_of_date' => ['nullable', 'date', 'before_or_equal:today'],
         ]);
 
@@ -124,7 +132,11 @@ class MLController extends Controller
                 $validated['fin_material_expense'],
                 $validated['fin_labor_expense'],
                 $validated['fin_equipment_expense'],
-                $validated['fin_other_expense']
+                $validated['fin_other_expense'],
+                $validated['expense_frequency_30d'],
+                $validated['stock_out_frequency_30d'],
+                $validated['expense_amount_per_day_30d'],
+                $validated['has_unvalued_stock_out']
             );
 
             $budget = (float) $validated['budget'];
@@ -208,6 +220,10 @@ class MLController extends Controller
                     'fin_labor_expense' => (float) $validated['fin_labor_expense'],
                     'fin_equipment_expense' => (float) $validated['fin_equipment_expense'],
                     'fin_other_expense' => (float) $validated['fin_other_expense'],
+                    'expense_frequency_30d' => (float) $validated['expense_frequency_30d'],
+                    'stock_out_frequency_30d' => (float) $validated['stock_out_frequency_30d'],
+                    'expense_amount_per_day_30d' => (float) $validated['expense_amount_per_day_30d'],
+                    'has_unvalued_stock_out' => (int) $validated['has_unvalued_stock_out'],
                     'finance_as_of_date' => $validated['finance_as_of_date'],
                 ],
             ]);

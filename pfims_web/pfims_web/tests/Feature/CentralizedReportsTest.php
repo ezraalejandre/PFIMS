@@ -43,6 +43,40 @@ class CentralizedReportsTest extends TestCase
             ->assertJsonPath('kpis.0.value', '1');
     }
 
+    public function test_budget_report_separates_direct_expenses_and_inventory_usage(): void
+    {
+        Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
+            $table->bigIncrements('allocation_id');
+            $table->integer('project_id');
+            $table->string('valuation_status');
+            $table->decimal('allocated_amount', 14, 2)->nullable();
+        });
+        DB::table('project_tbl')->insert([
+            'project_id' => 1, 'project_name' => 'Costed Site', 'client_name' => 'A',
+            'start_date' => '2026-01-01', 'status' => 'On Track',
+        ]);
+        DB::table('budgets_tbl')->insert([
+            'budget_id' => 1, 'project_id' => 1, 'budget_amount' => 10000, 'actual_amount' => 9999,
+        ]);
+        DB::table('fin_expense_category_tbl')->insert([
+            'fin_category_id' => 1, 'category_code' => 'LABOR', 'category_name' => 'Labor', 'classification' => 'direct',
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => 1, 'fin_category_id' => 1, 'expense_description' => 'Crew',
+            'amount' => 200, 'expense_date' => '2026-02-01',
+        ]);
+        DB::table('inventory_cost_allocation_tbl')->insert([
+            ['project_id' => 1, 'valuation_status' => 'valued', 'allocated_amount' => 300],
+            ['project_id' => 1, 'valuation_status' => 'unvalued', 'allocated_amount' => null],
+        ]);
+
+        $this->actingAs($this->user('admin'))->getJson('/api/reports/data/budget')
+            ->assertOk()->assertJsonPath('rows.0.direct_cost', 200)
+            ->assertJsonPath('rows.0.inventory_usage_cost', 300)
+            ->assertJsonPath('rows.0.unvalued_withdrawals', 1)
+            ->assertJsonPath('rows.0.actual_amount', 500);
+    }
+
     public function test_role_catalog_only_exposes_authorized_report_tabs(): void
     {
         $accounting = $this->user('accounting');

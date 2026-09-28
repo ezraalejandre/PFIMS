@@ -861,6 +861,20 @@
                     <span id="transactionProjectError" class="field-error" style="display:none;"></span>
                 </div>
 
+                <div class="form-row" id="transactionStockInGroup">
+                    <div class="form-group">
+                        <label>Stock-in purpose <span class="required">*</span></label>
+                        <select id="transactionMovementReason" onchange="toggleTransactionProjectField()">
+                            <option value="purchase">Purchase for storage</option>
+                            <option value="adjustment">Non-purchase stock adjustment</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="transactionPurchaseAmountGroup">
+                        <label>Total purchase amount <span class="required">*</span></label>
+                        <input type="number" id="transactionPurchaseAmount" min="0.01" max="9999999999.99" step="0.01" placeholder="Enter amount">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Transaction Proof <span class="required">*</span></label>
                     <input type="file" id="transactionProofFile" accept=".jpg,.jpeg,.png,.pdf">
@@ -926,6 +940,10 @@
                     <div class="summary-item" id="reviewTransProjectRow" style="display: none;">
                         <strong>Project</strong>
                         <span class="summary-value" id="reviewTransProject">—</span>
+                    </div>
+                    <div class="summary-item" id="reviewTransPurchaseAmountRow" style="display: none;">
+                        <strong>Total purchase amount</strong>
+                        <span class="summary-value" id="reviewTransPurchaseAmount">—</span>
                     </div>
                 </div>
 
@@ -2264,12 +2282,15 @@
             document.getElementById('transactionItemSupplier').value = '';
             document.getElementById('transactionItemBarCode').value = '';
             document.getElementById('transactionQuantity').value = 1;
+            document.getElementById('transactionMovementReason').value = 'purchase';
+            document.getElementById('transactionPurchaseAmount').value = '';
             document.getElementById('transactionProofFile').value = '';
             document.getElementById('transactionDate').value = new Date().toISOString().split('T')[0];
             document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
             document.getElementById('transactionProjectGroup').style.display = 'none';
             document.getElementById('transactionProjectRequired').style.display = 'none';
             document.getElementById('transactionProject').value = '';
+            toggleTransactionProjectField();
             clearTransactionProjectError();
             
             document.getElementById('reviewTransItemName').textContent = '—';
@@ -2283,6 +2304,7 @@
             document.getElementById('reviewTransDate').textContent = '—';
             document.getElementById('reviewTransProjectRow').style.display = 'none';
             document.getElementById('reviewTransProject').textContent = '—';
+            document.getElementById('reviewTransPurchaseAmountRow').style.display = 'none';
             
             populateTransactionItemSelect();
             populateProjectDropdown();
@@ -2324,6 +2346,11 @@
             if (proofFile.size > 10 * 1024 * 1024) { showError('Proof file must not exceed 10MB.'); return; }
 
             var typeLabel = type ? type.value : 'IN';
+            var movementReason = document.getElementById('transactionMovementReason').value;
+            var purchaseAmount = document.getElementById('transactionPurchaseAmount').value;
+            if (typeLabel === 'IN' && movementReason === 'purchase' && (!purchaseAmount || !Number.isFinite(Number(purchaseAmount)) || Number(purchaseAmount) < 0.01 || Number(purchaseAmount) > 9999999999.99)) {
+                showError('Please enter a valid total purchase amount.'); return;
+            }
             if (typeLabel === 'OUT') {
                 var projectId = document.getElementById('transactionProject').value;
                 if (!projectId) {
@@ -2353,8 +2380,13 @@
             document.getElementById('reviewTransItemQuantity').textContent = quantity;
             document.getElementById('reviewTransItemUnit').textContent = unit;
             document.getElementById('reviewTransProof').textContent = proofFile.name;
-            document.getElementById('reviewTransType').textContent = typeLabel === 'IN' ? 'IN (Item Stock in)' : 'OUT (Item Stock out)';
             document.getElementById('reviewTransDate').textContent = date;
+            document.getElementById('reviewTransType').textContent = typeLabel === 'IN'
+                ? (movementReason === 'purchase' ? 'IN (Purchase for storage)' : 'IN (Non-purchase stock adjustment)')
+                : 'OUT (Item Stock out)';
+            document.getElementById('reviewTransPurchaseAmountRow').style.display = typeLabel === 'IN' && movementReason === 'purchase' ? 'flex' : 'none';
+            document.getElementById('reviewTransPurchaseAmount').textContent = typeLabel === 'IN' && movementReason === 'purchase'
+                ? '₱' + Number(purchaseAmount).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
 
             transactionGoToStep(step);
         }
@@ -2375,6 +2407,10 @@
             var selected = Array.from(typeRadios).find(r => r.checked);
             var projectGroup = document.getElementById('transactionProjectGroup');
             var projectRequired = document.getElementById('transactionProjectRequired');
+            var stockInGroup = document.getElementById('transactionStockInGroup');
+            var purchaseAmountGroup = document.getElementById('transactionPurchaseAmountGroup');
+            stockInGroup.style.display = selected && selected.value === 'OUT' ? 'none' : 'flex';
+            purchaseAmountGroup.style.display = document.getElementById('transactionMovementReason').value === 'purchase' ? '' : 'none';
             if (selected && selected.value === 'OUT') {
                 projectGroup.style.display = 'block';
                 projectRequired.style.display = 'inline';
@@ -2430,6 +2466,11 @@
             payload.append('item_id', parseInt(itemId));
             if (projectId) payload.append('project_id', projectId);
             payload.append('transaction_type', type);
+            if (type === 'IN') {
+                var movementReason = document.getElementById('transactionMovementReason').value;
+                payload.append('movement_reason', movementReason);
+                if (movementReason === 'purchase') payload.append('purchase_amount', document.getElementById('transactionPurchaseAmount').value);
+            }
             payload.append('quantity', quantity);
             if (barCode !== '') payload.append('bar_code', parseInt(barCode, 10));
             payload.append('transaction_date', date);

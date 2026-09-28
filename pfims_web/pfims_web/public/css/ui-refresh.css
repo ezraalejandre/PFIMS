@@ -3547,6 +3547,8 @@ body.landing-page .pfims-page-loader {
 .audit-action-create { background: #dcfce7; color: #166534; }
 .audit-action-update { background: #dbeafe; color: #1d4ed8; }
 .audit-action-delete { background: #fee2e2; color: #b91c1c; }
+.audit-action-import { background: #dcfce7; color: #166534; }
+.audit-action-export { background: #dbeafe; color: #1d4ed8; }
 .audit-view-link { margin-left: .35rem; color: var(--ui-accent-dark); font-weight: 800; text-decoration: underline; }
 .audit-view-unavailable { margin-left: .35rem; color: var(--ui-muted); font-size: .75rem; }
 .audit-changes { margin-top: .4rem; white-space: normal; }
@@ -3648,6 +3650,8 @@ html[data-theme="dark"] :is(.default-filter-config, .pfims-sticky-filter) {
 html[data-theme="dark"] .audit-action-create { background: #14532d; color: #dcfce7; }
 html[data-theme="dark"] .audit-action-update { background: #1e3a8a; color: #dbeafe; }
 html[data-theme="dark"] .audit-action-delete { background: #7f1d1d; color: #fee2e2; }
+html[data-theme="dark"] .audit-action-import { background: #14532d; color: #dcfce7; }
+html[data-theme="dark"] .audit-action-export { background: #1e3a8a; color: #dbeafe; }
 
 @keyframes pfims-spinner {
     to { transform: rotate(360deg); }

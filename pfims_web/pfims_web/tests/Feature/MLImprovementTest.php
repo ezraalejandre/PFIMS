@@ -89,7 +89,7 @@ class MLImprovementTest extends TestCase
             ->assertDontSee('id="retrainConfirmModal"', false)
             ->assertDontSee('Retrain prediction model?', false)
             ->assertDontSee("confirm('Retraining", false)
-            ->assertSee('class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle" hidden', false)
+            ->assertSee('class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle">', false)
             ->assertSee('Management diagnostic', false)
             ->assertSee('Recommended action', false)
             ->assertSee('Projected budget savings', false)
@@ -311,6 +311,41 @@ class MLImprovementTest extends TestCase
         $this->assertSame(6, (int) $rows[0]->planned_duration_months);
         $this->assertSame(6, (int) $rows[1]->planned_duration_months);
         $this->assertNotSame($rows[0]->captured_at, $rows[1]->captured_at);
+    }
+
+    public function test_snapshot_activity_uses_only_transactions_known_at_capture_time(): void
+    {
+        (require database_path('migrations/2026_09_28_000001_add_activity_to_project_cost_snapshots.php'))->up();
+        Carbon::setTestNow('2025-04-10 10:00:00');
+        $projectId = $this->insertProject([
+            'project_name' => 'Activity evidence',
+            'start_date' => '2025-01-01',
+            'estimated_end_date' => '2025-07-01',
+            'actual_end_date' => null,
+            'worker_count' => 8,
+            'completion_percentage' => 25,
+            'status' => 'In Progress',
+        ], 100000, 0);
+        foreach ([['2025-04-09', 250], ['2025-03-01', 500], ['2025-04-11', 700]] as [$date, $amount]) {
+            DB::table('fin_expense_tbl')->insert([
+                'project_id' => $projectId, 'fin_category_id' => 1,
+                'amount' => $amount, 'project_cost_component' => 'material', 'expense_date' => $date,
+            ]);
+        }
+        foreach ([['2025-04-08', 3], ['2025-04-11', 9]] as [$date, $quantity]) {
+            DB::table('inventory_transaction_tbl')->insert([
+                'project_id' => $projectId, 'item_id' => 1,
+                'transaction_type' => 'OUT', 'quantity' => $quantity, 'transaction_date' => $date,
+            ]);
+        }
+
+        $this->assertTrue((new ProjectCostSnapshotService)->capture($projectId, 'activity_check'));
+        $row = DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)->first();
+        $this->assertSame(1, (int) $row->direct_expense_count_7d);
+        $this->assertSame(1, (int) $row->direct_expense_count_30d);
+        $this->assertSame(250.0, (float) $row->direct_expense_amount_30d);
+        $this->assertSame(1, (int) $row->stock_out_count_30d);
+        $this->assertSame(3.0, (float) $row->stock_out_quantity_30d);
     }
 
     public function test_automatic_retraining_hook_captures_each_affected_project_before_coalescing_retraining(): void
@@ -771,6 +806,44 @@ class MLImprovementTest extends TestCase
         $this->assertFalse($records->contains(fn ($record) => (int) $record->project_id === 1));
         $this->assertSame(2, (int) $records->first()->project_id);
         $this->assertSame(501, (int) $records->last()->project_id);
+    }
+
+    public function test_training_uses_allocated_material_cost_without_leaking_post_completion_withdrawals(): void
+    {
+        Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
+            $table->bigIncrements('allocation_id');
+            $table->integer('project_id');
+            $table->integer('out_transaction_id');
+            $table->string('valuation_status');
+            $table->decimal('allocated_amount', 14, 2)->nullable();
+        });
+        $projectId = $this->insertProject([
+            'project_name' => 'Material Allocation Site',
+            'start_date' => '2025-01-01', 'estimated_end_date' => '2025-04-01',
+            'actual_end_date' => '2025-04-01', 'worker_count' => 8,
+            'completion_percentage' => 100, 'status' => 'Completed',
+        ], 10000, 1200);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $projectId, 'fin_category_id' => 2,
+            'amount' => 200, 'expense_date' => '2025-03-01',
+        ]);
+        foreach ([['2025-03-15', 300], ['2025-04-02', 700]] as [$date, $amount]) {
+            $withdrawalId = DB::table('inventory_transaction_tbl')->insertGetId([
+                'project_id' => $projectId, 'transaction_type' => 'OUT',
+                'quantity' => 1, 'transaction_date' => $date,
+            ]);
+            DB::table('inventory_cost_allocation_tbl')->insert([
+                'project_id' => $projectId, 'out_transaction_id' => $withdrawalId,
+                'valuation_status' => 'valued', 'allocated_amount' => $amount,
+            ]);
+        }
+
+        $service = (new \ReflectionClass(MLService::class))->newInstanceWithoutConstructor();
+        $record = $this->trainingData($service)->firstWhere('project_id', $projectId);
+        $this->assertNotNull($record);
+        $this->assertSame(1200.0, (float) $record->actual_cost);
+        $this->assertSame(300.0, (float) $record->material_cost);
+        $this->assertSame(500.0, (float) $record->fin_total_expense);
     }
 
     public function test_project_type_monitoring_uses_normalized_project_names_when_no_explicit_type_exists(): void
