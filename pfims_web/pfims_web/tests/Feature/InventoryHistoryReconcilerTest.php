@@ -138,4 +138,22 @@ class InventoryHistoryReconcilerTest extends TestCase
         $this->assertSame(0, DB::table('inventory_cost_allocation_tbl')->count());
         $this->assertSame(0.0, (float) DB::table('budgets_tbl')->where('project_id', 7)->value('actual_amount'));
     }
+
+    public function test_unpriced_legacy_receipt_never_overwrites_project_actual_cost(): void
+    {
+        DB::table('budgets_tbl')->insert(['project_id' => 7, 'actual_amount' => 500]);
+        DB::table('inventory_transaction_tbl')->insert([
+            ['inventory_transaction_id' => 1, 'item_id' => 1, 'transaction_type' => 'IN', 'project_id' => null, 'quantity' => 4, 'transaction_date' => '2026-01-01'],
+            ['inventory_transaction_id' => 2, 'item_id' => 1, 'transaction_type' => 'OUT', 'project_id' => 7, 'quantity' => 2, 'transaction_date' => '2026-01-02'],
+        ]);
+
+        $service = app(InventoryHistoryReconciler::class);
+        $service->classifySafeReceipts();
+        $result = $service->allocateSafeWithdrawals();
+
+        $this->assertSame([], $result['allocated_withdrawals']);
+        $this->assertSame([['id' => 2, 'reason' => 'unpriced_source']], $result['unreconciled_withdrawals']);
+        $this->assertSame(0, DB::table('inventory_cost_allocation_tbl')->count());
+        $this->assertSame(500.0, (float) DB::table('budgets_tbl')->where('project_id', 7)->value('actual_amount'));
+    }
 }

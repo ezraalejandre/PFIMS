@@ -123,12 +123,19 @@ class InventoryHistoryReconciler
                 continue;
             }
             try {
-                DB::transaction(fn () => $this->allocator->allocate($id), 3);
+                DB::transaction(function () use ($id) {
+                    $this->allocator->allocate($id);
+                    if (DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', $id)
+                        ->where('valuation_status', 'unvalued')->exists()) {
+                        throw new RuntimeException('unpriced_source');
+                    }
+                }, 3);
                 $result['allocated_withdrawals'][] = $id;
             } catch (\Throwable $error) {
                 // Each attempted OUT is atomic; one bad historical movement
                 // cannot leave partial allocations or stop the audit.
-                $result['unreconciled_withdrawals'][] = ['id' => $id, 'reason' => 'fifo_replay_failed'];
+                $result['unreconciled_withdrawals'][] = ['id' => $id,
+                    'reason' => $error->getMessage() === 'unpriced_source' ? 'unpriced_source' : 'fifo_replay_failed'];
             }
         }
 

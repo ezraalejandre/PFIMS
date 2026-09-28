@@ -10,6 +10,22 @@ use Tests\TestCase;
 
 class InventoryCostSchemaMigrationTest extends TestCase
 {
+    public function test_stock_in_expense_migration_never_creates_unpriced_historical_purchases(): void
+    {
+        Schema::create('fin_expense_tbl', function (Blueprint $table) {
+            $table->increments('fin_expense_id');
+            $table->decimal('amount', 12, 2);
+        });
+        DB::table('fin_expense_tbl')->insert(['amount' => 25]);
+
+        $migration = require base_path('database/migrations/2026_09_24_000001_persist_inventory_stock_in_expenses.php');
+        $migration->up();
+
+        $this->assertSame(1, DB::table('fin_expense_tbl')->count());
+        DB::table('fin_expense_tbl')->insert(['amount' => null]);
+        $this->assertSame(2, DB::table('fin_expense_tbl')->count());
+    }
+
     public function test_schema_is_reversible_and_preserves_legacy_rows(): void
     {
         Schema::create('project_tbl', function (Blueprint $table) {
