@@ -26,15 +26,6 @@ class SharedFiltersContractTest extends TestCase
         $this->assertStringContainsString('.pfims-sticky-filter.is-stuck', $css);
         $this->assertStringContainsString('.filter-panel.pfims-filter-component > .pfims-filter-panel', $css);
         $this->assertStringContainsString('.pfims-reset-defaults[hidden]', $css);
-        $this->assertStringContainsString("trigger.className = 'pfims-phone-filter-trigger';", $script);
-        $this->assertStringContainsString('.audit-log-filter-panel, section.filters', $script);
-        $this->assertStringContainsString("component.classList.add('pfims-phone-filter-modal');", $script);
-        $this->assertStringContainsString("component.setAttribute('aria-modal', 'true');", $script);
-        $this->assertStringContainsString("if (event.key === 'Escape' && activePhoneFilter)", $script);
-        $this->assertStringContainsString('.pfims-phone-filter-modal-header, .pfims-phone-filter-modal-footer', $script);
-        $this->assertStringContainsString('.pfims-phone-filter-modal.is-phone-filter-open', $css);
-        $this->assertStringContainsString('max-height: min(88dvh, 760px)', $css);
-        $this->assertStringContainsString('padding-bottom: max(14px, env(safe-area-inset-bottom))', $css);
     }
 
     public function test_settings_definitions_use_live_filter_ids_and_supported_select_values(): void

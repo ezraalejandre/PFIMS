@@ -367,93 +367,8 @@
         tryOpen();
     }
 
-    var activePhoneFilter = null;
-
-    function phoneFilterTitle(component, panel) {
-        var heading = component.querySelector(':scope > .panel-heading h1, :scope > .panel-heading h2, :scope > .panel-heading h3, :scope > .panel-heading strong, :scope > h1, :scope > h2, :scope > h3');
-        var label = heading && (heading.textContent || '').trim();
-        return label && /filter/i.test(label) ? label : (panel.dataset.filterTitle || 'Filters');
-    }
-
-    function closePhoneFilter(component, restoreFocus) {
-        if (!component || !component.classList.contains('is-phone-filter-open')) return;
-        component.classList.remove('is-phone-filter-open');
-        component.removeAttribute('role');
-        component.removeAttribute('aria-modal');
-        document.body.classList.remove('pfims-phone-filter-open');
-        var backdrop = document.querySelector('.pfims-phone-filter-backdrop');
-        if (backdrop) backdrop.hidden = true;
-        if (activePhoneFilter === component) activePhoneFilter = null;
-        if (restoreFocus) component.pfimsFilterTrigger?.focus();
-    }
-
-    function openPhoneFilter(component) {
-        if (!window.matchMedia('(max-width: 640px)').matches) return;
-        if (activePhoneFilter && activePhoneFilter !== component) closePhoneFilter(activePhoneFilter, false);
-        var backdrop = document.querySelector('.pfims-phone-filter-backdrop');
-        component.classList.add('is-phone-filter-open');
-        component.setAttribute('role', 'dialog');
-        component.setAttribute('aria-modal', 'true');
-        document.body.classList.add('pfims-phone-filter-open');
-        if (backdrop) backdrop.hidden = false;
-        activePhoneFilter = component;
-        window.requestAnimationFrame(function () {
-            component.querySelector('.pfims-phone-filter-close')?.focus();
-        });
-    }
-
-    function installPhoneFilterModal(component, panel) {
-        if (component.dataset.pfimsPhoneFilter === 'ready') return;
-        component.dataset.pfimsPhoneFilter = 'ready';
-        var id = component.id || ('pfims-phone-filter-' + document.querySelectorAll('[data-pfims-phone-filter="ready"]').length);
-        component.id = id;
-        component.classList.add('pfims-phone-filter-modal');
-        component.setAttribute('aria-labelledby', id + '-title');
-
-        var trigger = document.createElement('button');
-        trigger.type = 'button';
-        trigger.className = 'pfims-phone-filter-trigger';
-        trigger.setAttribute('aria-controls', id);
-        trigger.innerHTML = '<svg class="pfims-phone-filter-trigger-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span>Filters</span>';
-        component.before(trigger);
-        component.pfimsFilterTrigger = trigger;
-
-        var header = document.createElement('div');
-        header.className = 'pfims-phone-filter-modal-header';
-        var title = document.createElement('strong');
-        title.id = id + '-title';
-        title.textContent = phoneFilterTitle(component, panel);
-        var close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'pfims-phone-filter-close';
-        close.setAttribute('aria-label', 'Close filters');
-        close.textContent = '\u00d7';
-        header.append(title, close);
-        component.prepend(header);
-
-        var footer = document.createElement('div');
-        footer.className = 'pfims-phone-filter-modal-footer';
-        var done = document.createElement('button');
-        done.type = 'button';
-        done.className = 'pfims-phone-filter-done';
-        done.textContent = 'Done';
-        footer.appendChild(done);
-        component.appendChild(footer);
-
-        trigger.addEventListener('click', function () { openPhoneFilter(component); });
-        close.addEventListener('click', function () { closePhoneFilter(component, true); });
-        done.addEventListener('click', function () { closePhoneFilter(component, true); });
-    }
-
     function installSharedFilters() {
-        if (!document.querySelector('.pfims-phone-filter-backdrop')) {
-            var backdrop = document.createElement('div');
-            backdrop.className = 'pfims-phone-filter-backdrop';
-            backdrop.hidden = true;
-            backdrop.addEventListener('click', function () { closePhoneFilter(activePhoneFilter, true); });
-            document.body.appendChild(backdrop);
-        }
-        document.querySelectorAll('.project-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, .audit-log-filter-panel, section.filters').forEach(function (panel) {
+        document.querySelectorAll('.project-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters, section.filters').forEach(function (panel) {
             if (panel.dataset.pfimsFilters === 'ready') return;
             panel.classList.add('pfims-filter-panel');
             var component = panel.closest('.filter-panel') || panel;
@@ -517,7 +432,6 @@
                 }
             }
 
-            installPhoneFilterModal(component, panel);
         });
     }
 
@@ -861,7 +775,7 @@
     function installExpandableActionButtons() {
         document.querySelectorAll('button, a').forEach(function (control) {
             if (control.dataset.pfimsActionLabel === 'ready'
-                || control.closest('.sidebar, .pagination-links, .pfims-select-options, .pfims-column-chooser-menu, .pfims-phone-filter-modal-header, .pfims-phone-filter-modal-footer')) return;
+                || control.closest('.sidebar, .pagination-links, .pfims-select-options, .pfims-column-chooser-menu')) return;
 
             var visibleText = (control.textContent || '').replace(/\s+/g, ' ').trim();
             var accessibleText = (control.getAttribute('aria-label') || control.title || visibleText).replace(/\s+/g, ' ').trim();
@@ -1474,12 +1388,6 @@
     }
 
     function initializeSystemUi() {
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && activePhoneFilter) closePhoneFilter(activePhoneFilter, true);
-        });
-        window.addEventListener('resize', function () {
-            if (activePhoneFilter && !window.matchMedia('(max-width: 640px)').matches) closePhoneFilter(activePhoneFilter, false);
-        });
         document.querySelectorAll('header a[href*="notification"] span, .top-header a[href*="notification"] span').forEach(function (label) {
             label.classList.add('sr-only');
             label.textContent = 'Open alerts';
