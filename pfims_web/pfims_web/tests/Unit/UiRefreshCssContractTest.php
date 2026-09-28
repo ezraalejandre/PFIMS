@@ -9,8 +9,10 @@ class UiRefreshCssContractTest extends TestCase
     public function test_desktop_density_is_applied_once_and_breakpoint_is_preserved(): void
     {
         $css = file_get_contents(dirname(__DIR__, 2).'/public/css/ui-refresh.css');
+        $landingCss = file_get_contents(dirname(__DIR__, 2).'/public/css/landing.css');
 
         $this->assertIsString($css);
+        $this->assertIsString($landingCss);
         $this->assertStringContainsString('--pfims-desktop-scale: 75%;', $css);
         $this->assertStringContainsString('@media (min-width: 1025px)', $css);
         $this->assertStringContainsString('zoom: var(--pfims-desktop-scale);', $css);
@@ -101,6 +103,13 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('@media (max-width: 700px)', $css);
         $this->assertStringContainsString('height: calc(100dvh - 64px) !important;', $css);
         $this->assertStringContainsString('width: 75vw !important;', $css);
+        $this->assertStringContainsString('Mobile and tablet pages use the full viewport width.', $css);
+        $this->assertStringContainsString('padding-inline: 0 !important;', substr($css, strrpos($css, '@media (max-width: 1024px)')));
+        $this->assertStringContainsString('padding: 20px 0;', $landingCss);
+        $this->assertStringContainsString('@media (max-width: 1024px)', $landingCss);
+        $this->assertStringContainsString('padding-inline: 0;', $landingCss);
+        $this->assertStringContainsString('padding: 0 20px;', $landingCss);
+        $this->assertStringContainsString('border-radius: 0;', $landingCss);
         $legacyResponsiveSidebar = strpos($css, '@media (max-width: 900px)');
         $finalDrawerContract = strpos($css, '/* Final responsive drawer contract.');
         $this->assertNotFalse($legacyResponsiveSidebar);
@@ -109,11 +118,23 @@ class UiRefreshCssContractTest extends TestCase
         $finalDrawerCss = substr($css, $finalDrawerContract);
         $this->assertStringContainsString('body:not(.landing-page) .sidebar {', $finalDrawerCss);
         $this->assertStringContainsString('html.mobile-nav-open body:not(.landing-page) .sidebar', $finalDrawerCss);
+        $this->assertStringContainsString('overflow-x: hidden !important;', $finalDrawerCss);
+        $this->assertStringContainsString('flex-wrap: nowrap !important;', $finalDrawerCss);
+        $this->assertStringContainsString('body:not(.landing-page) .sidebar nav', $finalDrawerCss);
+        $this->assertStringContainsString('overflow-y: auto !important;', $finalDrawerCss);
+        $this->assertStringContainsString('flex: 0 0 auto !important;', $finalDrawerCss);
+        $this->assertStringContainsString('body:not(.landing-page) .sidebar .bottom-nav', $finalDrawerCss);
+        $this->assertStringContainsString('margin-top: 8px !important;', $finalDrawerCss);
         $this->assertStringContainsString('inset: 72px 0 0;', $finalDrawerCss);
         $this->assertStringContainsString('position: relative !important;', $finalDrawerCss);
         $this->assertStringContainsString('flex-direction: column;', $finalDrawerCss);
         $this->assertStringContainsString('margin-top: 0 !important;', $finalDrawerCss);
         $this->assertStringNotContainsString('.mobile-nav-toggle::before', $finalDrawerCss);
+        $this->assertStringContainsString('Phone data tables preserve readable columns', $finalDrawerCss);
+        $this->assertStringContainsString('table-layout: auto !important;', $finalDrawerCss);
+        $this->assertStringContainsString('min-width: 132px !important;', $finalDrawerCss);
+        $this->assertStringContainsString('min-width: 220px !important;', $finalDrawerCss);
+        $this->assertStringContainsString('-webkit-overflow-scrolling: touch;', $finalDrawerCss);
         $this->assertStringContainsString('id="reportTabs"', $reports);
         $this->assertStringContainsString("asset('css/centralized-reports.css') }}?v={{ filemtime(public_path('css/centralized-reports.css')) }}", $reports);
         $this->assertStringContainsString("asset('css/finance.css') }}?v={{ filemtime(public_path('css/finance.css')) }}", $finance);

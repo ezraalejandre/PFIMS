@@ -780,6 +780,7 @@ button,
         width: 50vw !important;
         height: calc(100dvh - 72px) !important;
         max-height: calc(100dvh - 72px) !important;
+        flex-wrap: nowrap !important;
         padding: 18px 14px !important;
         border-radius: 0 !important;
         border-right: 0 !important;
@@ -5123,13 +5124,37 @@ html[data-theme="dark"] :where(
         width: 50vw !important;
         height: calc(100dvh - 72px) !important;
         max-height: calc(100dvh - 72px) !important;
+        flex-wrap: nowrap !important;
         padding: 18px 14px !important;
         border-radius: 0 !important;
         border-right: 0 !important;
         border-bottom: 0 !important;
+        overflow-x: hidden !important;
         overflow-y: auto !important;
         transform: translateX(-100%) !important;
         transition: transform 0.24s ease !important;
+    }
+
+    /* Keep every navigation action in one vertical scroll flow. Settings and
+       Logout follow the modules instead of remaining pinned to the viewport. */
+    body:not(.landing-page) .sidebar nav {
+        min-width: 0 !important;
+        min-height: auto !important;
+        flex: 0 0 auto !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+    }
+
+    body:not(.landing-page) .sidebar .bottom-nav {
+        min-width: 0 !important;
+        flex: 0 0 auto !important;
+        margin-top: 8px !important;
+        overflow-x: hidden !important;
+        overflow-y: visible !important;
+    }
+
+    body:not(.landing-page) .sidebar :where(nav, .bottom-nav, ul, li, a, form, button) {
+        max-width: 100% !important;
     }
 
     html.mobile-nav-open body:not(.landing-page) .sidebar {
@@ -5334,5 +5359,110 @@ html[data-theme="dark"] :where(
 
     body:not(.landing-page) .config-tab {
         text-align: center !important;
+    }
+
+    /* Mobile and tablet pages use the full viewport width. Individual cards
+       keep their own internal padding, while the shared page shell no longer
+       creates blank gutters down both sides of every screen. */
+    body:not(.landing-page) .main-content,
+    body.dashboard-page > .main-content,
+    body.reports-page .main-content,
+    html.sidebar-collapsed body.dashboard-page > .main-content,
+    html.sidebar-collapsed .reports-page .main-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-inline: 0 !important;
+        padding-inline: 0 !important;
+    }
+}
+
+/* Phone data tables preserve readable columns and scroll inside their own
+   surface. Do not squeeze wide Finance and reporting tables to the viewport. */
+@media (max-width: 700px) {
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table {
+        width: max-content !important;
+        min-width: 100% !important;
+        max-width: none !important;
+        table-layout: auto !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table :where(th, td) {
+        width: auto !important;
+        min-width: 132px !important;
+        max-width: 280px !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table :where(th, td):first-child {
+        min-width: 220px !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table :where(th, td):last-child {
+        min-width: 88px !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table th {
+        white-space: normal !important;
+        overflow-wrap: anywhere;
     }
 }

@@ -375,15 +375,25 @@ body::before {
 }
 
 /* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+    .container {
+        padding-inline: 0;
+    }
+
+    .brand {
+        padding-inline: 20px;
+    }
+}
+
 @media (max-width: 850px) {
     .container {
         flex-direction: column;
-        padding: 20px;
+        padding: 20px 0;
         gap: 30px;
     }
     .brand {
         width: 100%;
-        padding: 0;
+        padding: 0 20px;
     }
     .brand .subtitle {
         max-width: 100%;
@@ -391,6 +401,7 @@ body::before {
     .form-wrapper {
         width: 100%;
         padding: 30px 25px;
+        border-radius: 0;
     }
     .error-notification {
         min-width: auto;

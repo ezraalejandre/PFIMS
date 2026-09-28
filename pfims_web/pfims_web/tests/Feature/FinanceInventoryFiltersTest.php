@@ -137,7 +137,7 @@ class FinanceInventoryFiltersTest extends TestCase
     {
         $this->patchJson('/api/inventory/transaction/1', [
             'quantity' => 14,
-            'bar_code' => 111009,
+            'bar_code' => '01234567890123',
             'transaction_date' => '2026-01-11',
         ])->assertOk()
             ->assertJsonPath('success', true)
@@ -145,7 +145,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->assertDatabaseHas('inventory_transaction_tbl', [
             'inventory_transaction_id' => 1,
-            'bar_code' => 111009,
+            'bar_code' => '01234567890123',
             'transaction_date' => '2026-01-11',
         ]);
         $this->assertEquals(14.0, (float) DB::table('inventory_item_tbl')->where('item_id', 1)->value('current_stock'));
@@ -183,7 +183,7 @@ class FinanceInventoryFiltersTest extends TestCase
             'movement_reason' => 'purchase',
             'purchase_amount' => 1200,
             'quantity' => 4,
-            'bar_code' => 2800030,
+            'bar_code' => '01234567890123',
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('delivery.pdf', 20, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
@@ -198,7 +198,7 @@ class FinanceInventoryFiltersTest extends TestCase
             'amount' => 1200,
             'entry_kind' => 'inventory_purchase',
             'expense_date' => '2026-09-20',
-            'remarks' => 'Inventory stock-in transaction. Receiving reference: 2800030',
+            'remarks' => 'Inventory stock-in transaction. Receiving reference: 01234567890123',
         ]);
         $this->assertDatabaseHas('inventory_transaction_tbl', [
             'inventory_transaction_id' => $transactionId,
@@ -676,7 +676,7 @@ class FinanceInventoryFiltersTest extends TestCase
             $table->string('movement_reason', 32)->nullable();
             $table->dateTime('recorded_at', 6)->nullable();
             $table->decimal('quantity', 14, 2);
-            $table->integer('bar_code')->nullable();
+            $table->string('bar_code', 64)->nullable();
             $table->date('transaction_date');
             $table->string('proof_file_path')->nullable();
             $table->string('proof_file_name')->nullable();
