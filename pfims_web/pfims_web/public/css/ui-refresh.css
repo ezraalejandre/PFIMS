@@ -5137,7 +5137,7 @@ html[data-theme="dark"] :where(
         min-width: 0 !important;
         min-height: auto !important;
         flex: 0 0 auto !important;
-        overflow-x: hidden !important;
+        overflow-x: visible !important;
         overflow-y: visible !important;
     }
 
