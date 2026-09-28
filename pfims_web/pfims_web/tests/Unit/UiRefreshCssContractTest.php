@@ -130,6 +130,11 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('flex-direction: column;', $finalDrawerCss);
         $this->assertStringContainsString('margin-top: 0 !important;', $finalDrawerCss);
         $this->assertStringNotContainsString('.mobile-nav-toggle::before', $finalDrawerCss);
+        $this->assertStringContainsString('Phone data tables preserve readable columns', $finalDrawerCss);
+        $this->assertStringContainsString('table-layout: auto !important;', $finalDrawerCss);
+        $this->assertStringContainsString('min-width: 132px !important;', $finalDrawerCss);
+        $this->assertStringContainsString('min-width: 220px !important;', $finalDrawerCss);
+        $this->assertStringContainsString('-webkit-overflow-scrolling: touch;', $finalDrawerCss);
         $this->assertStringContainsString('id="reportTabs"', $reports);
         $this->assertStringContainsString("asset('css/centralized-reports.css') }}?v={{ filemtime(public_path('css/centralized-reports.css')) }}", $reports);
         $this->assertStringContainsString("asset('css/finance.css') }}?v={{ filemtime(public_path('css/finance.css')) }}", $finance);

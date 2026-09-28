@@ -5371,3 +5371,94 @@ html[data-theme="dark"] :where(
         padding-inline: 0 !important;
     }
 }
+
+/* Phone data tables preserve readable columns and scroll inside their own
+   surface. Do not squeeze wide Finance and reporting tables to the viewport. */
+@media (max-width: 700px) {
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table {
+        width: max-content !important;
+        min-width: 100% !important;
+        max-width: none !important;
+        table-layout: auto !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table :where(th, td) {
+        width: auto !important;
+        min-width: 132px !important;
+        max-width: 280px !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table :where(th, td):first-child {
+        min-width: 220px !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table :where(th, td):last-child {
+        min-width: 88px !important;
+    }
+
+    body:not(.landing-page) :where(
+        .table-wrapper,
+        .table-wrap,
+        .table-container,
+        .budget-table-wrapper,
+        .items-table-wrapper,
+        .forecast-table-wrapper,
+        .report-table-wrapper,
+        .analytics-table-wrapper
+    ) > table th {
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+}
