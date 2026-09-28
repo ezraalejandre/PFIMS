@@ -5120,6 +5120,7 @@ html[data-theme="dark"] :where(
         width: 50vw !important;
         height: calc(100dvh - 72px) !important;
         max-height: calc(100dvh - 72px) !important;
+        flex-wrap: nowrap !important;
         padding: 18px 14px !important;
         border-radius: 0 !important;
         border-right: 0 !important;
