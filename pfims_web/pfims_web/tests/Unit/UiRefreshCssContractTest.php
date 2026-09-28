@@ -119,6 +119,7 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('body:not(.landing-page) .sidebar {', $finalDrawerCss);
         $this->assertStringContainsString('html.mobile-nav-open body:not(.landing-page) .sidebar', $finalDrawerCss);
         $this->assertStringContainsString('overflow-x: hidden !important;', $finalDrawerCss);
+        $this->assertStringContainsString('flex-wrap: nowrap !important;', $finalDrawerCss);
         $this->assertStringContainsString('body:not(.landing-page) .sidebar nav', $finalDrawerCss);
         $this->assertStringContainsString('flex: 1 1 auto !important;', $finalDrawerCss);
         $this->assertStringContainsString('body:not(.landing-page) .sidebar .bottom-nav', $finalDrawerCss);
