@@ -853,11 +853,10 @@
             <div class="filter-row">
                 <input type="search" id="projectSearch" class="project-filter" maxlength="150" placeholder="Search project, category, description..." oninput="applyFilters()">
                 <select id="projectFilter" class="project-filter" onchange="filterByProject()"><option value="all">All Projects</option></select>
-                <select id="expenseScopeFilter" aria-label="Expense type" onchange="applyFilters()"><option value="all" selected>All Expenses</option><option value="direct" title="Project delivery costs such as construction supplies, site labor, delivery, permits, and transport">Direct Expenses</option><option value="admin" title="Office and overhead costs such as rent, stationery, depreciation, repairs, contributions, penalties, and miscellaneous costs">Administrative Expenses</option><option value="overall" title="Combined direct and administrative expenses">Overall Expenses</option></select>
+                <select id="expenseScopeFilter" aria-label="Expense type" onchange="applyFilters()"><option value="all" selected>All Expenses</option><option value="direct">Direct Expenses</option><option value="admin">Administrative Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select>
                 <select id="expenseRecordStatusFilter" aria-label="Record status" onchange="applyFilters()"><option value="all" selected>All Records</option><option value="missing_amount">Missing Amount</option><option value="no_project">No Project</option><option value="missing_amount_and_project">Missing Amount &amp; Project</option></select>
                 <select id="expenseSourceFilter" aria-label="Expense source" onchange="applyFilters()"><option value="all" selected>All Sources</option><option value="inventory">From Inventory</option><option value="manual">Not From Inventory</option></select>
                 <select id="expenseCategoryFilter" onchange="applyFilters()"><option value="all">All Categories</option></select>
-                <select id="expenseComponentFilter" onchange="applyFilters()"><option value="all">All Components</option><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="other">Other</option></select>
                 <button type="button" class="btn-clear-search" onclick="clearSearch()">✕ Clear Filters</button>
             </div>
             <div class="stats-row-budget budget-stats visible" id="expenseStats">
@@ -1113,7 +1112,8 @@
         <div class="modal-container">
             <div class="modal-header"><h2 id="addExpenseModalTitle">Add Expense</h2><button class="modal-close" onclick="closeAddExpenseModal()">×</button></div>
             <div class="modal-body">
-                <div class="form-group"><label>Project</label><select id="expenseProject"><option value="">Office/Admin (no project)</option></select></div>
+                <div class="form-group"><label>Expense Type <span class="required">*</span></label><select id="expenseType" onchange="updateExpenseType()"><option value="direct">Direct Expenses</option><option value="admin">Administrative Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select></div>
+                <div class="form-group" id="expenseProjectGroup"><label>Project</label><select id="expenseProject"><option value="">Select Project...</option></select></div>
                 <div class="form-group"><label>Expense Description <span class="required">*</span></label><input type="text" placeholder="e.g. Office Rent, Salary, Materials" id="expenseDesc"></div>
                 <div class="form-group"><label>Category <span class="required">*</span></label>
                     <select id="expenseCategory" onchange="toggleExpenseAmountFields()">
@@ -1125,15 +1125,6 @@
                     <div class="form-group"><label>Quantity <span class="required">*</span></label><input type="number" id="expenseInventoryQuantity" min="0.01" step="0.01" placeholder="0.00" oninput="syncInventoryPurchaseDescription()"></div>
                     <div class="form-group"><label>Receiving Reference / Barcode</label><input type="text" id="expenseInventoryBarCode" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
                     <span class="file-upload-hint">Construction Supply expenses are recorded as Inventory Stock In and placed in storage without a project.</span>
-                </div>
-                <div class="form-group"><label>Project Cost Component</label>
-                    <select id="expenseCostComponent">
-                        <option value="">No project component</option>
-                        <option value="material">Material</option>
-                        <option value="labor">Labor</option>
-                        <option value="equipment">Equipment</option>
-                        <option value="other">Other</option>
-                    </select>
                 </div>
 
                 <!-- Dynamic Amount Fields -->
@@ -1387,10 +1378,11 @@
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="detailModalTitle">Expense Details</h2></div><button class="modal-close" onclick="closeExpenseDetailModal()">×</button></div>
             <div class="detail-grid">
-                <div class="detail-item"><label>Project</label><span id="detailProjectDisplay" class="detail-value">—</span><select id="detailProjectEdit" class="detail-edit" style="display:none;"></select></div>
+                <div class="detail-item"><label>Expense Type</label><span id="detailExpenseTypeDisplay" class="detail-value">—</span><select id="detailExpenseTypeEdit" class="detail-edit" style="display:none;" onchange="updateDetailExpenseType()"><option value="direct">Direct Expenses</option><option value="admin">Administrative Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select></div>
+                <div class="detail-item" id="detailProjectGroup"><label>Project</label><span id="detailProjectDisplay" class="detail-value">—</span><select id="detailProjectEdit" class="detail-edit" style="display:none;"></select></div>
                 <div class="detail-item"><label>Expense Description</label><span id="detailDescDisplay" class="detail-value">—</span><input type="text" id="detailDescEdit" class="detail-edit" style="display:none;"></div>
-                <div class="detail-item"><label>Category</label><span id="detailCategoryDisplay" class="detail-value">—</span><select id="detailCategoryEdit" class="detail-edit" style="display:none;"></select></div>
-                <div class="detail-item"><label>Project Cost Component</label><span id="detailCostComponentDisplay" class="detail-value">—</span><select id="detailCostComponentEdit" class="detail-edit" style="display:none;"><option value="">No project component</option><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="other">Other</option></select></div>
+                <div class="detail-item"><label>Category</label><span id="detailCategoryDisplay" class="detail-value">—</span><select id="detailCategoryEdit" class="detail-edit" style="display:none;" onchange="updateDetailExpenseCategory()"></select></div>
+                <div class="detail-item" id="detailComponentGroup"><label>Project Cost Component</label><span id="detailCostComponentDisplay" class="detail-value">—</span></div>
                 <div class="detail-item"><label>Amount</label><span id="detailAmountDisplay" class="detail-value">—</span><input type="number" step="0.01" id="detailAmountEdit" class="detail-edit" style="display:none;"></div>
                 <div class="detail-item"><label>Date</label><span id="detailDateDisplay" class="detail-value">—</span><input type="date" id="detailDateEdit" class="detail-edit" max="{{ today()->toDateString() }}" style="display:none;"></div>
                 <div class="detail-item"><label>Remarks</label><span id="detailRemarksDisplay" class="detail-value">—</span><input type="text" id="detailRemarksEdit" class="detail-edit" style="display:none;"></div>
@@ -1727,7 +1719,53 @@
             var category = financeCategories.find(function(item) {
                 return String(item.fin_category_id || item.expense_category_id || '') === categoryId;
             });
-            return String(category && category.classification || '').toLowerCase() === 'admin';
+            return String(category && category.classification || '').toLowerCase() === 'office';
+        }
+
+        function expenseTypeForCategory(category) {
+            return String(category && category.classification || '').toLowerCase();
+        }
+
+        function filterExpenseCategorySelect(selectId, type, selectedId) {
+            var select = document.getElementById(selectId);
+            if (!select) return;
+            select.innerHTML = '<option value="">Select Category...</option>';
+            financeCategories.filter(function(category) {
+                return type === 'overall' || expenseTypeForCategory(category) === type;
+            }).forEach(function(category) {
+                var option = document.createElement('option');
+                option.value = category.fin_category_id || category.expense_category_id;
+                option.dataset.code = category.category_code || '';
+                option.dataset.classification = category.classification || '';
+                option.textContent = category.category_name || category.category_code;
+                select.appendChild(option);
+            });
+            if (selectedId) select.value = selectedId;
+        }
+
+        function updateExpenseType() {
+            var type = document.getElementById('expenseType').value;
+            filterExpenseCategorySelect('expenseCategory', type);
+            document.getElementById('expenseProject').value = '';
+            toggleExpenseAmountFields();
+        }
+
+        function updateDetailExpenseType(selectedId) {
+            var type = document.getElementById('detailExpenseTypeEdit').value;
+            filterExpenseCategorySelect('detailCategoryEdit', type, selectedId);
+            if (type !== 'direct') document.getElementById('detailProjectEdit').value = '';
+            updateDetailExpenseCategory();
+        }
+
+        function updateDetailExpenseCategory() {
+            var id = document.getElementById('detailCategoryEdit').value;
+            var category = financeCategories.find(function(item) {
+                return String(item.fin_category_id || item.expense_category_id) === id;
+            });
+            var type = expenseTypeForCategory(category);
+            var showProject = type === 'direct';
+            document.getElementById('detailProjectEdit').style.display = isEditMode && showProject ? '' : 'none';
+            if (!showProject) document.getElementById('detailProjectEdit').value = '';
         }
 
         function formatCostComponent(component) {
@@ -1743,18 +1781,18 @@
             var dynamicFields = document.getElementById('dynamicAmountFields');
             var singleField = document.getElementById('singleAmountField');
             var inventoryFields = document.getElementById('expenseInventoryFields');
-            var isInventoryPurchase = categoryCode === 'CONST_SUPPLY';
+            var isInventoryPurchase = ['CONST_SUPPLY', 'CONSTRUCTION_SUPPLY'].includes(categoryCode);
 
             inventoryFields.style.display = isInventoryPurchase ? 'block' : 'none';
-            var isOfficeCategory = isAdminCategory(categoryCode);
-            document.getElementById('expenseProject').disabled = isInventoryPurchase || isOfficeCategory;
+            var type = document.getElementById('expenseType').value;
+            var category = financeCategories.find(function(item) { return String(item.fin_category_id || item.expense_category_id) === categorySelect.value; });
+            var showProject = type === 'direct' || (type === 'overall' && expenseTypeForCategory(category) === 'direct');
+            document.getElementById('expenseProjectGroup').hidden = !showProject || isInventoryPurchase;
             document.getElementById('expenseDesc').readOnly = isInventoryPurchase;
-            document.getElementById('expenseCostComponent').disabled = isInventoryPurchase;
-            if (isInventoryPurchase || isOfficeCategory) {
+            if (isInventoryPurchase || !showProject) {
                 document.getElementById('expenseProject').value = '';
             }
             if (isInventoryPurchase) {
-                document.getElementById('expenseCostComponent').value = 'material';
                 syncInventoryPurchaseDescription();
             }
 
@@ -1795,7 +1833,9 @@
             // Update modal title based on category
             var title = document.getElementById('addExpenseModalTitle');
             if (title) {
-                if (isAdminCategory(categoryCode)) {
+                if (expenseTypeForCategory(category) === 'office') {
+                    title.textContent = 'Add Office Expense';
+                } else if (isAdminCategory(categoryCode)) {
                     title.textContent = 'Add Admin Expense';
                 } else if (isDynamicCategory) {
                     title.textContent = 'Add ' + categoryName.charAt(0).toUpperCase() + categoryName.slice(1) + ' Expense';
@@ -2181,7 +2221,6 @@
             document.getElementById('expenseRecordStatusFilter').value = 'all';
             document.getElementById('expenseSourceFilter').value = 'all';
             document.getElementById('expenseCategoryFilter').value = 'all';
-            document.getElementById('expenseComponentFilter').value = 'all';
             currentSearchTerm = '';
             currentProjectFilter = 'all';
             applyFilters();
@@ -2192,14 +2231,12 @@
 
             var searchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
             var categoryFilter = document.getElementById('expenseCategoryFilter').value;
-            var componentFilter = document.getElementById('expenseComponentFilter').value;
             var scopeFilter = document.getElementById('expenseScopeFilter').value;
             var recordStatusFilter = document.getElementById('expenseRecordStatusFilter').value;
             var sourceFilter = document.getElementById('expenseSourceFilter').value;
             currentSearchTerm = searchTerm;
 
             var projectFiltered = currentProjectFilter === 'all' ? financeExpenses : financeExpenses.filter(function(expense) {
-                if (currentProjectFilter === 'office_expenses') return isOfficeExpense(expense);
                 return !isOfficeExpense(expense) && String(expense.project_id || '') === currentProjectFilter;
             });
 
@@ -2207,19 +2244,16 @@
                 var categoryId = String(expense.fin_category_id || expense.expense_category_id || '');
                 var category = financeCategories.find(function(item) { return String(item.fin_category_id || item.expense_category_id || '') === categoryId; });
                 var classification = String(category && category.classification || '').toLowerCase();
-                return (scopeFilter === 'overall' && ['direct', 'admin'].includes(classification))
+                return (scopeFilter === 'overall' && ['direct', 'admin', 'office'].includes(classification))
                     || (scopeFilter === 'direct' && classification === 'direct')
-                    || (scopeFilter === 'admin' && classification === 'admin');
+                    || (scopeFilter === 'admin' && classification === 'admin')
+                    || (scopeFilter === 'office' && classification === 'office');
             });
             var categoryFiltered = categoryFilter === 'all'
                 ? scopeFiltered
                 : scopeFiltered.filter(function(expense) { return String(expense.fin_category_id || expense.expense_category_id || '') === String(categoryFilter); });
 
-            var componentFiltered = componentFilter === 'all'
-                ? categoryFiltered
-                : categoryFiltered.filter(function(expense) { return expense.project_cost_component === componentFilter; });
-
-            var recordStatusFiltered = recordStatusFilter === 'all' ? componentFiltered : componentFiltered.filter(function(expense) {
+            var recordStatusFiltered = recordStatusFilter === 'all' ? categoryFiltered : categoryFiltered.filter(function(expense) {
                 var hasProject = expense.project_id !== null && expense.project_id !== undefined && String(expense.project_id).trim() !== '';
                 var amount = expense.amount === null || expense.amount === undefined || String(expense.amount).trim() === '' ? NaN : Number(expense.amount);
                 var isMissingAmount = !Number.isFinite(amount) || amount <= 0;
@@ -2544,9 +2578,6 @@
                 var select = document.getElementById(id);
                 if (!select) return;
                 select.innerHTML = '<option value="">Select Project...</option>';
-                if (id === 'expenseProject' || id === 'detailProjectEdit') {
-                    select.innerHTML = '<option value="">Office/Admin (no project)</option>';
-                }
                 financeProjects.forEach(function(project) {
                     var option = document.createElement('option');
                     option.value = project.project_id;
@@ -2562,35 +2593,14 @@
                 var select = document.getElementById(id);
                 if (!select) return;
                 var currentValue = select.value;
-                select.innerHTML = '<option value="">Select Category...</option>';
-                financeCategories.forEach(function(category) {
-                    var option = document.createElement('option');
-                    option.value = category.fin_category_id || category.expense_category_id;
-                    option.setAttribute('data-code', category.category_code || '');
-                    option.setAttribute('data-classification', category.classification || '');
-                    // Add classification indicator
-                    option.textContent = category.category_name || category.category_code || category;
-                    select.appendChild(option);
-                });
-                if (currentValue) {
-                    var options = select.querySelectorAll('option');
-                    for (var i = 0; i < options.length; i++) {
-                        if (options[i].value == currentValue) {
-                            select.value = currentValue;
-                            break;
-                        }
-                    }
-                }
+                var type = document.getElementById(id === 'expenseCategory' ? 'expenseType' : 'detailExpenseTypeEdit').value;
+                filterExpenseCategorySelect(id, type, currentValue);
             });
         }
 
         function populateProjectFilter() {
             var filter = document.getElementById('projectFilter');
             filter.innerHTML = '<option value="all">All Projects</option>';
-            var officeOption = document.createElement('option');
-            officeOption.value = 'office_expenses';
-            officeOption.textContent = 'Office Expenses';
-            filter.appendChild(officeOption);
             financeProjects.forEach(function(project) {
                 var option = document.createElement('option');
                 option.value = project.project_id;
@@ -2755,7 +2765,7 @@
                     catCode = categoryObj.category_code || '';
                     isAdmin = isAdminCategory(catCode);
                 }
-                if (isAdmin) categoryClass = 'admin';
+                if (isAdmin || expenseTypeForCategory(categoryObj) === 'office') categoryClass = 'admin';
                 else if (['labor', 'material', 'equipment', 'other'].indexOf(categoryClass) === -1) categoryClass = 'other';
 
                 var projectDisplay = isOfficeExpense(expense) ? 'Office Expenses' : (expense.project_name || (expense.entry_kind === 'inventory_purchase' ? 'For Storage' : '—'));
@@ -3230,6 +3240,10 @@
             var openInEditMode = window.PFIMS_ROW_EDIT_MODE === true && !isInventoryExpense;
             document.getElementById('detailModalTitle').textContent = isInventoryExpense ? 'Stock-In Expense Details' : 'Expense Details';
             document.getElementById('detailProjectDisplay').textContent = row.dataset.project || (row.dataset.entryKind === 'inventory_purchase' ? 'For Storage' : '—');
+            var detailCategory = financeCategories.find(function(item) { return String(item.fin_category_id || item.expense_category_id) === String(row.dataset.categoryId); });
+            var detailType = expenseTypeForCategory(detailCategory) || 'direct';
+            document.getElementById('detailExpenseTypeDisplay').textContent = detailType === 'office' ? 'Office Expenses' : (detailType === 'admin' ? 'Administrative Expenses' : 'Direct Expenses');
+            document.getElementById('detailExpenseTypeEdit').value = detailType;
             document.getElementById('detailDescDisplay').textContent = row.dataset.desc;
             document.getElementById('detailCategoryDisplay').textContent = row.dataset.category;
             document.getElementById('detailCostComponentDisplay').textContent = formatCostComponent(row.dataset.costComponent);
@@ -3239,8 +3253,7 @@
 
             document.getElementById('detailProjectEdit').value = row.dataset.projectId || '';
             document.getElementById('detailDescEdit').value = row.dataset.desc;
-            document.getElementById('detailCategoryEdit').value = row.dataset.categoryId || '';
-            document.getElementById('detailCostComponentEdit').value = row.dataset.costComponent || '';
+            updateDetailExpenseType(row.dataset.categoryId || '');
             document.getElementById('detailAmountEdit').value = row.dataset.amount;
             document.getElementById('detailDateEdit').value = row.dataset.date;
             document.getElementById('detailRemarksEdit').value = row.dataset.remarks || '';
@@ -3324,12 +3337,15 @@
                 if (changeFileBtn) changeFileBtn.style.display = 'inline-block';
                 displayEls.forEach(function(el) { el.style.display = 'none'; });
                 editEls.forEach(function(el) { el.style.display = ''; });
+                document.getElementById('detailComponentGroup').style.display = 'none';
+                updateDetailExpenseCategory();
                 var hasFile = selectedDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
             } else {
                 document.getElementById('expenseDetailModal').classList.remove('is-editing');
                 document.getElementById('detailModalTitle').textContent = 'Expense Details';
                 editBtn.style.display = 'inline-block';
+                document.getElementById('detailComponentGroup').style.display = '';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
                 if (changeFileBtn) changeFileBtn.style.display = 'none';
@@ -3363,7 +3379,6 @@
             var projectId = document.getElementById('detailProjectEdit').value;
             var desc = document.getElementById('detailDescEdit').value.trim();
             var categoryId = document.getElementById('detailCategoryEdit').value;
-            var costComponent = document.getElementById('detailCostComponentEdit').value;
             var amount = parseFloat(document.getElementById('detailAmountEdit').value) || 0;
             var date = document.getElementById('detailDateEdit').value;
             var remarks = document.getElementById('detailRemarksEdit').value.trim();
@@ -3378,13 +3393,9 @@
                 return c.fin_category_id == categoryId || c.expense_category_id == categoryId;
             });
             var isDirectDetailCategory = detailCategory && String(detailCategory.classification || '').toLowerCase() === 'direct';
-            if (detailCategory && String(detailCategory.classification || '').toLowerCase() === 'admin') projectId = '';
+            if (detailCategory && ['admin', 'office'].includes(String(detailCategory.classification || '').toLowerCase())) projectId = '';
             if (isDirectDetailCategory && !projectId) {
                 showError('Direct project expenses require a project.');
-                return;
-            }
-            if ((isDirectDetailCategory || projectId) && !costComponent) {
-                showError('Please select a project cost component.');
                 return;
             }
 
@@ -3394,7 +3405,6 @@
             detailFormData.append('_method', 'PUT');
             detailFormData.append('project_id', projectId);
             detailFormData.append('fin_category_id', categoryId);
-            detailFormData.append('project_cost_component', costComponent);
             detailFormData.append('expense_description', desc);
             detailFormData.append('amount', amount);
             detailFormData.append('expense_date', date);
@@ -3452,9 +3462,10 @@
             document.getElementById('addExpenseModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             document.getElementById('expenseProject').value = '';
+            document.getElementById('expenseType').value = 'direct';
+            updateExpenseType();
             document.getElementById('expenseDesc').value = '';
             document.getElementById('expenseCategory').value = '';
-            document.getElementById('expenseCostComponent').value = '';
             document.getElementById('expenseAmount').value = '';
             document.getElementById('expenseLaborAmount').value = '';
             document.getElementById('expenseMaterialAmount').value = '';
@@ -3466,9 +3477,7 @@
             document.getElementById('expenseInventoryQuantity').value = '';
             document.getElementById('expenseInventoryBarCode').value = '';
             document.getElementById('expenseInventoryFields').style.display = 'none';
-            document.getElementById('expenseProject').disabled = false;
             document.getElementById('expenseDesc').readOnly = false;
-            document.getElementById('expenseCostComponent').disabled = false;
             populateExpenseInventoryItems();
 
             // Reset dynamic fields visibility
@@ -3492,8 +3501,7 @@
             var desc = document.getElementById('expenseDesc').value.trim();
             var categoryId = document.getElementById('expenseCategory').value;
             var selectedExpenseCategory = financeCategories.find(function(c) { return c.fin_category_id == categoryId || c.expense_category_id == categoryId; });
-            if (selectedExpenseCategory && String(selectedExpenseCategory.classification || '').toLowerCase() === 'admin') projectId = '';
-            var costComponent = document.getElementById('expenseCostComponent').value;
+            if (selectedExpenseCategory && ['admin', 'office'].includes(String(selectedExpenseCategory.classification || '').toLowerCase())) projectId = '';
             var date = document.getElementById('expenseDate').value;
             var remarks = document.getElementById('expenseRemarks').value.trim();
 
@@ -3515,7 +3523,7 @@
             var categoryName = category.category_name ? category.category_name.toLowerCase() : '';
             var categoryCode = category.category_code || '';
             var isDirectCategory = String(category.classification || '').toLowerCase() === 'direct';
-            var isInventoryPurchase = categoryCode === 'CONST_SUPPLY';
+            var isInventoryPurchase = ['CONST_SUPPLY', 'CONSTRUCTION_SUPPLY'].includes(categoryCode);
 
             if (isInventoryPurchase) {
                 var inventoryItemId = document.getElementById('expenseInventoryItem').value;
@@ -3525,7 +3533,6 @@
                     return;
                 }
                 projectId = '';
-                costComponent = 'material';
                 syncInventoryPurchaseDescription();
                 desc = document.getElementById('expenseDesc').value.trim();
             } else if (!desc) {
@@ -3537,15 +3544,10 @@
                 showError('Direct project expenses require a project.');
                 return;
             }
-            if ((isDirectCategory || projectId) && !costComponent) {
-                showError('Please select a project cost component.');
-                return;
-            }
 
             var expenseFormData = new FormData();
             expenseFormData.append('project_id', projectId);
             expenseFormData.append('fin_category_id', categoryId);
-            expenseFormData.append('project_cost_component', costComponent);
             expenseFormData.append('expense_description', desc);
             expenseFormData.append('expense_date', date);
             if (isInventoryPurchase) {
@@ -3592,7 +3594,7 @@
             }
 
             // Check if it's an admin category
-            var isAdmin = isAdminCategory(categoryCode);
+            var savedType = expenseTypeForCategory(category);
 
             fetch(API_BASE + '/finance-expenses', {
                 method: 'POST',
@@ -3612,7 +3614,7 @@
             })
             .then(function() {
                 closeAddExpenseModal();
-                showSuccess((isAdmin ? 'Admin ' : '') + 'Expense added successfully!');
+                showSuccess((savedType === 'admin' ? 'Admin ' : (savedType === 'office' ? 'Office ' : '')) + 'Expense added successfully!');
                 fetchExpenses();
                 fetchBudgetData();
                 // Refresh all report views

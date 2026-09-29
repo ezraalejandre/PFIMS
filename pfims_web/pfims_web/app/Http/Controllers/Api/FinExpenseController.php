@@ -8,6 +8,7 @@ use App\Services\NotificationService;
 use App\Services\AuditLogService;
 use App\Services\InventoryPurchaseService;
 use App\Services\ProjectCostLedger;
+use App\Services\ExpenseCategoryRules;
 use App\Models\FinExpense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,8 @@ class FinExpenseController extends Controller
     private function mapExpense($item)
     {
         $amount = $item->amount === null ? null : (float) $item->amount;
-        $isOfficeExpense = strtolower((string) ($item->classification ?? '')) === 'admin';
+        $expenseType = strtolower((string) ($item->classification ?? ''));
+        $isOfficeExpense = $expenseType === 'office';
 
         return [
             'fin_expense_id' => $item->fin_expense_id,
@@ -39,8 +41,13 @@ class FinExpenseController extends Controller
             'is_inventory_expense' => ! empty($item->inventory_transaction_id),
             'is_pending_inventory' => ! empty($item->inventory_transaction_id) && $amount === null,
             'project_id' => $item->project_id,
-            'project_name' => $isOfficeExpense ? 'Office Expenses' : $item->project_name,
+            'project_name' => match ($expenseType) {
+                'office' => 'Office Expenses',
+                'admin' => 'Administrative Expenses',
+                default => $item->project_name,
+            },
             'is_office_expense' => $isOfficeExpense,
+            'expense_type' => $expenseType,
             'category_classification' => $item->classification ?? null,
             'project_cost_component' => $item->project_cost_component ?? null,
             'project_cost_component_label' => $this->costComponentLabel($item->project_cost_component ?? null),
@@ -88,7 +95,6 @@ class FinExpenseController extends Controller
             'search' => ['nullable', 'string', 'max:150'],
             'project_id' => ['nullable', 'integer', 'exists:project_tbl,project_id'],
             'category_id' => ['nullable', 'integer', 'exists:fin_expense_category_tbl,fin_category_id'],
-            'project_cost_component' => ['nullable', 'string', 'in:material,labor,equipment,other'],
             'start_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date', 'before_or_equal:2100-12-31'],
             'include_pending' => ['nullable', 'boolean'],
@@ -121,9 +127,6 @@ class FinExpenseController extends Controller
             }
             if (! empty($filters['category_id'])) {
                 $expenseQuery->where('fin_expense_tbl.fin_category_id', $filters['category_id']);
-            }
-            if (! empty($filters['project_cost_component'])) {
-                $expenseQuery->where('fin_expense_tbl.project_cost_component', $filters['project_cost_component']);
             }
             if (! empty($filters['start_date'])) {
                 $expenseQuery->whereDate('fin_expense_tbl.expense_date', '>=', $filters['start_date']);
@@ -219,6 +222,8 @@ class FinExpenseController extends Controller
                             'fin_category_id' => $constructionSupply->fin_category_id,
                             'expense_category_id' => $constructionSupply->fin_category_id,
                             'category_name' => $constructionSupply->category_name,
+                            'expense_type' => 'direct',
+                            'category_classification' => 'direct',
                             'amount' => null,
                             'expense_date' => $transaction->transaction_date,
                             'remarks' => $this->inventoryExpenseRemarks($transaction->bar_code),
@@ -305,7 +310,6 @@ class FinExpenseController extends Controller
             $validator = Validator::make($request->all(), [
                 'project_id' => 'nullable|exists:project_tbl,project_id',
                 'fin_category_id' => 'required|exists:fin_expense_category_tbl,fin_category_id',
-                'project_cost_component' => 'nullable|in:material,labor,equipment,other',
                 'expense_description' => 'required|string|max:255',
                 'amount' => 'required|numeric|min:0.01|max:999999999999.99',
                 'expense_date' => 'required|date|before_or_equal:today',
@@ -322,7 +326,8 @@ class FinExpenseController extends Controller
 
             $validated = $validator->validated();
             $categoryRecord = DB::table('fin_expense_category_tbl')->where('fin_category_id', $validated['fin_category_id'])->first();
-            $isConstructionSupply = strtoupper((string) ($categoryRecord->category_code ?? '')) === 'CONST_SUPPLY';
+            $validated['project_cost_component'] = ExpenseCategoryRules::component($categoryRecord);
+            $isConstructionSupply = in_array(strtoupper((string) ($categoryRecord->category_code ?? '')), ['CONST_SUPPLY', 'CONSTRUCTION_SUPPLY'], true);
             $hasInventoryDetails = ! empty($validated['inventory_item_id']) || ! empty($validated['inventory_quantity']);
             $isInventoryPurchase = $isConstructionSupply && $hasInventoryDetails;
             if ($isInventoryPurchase && (empty($validated['inventory_item_id']) || empty($validated['inventory_quantity']))) {
@@ -443,7 +448,6 @@ class FinExpenseController extends Controller
             $validator = Validator::make($request->all(), [
                 'project_id' => 'nullable|exists:project_tbl,project_id',
                 'fin_category_id' => 'required|exists:fin_expense_category_tbl,fin_category_id',
-                'project_cost_component' => 'nullable|in:material,labor,equipment,other',
                 'expense_description' => 'required|string|max:255',
                 'amount' => 'required|numeric|min:0.01|max:999999999999.99',
                 'expense_date' => 'required|date|before_or_equal:today',
@@ -457,6 +461,8 @@ class FinExpenseController extends Controller
             }
 
             $validated = $validator->validated();
+            $categoryRecord = DB::table('fin_expense_category_tbl')->where('fin_category_id', $validated['fin_category_id'])->first();
+            $validated['project_cost_component'] = ExpenseCategoryRules::component($categoryRecord);
             $oldProjectId = $existing->project_id === null ? null : (int) $existing->project_id;
             if ($errors = $this->projectComponentErrors($validated)) {
                 return response()->json(['errors' => $errors], 422);
@@ -558,17 +564,13 @@ class FinExpenseController extends Controller
             ->value('classification');
         $isDirect = strtolower((string) $classification) === 'direct';
         $hasProject = ! blank($data['project_id'] ?? null);
-        $hasComponent = ! blank($data['project_cost_component'] ?? null);
         $errors = [];
 
         if ($isDirect && ! $hasProject) {
             $errors['project_id'][] = 'A direct project expense requires a valid project.';
         }
-        if (strtolower((string) $classification) === 'admin' && $hasProject) {
-            $errors['project_id'][] = 'Office expenses cannot be linked to a project.';
-        }
-        if (($isDirect || $hasProject) && ! $hasComponent) {
-            $errors['project_cost_component'][] = 'Select a project cost component for project expenses.';
+        if (in_array(strtolower((string) $classification), ['admin', 'office'], true) && $hasProject) {
+            $errors['project_id'][] = 'Admin and office expenses cannot be linked to a project.';
         }
 
         return $errors;

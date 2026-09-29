@@ -3,8 +3,8 @@
 $root = dirname(__DIR__);
 $contracts = [
     'resources/views/finance.blade.php' => [
-        'projectFilter', 'projectSearch', 'expenseCategoryFilter', 'expenseComponentFilter', 'expenseCostComponent',
-        'detailCostComponentEdit', 'Project Cost Component', "setActiveTab(this,'all')",
+        'projectFilter', 'projectSearch', 'expenseCategoryFilter', 'expenseScopeFilter', 'expenseType',
+        'detailExpenseTypeEdit', 'Project Cost Component', "setActiveTab(this,'all')",
         'budgetProjectFilter', 'budgetStatusFilter', 'budgetSearch',
         'expovrallMonth', 'loadExpovrall()', 'expdirectMonth', 'loadExpDirect()', 'adminexpMonth', 'loadAdminExp()',
         'directexpMonth', 'loadDirectExp()', 'overallexpMonth', 'loadOverallExp()', 'profitType', 'loadProfit()',

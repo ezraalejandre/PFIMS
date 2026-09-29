@@ -43,7 +43,7 @@ class ConfigController extends Controller
             'fields' => [
                 'category_code' => ['label' => 'Category code', 'type' => 'text', 'required' => true, 'max' => 40],
                 'category_name' => ['label' => 'Category name', 'type' => 'text', 'required' => true, 'max' => 100],
-                'classification' => ['label' => 'Classification', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Administrative']],
+                'classification' => ['label' => 'Expense type', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Administrative', 'office' => 'Office']],
                 'is_active' => ['label' => 'Status', 'type' => 'select', 'required' => true, 'options' => ['1' => 'Active', '0' => 'Inactive']],
             ],
         ],

@@ -199,7 +199,7 @@ class DataImportAndConfigurationTest extends TestCase
             ->assertJsonPath('data.component_name', 'Other');
     }
 
-    public function test_direct_finance_expenses_require_project_and_cost_component(): void
+    public function test_direct_finance_expenses_require_project_and_derive_component(): void
     {
         $admin = $this->user('admin');
 
@@ -209,7 +209,7 @@ class DataImportAndConfigurationTest extends TestCase
             'amount' => 1200,
             'expense_date' => '2026-01-10',
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['project_id', 'project_cost_component']);
+            ->assertJsonValidationErrors(['project_id']);
 
         DB::table('fin_expense_tbl')->insert([
             'project_id' => 1,
@@ -231,13 +231,57 @@ class DataImportAndConfigurationTest extends TestCase
             'amount' => 1750,
             'expense_date' => '2026-01-11',
         ])->assertOk()
-            ->assertJsonPath('project_cost_component', 'equipment');
+            ->assertJsonPath('project_cost_component', 'material');
 
         $this->assertDatabaseHas('fin_expense_tbl', [
             'fin_expense_id' => $expenseId,
-            'project_cost_component' => 'equipment',
+            'project_cost_component' => 'material',
             'expense_description' => 'Site labor updated',
         ]);
+    }
+
+    public function test_office_and_admin_expenses_have_distinct_types_no_project_and_derived_components(): void
+    {
+        Schema::create('notifications_tbl', function (Blueprint $table) {
+            $table->increments('notification_id');
+            $table->string('title');
+            $table->text('message');
+            $table->string('type');
+            $table->string('kind');
+            $table->string('filter');
+            $table->string('reference_type')->nullable();
+            $table->integer('reference_id')->nullable();
+            $table->timestamps();
+        });
+        DB::table('fin_expense_category_tbl')->insert([
+            ['fin_category_id' => 2, 'category_code' => 'ADMIN_SALARIES', 'category_name' => 'Office Salaries', 'classification' => 'office', 'is_active' => true],
+            ['fin_category_id' => 3, 'category_code' => 'OFFICE_EXPENSES', 'category_name' => 'Office Expenses', 'classification' => 'office', 'is_active' => true],
+            ['fin_category_id' => 4, 'category_code' => 'SSS_PHILHEALTH', 'category_name' => 'Employer Contributions', 'classification' => 'admin', 'is_active' => true],
+        ]);
+        $admin = $this->user('admin');
+
+        $this->actingAs($admin)->postJson('/api/finance-expenses', [
+            'project_id' => 1, 'fin_category_id' => 2, 'expense_description' => 'Office payroll',
+            'amount' => 1000, 'expense_date' => '2026-01-10',
+        ])->assertUnprocessable()->assertJsonValidationErrors('project_id');
+
+        $this->actingAs($admin)->postJson('/api/finance-expenses', [
+            'fin_category_id' => 2, 'expense_description' => 'Office payroll',
+            'amount' => 1000, 'expense_date' => '2026-01-10',
+        ])->assertCreated()->assertJsonPath('expense_type', 'office')
+            ->assertJsonPath('project_name', 'Office Expenses')
+            ->assertJsonPath('project_cost_component', 'labor');
+
+        $this->actingAs($admin)->postJson('/api/finance-expenses', [
+            'fin_category_id' => 3, 'expense_description' => 'Stationery',
+            'amount' => 100, 'expense_date' => '2026-01-10',
+        ])->assertCreated()->assertJsonPath('project_cost_component', 'other');
+
+        $this->actingAs($admin)->postJson('/api/finance-expenses', [
+            'fin_category_id' => 4, 'expense_description' => 'Employer contributions',
+            'amount' => 200, 'expense_date' => '2026-01-10',
+        ])->assertCreated()->assertJsonPath('expense_type', 'admin')
+            ->assertJsonPath('project_name', 'Administrative Expenses');
     }
 
     public function test_finance_import_rejects_every_blank_cell(): void

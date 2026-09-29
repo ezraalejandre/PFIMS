@@ -137,7 +137,6 @@
             budgetSearch: 'Search',
             budgetStatusFilter: 'Status',
             expenseCategoryFilter: 'Category',
-            expenseComponentFilter: 'Component',
             expenseScopeFilter: 'Expense type',
             historyEnd: 'To',
             historySearch: 'Search',

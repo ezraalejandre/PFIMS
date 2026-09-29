@@ -183,7 +183,7 @@ class ReportController extends Controller
                 'statuses' => DB::table('project_tbl')->whereNotNull('status')->distinct()->orderBy('status')->pluck('status'),
                 'categories' => DB::table('inventory_category_tbl')->orderBy('inventory_category_name')->get(['inventory_category_id as value', 'inventory_category_name as label']),
                 'suppliers' => DB::table('supplier_tbl')->orderBy('supplier_name')->get(['supplier_id as value', 'supplier_name as label']),
-                'classifications' => ['direct', 'admin'],
+                'classifications' => ['direct', 'admin', 'office'],
                 'stock_statuses' => ['Out of Stock', 'Reorder Needed', 'Sufficient'],
                 'formats' => [
                     ['value' => 'xlsx', 'label' => 'Excel (.xlsx)'],
@@ -393,7 +393,7 @@ class ReportController extends Controller
             'search' => 'nullable|string|max:100',
             'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'status' => 'nullable|string|max:50|exists:project_tbl,status',
-            'classification' => ['nullable', Rule::in(['direct', 'admin'])],
+            'classification' => ['nullable', Rule::in(['direct', 'admin', 'office'])],
             'category_id' => 'nullable|integer|exists:inventory_category_tbl,inventory_category_id',
             'supplier_id' => 'nullable|integer|exists:supplier_tbl,supplier_id',
             'stock_status' => ['nullable', Rule::in(['Out of Stock', 'Reorder Needed', 'Sufficient'])],
@@ -461,6 +461,7 @@ class ReportController extends Controller
                 'DELIVERY' => 'delivery_expense',
             ];
             foreach ($expenses->get() as $expense) {
+                if ($expense->classification === 'office') continue;
                 $row = $rows->get((int) $expense->project_id);
                 $column = $expense->classification === 'admin' ? 'administrative_expenses'
                     : ($categoryColumns[$expense->category_code] ?? 'others');

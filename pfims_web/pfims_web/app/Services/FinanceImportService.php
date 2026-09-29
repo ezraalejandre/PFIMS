@@ -88,13 +88,13 @@ class FinanceImportService
             $category = $categoryMatches->first();
             $classification = strtolower((string) ($category->classification ?? ''));
             $isDirect = $classification === 'direct';
-            if ($classification === 'admin' && $this->key($data['project_name']) !== $this->key('Office Expenses')) {
-                $errors[] = $this->rowError($row['row'], 'project_name', 'Use Office Expenses for the project name of administrative expenses.');
+            if (in_array($classification, ['admin', 'office'], true) && $this->key($data['project_name']) !== $this->key('Office Expenses')) {
+                $errors[] = $this->rowError($row['row'], 'project_name', 'Use Office Expenses for the project name of administrative or office expenses.');
 
                 continue;
             }
-            if ($classification === 'admin' && $projectId !== null) {
-                $errors[] = $this->rowError($row['row'], 'project_name', 'Office expenses cannot be linked to a project. Use Office Expenses as the project name.');
+            if (in_array($classification, ['admin', 'office'], true) && $projectId !== null) {
+                $errors[] = $this->rowError($row['row'], 'project_name', 'Administrative and office expenses cannot be linked to a project. Use Office Expenses as the project name.');
 
                 continue;
             }

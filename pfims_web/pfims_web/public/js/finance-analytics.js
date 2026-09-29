@@ -190,17 +190,7 @@
         ['expenseCategory', 'detailCategoryEdit'].forEach(function (id) {
             var select = byId(id);
             if (!select) return;
-            var selected = select.value;
-            select.replaceChildren();
-            addOption(select, '', 'Select Category...');
-            financeCategories.forEach(function (category) {
-                var option = document.createElement('option');
-                option.value = category.fin_category_id || category.expense_category_id;
-                option.dataset.code = category.category_code || '';
-                option.textContent = category.category_name || category.category_code || 'Unnamed Category';
-                select.appendChild(option);
-            });
-            select.value = selected;
+            filterExpenseCategorySelect(id, byId(id === 'expenseCategory' ? 'expenseType' : 'detailExpenseTypeEdit').value, select.value);
         });
 
         var filter = byId('expenseCategoryFilter');
@@ -225,7 +215,6 @@
         if (byId('expenseRecordStatusFilter')) byId('expenseRecordStatusFilter').value = 'all';
         if (byId('expenseSourceFilter')) byId('expenseSourceFilter').value = 'all';
         if (byId('expenseCategoryFilter')) byId('expenseCategoryFilter').value = 'all';
-        if (byId('expenseComponentFilter')) byId('expenseComponentFilter').value = 'all';
         applyFilters();
     };
 
@@ -237,22 +226,21 @@
         var recordStatus = (byId('expenseRecordStatusFilter') && byId('expenseRecordStatusFilter').value) || 'all';
         var source = (byId('expenseSourceFilter') && byId('expenseSourceFilter').value) || 'all';
         var categoryId = byId('expenseCategoryFilter') ? byId('expenseCategoryFilter').value : 'all';
-        var componentId = byId('expenseComponentFilter') ? byId('expenseComponentFilter').value : 'all';
         currentSearchTerm = search;
         currentProjectFilter = projectId;
 
         financeFilteredData = filterByPeriod(financeExpenses.filter(function (expense) {
             var matchesProject = projectId === 'all' || String(expense.project_id || '') === projectId;
             var matchesCategory = categoryId === 'all' || String(expense.fin_category_id || expense.expense_category_id || '') === categoryId;
-            var matchesComponent = componentId === 'all' || String(expense.project_cost_component || '') === componentId;
             var category = financeCategories.find(function (item) {
                 return String(item.fin_category_id || item.expense_category_id || '') === String(expense.fin_category_id || expense.expense_category_id || '');
             });
             var classification = String(category && category.classification || '').toLowerCase();
             var matchesScope = scope === 'all'
-                || (scope === 'overall' && ['direct', 'admin'].includes(classification))
+                || (scope === 'overall' && ['direct', 'admin', 'office'].includes(classification))
                 || (scope === 'direct' && classification === 'direct')
-                || (scope === 'admin' && classification === 'admin');
+                || (scope === 'admin' && classification === 'admin')
+                || (scope === 'office' && classification === 'office');
             var hasProject = expense.project_id !== null
                 && expense.project_id !== undefined
                 && String(expense.project_id).trim() !== '';
@@ -276,7 +264,6 @@
                 .map(function (value) { return String(value || '').toLocaleLowerCase(); }).join(' ');
             return matchesProject
                 && matchesCategory
-                && matchesComponent
                 && matchesScope
                 && matchesRecordStatus
                 && matchesSource

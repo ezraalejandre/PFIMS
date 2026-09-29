@@ -40,10 +40,7 @@ class FinanceInventoryFiltersTest extends TestCase
             ->assertJsonCount(1)
             ->assertJsonPath('0.project_name', 'Beta Project');
 
-        $this->getJson('/api/finance-expenses?project_cost_component=material&include_pending=0')
-            ->assertOk()
-            ->assertJsonCount(2)
-            ->assertJsonPath('0.project_cost_component', 'material');
+        $this->getJson('/api/finance-expenses?include_pending=0')->assertOk()->assertJsonCount(3);
     }
 
     public function test_existing_administrative_expenses_are_detached_without_losing_totals(): void
@@ -64,8 +61,8 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->getJson('/api/finance-expenses?category_id=3&include_pending=0')
             ->assertOk()->assertJsonCount(1)
-            ->assertJsonPath('0.project_name', 'Office Expenses')
-            ->assertJsonPath('0.is_office_expense', true)
+            ->assertJsonPath('0.project_name', 'Administrative Expenses')
+            ->assertJsonPath('0.is_office_expense', false)
             ->assertJsonPath('0.category_classification', 'admin');
         $this->assertDatabaseHas('fin_expense_tbl', [
             'fin_category_id' => 3, 'project_id' => null, 'amount' => 500,
@@ -78,7 +75,6 @@ class FinanceInventoryFiltersTest extends TestCase
     {
         $this->getJson('/api/finance-expenses?start_date=2026-02-01&end_date=2026-01-01')->assertUnprocessable();
         $this->getJson('/api/finance-expenses?category_id=999')->assertUnprocessable();
-        $this->getJson('/api/finance-expenses?project_cost_component=invalid')->assertUnprocessable();
         $this->getJson('/api/construction-bonds?status=unknown')->assertUnprocessable();
         $this->getJson('/api/reports/backhoe-profitability?period=2026-01-02')->assertUnprocessable();
     }

@@ -6,14 +6,27 @@ use PHPUnit\Framework\TestCase;
 
 class FinanceModalPresentationTest extends TestCase
 {
-    public function test_expense_project_filter_includes_office_group_and_uses_project_ids(): void
+    public function test_expense_project_filter_uses_only_real_project_ids(): void
     {
         $view = $this->financeView();
 
-        $this->assertStringContainsString("officeOption.textContent = 'Office Expenses'", $view);
-        $this->assertStringContainsString("if (currentProjectFilter === 'office_expenses') return isOfficeExpense(expense)", $view);
+        $this->assertStringNotContainsString("officeOption.textContent = 'Office Expenses'", $view);
+        $this->assertStringNotContainsString('Office/Admin (no project)', $view);
         $this->assertStringContainsString('option.value = project.project_id;', $view);
-        $this->assertStringContainsString("String(category && category.classification || '').toLowerCase() === 'admin'", $view);
+        $this->assertStringContainsString("['admin', 'office'].includes", $view);
+    }
+
+    public function test_expense_forms_filter_categories_by_type_and_do_not_ask_for_component(): void
+    {
+        $view = $this->financeView();
+
+        $this->assertStringContainsString('id="expenseType" onchange="updateExpenseType()"', $view);
+        $this->assertStringContainsString('id="detailExpenseTypeEdit"', $view);
+        $this->assertStringContainsString("type === 'overall' || expenseTypeForCategory(category) === type", $view);
+        $this->assertStringContainsString("document.getElementById('expenseProjectGroup').hidden = !showProject || isInventoryPurchase", $view);
+        $this->assertStringNotContainsString('id="expenseCostComponent"', $view);
+        $this->assertStringNotContainsString('id="detailCostComponentEdit"', $view);
+        $this->assertStringNotContainsString('id="expenseComponentFilter"', $view);
     }
 
     public function test_finance_add_actions_render_in_the_page_header_for_their_relevant_tabs(): void
@@ -196,7 +209,7 @@ class FinanceModalPresentationTest extends TestCase
             'id="expenseInventoryItem"',
             'id="expenseInventoryQuantity"',
             'id="expenseInventoryBarCode"',
-            "categoryCode === 'CONST_SUPPLY'",
+            "['CONST_SUPPLY', 'CONSTRUCTION_SUPPLY'].includes(categoryCode)",
             "expenseFormData.append('inventory_item_id', inventoryItemId)",
             "expenseFormData.append('inventory_quantity', inventoryQuantity)",
             "apiFetch('/inventory-items-list')",

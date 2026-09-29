@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ExpenseCategoryRules;
 use App\Services\NotificationService;
 use App\Services\AuditLogService;
 use App\Services\ProjectCostLedger;
@@ -63,9 +64,7 @@ class ExpenseController extends Controller
         $data['expense_description'] = $this->normalizeLabel($data['expense_description']);
         $data['remarks'] = isset($data['remarks']) ? $this->normalizeLabel($data['remarks']) : null;
         $category = $this->category($data['expense_category_id']);
-        $data['project_cost_component'] = $this->normalizeCostComponent(
-            $data['project_cost_component'] ?? $this->componentForCategory($category)
-        );
+        $data['project_cost_component'] = ExpenseCategoryRules::component($category);
         $this->assertProjectComponentRules($data, $category);
         $this->assertNotDuplicate($data);
 
@@ -131,9 +130,7 @@ class ExpenseController extends Controller
         $data['expense_description'] = $this->normalizeLabel($data['expense_description']);
         $data['remarks'] = isset($data['remarks']) ? $this->normalizeLabel($data['remarks']) : null;
         $category = $this->category($data['expense_category_id']);
-        $data['project_cost_component'] = $this->normalizeCostComponent(
-            $data['project_cost_component'] ?? $this->componentForCategory($category)
-        );
+        $data['project_cost_component'] = ExpenseCategoryRules::component($category);
         $this->assertProjectComponentRules($data, $category);
         $this->assertNotDuplicate($data, $id);
 
@@ -221,7 +218,6 @@ class ExpenseController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'expense_category_id' => ['required', 'integer', 'exists:fin_expense_category_tbl,fin_category_id'],
-            'project_cost_component' => ['nullable', 'string', 'in:material,labor,equipment,other'],
             'expense_description' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:999999999999.99'],
             'expense_date' => ['required', 'date', 'after_or_equal:2000-01-01', 'before_or_equal:today'],
@@ -274,19 +270,6 @@ class ExpenseController extends Controller
                 'expense_description' => ['An identical expense already exists for this project, category, amount, and date.'],
             ]);
         }
-    }
-
-    private function componentForCategory(object $category): ?string
-    {
-        $value = strtolower(trim(($category->category_code ?? '').' '.($category->category_name ?? '')));
-
-        return match (true) {
-            str_contains($value, 'labor'), str_contains($value, 'labour'), str_contains($value, 'wage'), str_contains($value, 'salary') => 'labor',
-            str_contains($value, 'equipment'), str_contains($value, 'rental'), str_contains($value, 'backhoe') => 'equipment',
-            str_contains($value, 'material'), str_contains($value, 'supply'), str_contains($value, 'construction') => 'material',
-            strtolower((string) ($category->classification ?? '')) === 'direct' => 'other',
-            default => null,
-        };
     }
 
     private function recalcBudgetActual(int $projectId): void
@@ -362,22 +345,12 @@ class ExpenseController extends Controller
         if ($isDirect && blank($data['project_id'] ?? null)) {
             $errors['project_id'][] = 'A direct project expense requires a valid project.';
         }
-        if (strtolower((string) $category->classification) === 'admin' && ! blank($data['project_id'] ?? null)) {
-            $errors['project_id'][] = 'Office expenses cannot be linked to a project.';
-        }
-        if (($isDirect || ! blank($data['project_id'] ?? null)) && blank($data['project_cost_component'] ?? null)) {
-            $errors['project_cost_component'][] = 'Select a project cost component for project expenses.';
+        if (in_array(strtolower((string) $category->classification), ['admin', 'office'], true) && ! blank($data['project_id'] ?? null)) {
+            $errors['project_id'][] = 'Admin and office expenses cannot be linked to a project.';
         }
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
-    }
-
-    private function normalizeCostComponent(?string $component): ?string
-    {
-        $component = strtolower(trim((string) $component));
-
-        return in_array($component, ['material', 'labor', 'equipment', 'other'], true) ? $component : null;
     }
 
     private function normalizeLabel(string $value): string

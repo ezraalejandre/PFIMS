@@ -10,7 +10,6 @@ const controls = {
     projectSearch: { value: '' }, projectFilter: { value: 'all' },
     expenseScopeFilter: { value: 'all' }, expenseRecordStatusFilter: { value: 'all' },
     expenseSourceFilter: { value: 'all' }, expenseCategoryFilter: { value: 'all' },
-    expenseComponentFilter: { value: 'all' },
 };
 const context = {
     document: { getElementById: (id) => controls[id] || null, addEventListener: () => {} },

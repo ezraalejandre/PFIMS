@@ -3,7 +3,7 @@
 
     var flows = {
         inventoryExpenseModal: ['inventoryExpenseAmount'],
-        addExpenseModal: ['expenseDesc', 'expenseCategory', 'expenseDate'],
+        addExpenseModal: ['expenseType', 'expenseDesc', 'expenseCategory', 'expenseDate'],
         addBudgetModal: ['budgetProject', 'budgetAmount'],
         addContractModal: ['contractProject'],
         addReceivableModal: ['receivableEntryType', 'receivableCounterparty', 'receivableDate'],
