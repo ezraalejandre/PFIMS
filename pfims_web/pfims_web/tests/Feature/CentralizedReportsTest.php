@@ -185,6 +185,35 @@ class CentralizedReportsTest extends TestCase
         }
     }
 
+    public function test_expense_summary_preview_and_export_totals_follow_selected_categories_and_date_filter(): void
+    {
+        Storage::fake('public');
+        DB::table('project_tbl')->insert([
+            'project_id' => 1, 'project_name' => 'Filtered Site', 'status' => 'On Track', 'start_date' => '2026-01-01',
+        ]);
+        DB::table('fin_expense_category_tbl')->insert([
+            ['fin_category_id' => 1, 'category_code' => 'CONSTRUCTION_SUPPLY', 'category_name' => 'Construction supplies', 'classification' => 'direct'],
+            ['fin_category_id' => 2, 'category_code' => 'SALARIES_WAGES', 'category_name' => 'Site salaries and wages', 'classification' => 'direct'],
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 100, 'expense_date' => '2026-02-01'],
+            ['project_id' => 1, 'fin_category_id' => 2, 'amount' => 50, 'expense_date' => '2026-02-02'],
+        ]);
+        $config = [
+            'dataset' => 'expense_summary', 'title' => 'Filtered Summary',
+            'columns' => ['project_name', 'salaries_wages', 'total'],
+            'filters' => ['date_from' => '2026-02-02', 'date_to' => '2026-02-02'],
+        ];
+
+        $this->actingAs($this->user('admin'))->postJson('/api/reports/preview', $config)
+            ->assertOk()->assertJsonPath('rows.0.total', 50)->assertJsonPath('totals.total', 50);
+        $this->postJson('/api/reports/export', $config + ['format' => 'csv'])->assertOk();
+        $report = Report::query()->where('export_format', 'csv')->firstOrFail();
+        $csv = Storage::disk('public')->get($report->file_path);
+        $this->assertStringContainsString('"Filtered Site",50,50', $csv);
+        $this->assertStringNotContainsString('100', $csv);
+    }
+
     public function test_contracts_are_reported_in_reports_and_old_finance_link_redirects(): void
     {
         DB::table('project_tbl')->insert([

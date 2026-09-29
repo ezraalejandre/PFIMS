@@ -853,7 +853,7 @@
             <div class="filter-row">
                 <input type="search" id="projectSearch" class="project-filter" maxlength="150" placeholder="Search project, category, description..." oninput="applyFilters()">
                 <select id="projectFilter" class="project-filter" onchange="filterByProject()"><option value="all">All Projects</option></select>
-                <select id="expenseScopeFilter" aria-label="Expense type" onchange="applyFilters()"><option value="all" selected>All Expenses</option><option value="direct">Direct Expenses</option><option value="admin">Administrative Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select>
+                <select id="expenseScopeFilter" aria-label="Expense type" onchange="applyFilters()"><option value="all" selected>All Expenses</option><option value="direct">Direct Expenses</option><option value="admin">Admin Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select>
                 <select id="expenseRecordStatusFilter" aria-label="Record status" onchange="applyFilters()"><option value="all" selected>All Records</option><option value="missing_amount">Missing Amount</option><option value="no_project">No Project</option><option value="missing_amount_and_project">Missing Amount &amp; Project</option></select>
                 <select id="expenseSourceFilter" aria-label="Expense source" onchange="applyFilters()"><option value="all" selected>All Sources</option><option value="inventory">From Inventory</option><option value="manual">Not From Inventory</option></select>
                 <select id="expenseCategoryFilter" onchange="applyFilters()"><option value="all">All Categories</option></select>
@@ -1112,7 +1112,7 @@
         <div class="modal-container">
             <div class="modal-header"><h2 id="addExpenseModalTitle">Add Expense</h2><button class="modal-close" onclick="closeAddExpenseModal()">×</button></div>
             <div class="modal-body">
-                <div class="form-group"><label>Expense Type <span class="required">*</span></label><select id="expenseType" onchange="updateExpenseType()"><option value="direct">Direct Expenses</option><option value="admin">Administrative Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select></div>
+                <div class="form-group"><label>Expense Type <span class="required">*</span></label><select id="expenseType" onchange="updateExpenseType()"><option value="direct">Direct Expenses</option><option value="admin">Admin Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select></div>
                 <div class="form-group" id="expenseProjectGroup"><label>Project</label><select id="expenseProject"><option value="">Select Project...</option></select></div>
                 <div class="form-group"><label>Expense Description <span class="required">*</span></label><input type="text" placeholder="e.g. Office Rent, Salary, Materials" id="expenseDesc"></div>
                 <div class="form-group"><label>Category <span class="required">*</span></label>
@@ -1378,7 +1378,7 @@
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="detailModalTitle">Expense Details</h2></div><button class="modal-close" onclick="closeExpenseDetailModal()">×</button></div>
             <div class="detail-grid">
-                <div class="detail-item"><label>Expense Type</label><span id="detailExpenseTypeDisplay" class="detail-value">—</span><select id="detailExpenseTypeEdit" class="detail-edit" style="display:none;" onchange="updateDetailExpenseType()"><option value="direct">Direct Expenses</option><option value="admin">Administrative Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select></div>
+                <div class="detail-item"><label>Expense Type</label><span id="detailExpenseTypeDisplay" class="detail-value">—</span><select id="detailExpenseTypeEdit" class="detail-edit" style="display:none;" onchange="updateDetailExpenseType()"><option value="direct">Direct Expenses</option><option value="admin">Admin Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select></div>
                 <div class="detail-item" id="detailProjectGroup"><label>Project</label><span id="detailProjectDisplay" class="detail-value">—</span><select id="detailProjectEdit" class="detail-edit" style="display:none;"></select></div>
                 <div class="detail-item"><label>Expense Description</label><span id="detailDescDisplay" class="detail-value">—</span><input type="text" id="detailDescEdit" class="detail-edit" style="display:none;"></div>
                 <div class="detail-item"><label>Category</label><span id="detailCategoryDisplay" class="detail-value">—</span><select id="detailCategoryEdit" class="detail-edit" style="display:none;" onchange="updateDetailExpenseCategory()"></select></div>
@@ -3242,7 +3242,7 @@
             document.getElementById('detailProjectDisplay').textContent = row.dataset.project || (row.dataset.entryKind === 'inventory_purchase' ? 'For Storage' : '—');
             var detailCategory = financeCategories.find(function(item) { return String(item.fin_category_id || item.expense_category_id) === String(row.dataset.categoryId); });
             var detailType = expenseTypeForCategory(detailCategory) || 'direct';
-            document.getElementById('detailExpenseTypeDisplay').textContent = detailType === 'office' ? 'Office Expenses' : (detailType === 'admin' ? 'Administrative Expenses' : 'Direct Expenses');
+            document.getElementById('detailExpenseTypeDisplay').textContent = detailType === 'office' ? 'Office Expenses' : (detailType === 'admin' ? 'Admin Expenses' : 'Direct Expenses');
             document.getElementById('detailExpenseTypeEdit').value = detailType;
             document.getElementById('detailDescDisplay').textContent = row.dataset.desc;
             document.getElementById('detailCategoryDisplay').textContent = row.dataset.category;

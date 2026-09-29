@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ConfigController extends Controller
 {
@@ -43,7 +44,7 @@ class ConfigController extends Controller
             'fields' => [
                 'category_code' => ['label' => 'Category code', 'type' => 'text', 'required' => true, 'max' => 40],
                 'category_name' => ['label' => 'Category name', 'type' => 'text', 'required' => true, 'max' => 100],
-                'classification' => ['label' => 'Expense type', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Administrative', 'office' => 'Office']],
+                'classification' => ['label' => 'Expense type', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Admin', 'office' => 'Office']],
                 'is_active' => ['label' => 'Status', 'type' => 'select', 'required' => true, 'options' => ['1' => 'Active', '0' => 'Inactive']],
             ],
         ],
@@ -76,6 +77,9 @@ class ConfigController extends Controller
         $config = $this->configuration($type);
         $model = $config['model'];
         $query = $model::query();
+        if ($type === 'exp_categories') {
+            $query->whereNotIn('category_code', ['ADMINISTRATIVE_EXPENSES', 'SSS_PHILHEALTH_CONSTBOND']);
+        }
         if ($type === 'project_phases') {
             $query->orderBy('stage_order')->orderBy('phase_id');
         } else {
@@ -234,6 +238,10 @@ class ConfigController extends Controller
         }
         if ($type === 'exp_categories') {
             $data['category_code'] = Str::upper((string) preg_replace('/[^A-Za-z0-9]+/', '_', $data['category_code']));
+            if (in_array($data['category_code'], ['ADMINISTRATIVE_EXPENSES', 'SSS_PHILHEALTH_CONSTBOND'], true)
+                || Str::lower(trim((string) $data['category_name'])) === 'administrative expenses') {
+                throw ValidationException::withMessages(['category_name' => 'Choose a specific category; Admin is an expense type.']);
+            }
             $data['is_active'] = (bool) $data['is_active'];
         }
 

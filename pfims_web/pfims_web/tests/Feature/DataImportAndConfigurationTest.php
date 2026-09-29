@@ -281,7 +281,7 @@ class DataImportAndConfigurationTest extends TestCase
             'fin_category_id' => 4, 'expense_description' => 'Employer contributions',
             'amount' => 200, 'expense_date' => '2026-01-10',
         ])->assertCreated()->assertJsonPath('expense_type', 'admin')
-            ->assertJsonPath('project_name', 'Administrative Expenses');
+            ->assertJsonPath('project_name', 'Admin Expenses');
     }
 
     public function test_finance_import_rejects_every_blank_cell(): void

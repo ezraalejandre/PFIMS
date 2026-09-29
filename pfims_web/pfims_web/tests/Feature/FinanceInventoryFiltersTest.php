@@ -61,7 +61,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->getJson('/api/finance-expenses?category_id=3&include_pending=0')
             ->assertOk()->assertJsonCount(1)
-            ->assertJsonPath('0.project_name', 'Administrative Expenses')
+            ->assertJsonPath('0.project_name', 'Admin Expenses')
             ->assertJsonPath('0.is_office_expense', false)
             ->assertJsonPath('0.category_classification', 'admin');
         $this->assertDatabaseHas('fin_expense_tbl', [

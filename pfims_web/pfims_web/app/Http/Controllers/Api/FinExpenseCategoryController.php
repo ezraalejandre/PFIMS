@@ -13,6 +13,7 @@ class FinExpenseCategoryController extends Controller
             $categories = DB::table('fin_expense_category_tbl')
                 ->select('fin_category_id', 'category_code', 'category_name', 'classification')
                 ->where('is_active', 1)
+                ->whereNotIn('category_code', ['ADMINISTRATIVE_EXPENSES', 'SSS_PHILHEALTH_CONSTBOND'])
                 ->orderBy('category_name')
                 ->get();
 

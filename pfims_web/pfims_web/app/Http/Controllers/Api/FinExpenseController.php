@@ -43,7 +43,7 @@ class FinExpenseController extends Controller
             'project_id' => $item->project_id,
             'project_name' => match ($expenseType) {
                 'office' => 'Office Expenses',
-                'admin' => 'Administrative Expenses',
+                'admin' => 'Admin Expenses',
                 default => $item->project_name,
             },
             'is_office_expense' => $isOfficeExpense,

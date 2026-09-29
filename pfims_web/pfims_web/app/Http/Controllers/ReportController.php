@@ -304,6 +304,9 @@ class ReportController extends Controller
         }
         $filters = $this->validatedFilters(Request::create('/', 'GET', $validated['filters'] ?? []));
         $rows = $this->datasetRows($validated['dataset'], $filters);
+        if ($validated['dataset'] === 'expense_summary') {
+            $rows = $this->summaryRowsForColumns($rows, $validated['columns']);
+        }
         return response()->json([
             'title' => $validated['title'],
             'scope' => $this->reportScope($validated['dataset']),
@@ -320,6 +323,9 @@ class ReportController extends Controller
         $filters = $this->validatedFilters(Request::create('/', 'GET', $validated['filters'] ?? []));
         $rows = $this->datasetRows($validated['dataset'], $filters);
         $columns = array_intersect_key($definition['columns'], array_flip($validated['columns']));
+        if ($validated['dataset'] === 'expense_summary') {
+            $rows = $this->summaryRowsForColumns($rows, array_keys($columns));
+        }
         $totals = $validated['dataset'] === 'expense_summary' ? $this->summaryTotals($rows) : null;
         $format = $validated['format'];
         $file = app(ReportFileBuilder::class)->build($format, $validated['title'],
@@ -774,6 +780,21 @@ class ReportController extends Controller
             if ($key !== 'project_name') $totals[$key] = round((float) $rows->sum($key), 2);
         }
         return $totals;
+    }
+
+    private function summaryRowsForColumns(Collection $rows, array $columns): Collection
+    {
+        $categories = array_diff(array_keys(self::SUMMARY_COLUMNS), ['project_name', 'total']);
+        $selectedCategories = array_intersect($categories, $columns);
+
+        return $rows->map(function (array $row) use ($selectedCategories): array {
+            $row['total'] = round(array_sum(array_map(
+                fn (string $key): float => (float) ($row[$key] ?? 0),
+                $selectedCategories
+            )), 2);
+
+            return $row;
+        });
     }
 
     private function groupedChart(Collection $rows, string $group, ?string $sum, string $title, string $type = 'bar'): array
