@@ -56,8 +56,8 @@ class CoreIntegrityProjectTest extends TestCase
             'project_name' => '  North   Tower ',
             'client_name' => ' Acme   Holdings ',
             'project_manager' => 'A. Santos',
-            'start_date' => '2026-01-10',
-            'estimated_end_date' => '2026-08-10',
+            'start_date' => today()->subDay()->toDateString(),
+            'estimated_end_date' => today()->addMonth()->toDateString(),
             'worker_count' => 25,
             'phase' => 'Planning',
             'status' => 'On Track',
@@ -105,6 +105,46 @@ class CoreIntegrityProjectTest extends TestCase
             'project_id' => $projectId, 'budget_amount' => 125000, 'actual_amount' => 500,
         ]);
         $this->assertFalse(Schema::hasColumn('project_tbl', 'budget'));
+    }
+
+    public function test_project_end_dates_must_not_be_past_or_on_start_date_for_add_and_edit(): void
+    {
+        $admin = $this->user();
+        $start = today()->toDateString();
+        $future = today()->addWeek()->toDateString();
+        $past = today()->subDay()->toDateString();
+        $payload = [
+            'project_name' => 'Date Rules Project', 'client_name' => 'Client',
+            'project_manager' => 'Manager', 'start_date' => $start,
+            'estimated_end_date' => $future, 'phase' => 'Planning', 'status' => 'Pending',
+        ];
+
+        $this->actingAs($admin)->postJson('/api/projects', [...$payload, 'estimated_end_date' => $past])
+            ->assertUnprocessable()->assertJsonValidationErrors('estimated_end_date');
+        $this->postJson('/api/projects', [...$payload, 'estimated_end_date' => $start])
+            ->assertUnprocessable()->assertJsonValidationErrors('estimated_end_date');
+        $this->postJson('/api/projects', [...$payload, 'actual_end_date' => $past])
+            ->assertUnprocessable()->assertJsonValidationErrors('actual_end_date');
+        $this->postJson('/api/projects', [...$payload, 'actual_end_date' => $start])
+            ->assertUnprocessable()->assertJsonValidationErrors('actual_end_date');
+
+        $projectId = $this->postJson('/api/projects', [...$payload, 'actual_end_date' => $future])
+            ->assertCreated()->json('project_id');
+        $this->putJson("/api/projects/{$projectId}", ['estimated_end_date' => $past])
+            ->assertUnprocessable()->assertJsonValidationErrors('estimated_end_date');
+        $this->putJson("/api/projects/{$projectId}", ['actual_end_date' => $past])
+            ->assertUnprocessable()->assertJsonValidationErrors('actual_end_date');
+        $this->putJson("/api/projects/{$projectId}", ['start_date' => $future])
+            ->assertUnprocessable()->assertJsonValidationErrors(['estimated_end_date', 'actual_end_date']);
+
+        $historicalId = $this->project([
+            'project_name' => 'Historical Project',
+            'start_date' => today()->subMonths(2)->toDateString(),
+            'estimated_end_date' => today()->subMonth()->toDateString(),
+            'actual_end_date' => $past,
+        ]);
+        $this->putJson("/api/projects/{$historicalId}", ['project_manager' => 'Updated Manager'])
+            ->assertOk()->assertJsonPath('project_manager', 'Updated Manager');
     }
 
     public function test_project_api_filters_search_status_phase_and_start_date_range(): void

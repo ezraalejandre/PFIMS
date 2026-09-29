@@ -1211,7 +1211,7 @@
                 </div>
                 <div class="form-group"><label>Counterparty Name <span class="required">*</span></label><input type="text" placeholder="Client/Vendor/Employee name" id="receivableCounterparty"></div>
                 <div class="form-group"><label>Project</label><select id="receivableProject"><option value="">Select Project...</option></select></div>
-                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="receivableDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}"></div>
+                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="receivableDate" value="{{ date('Y-m-d') }}"></div>
                 <div class="form-row">
                     <div class="form-group"><label>30 Days</label><input type="number" step="0.01" placeholder="0.00" id="receivable30d"></div>
                     <div class="form-group"><label>31-60 Days</label><input type="number" step="0.01" placeholder="0.00" id="receivable60d"></div>
@@ -1484,7 +1484,7 @@
                 <div class="detail-item">
                     <label>Date</label>
                     <span id="receivableDetailDate" class="detail-value">—</span>
-                    <input type="date" id="receivableDetailDateEdit" class="detail-edit" max="{{ today()->toDateString() }}" style="display:none;">
+                    <input type="date" id="receivableDetailDateEdit" class="detail-edit" style="display:none;">
                 </div>
                 <div class="detail-item">
                     <label>30 Days</label>

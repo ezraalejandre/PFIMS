@@ -79,7 +79,7 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->getJson('/api/reports/backhoe-profitability?period=2026-01-02')->assertUnprocessable();
     }
 
-    public function test_receivable_and_bond_dates_accept_history_but_reject_future_records(): void
+    public function test_receivable_dates_accept_history_and_future_while_bonds_reject_future_records(): void
     {
         Schema::create('fin_receivable_payable_tbl', function (Blueprint $table) {
             $table->increments('rp_id');
@@ -107,8 +107,8 @@ class FinanceInventoryFiltersTest extends TestCase
         $future = today()->addDay()->toDateString();
         $receivable = ['entry_type' => 'accounts_receivable', 'counterparty_name' => 'Client', 'entry_date' => $past];
         $this->postJson('/api/receivables-payables', $receivable)->assertCreated();
-        $this->postJson('/api/receivables-payables', [...$receivable, 'entry_date' => $future])->assertUnprocessable();
-        $this->putJson('/api/receivables-payables/1', ['entry_date' => $future])->assertUnprocessable();
+        $this->postJson('/api/receivables-payables', [...$receivable, 'entry_date' => $future])->assertCreated();
+        $this->putJson('/api/receivables-payables/1', ['entry_date' => today()->addDays(2)->toDateString()])->assertOk();
         $bond = ['project_id' => 1, 'bond_date' => $past, 'amount' => 100];
         $this->postJson('/api/construction-bonds', $bond)->assertCreated();
         $this->postJson('/api/construction-bonds', [...$bond, 'bond_date' => $future])->assertUnprocessable();

@@ -281,7 +281,7 @@
 </div>
                                         <div class="form-group">
     <label>Estimated end date <span class="required">*</span></label>
-    <input type="date" id="endDate" min="2000-01-01" max="2100-12-31" oninput="clearEndDateError()">
+    <input type="date" id="endDate" min="{{ today()->toDateString() }}" max="2100-12-31" oninput="clearEndDateError()">
     <span id="endDateError" class="field-error"></span>
 </div>
                 </div>
@@ -427,14 +427,14 @@
     </div>
     <div class="form-group">
         <label>Estimated End Date</label>
-        <input type="date" id="editEstEndDate" min="2000-01-01" max="2100-12-31">
+        <input type="date" id="editEstEndDate" min="{{ today()->toDateString() }}" max="2100-12-31">
         <span id="editEstEndDateError" class="field-error"></span>
     </div>
 </div>
                 <div class="form-row">
                                         <div class="form-group">
     <label>Actual End Date</label>
-    <input type="date" id="editActualEndDate" max="{{ date('Y-m-d') }}">
+    <input type="date" id="editActualEndDate" min="{{ today()->toDateString() }}" max="2100-12-31">
     <span id="editActualEndDateError" class="field-error"></span>
 </div>
                 </div>
@@ -540,7 +540,24 @@
         });
 
         // ─── ADD PROJECT MODAL ───
+        function projectToday() {
+            var parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
+            }).formatToParts(new Date());
+            var values = {};
+            parts.forEach(function(part) { values[part.type] = part.value; });
+            return values.year + '-' + values.month + '-' + values.day;
+        }
+
+        function refreshProjectEndDateBounds() {
+            var today = projectToday();
+            ['endDate', 'editEstEndDate', 'editActualEndDate'].forEach(function(id) {
+                document.getElementById(id).min = today;
+            });
+        }
+
         function openModal() {
+            refreshProjectEndDateBounds();
             document.getElementById('projectModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             goToStep(1);
@@ -673,7 +690,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            if (start && new Date(this.value) <= new Date(start)) {
+            if (this.value < projectToday()) {
+    showEndDateError('Estimated end date cannot be in the past.');
+} else if (start && new Date(this.value) <= new Date(start)) {
     showEndDateError('Estimated end date must be after the start date.');
 } else {
     clearEndDateError();
@@ -692,9 +711,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             var end = document.getElementById('editEstEndDate').value;
+            var actual = document.getElementById('editActualEndDate').value;
 
-            if (end && new Date(end) >= new Date(this.value)) {
+            if (end && end > this.value) {
                 clearFieldError('editEstEndDate', 'editEstEndDateError');
+            }
+            if (actual && actual > this.value) {
+                clearFieldError('editActualEndDate', 'editActualEndDateError');
             }
         });
     }
@@ -708,7 +731,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            if (start && new Date(this.value) <= new Date(start)) {
+            if (this.value < projectToday() && this.value !== (currentEditData && currentEditData.endDate)) {
+    showFieldError('editEstEndDate', 'editEstEndDateError', 'Estimated end date cannot be in the past.');
+} else if (start && new Date(this.value) <= new Date(start)) {
     showFieldError(
         'editEstEndDate',
         'editEstEndDateError',
@@ -727,20 +752,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            var todayStr = new Date().toISOString().split('T')[0];
+            var todayStr = projectToday();
             var start = document.getElementById('editStartDate').value;
 
-            if (this.value > todayStr) {
+            if (this.value < todayStr && this.value !== (currentEditData && currentEditData.actualEndDate)) {
                 showFieldError(
                     'editActualEndDate',
                     'editActualEndDateError',
-                    'Actual end date cannot be in the future.'
+                    'Actual end date cannot be in the past.'
                 );
-            } else if (start && new Date(this.value) < new Date(start)) {
+            } else if (start && this.value <= start) {
                 showFieldError(
                     'editActualEndDate',
                     'editActualEndDateError',
-                    'Actual end date cannot be before the start date.'
+                    'Actual end date must be after the start date.'
                 );
             } else {
                 clearFieldError('editActualEndDate', 'editActualEndDateError');
@@ -1285,6 +1310,11 @@ if (!endDate) {
     return;
 }
 
+if (endDate < projectToday()) {
+    showEndDateError('Estimated end date cannot be in the past.');
+    return;
+}
+
 if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) > 100000)) {
     showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 0 to 100,000.');
     return;
@@ -1481,6 +1511,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                 showError('No project data to edit.');
                 return;
             }
+            refreshProjectEndDateBounds();
             document.getElementById('editProjectOriginalName').value = currentEditData.name;
             document.getElementById('editProjectName').value = currentEditData.name || '';
             document.getElementById('editClientName').value = currentEditData.client || '';
@@ -1561,6 +1592,11 @@ if (!estEnd) {
     return;
 }
 
+if (estEnd < projectToday() && estEnd !== currentEditData.endDate) {
+    showFieldError('editEstEndDate', 'editEstEndDateError', 'Estimated end date cannot be in the past.');
+    return;
+}
+
 if (new Date(estEnd) <= new Date(start)) {
     showFieldError(
         'editEstEndDate',
@@ -1570,22 +1606,22 @@ if (new Date(estEnd) <= new Date(start)) {
     return;
 }
 
-var todayStr = new Date().toISOString().split('T')[0];
+var todayStr = projectToday();
 
-if (actualEnd && actualEnd > todayStr) {
+if (actualEnd && actualEnd < todayStr && actualEnd !== currentEditData.actualEndDate) {
     showFieldError(
         'editActualEndDate',
         'editActualEndDateError',
-        'Actual end date cannot be in the future.'
+        'Actual end date cannot be in the past.'
     );
     return;
 }
 
-if (actualEnd && new Date(actualEnd) < new Date(start)) {
+if (actualEnd && actualEnd <= start) {
     showFieldError(
         'editActualEndDate',
         'editActualEndDateError',
-        'Actual end date cannot be before the start date.'
+        'Actual end date must be after the start date.'
     );
     return;
 }

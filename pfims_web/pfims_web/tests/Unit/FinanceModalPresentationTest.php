@@ -179,16 +179,16 @@ class FinanceModalPresentationTest extends TestCase
         }
     }
 
-    public function test_recorded_date_inputs_limit_future_dates_without_limiting_project_plans(): void
+    public function test_date_inputs_keep_ar_ap_unrestricted_and_project_ends_not_in_the_past(): void
     {
         $finance = $this->financeView();
         $inventory = file_get_contents(__DIR__ . '/../../resources/views/inventory.blade.php');
         $projects = file_get_contents(__DIR__ . '/../../resources/views/projtracking.blade.php');
 
-        foreach (['expenseDate', 'receivableDate', 'repairDate', 'backhoeExpenseDate', 'bondDate'] as $id) {
+        foreach (['expenseDate', 'repairDate', 'backhoeExpenseDate', 'bondDate'] as $id) {
             $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max="\{\{ today\(\)->toDateString\(\) \}\}"/', $finance);
         }
-        foreach (['detailDateEdit', 'receivableDetailDateEdit', 'bondDetailDateEdit'] as $id) {
+        foreach (['detailDateEdit', 'bondDetailDateEdit'] as $id) {
             $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max="\{\{ today\(\)->toDateString\(\) \}\}"/', $finance);
         }
         foreach (['cashPeriod', 'backhoeRentalPeriod', 'cashDetailPeriodEdit'] as $id) {
@@ -197,7 +197,13 @@ class FinanceModalPresentationTest extends TestCase
         foreach (['viewDateInput', 'expenseModalDate'] as $id) {
             $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max="\{\{ today\(\)->toDateString\(\) \}\}"/', $inventory);
         }
-        $this->assertStringContainsString('id="endDate" min="2000-01-01" max="2100-12-31"', $projects);
+        foreach (['receivableDate', 'receivableDetailDateEdit'] as $id) {
+            $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*type="date"|type="date"[^>]*id="'.preg_quote($id, '/').'"/', $finance);
+            $this->assertDoesNotMatchRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max=/', $finance);
+        }
+        $this->assertStringContainsString('id="endDate" min="{{ today()->toDateString() }}" max="2100-12-31"', $projects);
+        $this->assertStringContainsString('id="editEstEndDate" min="{{ today()->toDateString() }}" max="2100-12-31"', $projects);
+        $this->assertStringContainsString('id="editActualEndDate" min="{{ today()->toDateString() }}" max="2100-12-31"', $projects);
     }
 
     public function test_construction_supply_expense_collects_inventory_stock_in_details(): void

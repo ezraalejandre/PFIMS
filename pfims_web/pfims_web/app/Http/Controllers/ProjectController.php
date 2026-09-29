@@ -236,9 +236,9 @@ class ProjectController extends Controller
             'project_name' => [...$required, 'string', 'max:150'],
             'client_name' => [...$required, 'string', 'max:150'],
             'project_manager' => [...$required, 'string', 'max:150'],
-            'start_date' => [...$required, 'date', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
-            'estimated_end_date' => [...$required, 'date', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
-            'actual_end_date' => ['nullable', 'date', 'after_or_equal:2000-01-01', 'before_or_equal:today'],
+            'start_date' => [...$required, 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            'estimated_end_date' => [...$required, 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            'actual_end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'worker_count' => [...$optionalOnCreate, 'integer', 'min:0', 'max:100000'],
             'phase' => [...$optionalOnCreate, 'string', Rule::exists('project_phase_tbl', 'phase_name')],
             'status' => [...$optionalOnCreate, 'string', 'in:'.implode(',', self::STATUSES)],
@@ -249,11 +249,18 @@ class ProjectController extends Controller
             $start = $request->input('start_date', $existing?->start_date);
             $estimated = $request->input('estimated_end_date', $existing?->estimated_end_date);
             $actual = $request->input('actual_end_date', $existing?->actual_end_date);
-            if ($start && $estimated && strtotime($estimated) < strtotime($start)) {
-                $validator->errors()->add('estimated_end_date', 'The estimated end date must be on or after the start date.');
+            $today = today()->toDateString();
+            if ($estimated && $estimated < $today && (! $existing || $estimated !== $existing->estimated_end_date)) {
+                $validator->errors()->add('estimated_end_date', 'The estimated end date cannot be in the past.');
             }
-            if ($start && $actual && strtotime($actual) < strtotime($start)) {
-                $validator->errors()->add('actual_end_date', 'The actual end date must be on or after the start date.');
+            if ($actual && $actual < $today && (! $existing || $actual !== $existing->actual_end_date)) {
+                $validator->errors()->add('actual_end_date', 'The actual end date cannot be in the past.');
+            }
+            if ($start && $estimated && strtotime($estimated) <= strtotime($start)) {
+                $validator->errors()->add('estimated_end_date', 'The estimated end date must be after the start date.');
+            }
+            if ($start && $actual && strtotime($actual) <= strtotime($start)) {
+                $validator->errors()->add('actual_end_date', 'The actual end date must be after the start date.');
             }
         });
 
