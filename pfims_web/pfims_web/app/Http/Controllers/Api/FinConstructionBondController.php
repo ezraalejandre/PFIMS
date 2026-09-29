@@ -35,7 +35,7 @@ class FinConstructionBondController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'project_id' => 'required|exists:project_tbl,project_id',
-            'bond_date' => 'required|date',
+            'bond_date' => 'required|date|before_or_equal:today',
             'amount' => 'required|numeric|gt:0|max:999999999999.99',
             'bond_provider' => 'nullable|string|max:100',
             'status' => 'nullable|in:active,released,forfeited',
@@ -65,7 +65,7 @@ class FinConstructionBondController extends Controller
 
         $validator = Validator::make($request->all(), [
             'project_id' => 'sometimes|required|exists:project_tbl,project_id',
-            'bond_date' => 'sometimes|required|date',
+            'bond_date' => 'sometimes|required|date|before_or_equal:today',
             'amount' => 'sometimes|required|numeric|gt:0|max:999999999999.99',
             'bond_provider' => 'nullable|string|max:100',
             'status' => 'sometimes|required|in:active,released,forfeited',

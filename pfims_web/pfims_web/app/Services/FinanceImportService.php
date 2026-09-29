@@ -62,7 +62,7 @@ class FinanceImportService
 
             $data = $validator->validated();
             $projectId = null;
-            if (! blank($data['project_name'] ?? null)) {
+            if (! blank($data['project_name'] ?? null) && $this->key($data['project_name']) !== $this->key('Office Expenses')) {
                 $matches = $projects->get($this->key($data['project_name']), collect());
                 if ($matches->count() !== 1) {
                     $errors[] = $this->rowError($row['row'], 'project_name', $matches->isEmpty()
@@ -88,6 +88,16 @@ class FinanceImportService
             $category = $categoryMatches->first();
             $classification = strtolower((string) ($category->classification ?? ''));
             $isDirect = $classification === 'direct';
+            if ($classification === 'admin' && $this->key($data['project_name']) !== $this->key('Office Expenses')) {
+                $errors[] = $this->rowError($row['row'], 'project_name', 'Use Office Expenses for the project name of administrative expenses.');
+
+                continue;
+            }
+            if ($classification === 'admin' && $projectId !== null) {
+                $errors[] = $this->rowError($row['row'], 'project_name', 'Office expenses cannot be linked to a project. Use Office Expenses as the project name.');
+
+                continue;
+            }
             if ($isDirect && $projectId === null) {
                 $errors[] = $this->rowError($row['row'], 'project_name', 'A direct project expense requires a valid project.');
 

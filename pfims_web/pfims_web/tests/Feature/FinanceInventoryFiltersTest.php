@@ -46,6 +46,34 @@ class FinanceInventoryFiltersTest extends TestCase
             ->assertJsonPath('0.project_cost_component', 'material');
     }
 
+    public function test_existing_administrative_expenses_are_detached_without_losing_totals(): void
+    {
+        DB::table('fin_expense_category_tbl')->insert([
+            'fin_category_id' => 3, 'category_code' => 'OFFICE_RENT',
+            'category_name' => 'Office rent', 'classification' => 'admin', 'is_active' => true,
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => 1, 'fin_category_id' => 3,
+            'expense_description' => 'Office lease', 'amount' => 500,
+            'expense_date' => '2026-01-21',
+        ]);
+
+        $expenseCount = DB::table('fin_expense_tbl')->count();
+        $migration = require database_path('migrations/2026_09_29_000001_detach_office_expenses_from_projects.php');
+        $migration->up();
+
+        $this->getJson('/api/finance-expenses?category_id=3&include_pending=0')
+            ->assertOk()->assertJsonCount(1)
+            ->assertJsonPath('0.project_name', 'Office Expenses')
+            ->assertJsonPath('0.is_office_expense', true)
+            ->assertJsonPath('0.category_classification', 'admin');
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'fin_category_id' => 3, 'project_id' => null, 'amount' => 500,
+        ]);
+        $this->assertSame(1, DB::table('fin_expense_tbl')->where('fin_category_id', 3)->count());
+        $this->assertSame($expenseCount, DB::table('fin_expense_tbl')->count());
+    }
+
     public function test_finance_filter_inputs_are_validated_before_querying(): void
     {
         $this->getJson('/api/finance-expenses?start_date=2026-02-01&end_date=2026-01-01')->assertUnprocessable();
@@ -53,6 +81,42 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->getJson('/api/finance-expenses?project_cost_component=invalid')->assertUnprocessable();
         $this->getJson('/api/construction-bonds?status=unknown')->assertUnprocessable();
         $this->getJson('/api/reports/backhoe-profitability?period=2026-01-02')->assertUnprocessable();
+    }
+
+    public function test_receivable_and_bond_dates_accept_history_but_reject_future_records(): void
+    {
+        Schema::create('fin_receivable_payable_tbl', function (Blueprint $table) {
+            $table->increments('rp_id');
+            $table->string('entry_type');
+            $table->integer('project_id')->nullable();
+            $table->string('counterparty_name');
+            $table->date('entry_date');
+            foreach (['amount_30d', 'amount_31_60d', 'amount_61_90d', 'amount_91_120d'] as $column) {
+                $table->decimal($column, 14, 2)->default(0);
+            }
+            $table->string('status');
+            $table->string('remarks')->nullable();
+        });
+        Schema::create('fin_construction_bond_tbl', function (Blueprint $table) {
+            $table->increments('bond_id');
+            $table->integer('project_id');
+            $table->date('bond_date');
+            $table->decimal('amount', 14, 2);
+            $table->string('bond_provider')->nullable();
+            $table->string('status');
+            $table->string('remarks')->nullable();
+        });
+
+        $past = today()->subDay()->toDateString();
+        $future = today()->addDay()->toDateString();
+        $receivable = ['entry_type' => 'accounts_receivable', 'counterparty_name' => 'Client', 'entry_date' => $past];
+        $this->postJson('/api/receivables-payables', $receivable)->assertCreated();
+        $this->postJson('/api/receivables-payables', [...$receivable, 'entry_date' => $future])->assertUnprocessable();
+        $this->putJson('/api/receivables-payables/1', ['entry_date' => $future])->assertUnprocessable();
+        $bond = ['project_id' => 1, 'bond_date' => $past, 'amount' => 100];
+        $this->postJson('/api/construction-bonds', $bond)->assertCreated();
+        $this->postJson('/api/construction-bonds', [...$bond, 'bond_date' => $future])->assertUnprocessable();
+        $this->putJson('/api/construction-bonds/1', ['bond_date' => $future])->assertUnprocessable();
     }
 
     public function test_cash_accounts_endpoint_returns_database_accounts_for_the_add_modal(): void
@@ -212,6 +276,41 @@ class FinanceInventoryFiltersTest extends TestCase
                 'entry_kind' => 'inventory_purchase',
                 'is_pending_inventory' => false,
             ]);
+    }
+
+    public function test_inventory_transactions_can_be_added_without_proof_and_uploaded_proofs_are_still_validated(): void
+    {
+        Storage::fake('public');
+
+        $this->postJson('/api/inventory/transaction', [
+            'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'adjustment',
+            'quantity' => 1, 'transaction_date' => '2026-09-20',
+        ])->assertCreated();
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'inventory_transaction_id' => 3, 'proof_file_path' => null, 'proof_file_name' => null,
+        ]);
+
+        $this->postJson('/api/inventory/transaction', [
+            'item_id' => 3, 'project_id' => 1, 'transaction_type' => 'OUT',
+            'quantity' => 1, 'transaction_date' => '2026-09-20',
+        ])->assertCreated();
+        $this->assertDatabaseHas('inventory_transaction_tbl', [
+            'inventory_transaction_id' => 4, 'proof_file_path' => null, 'proof_file_name' => null,
+        ]);
+
+        $this->postJson('/api/inventory/transaction', [
+            'item_id' => 1, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
+            'purchase_amount' => 300, 'quantity' => 2, 'transaction_date' => '2026-09-20',
+        ])->assertCreated();
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'inventory_transaction_id' => 5, 'amount' => 300, 'proof_file_path' => null,
+        ]);
+
+        $this->post('/api/inventory/transaction', [
+            'item_id' => 1, 'transaction_type' => 'IN', 'movement_reason' => 'adjustment',
+            'quantity' => 3, 'transaction_date' => '2026-09-20',
+            'proof_file' => UploadedFile::fake()->create('notes.txt', 1, 'text/plain'),
+        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('proof_file');
     }
 
     public function test_purchase_requires_an_amount_and_adjustment_does_not_create_an_expense(): void

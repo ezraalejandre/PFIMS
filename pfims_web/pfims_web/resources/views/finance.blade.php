@@ -1185,7 +1185,7 @@
                     <input type="number" step="0.01" placeholder="0.00" id="expenseAmount">
                 </div>
 
-                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="expenseDate" value="{{ date('Y-m-d') }}"></div>
+                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="expenseDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}"></div>
                 <div class="form-group"><label>Remarks</label><input type="text" placeholder="Additional notes..." id="expenseRemarks"></div>
                 <div class="form-group">
                     <label>Expense Proof</label>
@@ -1290,7 +1290,7 @@
                 </div>
                 <div class="form-group"><label>Counterparty Name <span class="required">*</span></label><input type="text" placeholder="Client/Vendor/Employee name" id="receivableCounterparty"></div>
                 <div class="form-group"><label>Project</label><select id="receivableProject"><option value="">Select Project...</option></select></div>
-                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="receivableDate" value="{{ date('Y-m-d') }}"></div>
+                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="receivableDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}"></div>
                 <div class="form-row">
                     <div class="form-group"><label>30 Days</label><input type="number" step="0.01" placeholder="0.00" id="receivable30d"></div>
                     <div class="form-group"><label>31-60 Days</label><input type="number" step="0.01" placeholder="0.00" id="receivable60d"></div>
@@ -1324,7 +1324,7 @@
                         <option value="">Select Account...</option>
                     </select>
                 </div>
-                <div class="form-group"><label>Month <span class="required">*</span></label><input type="month" id="cashPeriod" value="{{ date('Y-m') }}"></div>
+                <div class="form-group"><label>Month <span class="required">*</span></label><input type="month" id="cashPeriod" value="{{ date('Y-m') }}" max="{{ today()->format('Y-m') }}"></div>
                 <div class="form-group"><label>Balance <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="cashBalance"></div>
                 <div class="form-group"><label>Remarks</label><input type="text" placeholder="Additional notes..." id="cashRemarks"></div>
             </div>
@@ -1356,7 +1356,7 @@
                     </select>
                 </div>
                 <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="repairAmount"></div>
-                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="repairDate" value="{{ date('Y-m-d') }}"></div>
+                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="repairDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}"></div>
                 <div class="form-group"><label>Remarks</label><input type="text" placeholder="Additional notes..." id="repairRemarks"></div>
             </div>
             <div class="modal-footer">
@@ -1388,7 +1388,7 @@
                     </select>
                 </div>
                 <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="backhoeExpenseAmount"></div>
-                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="backhoeExpenseDate" value="{{ date('Y-m-d') }}"></div>
+                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="backhoeExpenseDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}"></div>
                 <div class="form-group"><label>Remarks</label><input type="text" placeholder="Additional notes..." id="backhoeExpenseRemarks"></div>
             </div>
             <div class="modal-footer">
@@ -1409,7 +1409,7 @@
                     </select>
                 </div>
                 <div class="form-group"><label>Project Site</label><select id="backhoeRentalProject"><option value="">Select Project...</option></select></div>
-                <div class="form-group"><label>Period <span class="required">*</span></label><input type="month" id="backhoeRentalPeriod" value="{{ date('Y-m') }}"></div>
+                <div class="form-group"><label>Period <span class="required">*</span></label><input type="month" id="backhoeRentalPeriod" value="{{ date('Y-m') }}" max="{{ today()->format('Y-m') }}"></div>
                 <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="backhoeRentalAmount"></div>
                 <div class="form-group"><label>Remarks</label><input type="text" placeholder="Additional notes..." id="backhoeRentalRemarks"></div>
             </div>
@@ -1439,7 +1439,7 @@
             <div class="modal-header"><h2>Add Construction Bond</h2><button class="modal-close" onclick="closeAddBondModal()">×</button></div>
             <div class="modal-body">
                 <div class="form-group"><label>Project <span class="required">*</span></label><select id="bondProject"><option value="">Select Project...</option></select></div>
-                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="bondDate" value="{{ date('Y-m-d') }}"></div>
+                <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="bondDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}"></div>
                 <div class="form-group"><label>Amount <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="bondAmount"></div>
                 <div class="form-group"><label>Provider</label><input type="text" placeholder="Bond provider..." id="bondProvider"></div>
                 <div class="form-group"><label>Status</label><select id="bondStatus"><option value="active">Active</option><option value="released">Released</option><option value="forfeited">Forfeited</option></select></div>
@@ -1462,7 +1462,7 @@
                 <div class="detail-item"><label>Category</label><span id="detailCategoryDisplay" class="detail-value">—</span><select id="detailCategoryEdit" class="detail-edit" style="display:none;"></select></div>
                 <div class="detail-item"><label>Project Cost Component</label><span id="detailCostComponentDisplay" class="detail-value">—</span><select id="detailCostComponentEdit" class="detail-edit" style="display:none;"><option value="">No project component</option><option value="material">Material</option><option value="labor">Labor</option><option value="equipment">Equipment</option><option value="other">Other</option></select></div>
                 <div class="detail-item"><label>Amount</label><span id="detailAmountDisplay" class="detail-value">—</span><input type="number" step="0.01" id="detailAmountEdit" class="detail-edit" style="display:none;"></div>
-                <div class="detail-item"><label>Date</label><span id="detailDateDisplay" class="detail-value">—</span><input type="date" id="detailDateEdit" class="detail-edit" style="display:none;"></div>
+                <div class="detail-item"><label>Date</label><span id="detailDateDisplay" class="detail-value">—</span><input type="date" id="detailDateEdit" class="detail-edit" max="{{ today()->toDateString() }}" style="display:none;"></div>
                 <div class="detail-item"><label>Remarks</label><span id="detailRemarksDisplay" class="detail-value">—</span><input type="text" id="detailRemarksEdit" class="detail-edit" style="display:none;"></div>
                 <div class="expense-file-section">
                     <label>Supporting File</label>
@@ -1562,7 +1562,7 @@
                 <div class="detail-item">
                     <label>Date</label>
                     <span id="receivableDetailDate" class="detail-value">—</span>
-                    <input type="date" id="receivableDetailDateEdit" class="detail-edit" style="display:none;">
+                    <input type="date" id="receivableDetailDateEdit" class="detail-edit" max="{{ today()->toDateString() }}" style="display:none;">
                 </div>
                 <div class="detail-item">
                     <label>30 Days</label>
@@ -1621,7 +1621,7 @@
                 <div class="detail-item">
                     <label>Date</label>
                     <span id="bondDetailDate" class="detail-value">—</span>
-                    <input type="date" id="bondDetailDateEdit" class="detail-edit" style="display:none;">
+                    <input type="date" id="bondDetailDateEdit" class="detail-edit" max="{{ today()->toDateString() }}" style="display:none;">
                 </div>
                 <div class="detail-item">
                     <label>Amount</label>
@@ -1671,7 +1671,7 @@
                 <div class="detail-item">
                     <label>Month</label>
                     <span id="cashDetailPeriod" class="detail-value">—</span>
-                    <input type="month" id="cashDetailPeriodEdit" class="detail-edit" style="display:none;">
+                    <input type="month" id="cashDetailPeriodEdit" class="detail-edit" max="{{ today()->format('Y-m') }}" style="display:none;">
                 </div>
                 <div class="detail-item">
                     <label>Balance</label>
@@ -1730,7 +1730,6 @@
         var equipmentEditState = { type: null, id: null };
 
         // ─── ADMIN CATEGORY CODES ──────────────────────────────────────
-        var ADMIN_CATEGORY_CODES = ['RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH'];
         var PROJECT_COST_COMPONENT_LABELS = {
             material: 'Material',
             labor: 'Labor',
@@ -1788,7 +1787,17 @@
         }
 
         function isAdminCategory(categoryCode) {
-            return ADMIN_CATEGORY_CODES.indexOf(categoryCode) !== -1;
+            var category = financeCategories.find(function(item) { return item.category_code === categoryCode; });
+            return String(category && category.classification || '').toLowerCase() === 'admin';
+        }
+
+        function isOfficeExpense(expense) {
+            if (expense.is_office_expense === true) return true;
+            var categoryId = String(expense.fin_category_id || expense.expense_category_id || '');
+            var category = financeCategories.find(function(item) {
+                return String(item.fin_category_id || item.expense_category_id || '') === categoryId;
+            });
+            return String(category && category.classification || '').toLowerCase() === 'admin';
         }
 
         function formatCostComponent(component) {
@@ -1807,11 +1816,14 @@
             var isInventoryPurchase = categoryCode === 'CONST_SUPPLY';
 
             inventoryFields.style.display = isInventoryPurchase ? 'block' : 'none';
-            document.getElementById('expenseProject').disabled = isInventoryPurchase;
+            var isOfficeCategory = isAdminCategory(categoryCode);
+            document.getElementById('expenseProject').disabled = isInventoryPurchase || isOfficeCategory;
             document.getElementById('expenseDesc').readOnly = isInventoryPurchase;
             document.getElementById('expenseCostComponent').disabled = isInventoryPurchase;
-            if (isInventoryPurchase) {
+            if (isInventoryPurchase || isOfficeCategory) {
                 document.getElementById('expenseProject').value = '';
+            }
+            if (isInventoryPurchase) {
                 document.getElementById('expenseCostComponent').value = 'material';
                 syncInventoryPurchaseDescription();
             }
@@ -2256,9 +2268,10 @@
             var sourceFilter = document.getElementById('expenseSourceFilter').value;
             currentSearchTerm = searchTerm;
 
-            var projectFiltered = currentProjectFilter === 'all'
-                ? financeExpenses
-                : financeExpenses.filter(function(expense) { return expense.project_name === currentProjectFilter; });
+            var projectFiltered = currentProjectFilter === 'all' ? financeExpenses : financeExpenses.filter(function(expense) {
+                if (currentProjectFilter === 'office_expenses') return isOfficeExpense(expense);
+                return !isOfficeExpense(expense) && String(expense.project_id || '') === currentProjectFilter;
+            });
 
             var scopeFiltered = scopeFilter === 'all' ? projectFiltered : projectFiltered.filter(function(expense) {
                 var categoryId = String(expense.fin_category_id || expense.expense_category_id || '');
@@ -2287,7 +2300,9 @@
             });
 
             var sourceFiltered = sourceFilter === 'all' ? recordStatusFiltered : recordStatusFiltered.filter(function(expense) {
-                var isInventoryExpense = expense.is_inventory_expense === true || Boolean(expense.inventory_transaction_id);
+                var isInventoryExpense = expense.is_inventory_expense === true || expense.entry_kind === 'inventory_purchase'
+                    || (expense.inventory_transaction_id !== null && expense.inventory_transaction_id !== undefined
+                        && String(expense.inventory_transaction_id).trim() !== '');
                 return sourceFilter === 'inventory' ? isInventoryExpense : !isInventoryExpense;
             });
 
@@ -2642,9 +2657,13 @@
         function populateProjectFilter() {
             var filter = document.getElementById('projectFilter');
             filter.innerHTML = '<option value="all">All Projects</option>';
+            var officeOption = document.createElement('option');
+            officeOption.value = 'office_expenses';
+            officeOption.textContent = 'Office Expenses';
+            filter.appendChild(officeOption);
             financeProjects.forEach(function(project) {
                 var option = document.createElement('option');
-                option.value = project.project_name;
+                option.value = project.project_id;
                 option.textContent = project.project_name;
                 filter.appendChild(option);
             });
@@ -2809,7 +2828,7 @@
                 if (isAdmin) categoryClass = 'admin';
                 else if (['labor', 'material', 'equipment', 'other'].indexOf(categoryClass) === -1) categoryClass = 'other';
 
-                var projectDisplay = expense.project_name || (expense.entry_kind === 'inventory_purchase' ? 'For Storage' : '—');
+                var projectDisplay = isOfficeExpense(expense) ? 'Office Expenses' : (expense.project_name || (expense.entry_kind === 'inventory_purchase' ? 'For Storage' : '—'));
                 var amountDisplay = expense.amount === null || expense.amount === undefined || String(expense.amount).trim() === ''
                     ? '—'
                     : formatCurrency(expense.amount);
@@ -3429,6 +3448,7 @@
                 return c.fin_category_id == categoryId || c.expense_category_id == categoryId;
             });
             var isDirectDetailCategory = detailCategory && String(detailCategory.classification || '').toLowerCase() === 'direct';
+            if (detailCategory && String(detailCategory.classification || '').toLowerCase() === 'admin') projectId = '';
             if (isDirectDetailCategory && !projectId) {
                 showError('Direct project expenses require a project.');
                 return;
@@ -3541,6 +3561,8 @@
             var projectId = document.getElementById('expenseProject').value;
             var desc = document.getElementById('expenseDesc').value.trim();
             var categoryId = document.getElementById('expenseCategory').value;
+            var selectedExpenseCategory = financeCategories.find(function(c) { return c.fin_category_id == categoryId || c.expense_category_id == categoryId; });
+            if (selectedExpenseCategory && String(selectedExpenseCategory.classification || '').toLowerCase() === 'admin') projectId = '';
             var costComponent = document.getElementById('expenseCostComponent').value;
             var date = document.getElementById('expenseDate').value;
             var remarks = document.getElementById('expenseRemarks').value.trim();
@@ -5982,7 +6004,7 @@
     </script>
 
     @include('partials.data-import', ['importModule' => 'finance'])
-    <script src="{{ asset('js/finance-analytics.js') }}"></script>
+    <script src="{{ asset('js/finance-analytics.js') }}?v={{ filemtime(public_path('js/finance-analytics.js')) }}"></script>
     <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
     <script src="{{ asset('js/finance-review-flow.js') }}"></script>
 </body>

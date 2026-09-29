@@ -265,6 +265,7 @@
                 || (recordStatus === 'no_project' && !hasProject)
                 || (recordStatus === 'missing_amount_and_project' && isMissingAmount && !hasProject);
             var isInventoryExpense = expense.is_inventory_expense === true
+                || expense.entry_kind === 'inventory_purchase'
                 || (expense.inventory_transaction_id !== null
                     && expense.inventory_transaction_id !== undefined
                     && String(expense.inventory_transaction_id).trim() !== '');

@@ -362,6 +362,9 @@ class ExpenseController extends Controller
         if ($isDirect && blank($data['project_id'] ?? null)) {
             $errors['project_id'][] = 'A direct project expense requires a valid project.';
         }
+        if (strtolower((string) $category->classification) === 'admin' && ! blank($data['project_id'] ?? null)) {
+            $errors['project_id'][] = 'Office expenses cannot be linked to a project.';
+        }
         if (($isDirect || ! blank($data['project_id'] ?? null)) && blank($data['project_cost_component'] ?? null)) {
             $errors['project_cost_component'][] = 'Select a project cost component for project expenses.';
         }

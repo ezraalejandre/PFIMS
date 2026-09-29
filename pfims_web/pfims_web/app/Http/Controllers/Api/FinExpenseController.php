@@ -29,6 +29,7 @@ class FinExpenseController extends Controller
     private function mapExpense($item)
     {
         $amount = $item->amount === null ? null : (float) $item->amount;
+        $isOfficeExpense = strtolower((string) ($item->classification ?? '')) === 'admin';
 
         return [
             'fin_expense_id' => $item->fin_expense_id,
@@ -38,7 +39,9 @@ class FinExpenseController extends Controller
             'is_inventory_expense' => ! empty($item->inventory_transaction_id),
             'is_pending_inventory' => ! empty($item->inventory_transaction_id) && $amount === null,
             'project_id' => $item->project_id,
-            'project_name' => $item->project_name,
+            'project_name' => $isOfficeExpense ? 'Office Expenses' : $item->project_name,
+            'is_office_expense' => $isOfficeExpense,
+            'category_classification' => $item->classification ?? null,
             'project_cost_component' => $item->project_cost_component ?? null,
             'project_cost_component_label' => $this->costComponentLabel($item->project_cost_component ?? null),
             'expense_description' => $item->expense_description ?? '',
@@ -67,6 +70,7 @@ class FinExpenseController extends Controller
                 'project_tbl.project_name',
                 'fin_expense_tbl.fin_category_id',
                 'fin_expense_category_tbl.category_name',
+                'fin_expense_category_tbl.classification',
                 'fin_expense_tbl.expense_description',
                 'fin_expense_tbl.amount',
                 'fin_expense_tbl.expense_date',
@@ -103,6 +107,7 @@ class FinExpenseController extends Controller
                     'project_tbl.project_name',
                     'fin_expense_tbl.fin_category_id',
                     'fin_expense_category_tbl.category_name',
+                    'fin_expense_category_tbl.classification',
                     'fin_expense_tbl.expense_description',
                     'fin_expense_tbl.amount',
                     'fin_expense_tbl.expense_date',
@@ -558,6 +563,9 @@ class FinExpenseController extends Controller
 
         if ($isDirect && ! $hasProject) {
             $errors['project_id'][] = 'A direct project expense requires a valid project.';
+        }
+        if (strtolower((string) $classification) === 'admin' && $hasProject) {
+            $errors['project_id'][] = 'Office expenses cannot be linked to a project.';
         }
         if (($isDirect || $hasProject) && ! $hasComponent) {
             $errors['project_cost_component'][] = 'Select a project cost component for project expenses.';

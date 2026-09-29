@@ -747,7 +747,7 @@
                 <div class="view-item">
                     <label>Date</label>
                     <span id="viewDateDisplay" class="view-value">—</span>
-                    <input type="date" id="viewDateInput" class="view-input" style="display: none;">
+                    <input type="date" id="viewDateInput" class="view-input" max="{{ today()->toDateString() }}" style="display: none;">
                 </div>
                 <div class="view-item" id="viewProjectRow" style="display: none;">
                     <label>Project</label>
@@ -876,9 +876,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Transaction Proof <span class="required">*</span></label>
+                    <label>Transaction Proof (optional)</label>
                     <input type="file" id="transactionProofFile" accept=".jpg,.jpeg,.png,.pdf">
-                    <span style="font-size:0.75rem;color:#888;display:block;margin-top:4px;">Required: PDF, JPG, or PNG. Maximum 10MB.</span>
+                    <span style="font-size:0.75rem;color:#888;display:block;margin-top:4px;">If attached: PDF, JPG, or PNG. Maximum 10MB.</span>
                 </div>
 
                 <div class="modal-footer">
@@ -1002,7 +1002,7 @@
                 </div>
                 <div class="form-group">
                     <label>Date</label>
-                    <input type="date" id="expenseModalDate" value="{{ date('Y-m-d') }}">
+                    <input type="date" id="expenseModalDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}">
                 </div>
                 <div class="form-group">
                     <label>Remarks</label>
@@ -2285,7 +2285,7 @@
             document.getElementById('transactionMovementReason').value = 'purchase';
             document.getElementById('transactionPurchaseAmount').value = '';
             document.getElementById('transactionProofFile').value = '';
-            document.getElementById('transactionDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('transactionDate').value = document.getElementById('transactionDate').max;
             document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
             document.getElementById('transactionProjectGroup').style.display = 'none';
             document.getElementById('transactionProjectRequired').style.display = 'none';
@@ -2341,9 +2341,8 @@
             if (barCode !== '' && !/^\d+$/.test(barCode)) { showError('Barcode must contain numbers only.'); return; }
             if (!date) { showError('Please select a transaction date.'); return; }
             if (date > document.getElementById('transactionDate').max) { showError('Transaction date cannot be in the future.'); return; }
-            if (!proofFile) { showError('Transaction proof file is required.'); return; }
-            if (!['application/pdf', 'image/jpeg', 'image/png'].includes(proofFile.type)) { showError('Proof must be a PDF, JPG, or PNG file.'); return; }
-            if (proofFile.size > 10 * 1024 * 1024) { showError('Proof file must not exceed 10MB.'); return; }
+            if (proofFile && !['application/pdf', 'image/jpeg', 'image/png'].includes(proofFile.type)) { showError('Proof must be a PDF, JPG, or PNG file.'); return; }
+            if (proofFile && proofFile.size > 10 * 1024 * 1024) { showError('Proof file must not exceed 10MB.'); return; }
 
             var typeLabel = type ? type.value : 'IN';
             var movementReason = document.getElementById('transactionMovementReason').value;
@@ -2379,7 +2378,7 @@
             document.getElementById('reviewTransItemBarCode').textContent = barCode;
             document.getElementById('reviewTransItemQuantity').textContent = quantity;
             document.getElementById('reviewTransItemUnit').textContent = unit;
-            document.getElementById('reviewTransProof').textContent = proofFile.name;
+            document.getElementById('reviewTransProof').textContent = proofFile ? proofFile.name : 'No proof attached';
             document.getElementById('reviewTransDate').textContent = date;
             document.getElementById('reviewTransType').textContent = typeLabel === 'IN'
                 ? (movementReason === 'purchase' ? 'IN (Purchase for storage)' : 'IN (Non-purchase stock adjustment)')
@@ -2460,8 +2459,6 @@
                 }
             }
 
-            if (!proofFile) { showError('Transaction proof file is required.'); return; }
-
             var payload = new FormData();
             payload.append('item_id', parseInt(itemId));
             if (projectId) payload.append('project_id', projectId);
@@ -2474,7 +2471,7 @@
             payload.append('quantity', quantity);
             if (barCode !== '') payload.append('bar_code', barCode);
             payload.append('transaction_date', date);
-            payload.append('proof_file', proofFile);
+            if (proofFile) payload.append('proof_file', proofFile);
 
             setButtonLoading(saveBtn, true, 'Saving...');
             fetch('/api/inventory/transaction', {
@@ -2529,7 +2526,7 @@
             document.getElementById('expenseQuantity').value = quantity;
             document.getElementById('expenseModalDesc').value = 'Stock-in: ' + itemName;
             document.getElementById('expenseModalAmount').value = '';
-            document.getElementById('expenseModalDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('expenseModalDate').value = document.getElementById('expenseModalDate').max;
             document.getElementById('expenseModalRemarks').value = 'Stock-in: ' + quantity + ' ' + unit;
             document.getElementById('expenseProjectId').value = project || '';
             

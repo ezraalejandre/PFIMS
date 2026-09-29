@@ -262,14 +262,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Project manager <span class="required">*</span></label>
-                        <select id="projectManager">
-                        <option value="">Select Project Manager</option>
-                        <option value="A. Santos">A. Santos</option>
-                        <option value="B. Reyes">B. Reyes</option>
-                        <option value="C. Mendoza">C. Mendoza</option>
-                        <option value="D. Cruz">D. Cruz</option>
-                        <option value="E. Villanueva">E. Villanueva</option>
-            </select>
+                        <input type="text" id="projectManager" maxlength="150" placeholder="Enter project manager name" autocomplete="name">
                         <span id="projectManagerError" class="field-error"></span>
             </div>
                     <div class="form-group">
@@ -640,8 +633,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (projectManager) {
-        projectManager.addEventListener('change', function() {
-            if (this.value) {
+        projectManager.addEventListener('input', function() {
+            if (this.value.trim()) {
                 clearFieldError('projectManager', 'projectManagerError');
             }
         });
@@ -777,7 +770,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 if (currentStep === 2) {
-    var manager = document.getElementById('projectManager').value;
+    var manager = document.getElementById('projectManager').value.trim();
     var start = document.getElementById('startDate').value;
     var end = document.getElementById('endDate').value;
     var workers = document.getElementById('workerCount').value;
@@ -788,7 +781,7 @@ if (currentStep === 2) {
     clearEndDateError();
 
     if (!manager) {
-        showFieldError('projectManager', 'projectManagerError', 'Please select a project manager.');
+        showFieldError('projectManager', 'projectManagerError', 'Please enter a project manager name.');
         return;
     }
 
@@ -814,7 +807,7 @@ if (currentStep === 2) {
 
                 document.getElementById('summaryName').textContent = document.getElementById('projectName').value;
                 document.getElementById('summaryClient').textContent = document.getElementById('clientName').value;
-                document.getElementById('summaryManager').textContent = document.getElementById('projectManager').value;
+                document.getElementById('summaryManager').textContent = document.getElementById('projectManager').value.trim();
                 document.getElementById('summaryStart').textContent = document.getElementById('startDate').value;
                 document.getElementById('summaryEnd').textContent = document.getElementById('endDate').value;
                 document.getElementById('summaryWorkers').textContent = document.getElementById('workerCount').value || '—';
@@ -1278,7 +1271,7 @@ if (!client) {
 }
 
 if (!manager) {
-    showFieldError('projectManager', 'projectManagerError', 'Please select a project manager.');
+    showFieldError('projectManager', 'projectManagerError', 'Please enter a project manager name.');
     return;
 }
 

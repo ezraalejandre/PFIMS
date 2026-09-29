@@ -6,6 +6,16 @@ use PHPUnit\Framework\TestCase;
 
 class FinanceModalPresentationTest extends TestCase
 {
+    public function test_expense_project_filter_includes_office_group_and_uses_project_ids(): void
+    {
+        $view = $this->financeView();
+
+        $this->assertStringContainsString("officeOption.textContent = 'Office Expenses'", $view);
+        $this->assertStringContainsString("if (currentProjectFilter === 'office_expenses') return isOfficeExpense(expense)", $view);
+        $this->assertStringContainsString('option.value = project.project_id;', $view);
+        $this->assertStringContainsString("String(category && category.classification || '').toLowerCase() === 'admin'", $view);
+    }
+
     public function test_finance_add_actions_render_in_the_page_header_for_their_relevant_tabs(): void
     {
         $view = $this->financeView();
@@ -110,6 +120,9 @@ class FinanceModalPresentationTest extends TestCase
     {
         $view = $this->financeView();
         $analytics = file_get_contents(__DIR__ . '/../../public/js/finance-analytics.js');
+        $this->assertStringContainsString("filemtime(public_path('js/finance-analytics.js'))", $view);
+        $this->assertStringContainsString("expense.entry_kind === 'inventory_purchase'", $view);
+        $this->assertStringContainsString("expense.entry_kind === 'inventory_purchase'", $analytics);
 
         foreach ([
             'id="expenseRecordStatusFilter"',
@@ -153,6 +166,27 @@ class FinanceModalPresentationTest extends TestCase
         ] as $contract) {
             $this->assertStringContainsString($contract, $analytics);
         }
+    }
+
+    public function test_recorded_date_inputs_limit_future_dates_without_limiting_project_plans(): void
+    {
+        $finance = $this->financeView();
+        $inventory = file_get_contents(__DIR__ . '/../../resources/views/inventory.blade.php');
+        $projects = file_get_contents(__DIR__ . '/../../resources/views/projtracking.blade.php');
+
+        foreach (['expenseDate', 'receivableDate', 'repairDate', 'backhoeExpenseDate', 'bondDate'] as $id) {
+            $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max="\{\{ today\(\)->toDateString\(\) \}\}"/', $finance);
+        }
+        foreach (['detailDateEdit', 'receivableDetailDateEdit', 'bondDetailDateEdit'] as $id) {
+            $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max="\{\{ today\(\)->toDateString\(\) \}\}"/', $finance);
+        }
+        foreach (['cashPeriod', 'backhoeRentalPeriod', 'cashDetailPeriodEdit'] as $id) {
+            $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max="\{\{ today\(\)->format\(\'Y-m\'\) \}\}"/', $finance);
+        }
+        foreach (['viewDateInput', 'expenseModalDate'] as $id) {
+            $this->assertMatchesRegularExpression('/id="'.preg_quote($id, '/').'"[^>]*max="\{\{ today\(\)->toDateString\(\) \}\}"/', $inventory);
+        }
+        $this->assertStringContainsString('id="endDate" min="2000-01-01" max="2100-12-31"', $projects);
     }
 
     public function test_construction_supply_expense_collects_inventory_stock_in_details(): void

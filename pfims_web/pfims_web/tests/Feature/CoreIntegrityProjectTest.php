@@ -223,6 +223,8 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('id="editProjectName"', false)
                 ->assertSee('id="editClientName"', false)
                 ->assertSee('id="editProjectManager"', false)
+                ->assertSee('type="text" id="projectManager" maxlength="150"', false)
+                ->assertDontSee('<select id="projectManager">', false)
                 ->assertDontSee('id="editCompletionPercentage"', false)
                 ->assertSee('id="activeProjectsCount"', false)
                 ->assertDontSee('id="avgCompletion"', false)

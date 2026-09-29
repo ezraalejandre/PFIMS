@@ -125,10 +125,10 @@ class InventoryController extends Controller
             'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
             'bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             'transaction_date' => 'required|date|before_or_equal:today',
-            'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
 
-        $proofFile = $validated['proof_file'];
+        $proofFile = $request->file('proof_file');
         $purchaseAmount = $validated['purchase_amount'] ?? null;
         unset($validated['proof_file'], $validated['purchase_amount']);
         if ($validated['transaction_type'] === 'OUT') {
@@ -147,8 +147,8 @@ class InventoryController extends Controller
         if ($this->duplicateTransaction($validated, null, $purchaseAmount)) {
             return response()->json(['success' => false, 'message' => 'This inventory transaction already exists.'], 409);
         }
-        $validated['proof_file_path'] = $proofFile->store('inventory-transaction-proofs', 'public');
-        $validated['proof_file_name'] = $proofFile->getClientOriginalName();
+        $validated['proof_file_path'] = $proofFile?->store('inventory-transaction-proofs', 'public');
+        $validated['proof_file_name'] = $proofFile?->getClientOriginalName();
 
         DB::beginTransaction();
         try {

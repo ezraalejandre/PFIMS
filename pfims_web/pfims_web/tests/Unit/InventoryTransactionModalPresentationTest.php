@@ -52,6 +52,16 @@ class InventoryTransactionModalPresentationTest extends TestCase
         $this->assertStringContainsString("if (!res.ok) throw new Error('Unable to load projects');", $view);
     }
 
+    public function test_transaction_proof_is_optional_in_add_and_review_steps(): void
+    {
+        $view = $this->view();
+
+        $this->assertStringContainsString('Transaction Proof (optional)', $view);
+        $this->assertStringContainsString("proofFile ? proofFile.name : 'No proof attached'", $view);
+        $this->assertStringContainsString("if (proofFile) payload.append('proof_file', proofFile)", $view);
+        $this->assertStringNotContainsString('Transaction proof file is required.', $view);
+    }
+
     public function test_transaction_delete_confirmation_allows_deletion_and_warns_about_recalculation(): void
     {
         $view = $this->view();

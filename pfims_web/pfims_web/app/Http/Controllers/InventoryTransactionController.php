@@ -25,7 +25,7 @@ class InventoryTransactionController extends Controller
             'quantity' => 'required|numeric|min:0.01|max:999999999999.99',
             'bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             'transaction_date' => 'required|date|before_or_equal:today',
-            'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
 
         ]);
 
@@ -40,9 +40,10 @@ class InventoryTransactionController extends Controller
             return response()->json(['message' => 'This inventory transaction already exists.'], 409);
         }
 
-        $proofPath = $request->file('proof_file')->store('inventory-transaction-proofs', 'public');
+        $proofFile = $request->file('proof_file');
+        $proofPath = $proofFile?->store('inventory-transaction-proofs', 'public');
         try {
-            $result = DB::transaction(function () use ($validated, $request, $proofPath) {
+            $result = DB::transaction(function () use ($validated, $proofFile, $proofPath) {
 
                 // Lock the item row for the duration of this transaction so
                 // two simultaneous requests can't both read the same
@@ -74,7 +75,7 @@ class InventoryTransactionController extends Controller
                     'bar_code' => $validated['bar_code'] ?? null,
                     'transaction_date' => $validated['transaction_date'],
                     'proof_file_path' => $proofPath,
-                    'proof_file_name' => $request->file('proof_file')->getClientOriginalName(),
+                    'proof_file_name' => $proofFile?->getClientOriginalName(),
                 ]);
 
                 DB::table('inventory_item_tbl')
@@ -94,7 +95,9 @@ class InventoryTransactionController extends Controller
                 ];
             });
         } catch (\Throwable $e) {
-            Storage::disk('public')->delete($proofPath);
+            if ($proofPath !== null) {
+                Storage::disk('public')->delete($proofPath);
+            }
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
             $message = $e->getMessage() ?: 'Failed to save transaction.';
 
