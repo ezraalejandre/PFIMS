@@ -297,7 +297,7 @@ class CoreIntegrityProjectTest extends TestCase
             }
 
             if (in_array($dashboard['role'], ['admin', 'accounting'], true)) {
-                foreach (['Expenses', 'Budgets', 'Contracts', 'AR / AP', 'Cash Position', 'Equipment', 'Bonds', 'Budget-Spending Comparison'] as $financeTab) {
+                foreach (['Expenses', 'Budgets', 'AR / AP', 'Cash Position', 'Equipment', 'Bonds', 'Budget-Spending Comparison'] as $financeTab) {
                     $response->assertSee('>'.$financeTab.'</a>', false);
                 }
             }
@@ -455,7 +455,6 @@ class CoreIntegrityProjectTest extends TestCase
                 'id="inventoryExpenseModal" class="modal-overlay pfims-add-modal"',
                 'id="addExpenseModal" class="modal-overlay pfims-add-modal"',
                 'id="addBudgetModal" class="modal-overlay pfims-add-modal"',
-                'id="addContractModal" class="modal-overlay pfims-add-modal finance-edit-modal"',
                 'id="addReceivableModal" class="modal-overlay pfims-add-modal"',
                 'id="addCashModal" class="modal-overlay pfims-add-modal"',
                 'id="addRepairModal" class="modal-overlay pfims-add-modal"',
@@ -466,9 +465,12 @@ class CoreIntegrityProjectTest extends TestCase
             ->assertDontSee('Report View', false)
             ->assertDontSee('id="reportDropdown"', false)
             ->assertSee('data-finance-tab=', false)
-            ->assertSee('openContractViewModal(this)', false)
-            ->assertSee('id="contractEditBtn"', false)
             ->assertSee('then(function() { return fetchBudgetData(); })', false);
+
+        $reportsView = file_get_contents(resource_path('views/reports.blade.php'));
+        $this->assertStringContainsString('id="contractDialog"', $reportsView);
+        $this->assertStringContainsString('id="editContract"', $reportsView);
+        $this->assertStringContainsString('id="addContract"', $reportsView);
 
         $financeAnalytics = file_get_contents(public_path('js/finance-analytics.js'));
         $this->assertStringContainsString("window.updateBudgetActualAmounts", $financeAnalytics);

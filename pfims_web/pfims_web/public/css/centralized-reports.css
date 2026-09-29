@@ -715,6 +715,73 @@ html.sidebar-collapsed .reports-page .main-content {
     justify-content: center;
 }
 
+.report-header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.reports-page[data-report-dataset="expense_summary"] .live-data-panel table,
+.reports-page[data-report-dataset="contracts"] .live-data-panel table {
+    min-width: 1500px;
+}
+
+.live-data-panel tfoot td {
+    position: sticky;
+    bottom: 0;
+    border-top: 2px solid var(--reports-text);
+    background: #f2f4f7;
+    font-weight: 800;
+}
+
+.report-preview {
+    min-height: 130px;
+    max-height: 330px;
+    overflow: auto;
+    padding: 12px;
+    border: 1px solid var(--reports-border);
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.report-preview .preview-paper {
+    min-width: 0;
+    padding: 16px;
+    background: #fff;
+    color: #17283a;
+    text-align: center;
+}
+
+.preview-paper > img {
+    width: min(330px, 100%);
+    height: auto;
+}
+
+.preview-paper h3 { margin: 10px 0 3px; }
+.preview-paper p { margin: 3px 0; }
+.preview-paper .table-wrap { margin-top: 12px; text-align: left; }
+.preview-paper table { min-width: 940px; }
+.preview-paper th, .preview-paper td { padding: 6px; }
+.preview-note { margin: 0 0 8px; color: #64748b; font-size: .78rem; }
+.report-preview pre { white-space: pre; font-size: .72rem; }
+
+.contract-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 13px;
+}
+
+.contract-fields .contract-remarks { grid-column: 1 / -1; }
+.contract-delete-dialog { padding: 24px; width: min(420px, calc(100vw - 28px)); }
+.contract-delete-dialog > p { margin: 15px 0; }
+.contract-delete-dialog .dialog-actions { margin-top: 20px; }
+#confirmContractDelete { background: #cf3030; box-shadow: none; }
+
+@media (max-width: 600px) {
+    .contract-fields { grid-template-columns: 1fr; }
+    .contract-fields .contract-remarks { grid-column: auto; }
+}
+
 html[data-theme="dark"] .reports-page :where(.panel, .kpi-card, .export-dialog) {
     border-color: var(--ui-border) !important;
     background: var(--ui-surface-solid) !important;

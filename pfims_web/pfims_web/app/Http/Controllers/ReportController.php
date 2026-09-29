@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\ProjectCostLedger;
+use App\Services\ReportFileBuilder;
 
 use App\Models\Report;
 use App\Models\SystemSetting;
@@ -25,7 +26,40 @@ class ReportController extends Controller
 {
     public function __construct(private AuditLogService $audit) {}
 
+    private const REPORT_TABS = ['expense_summary', 'contracts', 'inventory'];
+
+    private const SUMMARY_COLUMNS = [
+        'project_name' => 'Project Name',
+        'construction_supply' => 'Construction Supply',
+        'salaries_wages' => 'Salaries & Wages',
+        'permits_taxes_licenses' => 'Permits, Taxes & Licenses',
+        'transportation_expenses' => 'Transportation Expenses',
+        'utilities' => 'Utilities (Water & Power)',
+        'delivery_expense' => 'Delivery Expense',
+        'others' => 'Others (SOS, Construction Bond, etc.)',
+        'administrative_expenses' => 'Administrative Expenses',
+        'total' => 'Total',
+    ];
+
     private const DATASETS = [
+        'expense_summary' => [
+            'title' => 'Expenses Summary', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
+            'columns' => self::SUMMARY_COLUMNS,
+            'filters' => ['search', 'project_id', 'status', 'start_date', 'end_date'],
+        ],
+        'contracts' => [
+            'title' => 'Contracts', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
+            'columns' => [
+                'project_name' => 'Project', 'start_date' => 'Start Date', 'actual_end_date' => 'End Date',
+                'original_contract_price' => 'Contract Price', 'additional_works_contract' => 'Additional Works',
+                'total_contract_price' => 'Total Contract', 'original_payment_received' => 'Original Payment',
+                'additional_works_payment' => 'Additional Payment', 'total_payment' => 'Total Payment',
+                'project_expense' => 'Project Expense', 'accounts_receivable' => 'Accounts Receivable',
+                'profit_loss_payment_basis' => 'Profit/Loss (Payment)',
+                'profit_loss_contract_basis' => 'Profit/Loss (Contract)',
+            ],
+            'filters' => ['search', 'project_id', 'status', 'start_date', 'end_date'],
+        ],
         'project' => [
             'title' => 'Project', 'type' => 'project', 'roles' => ['admin', 'operations'],
             'columns' => [
@@ -135,6 +169,7 @@ class ReportController extends Controller
     private function catalogPayload(string $role): array
     {
         $datasets = collect(self::DATASETS)
+            ->only(self::REPORT_TABS)
             ->filter(fn (array $definition) => in_array($role, $definition['roles'], true))
             ->map(fn (array $definition, string $key) => [
                 'key' => $key, 'title' => $definition['title'], 'type' => $definition['type'],
@@ -150,7 +185,11 @@ class ReportController extends Controller
                 'suppliers' => DB::table('supplier_tbl')->orderBy('supplier_name')->get(['supplier_id as value', 'supplier_name as label']),
                 'classifications' => ['direct', 'admin'],
                 'stock_statuses' => ['Out of Stock', 'Reorder Needed', 'Sufficient'],
-                'formats' => [['value' => 'csv', 'label' => 'CSV']],
+                'formats' => [
+                    ['value' => 'xlsx', 'label' => 'Excel (.xlsx)'],
+                    ['value' => 'csv', 'label' => 'CSV (.csv)'],
+                    ['value' => 'pdf', 'label' => 'PDF (.pdf)'],
+                ],
                 'sections' => [
                     ['value' => 'summary', 'label' => 'Report and filter summary'],
                     ['value' => 'kpis', 'label' => 'KPI summary'],
@@ -183,6 +222,7 @@ class ReportController extends Controller
             'rows' => $pageRows, 'total_rows' => $total,
             'truncated' => $total > $perPage, 'kpis' => $this->datasetKpis($dataset, $rows),
             'chart' => $this->datasetChart($dataset, $rows), 'filters' => $filters,
+            'totals' => $dataset === 'expense_summary' ? $this->summaryTotals($rows) : null,
             'pagination' => [
                 'current_page' => $currentPage, 'last_page' => $lastPage, 'per_page' => $perPage,
                 'from' => $from, 'to' => $to, 'total' => $total,
@@ -195,9 +235,9 @@ class ReportController extends Controller
         $validated = $request->validate([
             'dataset' => ['required', Rule::in(array_keys(self::DATASETS))],
             'title' => 'required|string|min:3|max:120',
-            'format' => ['required', Rule::in(['csv'])],
+            'format' => ['required', Rule::in(['csv', 'xlsx', 'pdf'])],
             'columns' => 'required|array|min:1', 'columns.*' => 'required|string|distinct|max:60',
-            'sections' => 'required|array|min:1',
+            'sections' => 'nullable|array|min:1',
             'sections.*' => ['required', 'string', 'distinct', Rule::in(['summary', 'kpis', 'chart', 'data'])],
             'filters' => 'nullable|array',
         ]);
@@ -205,6 +245,13 @@ class ReportController extends Controller
         $definition = $this->authorizeDataset($validated['dataset']);
         if (array_diff($validated['columns'], array_keys($definition['columns'])) !== []) {
             throw ValidationException::withMessages(['columns' => 'One or more selected columns are unavailable.']);
+        }
+        if (! in_array($validated['dataset'], self::REPORT_TABS, true) && $validated['format'] !== 'csv') {
+            throw ValidationException::withMessages(['format' => 'This legacy report is available only as CSV.']);
+        }
+
+        if (in_array($validated['dataset'], self::REPORT_TABS, true)) {
+            return $this->exportCurrentReport($validated, $definition);
         }
 
         $filterRequest = Request::create('/', 'GET', $validated['filters'] ?? []);
@@ -215,7 +262,7 @@ class ReportController extends Controller
         $role = $this->role();
         $fileName = (Str::slug($validated['title']) ?: $validated['dataset']).'-'.now()->format('Ymd-His').'-'.strtolower(Str::random(4)).'.csv';
         $filePath = "reports/exports/{$role}/{$fileName}";
-        $csv = $this->buildCsv($validated['title'], $definition, $validated['columns'], $validated['sections'], $filters, $rows, $kpis, $chart);
+        $csv = $this->buildCsv($validated['title'], $definition, $validated['columns'], $validated['sections'] ?? ['summary', 'data'], $filters, $rows, $kpis, $chart);
         Storage::disk('public')->put($filePath, $csv);
 
         try {
@@ -229,7 +276,7 @@ class ReportController extends Controller
                 'status' => 'Completed', 'generation_method' => 'system_export',
                 'dataset_key' => $validated['dataset'], 'export_format' => 'csv',
                 'row_count' => $rows->count(), 'selected_columns' => $validated['columns'],
-                'filters_applied' => $filters, 'export_options' => ['sections' => $validated['sections']],
+                'filters_applied' => $filters, 'export_options' => ['sections' => $validated['sections'] ?? ['summary', 'data']],
                 'generated_at' => now(), 'user_id' => Auth::id(),
             ]);
         } catch (\Throwable $exception) {
@@ -241,6 +288,77 @@ class ReportController extends Controller
         $publicDisk = Storage::disk('public');
 
         return $publicDisk->download($report->file_path, $report->file_name, ['X-Report-Id' => $report->report_id]);
+    }
+
+    public function preview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'dataset' => ['required', Rule::in(self::REPORT_TABS)],
+            'title' => 'required|string|min:3|max:120',
+            'columns' => 'required|array|min:1', 'columns.*' => 'required|string|distinct|max:60',
+            'filters' => 'nullable|array',
+        ]);
+        $definition = $this->authorizeDataset($validated['dataset']);
+        if (array_diff($validated['columns'], array_keys($definition['columns'])) !== []) {
+            throw ValidationException::withMessages(['columns' => 'One or more selected columns are unavailable.']);
+        }
+        $filters = $this->validatedFilters(Request::create('/', 'GET', $validated['filters'] ?? []));
+        $rows = $this->datasetRows($validated['dataset'], $filters);
+        return response()->json([
+            'title' => $validated['title'],
+            'scope' => $this->reportScope($validated['dataset']),
+            'as_of' => now()->format('F j, Y'),
+            'columns' => array_intersect_key($definition['columns'], array_flip($validated['columns'])),
+            'rows' => $rows->take(8)->values(),
+            'row_count' => $rows->count(),
+            'totals' => $validated['dataset'] === 'expense_summary' ? $this->summaryTotals($rows) : null,
+        ]);
+    }
+
+    private function exportCurrentReport(array $validated, array $definition): StreamedResponse
+    {
+        $filters = $this->validatedFilters(Request::create('/', 'GET', $validated['filters'] ?? []));
+        $rows = $this->datasetRows($validated['dataset'], $filters);
+        $columns = array_intersect_key($definition['columns'], array_flip($validated['columns']));
+        $totals = $validated['dataset'] === 'expense_summary' ? $this->summaryTotals($rows) : null;
+        $format = $validated['format'];
+        $file = app(ReportFileBuilder::class)->build($format, $validated['title'],
+            $this->reportScope($validated['dataset']), $columns, $rows->all(), $totals);
+        $role = $this->role();
+        $fileName = (Str::slug($validated['title']) ?: $validated['dataset']).'-'.now()->format('Ymd-His')
+            .'-'.strtolower(Str::random(4)).'.'.$format;
+        $filePath = "reports/exports/{$role}/{$fileName}";
+        Storage::disk('public')->put($filePath, $file);
+        try {
+            $report = Report::create([
+                'report_id' => Report::generateReportId(), 'title' => $validated['title'],
+                'type' => $definition['type'], 'role' => $role,
+                'description' => 'System-generated '.$definition['title'].' report',
+                'file_name' => $fileName, 'file_path' => $filePath,
+                'file_size' => Storage::disk('public')->size($filePath),
+                'date_uploaded' => today()->toDateString(), 'uploaded_by' => Auth::user()->name,
+                'status' => 'Completed', 'generation_method' => 'system_export',
+                'dataset_key' => $validated['dataset'], 'export_format' => $format,
+                'row_count' => $rows->count(), 'selected_columns' => array_keys($columns),
+                'filters_applied' => $filters, 'export_options' => ['sections' => ['summary', 'data']],
+                'generated_at' => now(), 'user_id' => Auth::id(),
+            ]);
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($filePath);
+            throw $exception;
+        }
+        /** @var FilesystemAdapter $publicDisk */
+        $publicDisk = Storage::disk('public');
+        return $publicDisk->download($report->file_path, $report->file_name, ['X-Report-Id' => $report->report_id]);
+    }
+
+    private function reportScope(string $dataset): string
+    {
+        return match ($dataset) {
+            'expense_summary' => 'ONGOING PROJECTS',
+            'contracts' => 'PROJECT CONTRACTS',
+            'inventory' => 'INVENTORY ITEMS',
+        };
     }
 
     public function download(string $id): StreamedResponse|JsonResponse
@@ -287,6 +405,12 @@ class ReportController extends Controller
 
     private function datasetRows(string $dataset, array $filters): Collection
     {
+        if ($dataset === 'expense_summary') {
+            return $this->expenseSummaryRows($filters);
+        }
+        if ($dataset === 'contracts') {
+            return $this->contractRows($filters);
+        }
         $query = match ($dataset) {
             'project' => $this->projectQuery($filters), 'finance' => $this->financeQuery($filters),
             'budget' => $this->budgetQuery($filters), 'inventory' => $this->inventoryQuery($filters),
@@ -295,6 +419,115 @@ class ReportController extends Controller
 
         return $query->limit(10000)->get()->map(fn ($row) => collect((array) $row)
             ->map(fn ($value) => is_numeric($value) ? (float) $value : $value)->all());
+    }
+
+    private function expenseSummaryRows(array $filters): Collection
+    {
+        $projects = DB::table('project_tbl as p')
+            ->whereNotIn('p.status', ['Completed', 'Pending'])
+            ->select('p.project_id', 'p.project_name', 'p.status');
+        if (! empty($filters['project_id'])) {
+            $projects->where('p.project_id', $filters['project_id']);
+        }
+        if (! empty($filters['status'])) {
+            $projects->where('p.status', $filters['status']);
+        }
+        if (! empty($filters['search'])) {
+            $projects->where('p.project_name', 'like', '%'.$this->escapeLike($filters['search']).'%');
+        }
+        $projects = $projects->orderBy('p.project_name')->get();
+        $ids = $projects->pluck('project_id')->all();
+        $blank = array_fill_keys(array_keys(self::SUMMARY_COLUMNS), 0.0);
+        $rows = $projects->map(function ($project) use ($blank) {
+            return array_merge($blank, ['project_id' => (int) $project->project_id,
+                'project_name' => $project->project_name]);
+        })->keyBy('project_id');
+
+        if ($ids !== []) {
+            $expenses = DB::table('fin_expense_tbl as e')
+                ->join('fin_expense_category_tbl as c', 'c.fin_category_id', '=', 'e.fin_category_id')
+                ->whereIn('e.project_id', $ids)
+                ->select('e.project_id', 'e.amount', 'c.category_code', 'c.classification');
+            if (\Illuminate\Support\Facades\Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
+                $expenses->whereNull('e.inventory_transaction_id');
+            }
+            $this->applyDateFilters($expenses, $filters, 'e.expense_date');
+            $categoryColumns = [
+                'CONSTRUCTION_SUPPLY' => 'construction_supply',
+                'SALARIES_WAGES' => 'salaries_wages',
+                'PERMITS_TAXES' => 'permits_taxes_licenses',
+                'EQUIPMENT_RENTAL' => 'transportation_expenses',
+                'UTILITIES' => 'utilities',
+                'DELIVERY' => 'delivery_expense',
+            ];
+            foreach ($expenses->get() as $expense) {
+                $row = $rows->get((int) $expense->project_id);
+                $column = $expense->classification === 'admin' ? 'administrative_expenses'
+                    : ($categoryColumns[$expense->category_code] ?? 'others');
+                $row[$column] += (float) $expense->amount;
+                $row['total'] += (float) $expense->amount;
+                $rows->put((int) $expense->project_id, $row);
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('inventory_cost_allocation_tbl')) {
+                $allocations = DB::table('inventory_cost_allocation_tbl as a')
+                    ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'a.out_transaction_id')
+                    ->whereIn('a.project_id', $ids)->where('a.valuation_status', 'valued')
+                    ->select('a.project_id', 'a.allocated_amount');
+                $this->applyDateFilters($allocations, $filters, 'movement.transaction_date');
+                foreach ($allocations->get() as $allocation) {
+                    $row = $rows->get((int) $allocation->project_id);
+                    $row['construction_supply'] += (float) $allocation->allocated_amount;
+                    $row['total'] += (float) $allocation->allocated_amount;
+                    $rows->put((int) $allocation->project_id, $row);
+                }
+            }
+        }
+
+        return $rows->values()->map(function (array $row) {
+            foreach (self::SUMMARY_COLUMNS as $key => $label) {
+                if ($key !== 'project_name') $row[$key] = round((float) $row[$key], 2);
+            }
+            return $row;
+        });
+    }
+
+    private function contractRows(array $filters): Collection
+    {
+        $query = DB::table('fin_project_contract_tbl as c')
+            ->join('project_tbl as p', 'p.project_id', '=', 'c.project_id')
+            ->leftJoin('budgets_tbl as b', 'b.project_id', '=', 'p.project_id')
+            ->select('c.*', 'p.project_name', 'p.start_date', 'p.actual_end_date', 'p.status', 'b.budget_amount');
+        $this->applyProjectFilters($query, $filters, 'p');
+        $ledger = app(ProjectCostLedger::class);
+
+        return $query->orderBy('p.project_name')->limit(10000)->get()->map(function ($contract) use ($ledger) {
+            $price = (float) ($contract->budget_amount ?? $contract->original_contract_price ?? 0);
+            $additional = (float) $contract->additional_works_contract;
+            $payment = (float) $contract->original_payment_received;
+            $additionalPayment = (float) $contract->additional_works_payment;
+            $cost = $ledger->forProject((int) $contract->project_id)['total'];
+            $totalContract = $price + $additional;
+            $totalPayment = $payment + $additionalPayment;
+            return [
+                'contract_id' => (int) $contract->contract_id,
+                'project_id' => (int) $contract->project_id,
+                'project_name' => $contract->project_name,
+                'start_date' => $contract->start_date,
+                'actual_end_date' => $contract->actual_end_date,
+                'original_contract_price' => $price,
+                'additional_works_contract' => $additional,
+                'total_contract_price' => $totalContract,
+                'original_payment_received' => $payment,
+                'additional_works_payment' => $additionalPayment,
+                'total_payment' => $totalPayment,
+                'project_expense' => $cost,
+                'accounts_receivable' => $totalContract - $totalPayment,
+                'profit_loss_payment_basis' => $totalPayment - $cost,
+                'profit_loss_contract_basis' => $totalContract - $cost,
+                'remarks' => $contract->remarks,
+            ];
+        });
     }
 
     private function projectQuery(array $filters): Builder
@@ -475,6 +708,17 @@ class ReportController extends Controller
         $money = fn (float $value) => '₱'.number_format($value, 2);
 
         return match ($dataset) {
+            'expense_summary' => [
+                ['label' => 'Ongoing Projects', 'value' => (string) $rows->count()],
+                ['label' => 'Project Site Expenses', 'value' => $money((float) $rows->sum('total'))],
+                ['label' => 'Construction Supply', 'value' => $money((float) $rows->sum('construction_supply'))],
+            ],
+            'contracts' => [
+                ['label' => 'Contracts', 'value' => (string) $rows->count()],
+                ['label' => 'Total Contract', 'value' => $money((float) $rows->sum('total_contract_price'))],
+                ['label' => 'Total Payment', 'value' => $money((float) $rows->sum('total_payment'))],
+                ['label' => 'Accounts Receivable', 'value' => $money((float) $rows->sum('accounts_receivable'))],
+            ],
             'project' => [
                 ['label' => 'Projects', 'value' => (string) $rows->count()],
                 ['label' => 'Active', 'value' => (string) $rows->whereNotIn('status', ['Completed', 'Pending'])->count()],
@@ -512,6 +756,7 @@ class ReportController extends Controller
     private function datasetChart(string $dataset, Collection $rows): array
     {
         return match ($dataset) {
+            'expense_summary', 'contracts' => ['title' => '', 'type' => 'bar', 'labels' => collect(), 'series' => []],
             'project' => $this->groupedChart($rows->where('status', '!=', 'Completed'), 'status', null, 'Project Status Across Active Projects', 'pie'),
             'finance' => $this->groupedChart($rows, 'category_name', 'amount', 'Expenses by Category', 'pie'),
             'budget' => $this->budgetStatusChart($rows),
@@ -519,6 +764,15 @@ class ReportController extends Controller
             'supplier' => ['title' => 'Items per Supplier', 'type' => 'pie', 'labels' => $rows->take(12)->pluck('supplier_name')->values(),
                 'series' => [['label' => 'Items', 'values' => $rows->take(12)->pluck('item_count')->values()]]],
         };
+    }
+
+    private function summaryTotals(Collection $rows): array
+    {
+        $totals = ['project_name' => 'TOTAL'];
+        foreach (self::SUMMARY_COLUMNS as $key => $label) {
+            if ($key !== 'project_name') $totals[$key] = round((float) $rows->sum($key), 2);
+        }
+        return $totals;
     }
 
     private function groupedChart(Collection $rows, string $group, ?string $sum, string $title, string $type = 'bar'): array

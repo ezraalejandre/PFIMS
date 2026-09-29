@@ -45,6 +45,7 @@ Route::get('/odashboard', function () {
 
 // ─── ACCOUNTING ROUTES ──────────────────────────────────────────
 Route::get('/afinance', function () {
+    if (request()->query('section') === 'contracts') return redirect('/areports?section=contracts');
     return view('finance', ['portal' => 'accounting']);
 })->middleware(['auth', 'role.portal:admin,accounting']);
 
@@ -136,6 +137,7 @@ Route::get('/projects', function () {
 
 // Finance page
 Route::get('/finance', function () {
+    if (request()->query('section') === 'contracts') return redirect('/reports?section=contracts');
     return view('finance', ['portal' => 'admin']);
 })->middleware(['auth', 'role.portal:admin']);
 
@@ -590,6 +592,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/api/reports/catalog', [ReportController::class, 'catalog'])->name('reports.catalog');
     Route::get('/api/reports/data/{dataset}', [ReportController::class, 'data'])->name('reports.data');
+    Route::post('/api/reports/preview', [ReportController::class, 'preview'])->name('reports.preview');
     Route::post('/api/reports/export', [ReportController::class, 'export'])->name('reports.export');
     Route::get('/api/reports/download/{id}', [ReportController::class, 'download'])->name('reports.download');
     Route::delete('/api/reports/{id}', [ReportController::class, 'destroy'])->name('reports.destroy');

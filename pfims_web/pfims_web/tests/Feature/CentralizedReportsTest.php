@@ -84,28 +84,133 @@ class CentralizedReportsTest extends TestCase
         $this->actingAs($accounting)->getJson('/api/reports/catalog')
             ->assertOk()
             ->assertJsonCount(2, 'datasets')
-            ->assertJsonPath('datasets.0.key', 'finance')
-            ->assertJsonPath('datasets.0.title', 'Expenses')
-            ->assertJsonPath('datasets.1.key', 'budget')
-            ->assertJsonPath('datasets.1.title', 'Budget');
+            ->assertJsonPath('datasets.0.key', 'expense_summary')
+            ->assertJsonPath('datasets.0.title', 'Expenses Summary')
+            ->assertJsonPath('datasets.1.key', 'contracts')
+            ->assertJsonPath('datasets.1.title', 'Contracts');
 
         $this->actingAs($accounting)->getJson('/api/reports/data/project')->assertForbidden();
 
         $this->actingAs($this->user('admin'))->getJson('/api/reports/catalog')
             ->assertOk()
-            ->assertJsonCount(5, 'datasets')
-            ->assertJsonPath('datasets.0.title', 'Project')
-            ->assertJsonPath('datasets.1.title', 'Expenses')
-            ->assertJsonPath('datasets.2.title', 'Budget')
-            ->assertJsonPath('datasets.3.title', 'Inventory')
-            ->assertJsonPath('datasets.4.title', 'Supplier');
+            ->assertJsonCount(3, 'datasets')
+            ->assertJsonPath('datasets.0.title', 'Expenses Summary')
+            ->assertJsonPath('datasets.1.title', 'Contracts')
+            ->assertJsonPath('datasets.2.title', 'Inventory');
 
         $this->actingAs($this->user('operations'))->getJson('/api/reports/catalog')
             ->assertOk()
-            ->assertJsonCount(3, 'datasets')
+            ->assertJsonCount(1, 'datasets')
+            ->assertJsonPath('datasets.0.key', 'inventory')
             ->assertJsonMissing(['key' => 'workforce']);
 
         $this->getJson('/api/reports/data/workforce')->assertNotFound();
+    }
+
+    public function test_expenses_summary_uses_ongoing_project_costs_without_storage_or_office_spending(): void
+    {
+        DB::table('project_tbl')->insert([
+            ['project_id' => 1, 'project_name' => 'Active Site', 'status' => 'On Track', 'start_date' => '2026-01-01'],
+            ['project_id' => 2, 'project_name' => 'Finished Site', 'status' => 'Completed', 'start_date' => '2026-01-01'],
+        ]);
+        DB::table('fin_expense_category_tbl')->insert([
+            ['fin_category_id' => 1, 'category_code' => 'CONSTRUCTION_SUPPLY', 'category_name' => 'Construction supplies', 'classification' => 'direct'],
+            ['fin_category_id' => 2, 'category_code' => 'SALARIES_WAGES', 'category_name' => 'Site salaries and wages', 'classification' => 'direct'],
+            ['fin_category_id' => 3, 'category_code' => 'OFFICE_RENT', 'category_name' => 'Office rent', 'classification' => 'admin'],
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 100, 'expense_date' => '2026-02-01', 'inventory_transaction_id' => null],
+            ['project_id' => 1, 'fin_category_id' => 2, 'amount' => 50, 'expense_date' => '2026-02-02', 'inventory_transaction_id' => null],
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 300, 'expense_date' => '2026-02-02', 'inventory_transaction_id' => 10],
+            ['project_id' => null, 'fin_category_id' => 3, 'amount' => 25, 'expense_date' => '2026-02-02', 'inventory_transaction_id' => null],
+            ['project_id' => 2, 'fin_category_id' => 1, 'amount' => 70, 'expense_date' => '2026-02-02', 'inventory_transaction_id' => null],
+        ]);
+        DB::table('inventory_transaction_tbl')->insert([
+            'inventory_transaction_id' => 11, 'project_id' => 1, 'transaction_type' => 'OUT',
+            'quantity' => 2, 'transaction_date' => '2026-02-03',
+        ]);
+        Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
+            $table->bigIncrements('allocation_id');
+            $table->integer('project_id');
+            $table->integer('out_transaction_id');
+            $table->string('valuation_status');
+            $table->decimal('allocated_amount', 14, 2)->nullable();
+        });
+        DB::table('inventory_cost_allocation_tbl')->insert([
+            'project_id' => 1, 'out_transaction_id' => 11,
+            'valuation_status' => 'valued', 'allocated_amount' => 80,
+        ]);
+
+        $this->actingAs($this->user('admin'))->getJson('/api/reports/data/expense_summary')
+            ->assertOk()->assertJsonPath('total_rows', 1)
+            ->assertJsonPath('rows.0.project_name', 'Active Site')
+            ->assertJsonPath('rows.0.construction_supply', 180)
+            ->assertJsonPath('rows.0.salaries_wages', 50)
+            ->assertJsonPath('rows.0.total', 230)
+            ->assertJsonPath('totals.total', 230);
+    }
+
+    public function test_new_report_preview_and_all_file_formats_include_selected_columns(): void
+    {
+        Storage::fake('public');
+        DB::table('project_tbl')->insert([
+            'project_id' => 1, 'project_name' => 'Preview Site', 'status' => 'On Track', 'start_date' => '2026-01-01',
+        ]);
+        $admin = $this->user('admin');
+        $config = [
+            'dataset' => 'expense_summary', 'title' => 'Summary of Expenses',
+            'columns' => ['project_name', 'construction_supply', 'total'], 'filters' => [],
+        ];
+        $this->actingAs($admin)->postJson('/api/reports/preview', $config)
+            ->assertOk()->assertJsonPath('row_count', 1)
+            ->assertJsonPath('rows.0.project_name', 'Preview Site')
+            ->assertJsonPath('totals.total', 0);
+
+        foreach (['csv', 'xlsx', 'pdf'] as $format) {
+            $this->actingAs($admin)->postJson('/api/reports/export', $config + ['format' => $format])->assertOk();
+            $report = Report::query()->where('export_format', $format)->firstOrFail();
+            $bytes = Storage::disk('public')->get($report->file_path);
+            $this->assertSame(['project_name', 'construction_supply', 'total'], $report->selected_columns);
+            $this->assertNotEmpty($bytes);
+            if ($format === 'pdf') $this->assertStringStartsWith('%PDF', $bytes);
+            if ($format === 'xlsx') {
+                $this->assertStringStartsWith('PK', $bytes);
+                $zipPath = Storage::disk('public')->path($report->file_path);
+                $zip = new \ZipArchive;
+                $this->assertTrue($zip->open($zipPath) === true);
+                $this->assertNotFalse($zip->getFromName('xl/media/report-header.jpeg'));
+                $this->assertStringContainsString('Preview Site', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $zip->close();
+            }
+        }
+    }
+
+    public function test_contracts_are_reported_in_reports_and_old_finance_link_redirects(): void
+    {
+        DB::table('project_tbl')->insert([
+            'project_id' => 4, 'project_name' => 'Contract Site', 'status' => 'On Track', 'start_date' => '2026-01-01',
+        ]);
+        DB::table('budgets_tbl')->insert(['budget_id' => 4, 'project_id' => 4, 'budget_amount' => 1000]);
+        DB::table('fin_expense_category_tbl')->insert([
+            'fin_category_id' => 4, 'category_code' => 'SALARIES_WAGES',
+            'category_name' => 'Site salaries and wages', 'classification' => 'direct',
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => 4, 'fin_category_id' => 4, 'expense_description' => 'Crew',
+            'amount' => 150, 'expense_date' => '2026-02-01',
+        ]);
+        DB::table('fin_project_contract_tbl')->insert([
+            'contract_id' => 4, 'project_id' => 4, 'original_contract_price' => 900,
+            'additional_works_contract' => 100, 'original_payment_received' => 400,
+            'additional_works_payment' => 50, 'remarks' => 'Signed',
+        ]);
+        $this->actingAs($this->user('admin'))->getJson('/api/reports/data/contracts?project_id=4')
+            ->assertOk()->assertJsonPath('total_rows', 1)
+            ->assertJsonPath('rows.0.project_expense', 150)
+            ->assertJsonPath('rows.0.total_contract_price', 1100)
+            ->assertJsonPath('rows.0.accounts_receivable', 650);
+        $this->get('/finance?section=contracts')->assertRedirect('/reports?section=contracts');
+        $this->actingAs($this->user('operations'))->getJson('/api/reports/data/contracts')->assertForbidden();
     }
 
     public function test_live_report_records_and_export_history_are_paginated(): void
@@ -365,6 +470,16 @@ class CentralizedReportsTest extends TestCase
             $table->string('expense_description')->nullable();
             $table->decimal('amount', 12, 2);
             $table->date('expense_date');
+            $table->string('remarks')->nullable();
+            $table->integer('inventory_transaction_id')->nullable();
+        });
+        Schema::create('fin_project_contract_tbl', function (Blueprint $table) {
+            $table->increments('contract_id');
+            $table->integer('project_id');
+            $table->decimal('original_contract_price', 14, 2);
+            $table->decimal('additional_works_contract', 14, 2)->default(0);
+            $table->decimal('original_payment_received', 14, 2)->default(0);
+            $table->decimal('additional_works_payment', 14, 2)->default(0);
             $table->string('remarks')->nullable();
         });
         Schema::create('expense_tbl', function (Blueprint $table) {

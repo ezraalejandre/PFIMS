@@ -3,7 +3,6 @@
     $financeSection = request()->query('section');
     $financeTab = match ($financeSection) {
         'budgets' => 'budgets',
-        'contracts' => 'profit',
         'ar-ap' => 'receivables',
         'cash-position' => 'cash',
         'equipment' => 'backhoe',
@@ -820,14 +819,11 @@
         <!-- Page Header -->
         <div class="page-header">
             <h1>FINANCE</h1>
-            <div id="financeHeaderActions" style="display:flex;gap:10px;flex-wrap:wrap;"{{ in_array($financeTab, ['expenses', 'budgets', 'profit', 'receivables', 'cash', 'backhoe', 'bonds'], true) ? '' : ' hidden' }}>
+            <div id="financeHeaderActions" style="display:flex;gap:10px;flex-wrap:wrap;"{{ in_array($financeTab, ['expenses', 'budgets', 'receivables', 'cash', 'backhoe', 'bonds'], true) ? '' : ' hidden' }}>
                 <div class="finance-header-action-group" data-finance-tabs="expenses budgets"{{ in_array($financeTab, ['expenses', 'budgets'], true) ? '' : ' hidden' }}>
                     <button class="btn-add-data" onclick="openPfimsImport()">Import Expenses</button>
                     <button class="btn-add-expense" onclick="openAddExpenseModal()">+ Add Expense</button>
                     <button class="btn-add-budget" onclick="openAddBudgetModal()">+ Add Budget</button>
-                </div>
-                <div class="finance-header-action-group" data-finance-tabs="profit"{{ $financeTab === 'profit' ? '' : ' hidden' }}>
-                    <button onclick="openAddContractModal()" class="btn-add-data gold">+ Add Contract</button>
                 </div>
                 <div class="finance-header-action-group" data-finance-tabs="receivables"{{ $financeTab === 'receivables' ? '' : ' hidden' }}>
                     <button onclick="openAddReceivableModal()" class="btn-add-data gold">+ Add Entry</button>
@@ -1003,25 +999,6 @@
                 <table id="overallexpTable">
                     <thead><tr><th>Project</th><th>Const. Supply</th><th>Salaries & Wages</th><th>Permit, Taxes</th><th>Transport</th><th>Utilities</th><th>Delivery</th><th>Others</th><th>Admin Expenses</th><th>Total</th></tr></thead>
                     <tbody id="overallexpBody"><tr><td colspan="10" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- ─── TAB 8: PROFIT/LOSS ─── -->
-        <div id="tabProfit" class="report-section {{ $financeTab === 'profit' ? 'active' : '' }}">
-            <div class="filter-row">
-                <input type="search" id="profitSearch" class="project-filter" maxlength="150" placeholder="Search project or contract..." aria-label="Search contracts" oninput="filterFinanceRows('profitSearch', 'profitBody')">
-                <select id="profitType" aria-label="Contract report type" onchange="loadProfit()">
-                    <option value="direct">Direct Expenses</option>
-                    <option value="overall">Overall Expenses</option>
-                </select>
-                <select id="profitYear" aria-label="Contract year" onchange="loadProfit()"><option value="">All Years</option></select>
-                <button type="button" class="btn-clear-search" onclick="clearProfitSearch()">✕ Clear Filters</button>
-            </div>
-            <div class="report-table-wrapper">
-                <table id="profitTable">
-                    <thead><tr><th>Project</th><th>Start Date</th><th>End Date</th><th>Contract Price</th><th>Addl. Works</th><th>Total Contract</th><th>Original Payment</th><th>Addl. Payment</th><th>Total Payment</th><th>Project Expense</th><th>Accounts Receivable</th><th>Profit/Loss (Payment)</th><th>Profit/Loss (Contract)</th></tr></thead>
-                    <tbody id="profitBody"><tr><td colspan="13" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -1224,53 +1201,6 @@
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddBudgetModal()">Cancel</button>
                 <button class="btn-save" onclick="saveBudget()">Add Budget</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ─── ADD CONTRACT MODAL ─── -->
-    <div id="addContractModal" class="modal-overlay pfims-add-modal finance-edit-modal">
-        <div class="modal-container">
-            <div class="modal-header">
-                <h2 id="contractModalTitle">Add/Edit Contract</h2>
-                <button class="modal-close" onclick="closeAddContractModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Project <span class="required">*</span></label>
-                    <select id="contractProject" onchange="updateContractBudgetDisplay()"><option value="">Select Project...</option></select>
-                    <span id="contractProjectDisplay" style="display:none;font-weight:600;font-size:1rem;color:#1a2b3c;padding:10px 0;">Project Name</span>
-                </div>
-                <div class="form-group" style="background:#f8f6f3;padding:12px 16px;border-radius:8px;">
-                    <label style="font-weight:600;color:#1a2b3c;">Contract Price</label>
-                    <span id="contractBudgetDisplay" style="font-size:1.2rem;font-weight:700;color:#c9a96e;">₱0.00</span>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Additional Works (Contract)</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="contractAddlWorks">
-                    </div>
-                    <div class="form-group">
-                        <label>Additional Works (Payment)</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="contractAddlPayment">
-                        <small style="color:#888;font-size:0.7rem;">Additional payment received</small>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Payment Received</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="contractPayment">
-                    </div>
-                    <div class="form-group">
-                        <label>Remarks</label>
-                        <input type="text" placeholder="Additional notes..." id="contractRemarks">
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeAddContractModal()">Cancel</button>
-                <button class="btn-edit" id="contractEditBtn" onclick="enableContractEdit()" style="display:none;">Edit</button>
-                <button class="btn-save" id="contractSaveBtn" onclick="saveContract()">Save Contract</button>
             </div>
         </div>
     </div>
@@ -5959,14 +5889,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             var requestedTab = document.body.dataset.financeTab || 'expenses';
             currentReportTab = requestedTab;
-            var profitYear = document.getElementById('profitYear');
-            var currentYear = new Date().getFullYear();
-            for (var year = currentYear; year >= 2000; year--) {
-                var yearOption = document.createElement('option');
-                yearOption.value = year;
-                yearOption.textContent = year;
-                profitYear.appendChild(yearOption);
-            }
             var initialLoad;
             switch (requestedTab) {
                 case 'budgets':

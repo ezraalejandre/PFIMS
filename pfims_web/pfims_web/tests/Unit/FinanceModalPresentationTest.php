@@ -23,7 +23,6 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString('id="financeHeaderActions"', $view);
         $this->assertStringContainsString("in_array(\$financeTab, ['expenses', 'budgets'], true)", $view);
         foreach ([
-            ['profit', 'openAddContractModal()', '+ Add Contract'],
             ['receivables', 'openAddReceivableModal()', '+ Add Entry'],
             ['cash', 'openAddCashModal()', '+ Add Cash Position'],
             ['backhoe', 'openAddBackhoeExpenseModal()', '+ Add Expense'],
@@ -74,7 +73,6 @@ class FinanceModalPresentationTest extends TestCase
             'inventoryExpenseModal',
             'addExpenseModal',
             'addBudgetModal',
-            'addContractModal',
             'addReceivableModal',
             'addCashModal',
             'addRepairModal',
@@ -265,9 +263,7 @@ class FinanceModalPresentationTest extends TestCase
             );
         }
 
-        $this->assertStringContainsString('onclick="enableContractEdit()"', $view);
-        $this->assertStringContainsString('onclick="saveContract()"', $view);
-        foreach (['expenseDetailModal', 'budgetDetailModal', 'receivableDetailModal', 'cashDetailModal', 'bondDetailModal', 'addContractModal'] as $id) {
+        foreach (['expenseDetailModal', 'budgetDetailModal', 'receivableDetailModal', 'cashDetailModal', 'bondDetailModal'] as $id) {
             $this->assertMatchesRegularExpression('/<div id="' . preg_quote($id, '/') . '" class="modal-overlay[^\"]*finance-edit-modal/', $view);
         }
         $this->assertStringContainsString("textContent = 'Edit Expense'", $view);
@@ -299,7 +295,6 @@ class FinanceModalPresentationTest extends TestCase
         $view = $this->financeView();
 
         foreach ([
-            ['profitSearch', 'clearProfitSearch()', 'profitType'],
             ['receivableSearch', 'clearReceivableSearch()', 'receivableType'],
             ['bondSearch', 'clearBondSearch()', 'bondProjectFilter'],
         ] as [$searchId, $clearHandler, $filterId]) {
@@ -309,9 +304,12 @@ class FinanceModalPresentationTest extends TestCase
             );
         }
 
-        $this->assertStringContainsString('function clearProfitSearch()', $view);
         $this->assertStringContainsString('function clearReceivableSearch()', $view);
         $this->assertStringContainsString('function clearBondSearch()', $view);
+        $reports = file_get_contents(__DIR__ . '/../../resources/views/reports.blade.php');
+        $this->assertStringContainsString('id="filterSearch"', $reports);
+        $this->assertStringContainsString('id="contractDialog"', $reports);
+        $this->assertStringContainsString('id="addContract"', $reports);
     }
 
     public function test_ar_ap_and_bond_project_identity_fields_are_editable_and_saved(): void
