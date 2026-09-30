@@ -14,13 +14,7 @@
         </div>
         <form id="pfimsImportForm">
             @if($isInventoryImport)
-                <label class="pfims-import-field">
-                    <span>Data type</span>
-                    <select id="pfimsImportType" name="type" onchange="updatePfimsImportGuidance()" required>
-                        <option value="items">Inventory items and opening balances</option>
-                        <option value="transactions">Inventory stock movements</option>
-                    </select>
-                </label>
+                <input id="pfimsImportType" name="type" type="hidden" value="items">
             @endif
             <label class="pfims-import-field">
                 <span>Import file</span>
@@ -116,8 +110,13 @@
         var errors = document.getElementById('pfimsImportErrors');
         var submit = document.getElementById('pfimsImportSubmit');
 
-        window.openPfimsImport = function () {
+        window.openPfimsImport = function (type) {
             form.reset();
+            if (moduleName === 'inventory') {
+                var selectedType = type === 'transactions' ? 'transactions' : 'items';
+                document.getElementById('pfimsImportType').value = selectedType;
+                document.getElementById('pfimsImportTitle').textContent = selectedType === 'items' ? 'Import Items' : 'Import Transactions';
+            }
             errors.hidden = true;
             errors.innerHTML = '';
             updatePfimsImportGuidance();
@@ -133,8 +132,8 @@
             var contracts = {
                 'projects': 'Required: project_name, client_name, project_manager, start_date, estimated_end_date, actual_end_date, worker_count, phase, status, budget. Only actual_end_date may be blank. Phase must already exist in Settings; completion is calculated automatically.',
                 'finance-expenses': 'Required with no blank cells: project_name, category_code, project_cost_component, expense_description, amount, expense_date, remarks. Project cost component must be material, labor, equipment, or other.',
-                'items': 'Required with no blank cells: item_name, category, supplier, unit, current_stock, reorder_level, opening_balance_date. Category, supplier, and unit names must already exist in Settings.',
-                'transactions': 'New format: item_name, project_name, transaction_type, quantity, bar_code, transaction_date, stock_in_reason, total_purchase_amount. Use For Storage and a positive total amount for purchase IN; use N/A for reason and amount on OUT. Other IN reasons use N/A amount. Old six-column files remain accepted, but their IN rows are flagged unpriced. OUT rows require a real project and are checked against available stock in file order.'
+                'items': 'Required with no blank cells: item_name, category, supplier, unit, unit_price, current_stock, reorder_level, opening_balance_date. Category, supplier, and unit names must already exist in Settings.',
+                'transactions': 'Required: item_name, project_name, transaction_type, quantity, bar_code, transaction_date, stock_in_reason. Use For Storage for IN and N/A reason for OUT. Purchase IN uses the selected item Unit Price automatically; no amount column is needed. OUT requires a real project and is checked against available stock in file order.'
             };
             var templateType = type === 'items' ? 'inventory-items' : (type === 'transactions' ? 'inventory-transactions' : type);
             document.getElementById('pfimsImportGuidance').textContent = contracts[type];
@@ -189,7 +188,9 @@
                 }
                 closePfimsImport();
                 if (typeof showSuccess === 'function') showSuccess(result.data.message);
-                if (moduleName === 'inventory' && typeof loadInventoryItems === 'function') loadInventoryItems();
+                if (moduleName === 'inventory') {
+                    if (typeof loadInventoryItems === 'function') loadInventoryItems();
+                }
                 if (moduleName === 'finance' && typeof fetchExpenses === 'function') fetchExpenses();
                 if (moduleName === 'projects' && typeof fetchProjects === 'function') fetchProjects();
             }).catch(function () {

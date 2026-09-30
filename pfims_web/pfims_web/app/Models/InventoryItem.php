@@ -14,6 +14,7 @@ class InventoryItem extends Model
         'inventory_category_id',
         'supplier_id',
         'unit_id',
+        'unit_price',
         'item_name',
         'current_stock',
         'reorder_level',

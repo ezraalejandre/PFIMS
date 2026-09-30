@@ -285,7 +285,7 @@ class ExpenseController extends Controller
             'project_id' => $expense->project_id,
             'project_name' => match (strtolower((string) ($expense->classification ?? ''))) {
                 'office' => 'Office Expenses',
-                'admin' => 'Admin Expenses',
+                'admin' => 'Office',
                 default => $expense->project_name ?? null,
             },
             'expense_description' => $expense->expense_description,

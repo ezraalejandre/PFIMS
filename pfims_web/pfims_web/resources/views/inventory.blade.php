@@ -75,6 +75,8 @@
             display: flex;
             gap: 10px;
         }
+
+        body.inventory-page .btn-group > button[hidden] { display: none !important; }
         
         .btn-add-item {
             background: #c9a96e;
@@ -379,9 +381,10 @@
         <div class="page-header">
             <h1>INVENTORY</h1>
             <div class="btn-group">
-                <button class="btn-add-transaction" onclick="openPfimsImport()">Import CSV/XLSX</button>
-                <button class="btn-add-item" onclick="openAddItemModal()">+ Add Item</button>
-                <button class="btn-add-transaction" onclick="openTransactionModal()">+ Add Transaction</button>
+                <button type="button" class="btn-add-transaction" id="importItemsButton" onclick="openPfimsImport('items')" @if(request('section') === 'transactions') hidden @endif>Import Items</button>
+                <button type="button" class="btn-add-item" id="addItemButton" onclick="openAddItemModal()" @if(request('section') === 'transactions') hidden @endif>+ Add Item</button>
+                <button type="button" class="btn-add-transaction" id="importTransactionsButton" onclick="openPfimsImport('transactions')" @if(request('section') !== 'transactions') hidden @endif>Import Transactions</button>
+                <button type="button" class="btn-add-transaction" id="addTransactionButton" onclick="openTransactionModal()" @if(request('section') !== 'transactions') hidden @endif>+ Add Transaction</button>
             </div>
         </div>
 
@@ -433,13 +436,14 @@
                             <th>Category</th>
                             <th>Supplier</th>
                             <th>Unit</th>
+                            <th>Unit Price</th>
                             <th>Current Stock</th>
                             <th>Status</th>
                             <th style="text-align: center;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="itemsTableBody">
-                        <tr><td colspan="7" style="text-align: center; padding: 20px;">Loading items...</td></tr>
+                        <tr><td colspan="8" style="text-align: center; padding: 20px;">Loading items...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -557,6 +561,10 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>Unit Price</label>
+                    <input type="number" id="newItemUnitPrice" min="0" max="9999999999.99" step="0.01" placeholder="₱0.00">
+                </div>
+                <div class="form-group">
                     <label>Supplier <span class="required">*</span></label>
                     <select id="newItemSupplier">
                         <option value="">Select Supplier...</option>
@@ -582,6 +590,7 @@
                     <div class="summary-item"><strong>Item Name</strong><span class="summary-value" id="reviewItemName">—</span></div>
                     <div class="summary-item"><strong>Category</strong><span class="summary-value" id="reviewItemCategory">—</span></div>
                     <div class="summary-item"><strong>Unit</strong><span class="summary-value" id="reviewItemUnit">—</span></div>
+                    <div class="summary-item"><strong>Unit Price</strong><span class="summary-value" id="reviewItemUnitPrice">—</span></div>
                     <div class="summary-item"><strong>Supplier</strong><span class="summary-value" id="reviewItemSupplier">—</span></div>
                     <div class="summary-item"><strong>Reorder Level</strong><span class="summary-value" id="reviewItemReorder">—</span></div>
                 </div>
@@ -618,6 +627,10 @@
                 <div class="view-item">
                     <label>Unit</label>
                     <span id="itemDetailUnit" class="view-value">—</span>
+                </div>
+                <div class="view-item">
+                    <label>Unit Price</label>
+                    <span id="itemDetailUnitPrice" class="view-value">—</span>
                 </div>
                 <div class="view-item">
                     <label>Supplier</label>
@@ -669,6 +682,10 @@
                     <select id="editItemUnit">
                         <option value="">Select Unit...</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>Unit Price</label>
+                    <input type="number" id="editItemUnitPrice" min="0" max="9999999999.99" step="0.01" placeholder="₱0.00">
                 </div>
                 <div class="form-group">
                     <label>Supplier <span class="required">*</span></label>
@@ -810,6 +827,10 @@
                     <label>Item Supplier</label>
                     <input type="text" id="transactionItemSupplier" readonly style="background: #f5f5f5; color: #555;">
                 </div>
+                <div class="form-group">
+                    <label>Unit Price</label>
+                    <input type="text" id="transactionItemUnitPrice" readonly style="background: #f5f5f5; color: #555;">
+                </div>
 
                 <div class="form-group">
                     <label>Barcode</label>
@@ -861,17 +882,13 @@
                     <span id="transactionProjectError" class="field-error" style="display:none;"></span>
                 </div>
 
-                <div class="form-row" id="transactionStockInGroup">
+                <div class="form-group" id="transactionStockInGroup">
                     <div class="form-group">
                         <label>Stock-in purpose <span class="required">*</span></label>
                         <select id="transactionMovementReason" onchange="toggleTransactionProjectField()">
                             <option value="purchase">Purchase for storage</option>
                             <option value="adjustment">Non-purchase stock adjustment</option>
                         </select>
-                    </div>
-                    <div class="form-group" id="transactionPurchaseAmountGroup">
-                        <label>Total purchase amount <span class="required">*</span></label>
-                        <input type="number" id="transactionPurchaseAmount" min="0.01" max="9999999999.99" step="0.01" placeholder="Enter amount">
                     </div>
                 </div>
 
@@ -921,6 +938,10 @@
                         <span class="summary-value" id="reviewTransItemUnit">—</span>
                     </div>
                     <div class="summary-item">
+                        <strong>Unit Price</strong>
+                        <span class="summary-value" id="reviewTransItemUnitPrice">—</span>
+                    </div>
+                    <div class="summary-item">
                         <strong>Transaction Proof</strong>
                         <span class="summary-value" id="reviewTransProof">—</span>
                     </div>
@@ -941,10 +962,6 @@
                         <strong>Project</strong>
                         <span class="summary-value" id="reviewTransProject">—</span>
                     </div>
-                    <div class="summary-item" id="reviewTransPurchaseAmountRow" style="display: none;">
-                        <strong>Total purchase amount</strong>
-                        <span class="summary-value" id="reviewTransPurchaseAmount">—</span>
-                    </div>
                 </div>
 
                 <div class="modal-footer">
@@ -960,65 +977,15 @@
         </div>
     </div>
 
-    <!-- ─── EXPENSE MODAL (from Transactions table) ─── -->
-    <div id="expenseModal" class="modal-overlay modal-expense">
-        <div class="modal-container">
-            <div class="modal-header">
-                <h2>Create Expense from Stock-In</h2>
-                <button class="modal-close" onclick="closeExpenseModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="expenseItemId">
-                <input type="hidden" id="expenseTransactionId">
-                <input type="hidden" id="expenseProjectId">
-                
-                <div class="form-group">
-                    <label>Item</label>
-                    <input type="text" id="expenseItemName" readonly style="background: #f5f5f5; color: #555;">
-                </div>
-                <div class="form-group">
-                    <label>Quantity Stocked In</label>
-                    <input type="text" id="expenseQuantity" readonly style="background: #f5f5f5; color: #555;">
-                </div>
-                <div class="form-group" id="expenseProjectGroup" style="display: none;">
-                    <label>Project</label>
-                    <input type="text" id="expenseProjectDisplay" readonly style="background: #f5f5f5; color: #555;">
-                </div>
-                <div class="form-group">
-                    <label>Expense Description <span class="required">*</span></label>
-                    <input type="text" id="expenseModalDesc" placeholder="e.g. Material purchase">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Amount <span class="required">*</span></label>
-                        <input type="number" step="0.01" id="expenseModalAmount" placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Category <span class="required">*</span></label>
-                        <select id="expenseModalCategory">
-                            <option value="">Select Category...</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" id="expenseModalDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}">
-                </div>
-                <div class="form-group">
-                    <label>Remarks</label>
-                    <input type="text" id="expenseModalRemarks" placeholder="Additional notes...">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-cancel" onclick="closeExpenseModal()">Cancel</button>
-                <button class="btn-save" onclick="saveExpenseFromTransaction()">Create Expense</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         var lookupData = { categories: [], suppliers: [], units: [] };
+
+        function formatInventoryUnitPrice(value) {
+            if (value === null || value === undefined || value === '') return '—';
+            var price = Number(value);
+            return Number.isFinite(price) ? '₱' + price.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
+        }
 
         // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
         function setButtonLoading(button, isLoading, loadingText) {
@@ -1047,7 +1014,6 @@
         var itemsFilteredData = [];
         var itemsPageSize = 10;
         var itemsCurrentPage = 1;
-        var currentExpenseRow = null;
         var currentItemDetailRow = null;
         var currentItemEditRow = null;
 
@@ -1191,6 +1157,12 @@
         function switchInventoryTab(el, tab) {
             document.getElementById('tabItems').classList.remove('active');
             document.getElementById('tabTransactions').classList.remove('active');
+
+            var itemsTab = tab === 'items';
+            document.getElementById('importItemsButton').hidden = !itemsTab;
+            document.getElementById('addItemButton').hidden = !itemsTab;
+            document.getElementById('importTransactionsButton').hidden = itemsTab;
+            document.getElementById('addTransactionButton').hidden = itemsTab;
 
             if (tab === 'items') {
                 document.getElementById('tabItems').classList.add('active');
@@ -1338,29 +1310,6 @@
             }
         }
 
-        // ─── POPULATE EXPENSE CATEGORY DROPDOWN ──────────────────────
-        function populateExpenseCategoryDropdown() {
-            var select = document.getElementById('expenseModalCategory');
-            if (!select) return;
-            
-            fetch('/api/expense-categories', {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                select.innerHTML = '<option value="">Select Category...</option>';
-                data.forEach(function(cat) {
-                    var opt = document.createElement('option');
-                    opt.value = cat.expense_category_id;
-                    opt.textContent = cat.category_name;
-                    select.appendChild(opt);
-                });
-            })
-            .catch(function(err) {
-                console.error('Error loading expense categories:', err);
-            });
-        }
-
         // ─── POPULATE TRANSACTION ITEM SELECT ────────────────────────
         function populateTransactionItemSelect() {
             var select = document.getElementById('transactionItemSelect');
@@ -1376,7 +1325,8 @@
                         category: item.category,
                         unit: item.unit,
                         supplier: item.supplier,
-                        supplier_id: item.supplier_id
+                        supplier_id: item.supplier_id,
+                        unit_price: item.unit_price
                     };
                 }
             });
@@ -1389,6 +1339,7 @@
                 opt.dataset.unit = item.unit;
                 opt.dataset.supplier = item.supplier;
                 opt.dataset.supplierId = item.supplier_id;
+                opt.dataset.unitPrice = item.unit_price == null ? '' : item.unit_price;
                 select.appendChild(opt);
             });
         }
@@ -1402,10 +1353,12 @@
                 document.getElementById('transactionItemCategory').value = selectedOption.dataset.category || '';
                 document.getElementById('transactionItemUnit').value = selectedOption.dataset.unit || '';
                 document.getElementById('transactionItemSupplier').value = selectedOption.dataset.supplier || '';
+                document.getElementById('transactionItemUnitPrice').value = formatInventoryUnitPrice(selectedOption.dataset.unitPrice);
             } else {
                 document.getElementById('transactionItemCategory').value = '';
                 document.getElementById('transactionItemUnit').value = '';
                 document.getElementById('transactionItemSupplier').value = '';
+                document.getElementById('transactionItemUnitPrice').value = '';
             }
         }
 
@@ -1563,7 +1516,7 @@
                 var tbody = document.getElementById('inventoryTableBody');
                 tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #d32f2f;">Error loading inventory data. Please refresh the page.</td></tr>';
                 var itemsTbody = document.getElementById('itemsTableBody');
-                itemsTbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #d32f2f;">Error loading items. Please refresh the page.</td></tr>';
+                itemsTbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #d32f2f;">Error loading items. Please refresh the page.</td></tr>';
             });
         }
 
@@ -1619,7 +1572,7 @@
             tbody.innerHTML = '';
             
             if (!pageData.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #888;">No items found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #888;">No items found.</td></tr>';
                 renderItemsPagination();
                 return;
             }
@@ -1637,6 +1590,7 @@
                 tr.setAttribute('data-item-name', item.item_name || 'Unknown');
                 tr.setAttribute('data-category', item.category || '—');
                 tr.setAttribute('data-unit', item.unit || '—');
+                tr.setAttribute('data-unit-price', item.unit_price == null ? '' : item.unit_price);
                 tr.setAttribute('data-supplier', item.supplier || '—');
                 tr.setAttribute('data-stock', stock);
                 tr.setAttribute('data-reorder', reorderLevel);
@@ -1652,6 +1606,7 @@
                     <td>${item.category || '—'}</td>
                     <td>${item.supplier || '—'}</td>
                     <td>${item.unit || '—'}</td>
+                    <td>${formatInventoryUnitPrice(item.unit_price)}</td>
                     <td>${stock}</td>
                     <td><span class="status-badge ${statusClass}"><span class="dot"></span> ${statusText}</span></td>
                     <td style="text-align: center;">
@@ -1950,6 +1905,7 @@
             document.getElementById('newItemName').value = '';
             document.getElementById('newItemCategory').value = '';
             document.getElementById('newItemUnit').value = '';
+            document.getElementById('newItemUnitPrice').value = '';
             document.getElementById('newItemSupplier').value = '';
             document.getElementById('newItemReorderLevel').value = '5';
             populateAddItemDropdowns();
@@ -1978,15 +1934,18 @@
             var unitId = document.getElementById('newItemUnit').value;
             var supplierId = document.getElementById('newItemSupplier').value;
             var reorderLevel = document.getElementById('newItemReorderLevel').value;
+            var unitPrice = document.getElementById('newItemUnitPrice').value;
 
             if (!name) { showError('Please enter an item name.'); return; }
             if (!categoryId) { showError('Please select a category.'); return; }
             if (!unitId) { showError('Please select a unit.'); return; }
             if (!supplierId) { showError('Please select a supplier.'); return; }
+            if (unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || Number(unitPrice) > 9999999999.99)) { showError('Please enter a valid unit price.'); return; }
 
             document.getElementById('reviewItemName').textContent = name;
             document.getElementById('reviewItemCategory').textContent = document.getElementById('newItemCategory').selectedOptions[0].text;
             document.getElementById('reviewItemUnit').textContent = document.getElementById('newItemUnit').selectedOptions[0].text;
+            document.getElementById('reviewItemUnitPrice').textContent = formatInventoryUnitPrice(unitPrice);
             document.getElementById('reviewItemSupplier').textContent = document.getElementById('newItemSupplier').selectedOptions[0].text;
             document.getElementById('reviewItemReorder').textContent = reorderLevel || '0';
 
@@ -2005,17 +1964,20 @@
             var unitId = document.getElementById('newItemUnit').value;
             var supplierId = document.getElementById('newItemSupplier').value;
             var reorderLevel = parseFloat(document.getElementById('newItemReorderLevel').value) || 0;
+            var unitPrice = document.getElementById('newItemUnitPrice').value;
 
             if (!name) { showError('Please enter an item name.'); return; }
             if (!categoryId) { showError('Please select a category.'); return; }
             if (!unitId) { showError('Please select a unit.'); return; }
             if (!supplierId) { showError('Please select a supplier.'); return; }
+            if (unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || Number(unitPrice) > 9999999999.99)) { showError('Please enter a valid unit price.'); return; }
 
             var payload = {
                 item_name: name,
                 inventory_category_id: parseInt(categoryId),
                 supplier_id: parseInt(supplierId),
                 unit_id: parseInt(unitId),
+                unit_price: unitPrice === '' ? null : Number(unitPrice),
                 current_stock: 0,
                 reorder_level: reorderLevel
             };
@@ -2056,6 +2018,7 @@
             var itemName = row.dataset.itemName || '—';
             var category = row.dataset.category || '—';
             var unit = row.dataset.unit || '—';
+            var unitPrice = row.dataset.unitPrice || '';
             var supplier = row.dataset.supplier || '—';
             var stock = row.dataset.stock || '0';
             var reorder = row.dataset.reorder || '0';
@@ -2066,6 +2029,7 @@
             document.getElementById('itemDetailName').textContent = itemName;
             document.getElementById('itemDetailCategory').textContent = category;
             document.getElementById('itemDetailUnit').textContent = unit;
+            document.getElementById('itemDetailUnitPrice').textContent = formatInventoryUnitPrice(unitPrice);
             document.getElementById('itemDetailSupplier').textContent = supplier;
             document.getElementById('itemDetailStock').textContent = stock;
             document.getElementById('itemDetailReorder').textContent = reorder;
@@ -2095,6 +2059,7 @@
             var itemName = currentItemDetailRow.dataset.itemName || '';
             var category = currentItemDetailRow.dataset.category || '';
             var unit = currentItemDetailRow.dataset.unit || '';
+            var unitPrice = currentItemDetailRow.dataset.unitPrice || '';
             var supplier = currentItemDetailRow.dataset.supplier || '';
             var reorder = currentItemDetailRow.dataset.reorder || '0';
             var categoryId = currentItemDetailRow.dataset.inventoryCategoryId || '';
@@ -2104,6 +2069,7 @@
             document.getElementById('editItemId').value = itemId;
             document.getElementById('editItemName').value = itemName;
             document.getElementById('editItemReorderLevel').value = reorder;
+            document.getElementById('editItemUnitPrice').value = unitPrice;
             
             // Populate dropdowns with current values
             var categorySelect = document.getElementById('editItemCategory');
@@ -2167,17 +2133,20 @@
             var unitId = document.getElementById('editItemUnit').value;
             var supplierId = document.getElementById('editItemSupplier').value;
             var reorderLevel = parseFloat(document.getElementById('editItemReorderLevel').value) || 0;
+            var unitPrice = document.getElementById('editItemUnitPrice').value;
 
             if (!name) { showError('Please enter an item name.'); return; }
             if (!categoryId) { showError('Please select a category.'); return; }
             if (!unitId) { showError('Please select a unit.'); return; }
             if (!supplierId) { showError('Please select a supplier.'); return; }
+            if (unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || Number(unitPrice) > 9999999999.99)) { showError('Please enter a valid unit price.'); return; }
 
             var payload = {
                 item_name: name,
                 inventory_category_id: parseInt(categoryId),
                 supplier_id: parseInt(supplierId),
                 unit_id: parseInt(unitId),
+                unit_price: unitPrice === '' ? null : Number(unitPrice),
                 reorder_level: reorderLevel
             };
 
@@ -2283,7 +2252,6 @@
             document.getElementById('transactionItemBarCode').value = '';
             document.getElementById('transactionQuantity').value = 1;
             document.getElementById('transactionMovementReason').value = 'purchase';
-            document.getElementById('transactionPurchaseAmount').value = '';
             document.getElementById('transactionProofFile').value = '';
             document.getElementById('transactionDate').value = document.getElementById('transactionDate').max;
             document.querySelector('input[name="transactionType"][value="IN"]').checked = true;
@@ -2299,12 +2267,12 @@
             document.getElementById('reviewTransItemBarCode').textContent = '—';
             document.getElementById('reviewTransItemQuantity').textContent = '—';
             document.getElementById('reviewTransItemUnit').textContent = '—';
+            document.getElementById('reviewTransItemUnitPrice').textContent = '—';
             document.getElementById('reviewTransProof').textContent = '—';
             document.getElementById('reviewTransType').textContent = '—';
             document.getElementById('reviewTransDate').textContent = '—';
             document.getElementById('reviewTransProjectRow').style.display = 'none';
             document.getElementById('reviewTransProject').textContent = '—';
-            document.getElementById('reviewTransPurchaseAmountRow').style.display = 'none';
             
             populateTransactionItemSelect();
             populateProjectDropdown();
@@ -2346,9 +2314,8 @@
 
             var typeLabel = type ? type.value : 'IN';
             var movementReason = document.getElementById('transactionMovementReason').value;
-            var purchaseAmount = document.getElementById('transactionPurchaseAmount').value;
-            if (typeLabel === 'IN' && movementReason === 'purchase' && (!purchaseAmount || !Number.isFinite(Number(purchaseAmount)) || Number(purchaseAmount) < 0.01 || Number(purchaseAmount) > 9999999999.99)) {
-                showError('Please enter a valid total purchase amount.'); return;
+            if (typeLabel === 'IN' && movementReason === 'purchase' && Number(document.getElementById('transactionItemSelect').selectedOptions[0].dataset.unitPrice || 0) <= 0) {
+                showError('Set a positive Unit Price on this item before recording a purchase stock-in.'); return;
             }
             if (typeLabel === 'OUT') {
                 var projectId = document.getElementById('transactionProject').value;
@@ -2378,14 +2345,12 @@
             document.getElementById('reviewTransItemBarCode').textContent = barCode;
             document.getElementById('reviewTransItemQuantity').textContent = quantity;
             document.getElementById('reviewTransItemUnit').textContent = unit;
+            document.getElementById('reviewTransItemUnitPrice').textContent = document.getElementById('transactionItemUnitPrice').value || '—';
             document.getElementById('reviewTransProof').textContent = proofFile ? proofFile.name : 'No proof attached';
             document.getElementById('reviewTransDate').textContent = date;
             document.getElementById('reviewTransType').textContent = typeLabel === 'IN'
                 ? (movementReason === 'purchase' ? 'IN (Purchase for storage)' : 'IN (Non-purchase stock adjustment)')
                 : 'OUT (Item Stock out)';
-            document.getElementById('reviewTransPurchaseAmountRow').style.display = typeLabel === 'IN' && movementReason === 'purchase' ? 'flex' : 'none';
-            document.getElementById('reviewTransPurchaseAmount').textContent = typeLabel === 'IN' && movementReason === 'purchase'
-                ? '₱' + Number(purchaseAmount).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
 
             transactionGoToStep(step);
         }
@@ -2407,9 +2372,7 @@
             var projectGroup = document.getElementById('transactionProjectGroup');
             var projectRequired = document.getElementById('transactionProjectRequired');
             var stockInGroup = document.getElementById('transactionStockInGroup');
-            var purchaseAmountGroup = document.getElementById('transactionPurchaseAmountGroup');
             stockInGroup.style.display = selected && selected.value === 'OUT' ? 'none' : 'flex';
-            purchaseAmountGroup.style.display = document.getElementById('transactionMovementReason').value === 'purchase' ? '' : 'none';
             if (selected && selected.value === 'OUT') {
                 projectGroup.style.display = 'block';
                 projectRequired.style.display = 'inline';
@@ -2466,7 +2429,6 @@
             if (type === 'IN') {
                 var movementReason = document.getElementById('transactionMovementReason').value;
                 payload.append('movement_reason', movementReason);
-                if (movementReason === 'purchase') payload.append('purchase_amount', document.getElementById('transactionPurchaseAmount').value);
             }
             payload.append('quantity', quantity);
             if (barCode !== '') payload.append('bar_code', barCode);
@@ -2499,120 +2461,6 @@
             })
             .finally(function() { setButtonLoading(saveBtn, false); });
         }
-
-        // ─── EXPENSE FROM TRANSACTION ───────────────────────────────
-        function openExpenseFromTransaction(row) {
-            var itemId = row.dataset.itemId || '';
-            var itemName = row.dataset.item || '';
-            var quantity = row.dataset.quantity || '';
-            var unit = row.dataset.unit || '';
-            var transactionId = row.dataset.id || '';
-            var project = row.dataset.project || '';
-            
-            if (!itemId) {
-                showError('Item not found.');
-                return;
-            }
-            
-            var item = inventoryItems.find(function(i) { return String(i.item_id) === String(itemId); });
-            if (!item) {
-                showError('Item not found in inventory.');
-                return;
-            }
-            
-            document.getElementById('expenseItemId').value = itemId;
-            document.getElementById('expenseTransactionId').value = transactionId;
-            document.getElementById('expenseItemName').value = itemName;
-            document.getElementById('expenseQuantity').value = quantity;
-            document.getElementById('expenseModalDesc').value = 'Stock-in: ' + itemName;
-            document.getElementById('expenseModalAmount').value = '';
-            document.getElementById('expenseModalDate').value = document.getElementById('expenseModalDate').max;
-            document.getElementById('expenseModalRemarks').value = 'Stock-in: ' + quantity + ' ' + unit;
-            document.getElementById('expenseProjectId').value = project || '';
-            
-            // Show project if exists
-            var projectGroup = document.getElementById('expenseProjectGroup');
-            if (project) {
-                projectGroup.style.display = 'block';
-                document.getElementById('expenseProjectDisplay').value = project;
-            } else {
-                projectGroup.style.display = 'none';
-            }
-            
-            // Set category default to 'material' if available
-            var categorySelect = document.getElementById('expenseModalCategory');
-            for (var i = 0; i < categorySelect.options.length; i++) {
-                if (categorySelect.options[i].text.toLowerCase() === 'material') {
-                    categorySelect.selectedIndex = i;
-                    break;
-                }
-            }
-            
-            currentExpenseRow = { item: item, transactionId: transactionId, project: project };
-            document.getElementById('expenseModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeExpenseModal() {
-            document.getElementById('expenseModal').classList.remove('active');
-            document.body.style.overflow = '';
-            currentExpenseRow = null;
-        }
-
-        function saveExpenseFromTransaction() {
-            var saveBtn = document.querySelector('#expenseModal .btn-save');
-            if (saveBtn && saveBtn.disabled) return;
-            var desc = document.getElementById('expenseModalDesc').value.trim();
-            var amount = parseFloat(document.getElementById('expenseModalAmount').value);
-            var categoryId = document.getElementById('expenseModalCategory').value;
-            var date = document.getElementById('expenseModalDate').value;
-            var remarks = document.getElementById('expenseModalRemarks').value.trim();
-            var projectId = document.getElementById('expenseProjectId').value || null;
-            
-            if (!desc) { showError('Please enter an expense description.'); return; }
-            if (!amount || amount <= 0) { showError('Please enter a valid expense amount.'); return; }
-            if (!categoryId) { showError('Please select an expense category.'); return; }
-            
-            var payload = {
-                project_id: projectId ? parseInt(projectId) : null,
-                expense_category_id: parseInt(categoryId),
-                expense_description: desc,
-                amount: amount,
-                expense_date: date,
-                remarks: remarks || 'Stock-in expense'
-            };
-            
-            setButtonLoading(saveBtn, true, 'Creating...');
-            fetch('/api/expenses', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data.success !== false) {
-                    closeExpenseModal();
-                    showSuccess('Expense created successfully!');
-                    loadInventoryItems();
-                } else {
-                    showError(data.message || 'Failed to create expense.');
-                }
-            })
-            .catch(function(err) {
-                console.error('Error creating expense:', err);
-                showError('Failed to create expense.');
-            })
-            .finally(function() { setButtonLoading(saveBtn, false); });
-        }
-
-        document.getElementById('expenseModal').addEventListener('click', function(e) {
-            if (e.target === this) { closeExpenseModal(); }
-        });
 
         // ─── VIEW/EDIT TRANSACTION MODAL ─────────────────────────────
         var currentRow = null;

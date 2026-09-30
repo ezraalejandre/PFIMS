@@ -11,13 +11,13 @@ use Illuminate\Support\Str;
 
 class InventoryImportService
 {
-    private const ITEM_REQUIRED_HEADERS = ['item_name', 'category', 'supplier', 'unit', 'current_stock', 'reorder_level', 'opening_balance_date'];
+    private const ITEM_REQUIRED_HEADERS = ['item_name', 'category', 'supplier', 'unit', 'unit_price', 'current_stock', 'reorder_level', 'opening_balance_date'];
 
-    private const ITEM_ALLOWED_HEADERS = ['item_name', 'category', 'supplier', 'unit', 'current_stock', 'reorder_level', 'opening_balance_date'];
+    private const ITEM_ALLOWED_HEADERS = self::ITEM_REQUIRED_HEADERS;
 
-    private const TRANSACTION_REQUIRED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date'];
+    private const TRANSACTION_REQUIRED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date', 'stock_in_reason'];
 
-    private const TRANSACTION_ALLOWED_HEADERS = ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date', 'stock_in_reason', 'total_purchase_amount'];
+    private const TRANSACTION_ALLOWED_HEADERS = self::TRANSACTION_REQUIRED_HEADERS;
 
     public function __construct(
         private TabularImportReader $reader,
@@ -57,6 +57,7 @@ class InventoryImportService
                 'category' => ['required', 'string', 'max:100'],
                 'supplier' => ['required', 'string', 'max:100'],
                 'unit' => ['required', 'string', 'max:100'],
+                'unit_price' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
                 'current_stock' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
                 'reorder_level' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
                 'opening_balance_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
@@ -80,11 +81,12 @@ class InventoryImportService
                 'inventory_category_id' => $categoryId,
                 'supplier_id' => $supplierId,
                 'unit_id' => $unitId,
+                'unit_price' => round((float) $values['unit_price'], 2),
                 'current_stock' => round((float) $values['current_stock'], 2),
                 'reorder_level' => round((float) $values['reorder_level'], 2),
                 'opening_balance_date' => $values['opening_balance_date'],
             ];
-            $key = implode('|', [$this->key($record['item_name']), $categoryId, $supplierId, $unitId, number_format($record['current_stock'], 2, '.', ''), number_format($record['reorder_level'], 2, '.', ''), $record['opening_balance_date']]);
+            $key = implode('|', [$this->key($record['item_name']), $categoryId, $supplierId, $unitId, number_format($record['unit_price'], 2, '.', ''), number_format($record['current_stock'], 2, '.', ''), number_format($record['reorder_level'], 2, '.', ''), $record['opening_balance_date']]);
             if (isset($fileKeys[$key])) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'Duplicates row '.$fileKeys[$key].' in this file.');
 
@@ -142,14 +144,7 @@ class InventoryImportService
         if ($missing !== [] || $unexpected !== []) {
             throw new ImportValidationException($this->headerMessage('inventory-transaction', $missing, $unexpected));
         }
-        $hasReason = in_array('stock_in_reason', $sheet['headers'], true);
-        $hasAmount = in_array('total_purchase_amount', $sheet['headers'], true);
-        if ($hasReason !== $hasAmount) {
-            throw new ImportValidationException('Include both stock_in_reason and total_purchase_amount, or use the legacy six-column format.');
-        }
-        $pricedFormat = $hasReason && $hasAmount;
-
-        $items = DB::table('inventory_item_tbl')->select('item_id', 'item_name', 'current_stock')->get()
+        $items = DB::table('inventory_item_tbl')->select('item_id', 'item_name', 'current_stock', 'unit_price')->get()
             ->groupBy(fn ($row) => $this->key($row->item_name));
         $projects = DB::table('project_tbl')->select('project_id', 'project_name')->get()
             ->groupBy(fn ($row) => $this->key($row->project_name));
@@ -157,16 +152,12 @@ class InventoryImportService
         $errors = [];
         $fileKeys = [];
         $simulatedStock = [];
-        $unpricedCount = 0;
 
         foreach ($sheet['rows'] as $row) {
             $values = $row['values'] + ['project_name' => null, 'bar_code' => null];
             $values['transaction_type'] = strtoupper(trim((string) ($values['transaction_type'] ?? '')));
             $values['transaction_date'] = $this->normalizeDate($values['transaction_date'] ?? null);
-            if ($pricedFormat) {
-                $values['stock_in_reason'] = str_replace([' ', '-'], '_', strtolower(trim((string) ($values['stock_in_reason'] ?? ''))));
-                $values['total_purchase_amount'] = trim((string) ($values['total_purchase_amount'] ?? ''));
-            }
+            $values['stock_in_reason'] = str_replace([' ', '-'], '_', strtolower(trim((string) ($values['stock_in_reason'] ?? ''))));
             $validator = Validator::make($values, [
                 'item_name' => ['required', 'string', 'max:100'],
                 'project_name' => ['nullable', 'string', 'max:100'],
@@ -174,8 +165,7 @@ class InventoryImportService
                 'quantity' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
                 'bar_code' => ['required', 'regex:/\A[0-9]{1,64}\z/'],
                 'transaction_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-                'stock_in_reason' => $pricedFormat ? ['required', 'in:purchase,return,adjustment,opening_balance,n/a'] : ['prohibited'],
-                'total_purchase_amount' => $pricedFormat ? ['required'] : ['prohibited'],
+                'stock_in_reason' => ['required', 'in:purchase,return,adjustment,opening_balance,n/a'],
             ]);
             if ($validator->fails()) {
                 $this->appendValidationErrors($errors, $row['row'], $validator->errors()->toArray());
@@ -196,26 +186,11 @@ class InventoryImportService
 
                 continue;
             }
-            $reason = $data['transaction_type'] === 'IN'
-                ? ($pricedFormat ? $data['stock_in_reason'] : 'legacy_unpriced') : null;
-            $purchaseAmount = null;
-            if ($pricedFormat) {
-                $rawAmount = $data['total_purchase_amount'];
-                if ($data['transaction_type'] === 'IN' && $reason === 'purchase') {
-                    if (! is_numeric($rawAmount) || (float) $rawAmount < 0.01 || (float) $rawAmount > 9999999999.99) {
-                        $errors[] = $this->rowError($row['row'], 'total_purchase_amount', 'Purchase IN requires a positive total amount within the Finance limit.');
-                        continue;
-                    }
-                    $purchaseAmount = round((float) $rawAmount, 2);
-                } elseif ($rawAmount !== 'N/A' && $rawAmount !== 'n/a') {
-                    $errors[] = $this->rowError($row['row'], 'total_purchase_amount', 'Use N/A when this row is not a purchase IN.');
-                    continue;
-                }
-                if (($data['transaction_type'] === 'OUT' && $data['stock_in_reason'] !== 'n/a')
-                    || ($data['transaction_type'] === 'IN' && $reason === 'n/a')) {
-                    $errors[] = $this->rowError($row['row'], 'stock_in_reason', 'Choose a stock-in reason for IN, or N/A for OUT.');
-                    continue;
-                }
+            $reason = $data['transaction_type'] === 'IN' ? $data['stock_in_reason'] : null;
+            if (($data['transaction_type'] === 'OUT' && $data['stock_in_reason'] !== 'n/a')
+                || ($data['transaction_type'] === 'IN' && $reason === 'n/a')) {
+                $errors[] = $this->rowError($row['row'], 'stock_in_reason', 'Choose a stock-in reason for IN, or N/A for OUT.');
+                continue;
             }
 
             $itemMatches = $items->get($this->key($data['item_name']), collect());
@@ -225,6 +200,14 @@ class InventoryImportService
                 continue;
             }
             $item = $itemMatches->first();
+            $purchaseAmount = null;
+            if ($reason === 'purchase') {
+                $purchaseAmount = round((float) ($item->unit_price ?? 0) * (float) $data['quantity'], 2);
+                if ($purchaseAmount < 0.01 || $purchaseAmount > 9999999999.99) {
+                    $errors[] = $this->rowError($row['row'], 'item_name', 'Purchase IN requires a positive item Unit Price and a total within the Finance limit.');
+                    continue;
+                }
+            }
             $projectId = null;
             if ($data['transaction_type'] === 'OUT') {
                 $projectMatches = $projects->get($this->key($data['project_name']), collect());
@@ -267,9 +250,6 @@ class InventoryImportService
             }
             $simulatedStock[$record['item_id']] = $stock;
             $prepared[] = ['row' => $row['row'], 'data' => $record, 'purchase_amount' => $purchaseAmount];
-            if ($reason === 'legacy_unpriced') {
-                $unpricedCount++;
-            }
         }
 
         $this->throwWhenErrors($errors);
@@ -280,6 +260,12 @@ class InventoryImportService
                 if (! $item) {
                     throw new ImportValidationException('No rows were imported because an inventory item was removed during validation.', [
                         $this->rowError($row['row'], 'item_name', 'Inventory item no longer exists.'),
+                    ]);
+                }
+                if ($row['data']['movement_reason'] === 'purchase'
+                    && round((float) ($item->unit_price ?? 0) * (float) $row['data']['quantity'], 2) !== $row['purchase_amount']) {
+                    throw new ImportValidationException('No rows were imported because an item price changed during validation.', [
+                        $this->rowError($row['row'], 'item_name', 'Unit Price changed. Review the item and retry the import.'),
                     ]);
                 }
                 if ($this->duplicateTransactionQuery($row['data'], $row['purchase_amount'])->lockForUpdate()->exists()) {
@@ -304,7 +290,7 @@ class InventoryImportService
                         $this->purchaseService->createLinkedExpense((int) $transactionId, $row['purchase_amount']);
                     } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
                         throw new ImportValidationException('No rows were imported because a purchase could not be recorded.', [
-                            $this->rowError($row['row'], 'total_purchase_amount', $e->getMessage()),
+                            $this->rowError($row['row'], 'item_name', $e->getMessage()),
                         ]);
                     }
                 }
@@ -322,7 +308,7 @@ class InventoryImportService
 
         return [
             'imported' => count($prepared), 'type' => 'inventory_transactions',
-            'unpriced_stock_in_count' => $unpricedCount,
+            'unpriced_stock_in_count' => 0,
             'project_ids' => collect($prepared)->pluck('data.project_id')->filter()
                 ->map(fn ($id) => (int) $id)->unique()->values()->all(),
         ];
@@ -355,6 +341,7 @@ class InventoryImportService
             ->where('inventory_category_id', $record['inventory_category_id'])
             ->where('supplier_id', $record['supplier_id'])
             ->where('unit_id', $record['unit_id'])
+            ->where('unit_price', $record['unit_price'])
             ->where('current_stock', $record['current_stock'])
             ->where('reorder_level', $record['reorder_level']);
 

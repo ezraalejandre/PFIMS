@@ -120,7 +120,7 @@
             ['Project Cost Prediction', '/ml-dashboard-test?section=predictive']
         ],
         finance: [
-            ['Expenses', ''], ['Budgets', '?section=budgets'],
+            ['Expenses', ''], ['Budgets & Contracts', '?section=budgets'],
             ['AR / AP', '?section=ar-ap'], ['Cash Asset', '?section=cash-position'],
             ['Equipment', '?section=equipment'], ['Bonds', '?section=bonds'],
             ['Budget-Spending Comparison', '/ml-dashboard-test?section=budget-comparison']

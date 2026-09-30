@@ -62,7 +62,7 @@ class FinanceImportService
 
             $data = $validator->validated();
             $projectId = null;
-            if (! blank($data['project_name'] ?? null) && ! in_array($this->key($data['project_name']), [$this->key('Office Expenses'), $this->key('Admin Expenses')], true)) {
+            if (! blank($data['project_name'] ?? null) && ! in_array($this->key($data['project_name']), [$this->key('Office'), $this->key('Office Expenses'), $this->key('Admin Expenses')], true)) {
                 $matches = $projects->get($this->key($data['project_name']), collect());
                 if ($matches->count() !== 1) {
                     $errors[] = $this->rowError($row['row'], 'project_name', $matches->isEmpty()
@@ -74,7 +74,27 @@ class FinanceImportService
                 $projectId = (int) $matches->first()->project_id;
             }
 
-            $categoryMatches = $categoriesByCode->get($this->key($data['category_code']), collect());
+            $categoryCodeAliases = [
+                'PERMITS_TAXES' => 'PERMIT_TAXES_LICENSES',
+                'EQUIPMENT_RENTAL' => 'TRANSPORTATION_EXPENSES',
+                'UTILITIES' => 'UTILITIES_WATER_POWER',
+                'DELIVERY' => 'DELIVERY_EXPENSE',
+                'OTHERS_SOS' => 'OTHERS_SOS_ETC',
+                'ADMIN_SALARIES' => 'ADMIN_SALARIES_WAGES',
+                'EMPLOYER_CONTRIBUTIONS' => 'SSS_PHILHEALTH',
+                'OTHER_ADMIN_COSTS' => 'OTHERS',
+                'OFFICE_RENT' => 'RENT_EXPENSE',
+                'ADMIN_RENT_EXPENSE' => 'RENT_EXPENSE',
+                'ADMIN_STATIONARY_EXPENSE' => 'STATIONARY_EXPENSE',
+                'ADMIN_DEPRECIATION_EXPENSE' => 'DEPRECIATION_EXPENSE',
+                'ADMIN_REPAIR_MAINTENANCE' => 'REPAIR_MAINTENANCE',
+                'ADMIN_MISCELLANEOUS_EXPENSE' => 'MISCELLANEOUS_EXPENSE',
+                'ADMIN_PENALTY_EXPENSE' => 'PENALTY_EXPENSE',
+                'ADMIN_SSS_PHILHEALTH' => 'SSS_PHILHEALTH',
+                'ADMIN_OTHERS' => 'OTHERS',
+            ];
+            $requestedCode = strtoupper(trim((string) $data['category_code']));
+            $categoryMatches = $categoriesByCode->get($this->key($categoryCodeAliases[$requestedCode] ?? $requestedCode), collect());
             if ($categoryMatches->isEmpty()) {
                 $categoryMatches = $categoriesByName->get($this->key($data['category_code']), collect());
             }
@@ -88,8 +108,9 @@ class FinanceImportService
             $category = $categoryMatches->first();
             $classification = strtolower((string) ($category->classification ?? ''));
             $isDirect = $classification === 'direct';
-            $projectLabel = $classification === 'admin' ? 'Admin Expenses' : 'Office Expenses';
-            if (in_array($classification, ['admin', 'office'], true) && $this->key($data['project_name']) !== $this->key($projectLabel)) {
+            $projectLabel = $classification === 'admin' ? 'Office' : 'Office Expenses';
+            $allowedLabels = $classification === 'admin' ? ['Office', 'Admin Expenses'] : ['Office Expenses'];
+            if (in_array($classification, ['admin', 'office'], true) && ! in_array($this->key($data['project_name']), array_map(fn ($label) => $this->key($label), $allowedLabels), true)) {
                 $errors[] = $this->rowError($row['row'], 'project_name', "Use {$projectLabel} for the project name of {$classification} expenses.");
 
                 continue;

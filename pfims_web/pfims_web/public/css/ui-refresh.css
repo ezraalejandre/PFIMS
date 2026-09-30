@@ -117,6 +117,13 @@ html[data-theme="dark"] select option {
 @keyframes pfims-shimmer { to { transform: translateX(100%); } }
 table { table-layout: fixed; }
 table th, table td { max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Show complete table column titles without changing data-cell truncation. */
+table thead th {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+}
 table td[title] { cursor: help; }
 .sidebar .nav-dropdown { display: none; padding: 0 0 4px 44px; }
 .sidebar li.nav-parent.is-open > .nav-dropdown { display: block; }

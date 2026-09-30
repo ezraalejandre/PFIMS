@@ -27,7 +27,7 @@ class CentralizedReportsTest extends TestCase
     {
         $admin = $this->user('admin');
         DB::table('project_tbl')->insert([
-            ['project_id' => 1, 'project_name' => 'Alpha Site', 'client_name' => 'Client A', 'project_manager' => 'Ana', 'start_date' => '2026-01-01', 'estimated_end_date' => '2026-10-01', 'worker_count' => 20, 'phase' => 'Build', 'completion_percentage' => 50, 'status' => 'On Track'],
+            ['project_id' => 1, 'project_name' => 'Alpha Site', 'client_name' => 'Client A', 'project_manager' => 'Ana', 'start_date' => '2026-01-01', 'estimated_end_date' => '2026-10-01', 'worker_count' => 20, 'phase' => 'Build', 'completion_percentage' => 50, 'status' => 'Ongoing'],
             ['project_id' => 2, 'project_name' => 'Beta Site', 'client_name' => 'Client B', 'project_manager' => 'Ben', 'start_date' => '2026-02-01', 'estimated_end_date' => '2026-11-01', 'worker_count' => 10, 'phase' => 'Design', 'completion_percentage' => 100, 'status' => 'Completed'],
         ]);
         DB::table('budgets_tbl')->insert([
@@ -35,7 +35,7 @@ class CentralizedReportsTest extends TestCase
             ['budget_id' => 2, 'project_id' => 2, 'budget_amount' => 200000, 'actual_amount' => 190000],
         ]);
 
-        $response = $this->actingAs($admin)->getJson('/api/reports/data/project?status=On%20Track');
+        $response = $this->actingAs($admin)->getJson('/api/reports/data/project?status=Ongoing');
 
         $response->assertOk()
             ->assertJsonPath('total_rows', 1)
@@ -53,7 +53,7 @@ class CentralizedReportsTest extends TestCase
         });
         DB::table('project_tbl')->insert([
             'project_id' => 1, 'project_name' => 'Costed Site', 'client_name' => 'A',
-            'start_date' => '2026-01-01', 'status' => 'On Track',
+            'start_date' => '2026-01-01', 'status' => 'Ongoing',
         ]);
         DB::table('budgets_tbl')->insert([
             'budget_id' => 1, 'project_id' => 1, 'budget_amount' => 10000, 'actual_amount' => 9999,
@@ -83,20 +83,18 @@ class CentralizedReportsTest extends TestCase
 
         $this->actingAs($accounting)->getJson('/api/reports/catalog')
             ->assertOk()
-            ->assertJsonCount(2, 'datasets')
+            ->assertJsonCount(1, 'datasets')
             ->assertJsonPath('datasets.0.key', 'expense_summary')
-            ->assertJsonPath('datasets.0.title', 'Expenses Summary')
-            ->assertJsonPath('datasets.1.key', 'contracts')
-            ->assertJsonPath('datasets.1.title', 'Contracts');
+            ->assertJsonPath('datasets.0.title', 'Expenses Summary');
 
         $this->actingAs($accounting)->getJson('/api/reports/data/project')->assertForbidden();
 
         $this->actingAs($this->user('admin'))->getJson('/api/reports/catalog')
             ->assertOk()
-            ->assertJsonCount(3, 'datasets')
+            ->assertJsonCount(2, 'datasets')
             ->assertJsonPath('datasets.0.title', 'Expenses Summary')
-            ->assertJsonPath('datasets.1.title', 'Contracts')
-            ->assertJsonPath('datasets.2.title', 'Inventory');
+            ->assertJsonPath('datasets.1.key', 'inventory')
+            ->assertJsonPath('datasets.1.filters', ['search', 'category_id', 'supplier_id', 'stock_status']);
 
         $this->actingAs($this->user('operations'))->getJson('/api/reports/catalog')
             ->assertOk()
@@ -107,10 +105,49 @@ class CentralizedReportsTest extends TestCase
         $this->getJson('/api/reports/data/workforce')->assertNotFound();
     }
 
+    public function test_inventory_report_uses_item_columns_and_item_filters_not_expense_summary(): void
+    {
+        DB::table('inventory_category_tbl')->insert([
+            ['inventory_category_id' => 1, 'inventory_category_name' => 'Hardware'],
+            ['inventory_category_id' => 2, 'inventory_category_name' => 'Paint'],
+        ]);
+        DB::table('supplier_tbl')->insert([
+            ['supplier_id' => 1, 'supplier_name' => 'Supplier A'],
+            ['supplier_id' => 2, 'supplier_name' => 'Supplier B'],
+        ]);
+        DB::table('unit_tbl')->insert(['unit_id' => 1, 'unit_name' => 'pcs']);
+        DB::table('inventory_item_tbl')->insert([
+            ['item_id' => 1, 'item_name' => 'Hammer', 'inventory_category_id' => 1, 'supplier_id' => 1, 'unit_id' => 1, 'unit_price' => 450.25, 'current_stock' => 12, 'reorder_level' => 5],
+            ['item_id' => 2, 'item_name' => 'Blue Paint', 'inventory_category_id' => 2, 'supplier_id' => 2, 'unit_id' => 1, 'unit_price' => 120.50, 'current_stock' => 0, 'reorder_level' => 5],
+        ]);
+
+        $this->actingAs($this->user('admin'))
+            ->getJson('/api/reports/data/inventory?category_id=2&supplier_id=2&stock_status=Out%20of%20Stock')
+            ->assertOk()
+            ->assertJsonPath('dataset', 'inventory')
+            ->assertJsonPath('columns.item_name', 'Item')
+            ->assertJsonPath('columns.unit_price', 'Unit Price')
+            ->assertJsonPath('total_rows', 1)
+            ->assertJsonPath('rows.0.item_name', 'Blue Paint')
+            ->assertJsonPath('rows.0.unit_price', 120.5)
+            ->assertJsonPath('rows.0.category_name', 'Paint')
+            ->assertJsonPath('rows.0.stock_status', 'Out of Stock')
+            ->assertJsonMissing(['project_name' => 'Blue Paint']);
+
+        $this->postJson('/api/reports/preview', [
+            'dataset' => 'inventory', 'title' => 'Inventory Items',
+            'columns' => ['item_name', 'current_stock'],
+            'filters' => ['category_id' => 1],
+        ])->assertOk()
+            ->assertJsonPath('row_count', 1)
+            ->assertJsonPath('rows.0.item_name', 'Hammer')
+            ->assertJsonPath('columns.current_stock', 'Current Stock');
+    }
+
     public function test_expenses_summary_uses_ongoing_project_costs_without_storage_or_office_spending(): void
     {
         DB::table('project_tbl')->insert([
-            ['project_id' => 1, 'project_name' => 'Active Site', 'status' => 'On Track', 'start_date' => '2026-01-01'],
+            ['project_id' => 1, 'project_name' => 'Active Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01'],
             ['project_id' => 2, 'project_name' => 'Finished Site', 'status' => 'Completed', 'start_date' => '2026-01-01'],
         ]);
         DB::table('fin_expense_category_tbl')->insert([
@@ -150,21 +187,88 @@ class CentralizedReportsTest extends TestCase
             ->assertJsonPath('totals.total', 230);
     }
 
+    public function test_expense_summary_filters_by_calendar_project_status_and_expense_type(): void
+    {
+        DB::table('project_tbl')->insert([
+            ['project_id' => 1, 'project_name' => 'Active Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01'],
+            ['project_id' => 2, 'project_name' => 'Completed Site', 'status' => 'Completed', 'start_date' => '2026-01-01'],
+        ]);
+        DB::table('fin_expense_category_tbl')->insert([
+            ['fin_category_id' => 1, 'category_code' => 'CONSTRUCTION_SUPPLY', 'category_name' => 'Construction Supply', 'classification' => 'direct'],
+            ['fin_category_id' => 2, 'category_code' => 'RENT_EXPENSE', 'category_name' => 'Rent Expense', 'classification' => 'admin'],
+            ['fin_category_id' => 3, 'category_code' => 'LEGACY', 'category_name' => 'Legacy', 'classification' => 'overall'],
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 100, 'expense_date' => '2026-09-30'],
+            ['project_id' => 1, 'fin_category_id' => 2, 'amount' => 20, 'expense_date' => '2026-09-30'],
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 50, 'expense_date' => '2026-09-29'],
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 40, 'expense_date' => '2026-08-31'],
+            ['project_id' => 2, 'fin_category_id' => 1, 'amount' => 80, 'expense_date' => '2026-09-30'],
+            ['project_id' => null, 'fin_category_id' => 2, 'amount' => 999, 'expense_date' => '2026-09-30'],
+            ['project_id' => 1, 'fin_category_id' => 3, 'amount' => 999, 'expense_date' => '2026-09-30'],
+        ]);
+
+        $this->actingAs($this->user('admin'))->getJson('/api/reports/catalog')
+            ->assertOk()->assertJsonPath('datasets.0.filters', [
+                'search', 'report_month', 'report_day', 'report_year', 'project_status', 'expense_type',
+            ]);
+        $base = '/api/reports/data/expense_summary?report_month=9&report_day=30&report_year=2026';
+        $this->getJson($base.'&project_status=Ongoing&expense_type=Overall')
+            ->assertOk()->assertJsonPath('total_rows', 1)->assertJsonPath('rows.0.total', 210)
+            ->assertJsonPath('totals.project_name', 'TOTAL(As of Current Month)')
+            ->assertJsonPath('totals.total', 210)
+            ->assertJsonPath('previous_totals.total', 40)
+            ->assertJsonPath('month_totals.total', 170);
+        $this->getJson($base.'&project_status=Ongoing&expense_type=Direct')
+            ->assertOk()->assertJsonPath('rows.0.total', 190)->assertJsonPath('rows.0.administrative_expenses', 0)
+            ->assertJsonPath('previous_totals.total', 40)->assertJsonPath('month_totals.total', 150);
+        $this->getJson($base.'&project_status=Ongoing&expense_type=Admin')
+            ->assertOk()->assertJsonPath('rows.0.total', 20)->assertJsonPath('rows.0.construction_supply', 0)
+            ->assertJsonPath('previous_totals.total', 0)->assertJsonPath('month_totals.total', 20);
+        $overall = $this->getJson($base.'&project_status=Ongoing&expense_type=Overall')->json();
+        $direct = $this->getJson($base.'&project_status=Ongoing&expense_type=Direct')->json();
+        $admin = $this->getJson($base.'&project_status=Ongoing&expense_type=Admin')->json();
+        foreach (['rows.0', 'totals', 'previous_totals', 'month_totals'] as $path) {
+            $this->assertEquals(
+                data_get($direct, $path.'.total') + data_get($admin, $path.'.total'),
+                data_get($overall, $path.'.total')
+            );
+        }
+        $this->getJson('/api/reports/data/expense_summary?report_month=9&report_day=29&report_year=2026&project_status=Ongoing')
+            ->assertOk()->assertJsonPath('rows.0.total', 90)
+            ->assertJsonPath('previous_totals.total', 40)->assertJsonPath('month_totals.total', 50);
+        $this->getJson($base.'&project_status=Completed&expense_type=Direct')
+            ->assertOk()->assertJsonPath('rows.0.project_name', 'Completed Site')->assertJsonPath('rows.0.total', 80);
+        $this->getJson('/api/reports/data/expense_summary?report_month=09&report_day=30&report_year=2026&project_status=Ongoing')
+            ->assertOk()->assertJsonPath('rows.0.total', 210);
+        $this->postJson('/api/reports/preview', [
+            'dataset' => 'expense_summary', 'title' => 'Admin September 30',
+            'columns' => ['project_name', 'administrative_expenses', 'total'],
+            'filters' => ['report_month' => 9, 'report_day' => 30, 'report_year' => 2026,
+                'project_status' => 'Ongoing', 'expense_type' => 'Admin'],
+        ])->assertOk()->assertJsonPath('rows.0.total', 20)->assertJsonPath('totals.total', 20);
+        $this->getJson('/api/reports/data/expense_summary?report_month=13')
+            ->assertUnprocessable();
+    }
+
     public function test_new_report_preview_and_all_file_formats_include_selected_columns(): void
     {
         Storage::fake('public');
         DB::table('project_tbl')->insert([
-            'project_id' => 1, 'project_name' => 'Preview Site', 'status' => 'On Track', 'start_date' => '2026-01-01',
+            'project_id' => 1, 'project_name' => 'Preview Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01',
         ]);
         $admin = $this->user('admin');
         $config = [
             'dataset' => 'expense_summary', 'title' => 'Summary of Expenses',
             'columns' => ['project_name', 'construction_supply', 'total'], 'filters' => [],
+            'design' => ['header_color' => 'orange', 'table_spacing' => 'compact'],
         ];
         $this->actingAs($admin)->postJson('/api/reports/preview', $config)
             ->assertOk()->assertJsonPath('row_count', 1)
             ->assertJsonPath('rows.0.project_name', 'Preview Site')
-            ->assertJsonPath('totals.total', 0);
+            ->assertJsonPath('totals.total', 0)
+            ->assertJsonPath('previous_totals.total', 0)
+            ->assertJsonPath('month_totals.total', 0);
 
         foreach (['csv', 'xlsx', 'pdf'] as $format) {
             $this->actingAs($admin)->postJson('/api/reports/export', $config + ['format' => $format])->assertOk();
@@ -173,6 +277,10 @@ class CentralizedReportsTest extends TestCase
             $this->assertSame(['project_name', 'construction_supply', 'total'], $report->selected_columns);
             $this->assertNotEmpty($bytes);
             if ($format === 'pdf') $this->assertStringStartsWith('%PDF', $bytes);
+            if ($format === 'csv') {
+                $this->assertStringContainsString('TOTAL BALANCE(As of Previous Month)', $bytes);
+                $this->assertStringContainsString('TOTAL(This Month)', $bytes);
+            }
             if ($format === 'xlsx') {
                 $this->assertStringStartsWith('PK', $bytes);
                 $zipPath = Storage::disk('public')->path($report->file_path);
@@ -180,6 +288,20 @@ class CentralizedReportsTest extends TestCase
                 $this->assertTrue($zip->open($zipPath) === true);
                 $this->assertNotFalse($zip->getFromName('xl/media/report-header.jpeg'));
                 $this->assertStringContainsString('Preview Site', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('TOTAL BALANCE(As of Previous Month)', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('FF176638', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('FFC96C00', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('horizontal="center"', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('<borders count="2">', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('ht="30"', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('PROJECT', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('FFF2F4F7', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('FFFDEAEA', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('<c r="C9" s="16"', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('<c r="A10" s="1"', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('<c r="A11" s="10"', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('<c r="A12" s="12"', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('<c r="A13" s="14"', $zip->getFromName('xl/worksheets/sheet1.xml'));
                 $zip->close();
             }
         }
@@ -189,7 +311,7 @@ class CentralizedReportsTest extends TestCase
     {
         Storage::fake('public');
         DB::table('project_tbl')->insert([
-            'project_id' => 1, 'project_name' => 'Filtered Site', 'status' => 'On Track', 'start_date' => '2026-01-01',
+            'project_id' => 1, 'project_name' => 'Filtered Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01',
         ]);
         DB::table('fin_expense_category_tbl')->insert([
             ['fin_category_id' => 1, 'category_code' => 'CONSTRUCTION_SUPPLY', 'category_name' => 'Construction supplies', 'classification' => 'direct'],
@@ -216,8 +338,16 @@ class CentralizedReportsTest extends TestCase
 
     public function test_contracts_are_reported_in_reports_and_old_finance_link_redirects(): void
     {
+        $reportsView = file_get_contents(resource_path('views/reports.blade.php'));
+        $this->assertStringNotContainsString('id="addContract"', $reportsView);
+        $this->assertStringNotContainsString('id="contractDialog"', $reportsView);
+        $this->assertStringNotContainsString("apiJson('/api/project-contracts/", $reportsView);
+        $this->assertStringContainsString('if (request !== datasetRequest || key !== state.dataset) return;', $reportsView);
+        $this->assertStringContainsString('dataset: key,', $reportsView);
+        $this->assertStringContainsString('id="dataBody"', $reportsView);
+        $this->assertStringContainsString('class="report-contract-row"', $reportsView);
         DB::table('project_tbl')->insert([
-            'project_id' => 4, 'project_name' => 'Contract Site', 'status' => 'On Track', 'start_date' => '2026-01-01',
+            'project_id' => 4, 'project_name' => 'Contract Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01',
         ]);
         DB::table('budgets_tbl')->insert(['budget_id' => 4, 'project_id' => 4, 'budget_amount' => 1000]);
         DB::table('fin_expense_category_tbl')->insert([
@@ -228,17 +358,28 @@ class CentralizedReportsTest extends TestCase
             'project_id' => 4, 'fin_category_id' => 4, 'expense_description' => 'Crew',
             'amount' => 150, 'expense_date' => '2026-02-01',
         ]);
-        DB::table('fin_project_contract_tbl')->insert([
-            'contract_id' => 4, 'project_id' => 4, 'original_contract_price' => 900,
+        $admin = $this->user('admin');
+        $this->actingAs($admin)->get('/finance?section=budgets')->assertOk()
+            ->assertSee('id="addContractModal"', false)
+            ->assertSee('id="contractsSubpanel"', false)
+            ->assertSee('id="profitTable"', false)
+            ->assertSee('onclick="openAddContractModal()"', false);
+        $this->get('/afinance?section=contracts')->assertRedirect('/afinance?section=budgets&subtab=contracts');
+        $this->actingAs($admin)->postJson('/api/project-contracts', [
+            'project_id' => 4, 'original_contract_price' => 900,
             'additional_works_contract' => 100, 'original_payment_received' => 400,
             'additional_works_payment' => 50, 'remarks' => 'Signed',
-        ]);
-        $this->actingAs($this->user('admin'))->getJson('/api/reports/data/contracts?project_id=4')
+        ])->assertCreated();
+        $this->actingAs($admin)->getJson('/api/reports/data/contracts?project_id=4')
             ->assertOk()->assertJsonPath('total_rows', 1)
+            ->assertJsonPath('columns.additional_works_contract', 'Addl. Works')
+            ->assertJsonPath('columns.additional_works_payment', 'Addl. Payment')
+            ->assertJsonPath('rows.0.project_name', 'Contract Site')
+            ->assertJsonPath('rows.0.original_contract_price', 1000)
             ->assertJsonPath('rows.0.project_expense', 150)
             ->assertJsonPath('rows.0.total_contract_price', 1100)
             ->assertJsonPath('rows.0.accounts_receivable', 650);
-        $this->get('/finance?section=contracts')->assertRedirect('/reports?section=contracts');
+        $this->get('/finance?section=contracts')->assertRedirect('/finance?section=budgets&subtab=contracts');
         $this->actingAs($this->user('operations'))->getJson('/api/reports/data/contracts')->assertForbidden();
     }
 
@@ -257,7 +398,7 @@ class CentralizedReportsTest extends TestCase
                 'worker_count' => 10,
                 'phase' => 'Build',
                 'completion_percentage' => 50,
-                'status' => 'On Track',
+                'status' => 'Ongoing',
             ]);
             DB::table('budgets_tbl')->insert([
                 'budget_id' => $index,
@@ -325,6 +466,23 @@ class CentralizedReportsTest extends TestCase
                 ->assertSee('class="bottom-nav"', false)
                 ->assertSee('class="main-content"', false)
                 ->assertSee('id="dataPagination"', false)
+                ->assertSee('id="filterReportMonth" type="hidden"', false)
+                ->assertSee('id="filterReportDay" type="hidden"', false)
+                ->assertSee('id="filterReportYear" type="hidden"', false)
+                ->assertSee('data-date-part="report_month"', false)
+                ->assertSee('data-date-part="report_day"', false)
+                ->assertSee('data-date-part="report_year"', false)
+                ->assertSee('Array.from({ length: daysInSelectedMonth() }', false)
+                ->assertSee("button.addEventListener('click', event => {", false)
+                ->assertSee('id="filterProjectStatus" data-default="Ongoing"', false)
+                ->assertSee('id="filterExpenseType" data-default="Overall"', false)
+                ->assertSee('control.remove();', false)
+                ->assertDontSee('control.hidden = !state.definition.filters.includes(control.dataset.filter)', false)
+                ->assertSee("document.getElementById('kpiGrid').hidden = key !== 'inventory'", false)
+                ->assertSee('Inventory Items Summary', false)
+                ->assertSee('clearFilters.parentNode === filterGrid ? clearFilters : null', false)
+                ->assertDontSee('class="panel content-card chart-panel"', false)
+                ->assertDontSee('Calculated from all records matching the active filters.', false)
                 ->assertSee('id="dataPageSize"', false)
                 ->assertSee('id="historyPagination"', false)
                 ->assertSee('id="historyPageSize"', false)
@@ -343,6 +501,11 @@ class CentralizedReportsTest extends TestCase
                 $response->assertSee($link, false);
             }
         }
+        $pickerCss = file_get_contents(public_path('css/centralized-reports.css'));
+        $this->assertStringContainsString('body.reports-page .report-date-picker :is(.report-date-options button, .report-year-navigation button)', $pickerCss);
+        $this->assertStringContainsString('font-weight: 400 !important;', $pickerCss);
+        $this->assertStringContainsString('body.reports-page .report-date-picker .report-date-options button[aria-pressed="true"] { font-weight: 700 !important; }', $pickerCss);
+        $this->assertStringContainsString('.report-year-navigation span { font-weight: 400; }', $pickerCss);
     }
 
     public function test_configured_csv_export_is_downloaded_and_persisted_as_export_history(): void
@@ -352,7 +515,7 @@ class CentralizedReportsTest extends TestCase
         DB::table('project_tbl')->insert([
             'project_id' => 7, 'project_name' => 'Export Project', 'client_name' => 'Client',
             'project_manager' => 'Manager', 'start_date' => '2026-03-01', 'estimated_end_date' => '2026-12-01',
-            'worker_count' => 12, 'phase' => 'Construction', 'completion_percentage' => 30, 'status' => 'On Track',
+            'worker_count' => 12, 'phase' => 'Construction', 'completion_percentage' => 30, 'status' => 'Ongoing',
         ]);
         DB::table('budgets_tbl')->insert(['budget_id' => 7, 'project_id' => 7, 'budget_amount' => 500000, 'actual_amount' => 100000]);
 
@@ -360,7 +523,7 @@ class CentralizedReportsTest extends TestCase
             'dataset' => 'project', 'title' => 'Filtered Project Export', 'format' => 'csv',
             'columns' => ['project_name', 'status', 'budget_amount'],
             'sections' => ['summary', 'kpis', 'data'],
-            'filters' => ['project_id' => 7, 'status' => 'On Track'],
+            'filters' => ['project_id' => 7, 'status' => 'Ongoing'],
         ]);
 
         $response->assertOk();
@@ -384,7 +547,7 @@ class CentralizedReportsTest extends TestCase
     {
         $admin = $this->user('admin');
         DB::table('project_tbl')->insert([
-            ['project_id' => 21, 'project_name' => 'Filtered Project', 'client_name' => 'A', 'project_manager' => 'One', 'start_date' => now()->startOfMonth()->toDateString(), 'estimated_end_date' => now()->addMonth()->toDateString(), 'worker_count' => 8, 'phase' => 'Build', 'completion_percentage' => 40, 'status' => 'On Track'],
+            ['project_id' => 21, 'project_name' => 'Filtered Project', 'client_name' => 'A', 'project_manager' => 'One', 'start_date' => now()->startOfMonth()->toDateString(), 'estimated_end_date' => now()->addMonth()->toDateString(), 'worker_count' => 8, 'phase' => 'Build', 'completion_percentage' => 40, 'status' => 'Ongoing'],
             ['project_id' => 22, 'project_name' => 'Excluded Project', 'client_name' => 'B', 'project_manager' => 'Two', 'start_date' => now()->startOfMonth()->toDateString(), 'estimated_end_date' => now()->addMonth()->toDateString(), 'worker_count' => 12, 'phase' => 'Build', 'completion_percentage' => 80, 'status' => 'Delayed'],
         ]);
         DB::table('budgets_tbl')->insert([
@@ -395,15 +558,15 @@ class CentralizedReportsTest extends TestCase
         DB::table('fin_expense_tbl')->insert(['fin_expense_id' => 1, 'project_id' => 21, 'fin_category_id' => 1, 'expense_description' => 'Work', 'amount' => 25000, 'expense_date' => now()->toDateString()]);
         DB::table('expense_tbl')->insert(['project_id' => 21, 'material_amount' => 900000, 'labor_amount' => 800000, 'equipment_amount' => 0, 'other_amount' => 0]);
 
-        $response = $this->actingAs($admin)->getJson('/api/dashboard?status=On%20Track');
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?status=Ongoing');
 
         $response->assertOk()
-            ->assertJsonPath('filters.status', 'On Track')
+            ->assertJsonPath('filters.status', 'Ongoing')
             ->assertJsonPath('stat_cards.0.value', '1')
             ->assertJsonPath('stat_cards.2.value', '0')
             ->assertJsonCount(1, 'projects')
             ->assertJsonPath('projects.0.name', 'Filtered Project')
-            ->assertJsonPath('project_status.labels.0', 'On Track')
+            ->assertJsonPath('project_status.labels.0', 'Ongoing')
             ->assertJsonPath('project_status.values.0', 1);
     }
 
@@ -539,6 +702,7 @@ class CentralizedReportsTest extends TestCase
             $table->integer('supplier_id')->nullable();
             $table->integer('unit_id')->nullable();
             $table->string('item_name')->nullable();
+            $table->decimal('unit_price', 12, 2)->nullable();
             $table->decimal('current_stock', 10, 2)->nullable();
             $table->decimal('reorder_level', 10, 2)->nullable();
         });

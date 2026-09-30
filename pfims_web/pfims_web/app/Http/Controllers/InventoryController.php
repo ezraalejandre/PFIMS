@@ -75,6 +75,7 @@ class InventoryController extends Controller
                     'inventory_category_id' => $item->inventory_category_id,
                     'supplier_id' => $item->supplier_id,
                     'unit_id' => $item->unit_id,
+                    'unit_price' => $item->unit_price,
                     'category' => $item->category?->inventory_category_name ?? 'N/A',
                     'unit' => $item->unit?->unit_name ?? 'N/A',
                     'quantity' => $item->current_stock,
@@ -97,6 +98,7 @@ class InventoryController extends Controller
             'inventory_category_id' => 'required|integer|exists:inventory_category_tbl,inventory_category_id',
             'supplier_id' => 'required|integer|exists:supplier_tbl,supplier_id',
             'unit_id' => 'required|integer|exists:unit_tbl,unit_id',
+            'unit_price' => 'nullable|numeric|min:0|max:9999999999.99',
             'current_stock' => 'required|numeric|min:0|max:999999999999.99',
             'reorder_level' => 'required|numeric|min:0|max:999999999999.99',
         ]);
@@ -121,7 +123,7 @@ class InventoryController extends Controller
             'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'transaction_type' => 'required|in:IN,OUT',
             'movement_reason' => 'required_if:transaction_type,IN|nullable|in:purchase,adjustment',
-            'purchase_amount' => 'required_if:movement_reason,purchase|nullable|numeric|min:0.01|max:9999999999.99',
+            'purchase_amount' => 'prohibited',
             'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
             'bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             'transaction_date' => 'required|date|before_or_equal:today',
@@ -129,23 +131,17 @@ class InventoryController extends Controller
         ]);
 
         $proofFile = $request->file('proof_file');
-        $purchaseAmount = $validated['purchase_amount'] ?? null;
         unset($validated['proof_file'], $validated['purchase_amount']);
         if ($validated['transaction_type'] === 'OUT') {
             if (empty($validated['project_id'])) {
                 return response()->json(['success' => false, 'message' => 'Stock-out requires a project.'], 422);
             }
-            if (($validated['movement_reason'] ?? null) !== null || $purchaseAmount !== null) {
-                return response()->json(['success' => false, 'message' => 'Stock-out cannot have a stock-in reason or purchase amount.'], 422);
+            if (($validated['movement_reason'] ?? null) !== null) {
+                return response()->json(['success' => false, 'message' => 'Stock-out cannot have a stock-in reason.'], 422);
             }
             $validated['movement_reason'] = null;
         } elseif (! empty($validated['project_id'])) {
             return response()->json(['success' => false, 'message' => 'Stock-in is for storage and cannot be assigned to a project.'], 422);
-        } elseif ($validated['movement_reason'] !== 'purchase' && $purchaseAmount !== null) {
-            return response()->json(['success' => false, 'message' => 'Only a purchase stock-in may have a purchase amount.'], 422);
-        }
-        if ($this->duplicateTransaction($validated, null, $purchaseAmount)) {
-            return response()->json(['success' => false, 'message' => 'This inventory transaction already exists.'], 409);
         }
         $validated['proof_file_path'] = $proofFile?->store('inventory-transaction-proofs', 'public');
         $validated['proof_file_name'] = $proofFile?->getClientOriginalName();
@@ -153,6 +149,20 @@ class InventoryController extends Controller
         DB::beginTransaction();
         try {
             $item = InventoryItem::lockForUpdate()->findOrFail($validated['item_id']);
+            $purchaseAmount = null;
+            if ($validated['transaction_type'] === 'IN' && $validated['movement_reason'] === 'purchase') {
+                $unitPrice = $item->unit_price === null ? null : (float) $item->unit_price;
+                if ($unitPrice === null || $unitPrice <= 0) {
+                    abort(422, 'Set a positive Unit Price on this item before recording a purchase stock-in.');
+                }
+                $purchaseAmount = round($unitPrice * (float) $validated['quantity'], 2);
+                if ($purchaseAmount < 0.01 || $purchaseAmount > 9999999999.99) {
+                    abort(422, 'The quantity multiplied by Unit Price exceeds the supported purchase amount.');
+                }
+            }
+            if ($this->duplicateTransaction($validated, null, $purchaseAmount)) {
+                abort(409, 'This inventory transaction already exists.');
+            }
 
             // Create transaction record
             $transaction = InventoryTransaction::create($validated + ['recorded_at' => now()]);
@@ -199,6 +209,7 @@ class InventoryController extends Controller
             'inventory_category_id' => 'required|integer|exists:inventory_category_tbl,inventory_category_id',
             'supplier_id' => 'required|integer|exists:supplier_tbl,supplier_id',
             'unit_id' => 'required|integer|exists:unit_tbl,unit_id',
+            'unit_price' => 'nullable|numeric|min:0|max:9999999999.99',
             'reorder_level' => 'required|numeric|min:0|max:999999999999.99',
         ]);
 
@@ -595,7 +606,7 @@ class InventoryController extends Controller
         ]);
 
         $query = InventoryItem::query()
-            ->select('item_id', 'item_name', 'inventory_category_id', 'supplier_id', 'unit_id', 'current_stock');
+            ->select('item_id', 'item_name', 'inventory_category_id', 'supplier_id', 'unit_id', 'unit_price', 'current_stock');
 
         if (! empty($filters['category_id'])) {
             $query->where('inventory_category_id', $filters['category_id']);

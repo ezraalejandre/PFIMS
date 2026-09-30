@@ -45,7 +45,7 @@ Route::get('/odashboard', function () {
 
 // ─── ACCOUNTING ROUTES ──────────────────────────────────────────
 Route::get('/afinance', function () {
-    if (request()->query('section') === 'contracts') return redirect('/areports?section=contracts');
+    if (request()->query('section') === 'contracts') return redirect('/afinance?section=budgets&subtab=contracts');
     return view('finance', ['portal' => 'accounting']);
 })->middleware(['auth', 'role.portal:admin,accounting']);
 
@@ -137,7 +137,7 @@ Route::get('/projects', function () {
 
 // Finance page
 Route::get('/finance', function () {
-    if (request()->query('section') === 'contracts') return redirect('/reports?section=contracts');
+    if (request()->query('section') === 'contracts') return redirect('/finance?section=budgets&subtab=contracts');
     return view('finance', ['portal' => 'admin']);
 })->middleware(['auth', 'role.portal:admin']);
 

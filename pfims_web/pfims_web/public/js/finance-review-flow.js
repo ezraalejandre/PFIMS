@@ -3,7 +3,7 @@
 
     var flows = {
         inventoryExpenseModal: ['inventoryExpenseAmount'],
-        addExpenseModal: ['expenseType', 'expenseDesc', 'expenseCategory', 'expenseDate'],
+        addExpenseModal: ['expenseType', 'expenseCategory', 'expenseProject', 'expenseAmount', 'expenseDate', 'expenseDesc'],
         addBudgetModal: ['budgetProject', 'budgetAmount'],
         addContractModal: ['contractProject'],
         addReceivableModal: ['receivableEntryType', 'receivableCounterparty', 'receivableDate'],
@@ -34,16 +34,6 @@
             if (id === 'contractProject' && modal.getAttribute('data-project-id')) return;
             if (!control || !fieldValue(control) || (control.type === 'number' && Number(control.value) <= 0)) missing.push(control);
         });
-        if (modal.id === 'addExpenseModal') {
-            var category = document.getElementById('expenseCategory');
-            var amount = document.getElementById('expenseAmount');
-            var dynamic = document.getElementById('dynamicAmountFields');
-            var dynamicTotal = ['expenseLaborAmount', 'expenseMaterialAmount', 'expenseEquipmentAmount', 'expenseOtherAmount']
-                .reduce(function (total, id) { return total + Number(document.getElementById(id)?.value || 0); }, 0);
-            if (category && category.value && ((dynamic && dynamic.style.display !== 'none') ? dynamicTotal <= 0 : Number(amount && amount.value || 0) <= 0)) {
-                missing.push(amount);
-            }
-        }
         if (modal.id === 'addReceivableModal') {
             var agingTotal = ['receivable30d', 'receivable60d', 'receivable90d', 'receivable120d']
                 .reduce(function (total, id) { return total + Number(document.getElementById(id)?.value || 0); }, 0);

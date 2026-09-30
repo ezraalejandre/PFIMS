@@ -77,20 +77,20 @@ class DataImportController extends Controller
                 ],
             ],
             'inventory-items' => [
-                ['item_name', 'category', 'supplier', 'unit', 'current_stock', 'reorder_level', 'opening_balance_date'],
+                ['item_name', 'category', 'supplier', 'unit', 'unit_price', 'current_stock', 'reorder_level', 'opening_balance_date'],
                 [
                     'Replace with a new item name',
                     (string) (DB::table('inventory_category_tbl')->orderBy('inventory_category_name')->value('inventory_category_name') ?? 'CATEGORY_NAME'),
                     (string) (DB::table('supplier_tbl')->orderBy('supplier_name')->value('supplier_name') ?? 'SUPPLIER_NAME'),
                     (string) (DB::table('unit_tbl')->orderBy('unit_name')->value('unit_name') ?? 'UNIT_NAME'),
-                    '0', '0', 'YYYY-MM-DD',
+                    '0.01', '0', '0', 'YYYY-MM-DD',
                 ],
             ],
             'inventory-transactions' => [
-                ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date', 'stock_in_reason', 'total_purchase_amount'],
+                ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date', 'stock_in_reason'],
                 [
                     (string) (DB::table('inventory_item_tbl')->orderBy('item_name')->value('item_name') ?? 'ITEM_NAME'),
-                    'For Storage', 'IN', '1', '100001', 'YYYY-MM-DD', 'purchase', '100.00',
+                    'For Storage', 'IN', '1', '100001', 'YYYY-MM-DD', 'purchase',
                 ],
             ],
         };

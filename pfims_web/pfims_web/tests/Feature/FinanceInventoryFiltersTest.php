@@ -61,7 +61,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->getJson('/api/finance-expenses?category_id=3&include_pending=0')
             ->assertOk()->assertJsonCount(1)
-            ->assertJsonPath('0.project_name', 'Admin Expenses')
+            ->assertJsonPath('0.project_name', 'Office')
             ->assertJsonPath('0.is_office_expense', false)
             ->assertJsonPath('0.category_classification', 'admin');
         $this->assertDatabaseHas('fin_expense_tbl', [
@@ -263,7 +263,6 @@ class FinanceInventoryFiltersTest extends TestCase
             'item_id' => 1,
             'transaction_type' => 'IN',
             'movement_reason' => 'purchase',
-            'purchase_amount' => 1200,
             'quantity' => 4,
             'bar_code' => '01234567890123',
             'transaction_date' => '2026-09-20',
@@ -318,10 +317,10 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->postJson('/api/inventory/transaction', [
             'item_id' => 1, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
-            'purchase_amount' => 300, 'quantity' => 2, 'transaction_date' => '2026-09-20',
+            'quantity' => 2, 'transaction_date' => '2026-09-20',
         ])->assertCreated();
         $this->assertDatabaseHas('fin_expense_tbl', [
-            'inventory_transaction_id' => 5, 'amount' => 300, 'proof_file_path' => null,
+            'inventory_transaction_id' => 5, 'amount' => 600, 'proof_file_path' => null,
         ]);
 
         $this->post('/api/inventory/transaction', [
@@ -331,7 +330,7 @@ class FinanceInventoryFiltersTest extends TestCase
         ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('proof_file');
     }
 
-    public function test_purchase_requires_an_amount_and_adjustment_does_not_create_an_expense(): void
+    public function test_purchase_requires_a_priced_item_and_adjustment_does_not_create_an_expense(): void
     {
         Storage::fake('public');
         $input = [
@@ -342,8 +341,9 @@ class FinanceInventoryFiltersTest extends TestCase
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('delivery.pdf', 20, 'application/pdf'),
         ];
+        DB::table('inventory_item_tbl')->where('item_id', 1)->update(['unit_price' => null]);
         $this->post('/api/inventory/transaction', $input, ['Accept' => 'application/json'])
-            ->assertUnprocessable()->assertJsonValidationErrors('purchase_amount');
+            ->assertUnprocessable()->assertJsonPath('message', 'Set a positive Unit Price on this item before recording a purchase stock-in.');
         $this->assertSame(2, DB::table('inventory_transaction_tbl')->count());
 
         $input['movement_reason'] = 'adjustment';
@@ -362,7 +362,6 @@ class FinanceInventoryFiltersTest extends TestCase
             'item_id' => 1,
             'transaction_type' => 'IN',
             'movement_reason' => 'purchase',
-            'purchase_amount' => 1200,
             'quantity' => 4,
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('delivery.pdf', 20, 'application/pdf'),
@@ -381,7 +380,6 @@ class FinanceInventoryFiltersTest extends TestCase
             'item_id' => 1,
             'transaction_type' => 'IN',
             'movement_reason' => 'purchase',
-            'purchase_amount' => 1200,
             'quantity' => 4,
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('delivery.pdf', 20, 'application/pdf'),
@@ -403,10 +401,11 @@ class FinanceInventoryFiltersTest extends TestCase
     public function test_stock_out_allocates_fifo_purchase_cost_without_another_finance_expense(): void
     {
         Storage::fake('public');
-        foreach ([[3, 1000, 700001], [2, 500, 700002]] as [$quantity, $amount, $barcode]) {
+        foreach ([[3, 900, 700001], [2, 500, 700002]] as [$quantity, $amount, $barcode]) {
+            DB::table('inventory_item_tbl')->where('item_id', 3)->update(['unit_price' => $amount / $quantity]);
             $this->post('/api/inventory/transaction', [
                 'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
-                'purchase_amount' => $amount, 'quantity' => $quantity, 'bar_code' => $barcode,
+                'quantity' => $quantity, 'bar_code' => $barcode,
                 'transaction_date' => '2026-09-20',
                 'proof_file' => UploadedFile::fake()->create('receipt.pdf', 20, 'application/pdf'),
             ], ['Accept' => 'application/json'])->assertCreated();
@@ -424,7 +423,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->assertDatabaseHas('inventory_cost_allocation_tbl', [
             'in_transaction_id' => $purchaseIds[0], 'out_transaction_id' => $outId,
-            'project_id' => 1, 'quantity' => 3, 'valuation_status' => 'valued', 'allocated_amount' => 1000,
+            'project_id' => 1, 'quantity' => 3, 'valuation_status' => 'valued', 'allocated_amount' => 900,
         ]);
         $this->assertDatabaseHas('inventory_cost_allocation_tbl', [
             'in_transaction_id' => $purchaseIds[1], 'out_transaction_id' => $outId,
@@ -459,7 +458,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
-            'purchase_amount' => 900, 'quantity' => 3, 'bar_code' => 710001,
+            'quantity' => 3, 'bar_code' => 710001,
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('receipt.pdf', 20, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
@@ -479,7 +478,7 @@ class FinanceInventoryFiltersTest extends TestCase
         Storage::fake('public');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
-            'purchase_amount' => 600, 'quantity' => 2, 'bar_code' => 700041,
+            'quantity' => 2, 'bar_code' => 700041,
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('receipt.pdf', 20, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
@@ -515,7 +514,7 @@ class FinanceInventoryFiltersTest extends TestCase
         $adjustmentId = DB::table('inventory_transaction_tbl')->max('inventory_transaction_id');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
-            'purchase_amount' => 600, 'quantity' => 2, 'bar_code' => 700012,
+            'quantity' => 2, 'bar_code' => 700012,
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('receipt.pdf', 20, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
@@ -537,12 +536,12 @@ class FinanceInventoryFiltersTest extends TestCase
         ]);
     }
 
-    public function test_fifo_assigns_the_final_purchase_cent_to_the_last_withdrawal(): void
+    public function test_fifo_allocates_the_item_unit_price_to_each_withdrawal(): void
     {
         Storage::fake('public');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
-            'purchase_amount' => 1000.01, 'quantity' => 3, 'bar_code' => 700021,
+            'quantity' => 3, 'bar_code' => 700021,
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('receipt.pdf', 20, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
@@ -558,7 +557,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
         $amounts = DB::table('inventory_cost_allocation_tbl')->where('in_transaction_id', $purchaseId)
             ->orderBy('out_transaction_id')->pluck('allocated_amount')->map(fn ($amount) => (float) $amount)->all();
-        $this->assertSame([333.34, 333.34, 333.33], $amounts);
+        $this->assertSame([300.0, 300.0, 300.0], $amounts);
     }
 
     public function test_unallocated_earlier_withdrawal_cannot_shift_cost_to_a_later_project(): void
@@ -566,7 +565,7 @@ class FinanceInventoryFiltersTest extends TestCase
         Storage::fake('public');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
-            'purchase_amount' => 600, 'quantity' => 2, 'bar_code' => 700031,
+            'quantity' => 2, 'bar_code' => 700031,
             'transaction_date' => '2026-09-20',
             'proof_file' => UploadedFile::fake()->create('receipt.pdf', 20, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
@@ -642,6 +641,83 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->assertEquals(44.0, (float) DB::table('inventory_item_tbl')->where('item_id', 2)->value('current_stock'));
     }
 
+    public function test_project_construction_supply_expense_does_not_create_a_storage_transaction(): void
+    {
+        $transactionCount = DB::table('inventory_transaction_tbl')->count();
+
+        $this->postJson('/api/finance-expenses', [
+            'project_id' => 1,
+            'fin_category_id' => 1,
+            'expense_description' => 'Cement for foundation work',
+            'amount' => 1800,
+            'expense_date' => '2026-09-20',
+        ])->assertCreated()
+            ->assertJsonPath('project_id', 1)
+            ->assertJsonPath('project_cost_component', 'material');
+
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'project_id' => 1,
+            'fin_category_id' => 1,
+            'inventory_transaction_id' => null,
+            'expense_description' => 'Cement for foundation work',
+            'amount' => 1800,
+        ]);
+        $this->assertSame($transactionCount, DB::table('inventory_transaction_tbl')->count());
+    }
+
+    public function test_admin_expense_uses_office_label_without_a_project_or_proof(): void
+    {
+        DB::table('fin_expense_category_tbl')->insert([
+            'fin_category_id' => 3, 'category_code' => 'ADMIN_RENT_EXPENSE',
+            'category_name' => 'Rent Expense', 'classification' => 'admin', 'is_active' => true,
+        ]);
+
+        $this->postJson('/api/finance-expenses', [
+            'fin_category_id' => 3,
+            'expense_description' => 'Office rent September',
+            'amount' => 12000,
+            'expense_date' => '2026-09-20',
+        ])->assertCreated()
+            ->assertJsonPath('project_id', null)
+            ->assertJsonPath('project_name', 'Office');
+
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'fin_category_id' => 3,
+            'project_id' => null,
+            'expense_description' => 'Office rent September',
+            'amount' => 12000,
+            'remarks' => null,
+        ]);
+    }
+
+    public function test_direct_office_expense_has_no_project_link_and_can_be_edited(): void
+    {
+        $payload = [
+            'fin_category_id' => 1,
+            'office_expense' => 1,
+            'expense_description' => 'Office construction supplies',
+            'amount' => 300,
+            'expense_date' => '2026-09-20',
+        ];
+        $response = $this->postJson('/api/finance-expenses', $payload)
+            ->assertCreated()->assertJsonPath('project_name', 'Office')
+            ->assertJsonPath('entry_kind', 'office_expense');
+        $expenseId = $response->json('fin_expense_id');
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'fin_expense_id' => $expenseId, 'project_id' => null, 'entry_kind' => 'office_expense',
+        ]);
+
+        $this->postJson('/api/finance-expenses', array_merge($payload, [
+            'office_expense' => 0, 'expense_description' => 'Missing project',
+        ]))->assertUnprocessable();
+        $this->putJson('/api/finance-expenses/'.$expenseId, array_merge($payload, [
+            'amount' => 450,
+        ]))->assertOk()->assertJsonPath('project_name', 'Office');
+        $this->assertDatabaseHas('fin_expense_tbl', [
+            'fin_expense_id' => $expenseId, 'amount' => 450, 'entry_kind' => 'office_expense',
+        ]);
+    }
+
     public function test_historical_priced_stock_in_cannot_be_assigned_to_a_project(): void
     {
         DB::table('fin_expense_tbl')->insert([
@@ -711,9 +787,9 @@ class FinanceInventoryFiltersTest extends TestCase
             ['unit_id' => 2, 'unit_name' => 'Box'],
         ]);
         DB::table('inventory_item_tbl')->insert([
-            ['item_id' => 1, 'inventory_category_id' => 1, 'supplier_id' => 1, 'unit_id' => 1, 'item_name' => 'Cement', 'current_stock' => 8, 'reorder_level' => 10],
-            ['item_id' => 2, 'inventory_category_id' => 2, 'supplier_id' => 2, 'unit_id' => 2, 'item_name' => 'Nails', 'current_stock' => 40, 'reorder_level' => 5],
-            ['item_id' => 3, 'inventory_category_id' => 1, 'supplier_id' => 1, 'unit_id' => 1, 'item_name' => 'Paint', 'current_stock' => 0, 'reorder_level' => 3],
+            ['item_id' => 1, 'inventory_category_id' => 1, 'supplier_id' => 1, 'unit_id' => 1, 'item_name' => 'Cement', 'unit_price' => 300, 'current_stock' => 8, 'reorder_level' => 10],
+            ['item_id' => 2, 'inventory_category_id' => 2, 'supplier_id' => 2, 'unit_id' => 2, 'item_name' => 'Nails', 'unit_price' => null, 'current_stock' => 40, 'reorder_level' => 5],
+            ['item_id' => 3, 'inventory_category_id' => 1, 'supplier_id' => 1, 'unit_id' => 1, 'item_name' => 'Paint', 'unit_price' => 300, 'current_stock' => 0, 'reorder_level' => 3],
         ]);
         DB::table('inventory_transaction_tbl')->insert([
             ['inventory_transaction_id' => 1, 'item_id' => 1, 'project_id' => 1, 'transaction_type' => 'IN', 'quantity' => 10, 'bar_code' => 111001, 'transaction_date' => '2026-01-10'],
@@ -782,6 +858,7 @@ class FinanceInventoryFiltersTest extends TestCase
             $table->unsignedInteger('supplier_id');
             $table->unsignedInteger('unit_id');
             $table->string('item_name');
+            $table->decimal('unit_price', 12, 2)->nullable();
             $table->decimal('current_stock', 14, 2);
             $table->decimal('reorder_level', 14, 2);
         });

@@ -337,8 +337,8 @@ class CoreIntegrityProjectTest extends TestCase
             }
 
             if (in_array($dashboard['role'], ['admin', 'accounting'], true)) {
-                foreach (['Expenses', 'Budgets', 'AR / AP', 'Cash Asset', 'Equipment', 'Bonds', 'Budget-Spending Comparison'] as $financeTab) {
-                    $response->assertSee('>'.$financeTab.'</a>', false);
+                foreach (['Expenses', 'Budgets & Contracts', 'AR / AP', 'Cash Asset', 'Equipment', 'Bonds', 'Budget-Spending Comparison'] as $financeTab) {
+                    $response->assertSee('>'.e($financeTab).'</a>', false);
                 }
             }
 
@@ -508,9 +508,10 @@ class CoreIntegrityProjectTest extends TestCase
             ->assertSee('then(function() { return fetchBudgetData(); })', false);
 
         $reportsView = file_get_contents(resource_path('views/reports.blade.php'));
-        $this->assertStringContainsString('id="contractDialog"', $reportsView);
-        $this->assertStringContainsString('id="editContract"', $reportsView);
-        $this->assertStringContainsString('id="addContract"', $reportsView);
+        $this->assertStringNotContainsString('id="contractDialog"', $reportsView);
+        $this->assertStringNotContainsString('id="editContract"', $reportsView);
+        $this->assertStringNotContainsString('id="addContract"', $reportsView);
+        $this->assertStringContainsString('id="addContractModal"', file_get_contents(resource_path('views/finance.blade.php')));
 
         $financeAnalytics = file_get_contents(public_path('js/finance-analytics.js'));
         $this->assertStringContainsString("window.updateBudgetActualAmounts", $financeAnalytics);

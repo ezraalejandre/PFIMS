@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\CarbonImmutable;
 use App\Services\ProjectCostLedger;
 use App\Services\ReportFileBuilder;
 
@@ -26,7 +27,7 @@ class ReportController extends Controller
 {
     public function __construct(private AuditLogService $audit) {}
 
-    private const REPORT_TABS = ['expense_summary', 'contracts', 'inventory'];
+    private const REPORT_TABS = ['expense_summary', 'inventory'];
 
     private const SUMMARY_COLUMNS = [
         'project_name' => 'Project Name',
@@ -45,15 +46,15 @@ class ReportController extends Controller
         'expense_summary' => [
             'title' => 'Expenses Summary', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
             'columns' => self::SUMMARY_COLUMNS,
-            'filters' => ['search', 'project_id', 'status', 'start_date', 'end_date'],
+            'filters' => ['search', 'report_month', 'report_day', 'report_year', 'project_status', 'expense_type'],
         ],
         'contracts' => [
             'title' => 'Contracts', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
             'columns' => [
                 'project_name' => 'Project', 'start_date' => 'Start Date', 'actual_end_date' => 'End Date',
-                'original_contract_price' => 'Contract Price', 'additional_works_contract' => 'Additional Works',
+                'original_contract_price' => 'Contract Price', 'additional_works_contract' => 'Addl. Works',
                 'total_contract_price' => 'Total Contract', 'original_payment_received' => 'Original Payment',
-                'additional_works_payment' => 'Additional Payment', 'total_payment' => 'Total Payment',
+                'additional_works_payment' => 'Addl. Payment', 'total_payment' => 'Total Payment',
                 'project_expense' => 'Project Expense', 'accounts_receivable' => 'Accounts Receivable',
                 'profit_loss_payment_basis' => 'Profit/Loss (Payment)',
                 'profit_loss_contract_basis' => 'Profit/Loss (Contract)',
@@ -98,7 +99,7 @@ class ReportController extends Controller
             'title' => 'Inventory', 'type' => 'inventory', 'roles' => ['admin', 'operations'],
             'columns' => [
                 'item_id' => 'Item ID', 'item_name' => 'Item', 'category_name' => 'Category',
-                'supplier_name' => 'Supplier', 'unit_name' => 'Unit', 'current_stock' => 'Current Stock',
+                'supplier_name' => 'Supplier', 'unit_name' => 'Unit', 'unit_price' => 'Unit Price', 'current_stock' => 'Current Stock',
                 'reorder_level' => 'Reorder Level', 'stock_status' => 'Stock Status',
                 'last_transaction_date' => 'Last Movement',
             ],
@@ -180,7 +181,8 @@ class ReportController extends Controller
             'datasets' => $datasets,
             'options' => [
                 'projects' => DB::table('project_tbl')->orderBy('project_name')->get(['project_id as value', 'project_name as label']),
-                'statuses' => DB::table('project_tbl')->whereNotNull('status')->distinct()->orderBy('status')->pluck('status'),
+                'statuses' => DB::table('project_tbl')->whereNotNull('status')->distinct()->pluck('status')
+                    ->sortBy(fn (string $status) => $status === 'Ongoing' ? '0' : '1'.$status)->values(),
                 'categories' => DB::table('inventory_category_tbl')->orderBy('inventory_category_name')->get(['inventory_category_id as value', 'inventory_category_name as label']),
                 'suppliers' => DB::table('supplier_tbl')->orderBy('supplier_name')->get(['supplier_id as value', 'supplier_name as label']),
                 'classifications' => ['direct', 'admin', 'office'],
@@ -209,6 +211,7 @@ class ReportController extends Controller
         ]);
         $filters = $this->validatedFilters($request);
         $rows = $this->datasetRows($dataset, $filters);
+        $balances = $dataset === 'expense_summary' ? $this->summaryBalances($rows, $filters) : [];
         $total = $rows->count();
         $perPage = (int) ($pagination['per_page'] ?? 25);
         $lastPage = max((int) ceil($total / $perPage), 1);
@@ -222,7 +225,9 @@ class ReportController extends Controller
             'rows' => $pageRows, 'total_rows' => $total,
             'truncated' => $total > $perPage, 'kpis' => $this->datasetKpis($dataset, $rows),
             'chart' => $this->datasetChart($dataset, $rows), 'filters' => $filters,
-            'totals' => $dataset === 'expense_summary' ? $this->summaryTotals($rows) : null,
+            'totals' => $balances['totals'] ?? null,
+            'previous_totals' => $balances['previous_totals'] ?? null,
+            'month_totals' => $balances['month_totals'] ?? null,
             'pagination' => [
                 'current_page' => $currentPage, 'last_page' => $lastPage, 'per_page' => $perPage,
                 'from' => $from, 'to' => $to, 'total' => $total,
@@ -237,6 +242,9 @@ class ReportController extends Controller
             'title' => 'required|string|min:3|max:120',
             'format' => ['required', Rule::in(['csv', 'xlsx', 'pdf'])],
             'columns' => 'required|array|min:1', 'columns.*' => 'required|string|distinct|max:60',
+            'design' => 'nullable|array',
+            'design.header_color' => ['nullable', Rule::in(['navy', 'orange', 'green'])],
+            'design.table_spacing' => ['nullable', Rule::in(['standard', 'compact'])],
             'sections' => 'nullable|array|min:1',
             'sections.*' => ['required', 'string', 'distinct', Rule::in(['summary', 'kpis', 'chart', 'data'])],
             'filters' => 'nullable|array',
@@ -296,6 +304,9 @@ class ReportController extends Controller
             'dataset' => ['required', Rule::in(self::REPORT_TABS)],
             'title' => 'required|string|min:3|max:120',
             'columns' => 'required|array|min:1', 'columns.*' => 'required|string|distinct|max:60',
+            'design' => 'nullable|array',
+            'design.header_color' => ['nullable', Rule::in(['navy', 'orange', 'green'])],
+            'design.table_spacing' => ['nullable', Rule::in(['standard', 'compact'])],
             'filters' => 'nullable|array',
         ]);
         $definition = $this->authorizeDataset($validated['dataset']);
@@ -307,14 +318,18 @@ class ReportController extends Controller
         if ($validated['dataset'] === 'expense_summary') {
             $rows = $this->summaryRowsForColumns($rows, $validated['columns']);
         }
+        $balances = $validated['dataset'] === 'expense_summary'
+            ? $this->summaryBalances($rows, $filters, $validated['columns']) : [];
         return response()->json([
             'title' => $validated['title'],
-            'scope' => $this->reportScope($validated['dataset']),
+            'scope' => $this->reportScope($validated['dataset'], $filters),
             'as_of' => now()->format('F j, Y'),
             'columns' => array_intersect_key($definition['columns'], array_flip($validated['columns'])),
             'rows' => $rows->take(8)->values(),
             'row_count' => $rows->count(),
-            'totals' => $validated['dataset'] === 'expense_summary' ? $this->summaryTotals($rows) : null,
+            'totals' => $balances['totals'] ?? null,
+            'previous_totals' => $balances['previous_totals'] ?? null,
+            'month_totals' => $balances['month_totals'] ?? null,
         ]);
     }
 
@@ -326,10 +341,12 @@ class ReportController extends Controller
         if ($validated['dataset'] === 'expense_summary') {
             $rows = $this->summaryRowsForColumns($rows, array_keys($columns));
         }
-        $totals = $validated['dataset'] === 'expense_summary' ? $this->summaryTotals($rows) : null;
+        $balances = $validated['dataset'] === 'expense_summary'
+            ? $this->summaryBalances($rows, $filters, array_keys($columns)) : [];
+        $totals = $balances ? array_values($balances) : null;
         $format = $validated['format'];
         $file = app(ReportFileBuilder::class)->build($format, $validated['title'],
-            $this->reportScope($validated['dataset']), $columns, $rows->all(), $totals);
+            $this->reportScope($validated['dataset'], $filters), $columns, $rows->all(), $totals, $validated['design'] ?? []);
         $role = $this->role();
         $fileName = (Str::slug($validated['title']) ?: $validated['dataset']).'-'.now()->format('Ymd-His')
             .'-'.strtolower(Str::random(4)).'.'.$format;
@@ -346,7 +363,7 @@ class ReportController extends Controller
                 'status' => 'Completed', 'generation_method' => 'system_export',
                 'dataset_key' => $validated['dataset'], 'export_format' => $format,
                 'row_count' => $rows->count(), 'selected_columns' => array_keys($columns),
-                'filters_applied' => $filters, 'export_options' => ['sections' => ['summary', 'data']],
+                'filters_applied' => $filters, 'export_options' => ['sections' => ['summary', 'data'], 'design' => $validated['design'] ?? []],
                 'generated_at' => now(), 'user_id' => Auth::id(),
             ]);
         } catch (\Throwable $exception) {
@@ -358,10 +375,11 @@ class ReportController extends Controller
         return $publicDisk->download($report->file_path, $report->file_name, ['X-Report-Id' => $report->report_id]);
     }
 
-    private function reportScope(string $dataset): string
+    private function reportScope(string $dataset, array $filters = []): string
     {
         return match ($dataset) {
-            'expense_summary' => 'ONGOING PROJECTS',
+            'expense_summary' => ($filters['project_status'] ?? 'Ongoing') === 'Completed'
+                ? 'COMPLETED PROJECTS' : 'ONGOING PROJECTS',
             'contracts' => 'PROJECT CONTRACTS',
             'inventory' => 'INVENTORY ITEMS',
         };
@@ -395,8 +413,19 @@ class ReportController extends Controller
 
     private function validatedFilters(Request $request): array
     {
+        foreach (['report_month', 'report_day', 'report_year'] as $datePart) {
+            $value = $request->input($datePart);
+            if (is_string($value) && ctype_digit($value)) {
+                $request->merge([$datePart => (int) $value]);
+            }
+        }
         $validated = $request->validate([
             'search' => 'nullable|string|max:100',
+            'report_month' => 'nullable|integer|between:1,12',
+            'report_day' => 'nullable|integer|between:1,31',
+            'report_year' => 'nullable|integer|between:1900,2100',
+            'project_status' => ['nullable', Rule::in(['Ongoing', 'Completed'])],
+            'expense_type' => ['nullable', Rule::in(['Overall', 'Direct', 'Admin'])],
             'project_id' => 'nullable|integer|exists:project_tbl,project_id',
             'status' => 'nullable|string|max:50|exists:project_tbl,status',
             'classification' => ['nullable', Rule::in(['direct', 'admin', 'office'])],
@@ -427,11 +456,16 @@ class ReportController extends Controller
             ->map(fn ($value) => is_numeric($value) ? (float) $value : $value)->all());
     }
 
-    private function expenseSummaryRows(array $filters): Collection
+    private function expenseSummaryRows(array $filters, ?string $cutoffDate = null): Collection
     {
+        $cutoffDate ??= $this->summaryCutoffDate($filters)->toDateString();
         $projects = DB::table('project_tbl as p')
-            ->whereNotIn('p.status', ['Completed', 'Pending'])
             ->select('p.project_id', 'p.project_name', 'p.status');
+        if (($filters['project_status'] ?? 'Ongoing') === 'Completed') {
+            $projects->where('p.status', 'Completed');
+        } else {
+            $projects->whereNotIn('p.status', ['Completed', 'Pending']);
+        }
         if (! empty($filters['project_id'])) {
             $projects->where('p.project_id', $filters['project_id']);
         }
@@ -458,16 +492,25 @@ class ReportController extends Controller
                 $expenses->whereNull('e.inventory_transaction_id');
             }
             $this->applyDateFilters($expenses, $filters, 'e.expense_date');
+            $expenses->whereDate('e.expense_date', '<=', $cutoffDate);
+            if (($filters['expense_type'] ?? 'Overall') !== 'Overall') {
+                $expenses->where('c.classification', strtolower($filters['expense_type']));
+            } else {
+                $expenses->whereIn('c.classification', ['direct', 'admin']);
+            }
             $categoryColumns = [
                 'CONSTRUCTION_SUPPLY' => 'construction_supply',
                 'SALARIES_WAGES' => 'salaries_wages',
                 'PERMITS_TAXES' => 'permits_taxes_licenses',
+                'PERMIT_TAXES_LICENSES' => 'permits_taxes_licenses',
                 'EQUIPMENT_RENTAL' => 'transportation_expenses',
+                'TRANSPORTATION_EXPENSES' => 'transportation_expenses',
                 'UTILITIES' => 'utilities',
+                'UTILITIES_WATER_POWER' => 'utilities',
                 'DELIVERY' => 'delivery_expense',
+                'DELIVERY_EXPENSE' => 'delivery_expense',
             ];
             foreach ($expenses->get() as $expense) {
-                if ($expense->classification === 'office') continue;
                 $row = $rows->get((int) $expense->project_id);
                 $column = $expense->classification === 'admin' ? 'administrative_expenses'
                     : ($categoryColumns[$expense->category_code] ?? 'others');
@@ -476,12 +519,14 @@ class ReportController extends Controller
                 $rows->put((int) $expense->project_id, $row);
             }
 
-            if (\Illuminate\Support\Facades\Schema::hasTable('inventory_cost_allocation_tbl')) {
+            if (($filters['expense_type'] ?? 'Overall') !== 'Admin'
+                && \Illuminate\Support\Facades\Schema::hasTable('inventory_cost_allocation_tbl')) {
                 $allocations = DB::table('inventory_cost_allocation_tbl as a')
                     ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'a.out_transaction_id')
                     ->whereIn('a.project_id', $ids)->where('a.valuation_status', 'valued')
                     ->select('a.project_id', 'a.allocated_amount');
                 $this->applyDateFilters($allocations, $filters, 'movement.transaction_date');
+                $allocations->whereDate('movement.transaction_date', '<=', $cutoffDate);
                 foreach ($allocations->get() as $allocation) {
                     $row = $rows->get((int) $allocation->project_id);
                     $row['construction_supply'] += (float) $allocation->allocated_amount;
@@ -633,7 +678,7 @@ class ReportController extends Controller
             ->leftJoin('supplier_tbl as s', 's.supplier_id', '=', 'i.supplier_id')
             ->leftJoin('unit_tbl as u', 'u.unit_id', '=', 'i.unit_id')
             ->leftJoinSub($lastMovement, 'movement', 'movement.item_id', '=', 'i.item_id')
-            ->select(['i.item_id', 'i.item_name',
+            ->select(['i.item_id', 'i.item_name', 'i.unit_price',
                 DB::raw("COALESCE(c.inventory_category_name, 'Uncategorized') as category_name"),
                 DB::raw("COALESCE(s.supplier_name, 'Unassigned') as supplier_name"),
                 DB::raw("COALESCE(u.unit_name, '') as unit_name"),
@@ -710,6 +755,21 @@ class ReportController extends Controller
         }
     }
 
+    private function summaryCutoffDate(array $filters): CarbonImmutable
+    {
+        $today = CarbonImmutable::now('Asia/Manila');
+        try {
+            return CarbonImmutable::createSafe(
+                (int) ($filters['report_year'] ?? $today->year),
+                (int) ($filters['report_month'] ?? $today->month),
+                (int) ($filters['report_day'] ?? $today->day),
+                0, 0, 0, 'Asia/Manila'
+            );
+        } catch (\Throwable) {
+            throw ValidationException::withMessages(['report_day' => 'Choose a valid day for the selected month and year.']);
+        }
+    }
+
     private function datasetKpis(string $dataset, Collection $rows): array
     {
         $money = fn (float $value) => '₱'.number_format($value, 2);
@@ -773,13 +833,27 @@ class ReportController extends Controller
         };
     }
 
-    private function summaryTotals(Collection $rows): array
+    private function summaryTotals(Collection $rows, string $label = 'TOTAL'): array
     {
-        $totals = ['project_name' => 'TOTAL'];
+        $totals = ['project_name' => $label];
         foreach (self::SUMMARY_COLUMNS as $key => $label) {
             if ($key !== 'project_name') $totals[$key] = round((float) $rows->sum($key), 2);
         }
         return $totals;
+    }
+
+    private function summaryBalances(Collection $rows, array $filters, ?array $columns = null): array
+    {
+        $previousCutoff = $this->summaryCutoffDate($filters)->startOfMonth()->subDay()->toDateString();
+        $previousRows = $this->expenseSummaryRows($filters, $previousCutoff);
+        if ($columns !== null) $previousRows = $this->summaryRowsForColumns($previousRows, $columns);
+        $current = $this->summaryTotals($rows, 'TOTAL(As of Current Month)');
+        $previous = $this->summaryTotals($previousRows, 'TOTAL BALANCE(As of Previous Month)');
+        $month = ['project_name' => 'TOTAL(This Month)'];
+        foreach (self::SUMMARY_COLUMNS as $key => $label) {
+            if ($key !== 'project_name') $month[$key] = round($current[$key] - $previous[$key], 2);
+        }
+        return ['totals' => $current, 'previous_totals' => $previous, 'month_totals' => $month];
     }
 
     private function summaryRowsForColumns(Collection $rows, array $columns): Collection

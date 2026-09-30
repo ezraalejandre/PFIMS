@@ -193,7 +193,7 @@
 
                         <div style="overflow-x: auto; margin-top: 15px;">
                             <table class="user-table" id="configTable" data-column-chooser="off">
-                                <thead><tr><th>Name</th><th id="configStageHeader" style="display:none;">Stage</th><th style="text-align: center;">Action</th></tr></thead>
+                                <thead><tr><th>Name</th><th id="configExpenseTypeHeader" style="display:none;">Expense Type</th><th id="configStageHeader" style="display:none;">Stage</th><th style="text-align: center;">Action</th></tr></thead>
                                 <tbody id="configTableBody"></tbody>
                             </table>
                         </div>
@@ -230,7 +230,7 @@
                                 <option value="dashboard">Dashboard</option>
                                 <option value="projects">Projects</option>
                                 <option value="finance.expenses">Finance — Expenses</option>
-                                <option value="finance.budgets">Finance — Budgets</option>
+                                <option value="finance.budgets">Finance — Budgets &amp; Contracts</option>
                                 <option value="finance.bonds">Finance — Construction Bonds</option>
                                 <option value="inventory.items">Inventory — Items</option>
                                 <option value="inventory.transactions">Inventory — Transactions</option>
@@ -862,7 +862,9 @@
             tbody.innerHTML = '';
             var fields = configFieldMap[currentConfigType];
             var showsStage = currentConfigType === 'project_phases';
+            var showsExpenseType = currentConfigType === 'exp_categories';
             document.getElementById('configStageHeader').style.display = showsStage ? '' : 'none';
+            document.getElementById('configExpenseTypeHeader').style.display = showsExpenseType ? '' : 'none';
             if (search) {
                 items = items.filter(function(item) {
                     return String(item[fields.name] || '').toLowerCase().indexOf(search) !== -1;
@@ -870,7 +872,7 @@
             }
 
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="' + (showsStage ? '3' : '2') + '" style="text-align:center; padding: 16px;">No items found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="' + (showsStage || showsExpenseType ? '3' : '2') + '" style="text-align:center; padding: 16px;">No items found.</td></tr>';
                 return;
             }
 
@@ -911,6 +913,11 @@
                     actionCell.append(edit, remove);
                 }
                 tr.appendChild(nameCell);
+                if (showsExpenseType) {
+                    var typeCell = document.createElement('td');
+                    typeCell.textContent = configValueLabel(configMeta.exp_categories.fields.classification, item.classification);
+                    tr.appendChild(typeCell);
+                }
                 if (stageCell) tr.appendChild(stageCell);
                 tr.appendChild(actionCell);
                 tbody.appendChild(tr);
@@ -1073,11 +1080,6 @@
                     } else {
                         input.maxLength = definition.max || 255;
                     }
-                    if (field === 'category_code') {
-                        input.pattern = '[A-Za-z][A-Za-z0-9_ -]*';
-                        input.title = 'Start with a letter; use letters, numbers, spaces, hyphens, or underscores.';
-                        input.placeholder = 'e.g. CONST_SUPPLY';
-                    }
                 }
                 input.id = 'configField_' + field;
                 input.dataset.field = field;
@@ -1087,12 +1089,6 @@
                 if (field === 'is_active' && value === '') value = '1';
                 input.value = String(value === true ? 1 : (value === false ? 0 : value));
                 wrapper.append(label, input);
-                if (field === 'category_code') {
-                    var help = document.createElement('small');
-                    help.textContent = 'Start with a letter. Use letters, numbers, spaces, hyphens, or underscores. The saved code is normalized to uppercase.';
-                    help.style.cssText = 'display:block;margin-top:5px;color:#6b7280;font-size:.78rem;line-height:1.35;';
-                    wrapper.appendChild(help);
-                }
                 container.appendChild(wrapper);
             });
         }
@@ -1570,8 +1566,8 @@
 
         var savedDefaultFilters = {};
         var defaultFilterDefinitions = {
-            dashboard: [['status','Project status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','In stock','Low stock','Out of stock']]],
-            projects: [['projectStatusFilter','Status','select',['','Pending','On Track','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','lookup'],['projectDateFrom','From','date'],['projectDateTo','To','date']],
+            dashboard: [['status','Project status','select',['','Ongoing','Pending','At Risk','Delayed','Completed']],['stockStatus','Stock status','select',['','In stock','Low stock','Out of stock']]],
+            projects: [['projectStatusFilter','Status','select',['','Ongoing','Pending','At Risk','Delayed','Completed']],['projectPhaseFilter','Phase','lookup'],['projectDateFrom','From','date'],['projectDateTo','To','date']],
             'finance.expenses': [['projectFilter','Project','lookup'],['expenseScopeFilter','Expense type','select',['all','direct','admin','office','overall']],['expenseRecordStatusFilter','Record status','select',['all','missing_amount','no_project','missing_amount_and_project']],['expenseSourceFilter','Expense source','select',['all','inventory','manual']],['expenseCategoryFilter','Category','lookup']],
             'finance.budgets': [['budgetProjectFilter','Project','lookup'],['budgetStatusFilter','Status','select',['all','On Track','Near Limit','Over Budget','No Budget']]],
             'finance.bonds': [['bondProjectFilter','Project','lookup'],['bondStatusFilter','Status','select',['all','active','released','forfeited']]],

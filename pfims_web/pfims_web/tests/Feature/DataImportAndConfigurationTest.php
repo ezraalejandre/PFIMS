@@ -76,7 +76,7 @@ class DataImportAndConfigurationTest extends TestCase
         $projectExample = str_getcsv(explode("\n", trim($template))[1]);
         $this->assertSame(['YYYY-MM-DD', 'YYYY-MM-DD', ''], array_slice($projectExample, 3, 3));
 
-        foreach (['finance-expenses' => 5, 'inventory-items' => 6, 'inventory-transactions' => 5] as $type => $dateColumn) {
+        foreach (['finance-expenses' => 5, 'inventory-items' => 7, 'inventory-transactions' => 5] as $type => $dateColumn) {
             $content = $this->actingAs($admin)->get('/api/imports/templates/'.$type)->assertOk()->streamedContent();
             $example = str_getcsv(explode("\n", trim($content))[1]);
             $this->assertSame('YYYY-MM-DD', $example[$dateColumn], $type.' must display the ISO date format.');
@@ -111,7 +111,7 @@ class DataImportAndConfigurationTest extends TestCase
     public function test_inventory_csv_items_and_xlsx_transactions_use_existing_tables_and_update_stock(): void
     {
         $operations = $this->user('operations');
-        $items = "item_name,category,supplier,unit,current_stock,reorder_level,opening_balance_date\nPortland Cement,Materials,Build Supply,Bag,100,25,2026-01-01\n";
+        $items = "item_name,category,supplier,unit,unit_price,current_stock,reorder_level,opening_balance_date\nPortland Cement,Materials,Build Supply,Bag,300.00,100,25,2026-01-01\n";
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'items',
             'file' => UploadedFile::fake()->createWithContent('items.csv', $items),
@@ -123,8 +123,8 @@ class DataImportAndConfigurationTest extends TestCase
         ]);
 
         $xlsxPath = $this->xlsx([
-            ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date'],
-            ['Portland Cement', 'Alpha Project', 'OUT', '10', '100001', '2026-01-12'],
+            ['item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code', 'transaction_date', 'stock_in_reason'],
+            ['Portland Cement', 'Alpha Project', 'OUT', '10', '100001', '2026-01-12', 'N/A'],
         ]);
         $upload = new UploadedFile($xlsxPath, 'transactions.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
         $this->actingAs($operations)->postJson('/api/imports/inventory', ['type' => 'transactions', 'file' => $upload])
@@ -145,17 +145,32 @@ class DataImportAndConfigurationTest extends TestCase
             'category_code' => 'permit fees',
             'category_name' => 'Permit Fees',
             'classification' => 'admin',
-            'is_active' => '1',
         ]);
         $response->assertCreated()->assertJsonPath('data.category_code', 'PERMIT_FEES');
-        $this->assertDatabaseHas('fin_expense_category_tbl', ['category_code' => 'PERMIT_FEES', 'category_name' => 'Permit Fees']);
+        $this->assertDatabaseHas('fin_expense_category_tbl', ['category_code' => 'PERMIT_FEES', 'category_name' => 'Permit Fees', 'is_active' => true]);
+        $meta = $this->actingAs($admin)->getJson('/api/config/exp_categories')->assertOk()->json('meta.fields');
+        $this->assertArrayHasKey('classification', $meta);
+        $this->assertArrayNotHasKey('is_active', $meta);
 
         $this->actingAs($admin)->postJson('/api/config/exp_categories', [
             'category_code' => 'ANOTHER_CODE',
             'category_name' => 'permit fees',
             'classification' => 'direct',
             'is_active' => '1',
+        ])->assertCreated()->assertJsonPath('data.category_code', 'DIRECT_PERMIT_FEES');
+
+        $this->actingAs($admin)->postJson('/api/config/exp_categories', [
+            'category_name' => 'Permit Fees',
+            'classification' => 'admin',
+            'is_active' => '1',
         ])->assertStatus(409);
+
+        $this->actingAs($admin)->patchJson('/api/config/exp_categories/'.$response->json('data.fin_category_id'), [
+            'category_code' => 'MANUALLY_CHANGED',
+            'category_name' => 'Rent Expense',
+            'classification' => 'admin',
+        ])->assertOk()->assertJsonPath('data.category_code', 'RENT_EXPENSE');
+        $this->assertDatabaseMissing('fin_expense_category_tbl', ['category_code' => 'MANUALLY_CHANGED']);
 
         $this->actingAs($this->user('operations'))->getJson('/api/config/units')->assertForbidden();
         $this->actingAs($admin)->getJson('/api/config/suppliers')->assertNotFound();
@@ -281,7 +296,7 @@ class DataImportAndConfigurationTest extends TestCase
             'fin_category_id' => 4, 'expense_description' => 'Employer contributions',
             'amount' => 200, 'expense_date' => '2026-01-10',
         ])->assertCreated()->assertJsonPath('expense_type', 'admin')
-            ->assertJsonPath('project_name', 'Admin Expenses');
+            ->assertJsonPath('project_name', 'Office');
     }
 
     public function test_finance_import_rejects_every_blank_cell(): void
@@ -339,10 +354,10 @@ class DataImportAndConfigurationTest extends TestCase
         ])->assertCreated();
         $this->assertDatabaseCount('fin_expense_tbl', 2);
 
-        $itemHeader = "item_name,category,supplier,unit,current_stock,reorder_level,opening_balance_date\n";
+        $itemHeader = "item_name,category,supplier,unit,unit_price,current_stock,reorder_level,opening_balance_date\n";
         $this->actingAs($admin)->postJson('/api/imports/inventory', [
             'type' => 'items',
-            'file' => UploadedFile::fake()->createWithContent('items.csv', $itemHeader."Cement,Materials,Build Supply,Bag,10,2,2026-01-01\nCement,Materials,Build Supply,Bag,20,2,2026-01-01\n"),
+            'file' => UploadedFile::fake()->createWithContent('items.csv', $itemHeader."Cement,Materials,Build Supply,Bag,300.00,10,2,2026-01-01\nCement,Materials,Build Supply,Bag,300.00,20,2,2026-01-01\n"),
         ])->assertCreated()->assertJsonPath('data.imported', 2);
         $this->assertDatabaseCount('inventory_item_tbl', 2);
     }
@@ -354,23 +369,22 @@ class DataImportAndConfigurationTest extends TestCase
             'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
             'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 20, 'reorder_level' => 2,
         ]);
-        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date\n";
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason\n";
 
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
-            'file' => UploadedFile::fake()->createWithContent('in.csv', $header."Cement,,IN,5,200001,2026-01-10\n"),
-        ])->assertCreated()->assertJsonPath('data.unpriced_stock_in_count', 1)
-            ->assertSee('flagged for review');
-        $this->assertDatabaseHas('inventory_transaction_tbl', ['bar_code' => 200001, 'movement_reason' => 'legacy_unpriced']);
+            'file' => UploadedFile::fake()->createWithContent('in.csv', $header."Cement,,IN,5,200001,2026-01-10,adjustment\n"),
+        ])->assertCreated()->assertJsonPath('data.unpriced_stock_in_count', 0);
+        $this->assertDatabaseHas('inventory_transaction_tbl', ['bar_code' => 200001, 'movement_reason' => 'adjustment']);
 
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
-            'file' => UploadedFile::fake()->createWithContent('out.csv', $header."Cement,,OUT,5,200002,2026-01-11\n"),
+            'file' => UploadedFile::fake()->createWithContent('out.csv', $header."Cement,,OUT,5,200002,2026-01-11,N/A\n"),
         ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'project_name');
 
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
-            'file' => UploadedFile::fake()->createWithContent('blank-barcode.csv', $header."Cement,,IN,5,,2026-01-12\n"),
+            'file' => UploadedFile::fake()->createWithContent('blank-barcode.csv', $header."Cement,,IN,5,,2026-01-12,adjustment\n"),
         ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'bar_code');
     }
 
@@ -382,11 +396,11 @@ class DataImportAndConfigurationTest extends TestCase
         $rows = array_map('str_getcsv', explode("\n", trim($template)));
         $this->assertSame([
             'item_name', 'project_name', 'transaction_type', 'quantity', 'bar_code',
-            'transaction_date', 'stock_in_reason', 'total_purchase_amount',
+            'transaction_date', 'stock_in_reason',
         ], $rows[0]);
         $this->assertSame('For Storage', $rows[1][1]);
         $this->assertSame('purchase', $rows[1][6]);
-        $this->assertSame('100.00', $rows[1][7]);
+        $this->assertCount(7, $rows[1]);
     }
 
     public function test_priced_inventory_import_links_one_purchase_and_allocates_out_to_project(): void
@@ -394,12 +408,12 @@ class DataImportAndConfigurationTest extends TestCase
         $operations = $this->user('operations');
         DB::table('inventory_item_tbl')->insert([
             'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
-            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
+            'supplier_id' => 1, 'unit_id' => 1, 'unit_price' => 300, 'current_stock' => 0, 'reorder_level' => 2,
         ]);
-        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason\n";
         $csv = $header
-            ."Cement,For Storage,IN,4,300001,2026-01-10,purchase,1200.00\n"
-            ."Cement,Alpha Project,OUT,2,300002,2026-01-11,N/A,N/A\n";
+            ."Cement,For Storage,IN,4,300001,2026-01-10,purchase\n"
+            ."Cement,Alpha Project,OUT,2,300002,2026-01-11,N/A\n";
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions', 'file' => UploadedFile::fake()->createWithContent('transactions.csv', $csv),
         ])->assertCreated()->assertJsonPath('data.imported', 2)
@@ -421,52 +435,54 @@ class DataImportAndConfigurationTest extends TestCase
         $this->assertDatabaseCount('fin_expense_tbl', 1);
     }
 
-    public function test_priced_inventory_import_rejects_project_link_or_missing_purchase_amount_atomically(): void
+    public function test_inventory_import_rejects_project_link_or_missing_unit_price_atomically(): void
     {
         $operations = $this->user('operations');
         DB::table('inventory_item_tbl')->insert([
             'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
             'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
         ]);
-        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason\n";
         foreach ([
-            ["Cement,Alpha Project,IN,4,300011,2026-01-10,purchase,1200.00\n", 'project_name'],
-            ["Cement,For Storage,IN,4,300012,2026-01-10,purchase,N/A\n", 'total_purchase_amount'],
+            ["Cement,Alpha Project,IN,4,300011,2026-01-10,purchase\n", 'project_name'],
+            ["Cement,For Storage,IN,4,300012,2026-01-10,purchase\n", 'item_name'],
         ] as [$invalid, $field]) {
             $this->actingAs($operations)->postJson('/api/imports/inventory', [
                 'type' => 'transactions',
                 'file' => UploadedFile::fake()->createWithContent('invalid.csv', $header.$invalid),
             ])->assertUnprocessable()->assertJsonPath('errors.0.field', $field);
         }
+        DB::table('inventory_item_tbl')->where('item_id', 1)->update(['unit_price' => 300]);
         DB::table('fin_expense_category_tbl')->where('fin_category_id', 1)->update(['is_active' => false]);
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
             'file' => UploadedFile::fake()->createWithContent('missing-category.csv',
-                $header."Cement,For Storage,IN,4,300013,2026-01-10,purchase,1200.00\n"),
-        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'total_purchase_amount');
+                $header."Cement,For Storage,IN,4,300013,2026-01-10,purchase\n"),
+        ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'item_name');
         $this->assertDatabaseCount('inventory_transaction_tbl', 0);
         $this->assertDatabaseCount('fin_expense_tbl', 0);
     }
 
-    public function test_inventory_import_purchase_duplicate_requires_identical_amount(): void
+    public function test_inventory_import_purchase_duplicate_uses_derived_amount(): void
     {
         $operations = $this->user('operations');
         DB::table('inventory_item_tbl')->insert([
             'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
-            'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
+            'supplier_id' => 1, 'unit_id' => 1, 'unit_price' => 300, 'current_stock' => 0, 'reorder_level' => 2,
         ]);
-        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
-        foreach ([1200, 1300] as $amount) {
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason\n";
+        foreach ([300, 325] as $unitPrice) {
+            DB::table('inventory_item_tbl')->where('item_id', 1)->update(['unit_price' => $unitPrice]);
             $this->actingAs($operations)->postJson('/api/imports/inventory', [
                 'type' => 'transactions',
                 'file' => UploadedFile::fake()->createWithContent('purchase.csv',
-                    $header."Cement,For Storage,IN,4,300051,2026-01-10,purchase,{$amount}.00\n"),
+                    $header."Cement,For Storage,IN,4,300051,2026-01-10,purchase\n"),
             ])->assertCreated();
         }
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
             'file' => UploadedFile::fake()->createWithContent('duplicate.csv',
-                $header."Cement,For Storage,IN,4,300051,2026-01-10,purchase,1200.00\n"),
+                $header."Cement,For Storage,IN,4,300051,2026-01-10,purchase\n"),
         ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'duplicate');
         $this->assertDatabaseCount('inventory_transaction_tbl', 2);
         $this->assertDatabaseCount('fin_expense_tbl', 2);
@@ -479,22 +495,22 @@ class DataImportAndConfigurationTest extends TestCase
             'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
             'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
         ]);
-        $newHeader = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason,total_purchase_amount\n";
+        $newHeader = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason\n";
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
             'file' => UploadedFile::fake()->createWithContent('adjustment.csv',
-                $newHeader."Cement,For Storage,IN,5,300021,2026-01-10,adjustment,N/A\n"),
+                $newHeader."Cement,For Storage,IN,5,300021,2026-01-10,adjustment\n"),
         ])->assertCreated();
         $this->assertDatabaseHas('inventory_transaction_tbl', [
             'bar_code' => 300021, 'project_id' => null, 'movement_reason' => 'adjustment',
         ]);
         $this->assertDatabaseCount('fin_expense_tbl', 0);
 
-        $oldHeader = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date\n";
+        $oldHeader = $newHeader;
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
             'file' => UploadedFile::fake()->createWithContent('project-in.csv',
-                $oldHeader."Cement,Alpha Project,IN,5,300022,2026-01-11\n"),
+                $oldHeader."Cement,Alpha Project,IN,5,300022,2026-01-11,adjustment\n"),
         ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'project_name');
         $this->assertDatabaseCount('inventory_transaction_tbl', 1);
     }
@@ -506,13 +522,13 @@ class DataImportAndConfigurationTest extends TestCase
             'item_id' => 1, 'item_name' => 'Cement', 'inventory_category_id' => 1,
             'supplier_id' => 1, 'unit_id' => 1, 'current_stock' => 0, 'reorder_level' => 2,
         ]);
-        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date\n";
+        $header = "item_name,project_name,transaction_type,quantity,bar_code,transaction_date,stock_in_reason\n";
 
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
             'file' => UploadedFile::fake()->createWithContent('barcodes.csv', $header
-                ."Cement,,IN,5,01234567890123,2026-01-10\n"
-                ."Cement,,IN,3,98765432109876,2026-01-11\n"),
+                ."Cement,,IN,5,01234567890123,2026-01-10,adjustment\n"
+                ."Cement,,IN,3,98765432109876,2026-01-11,adjustment\n"),
         ])->assertCreated()->assertJsonPath('data.imported', 2);
 
         $this->assertSame(
@@ -522,7 +538,7 @@ class DataImportAndConfigurationTest extends TestCase
 
         $this->actingAs($operations)->postJson('/api/imports/inventory', [
             'type' => 'transactions',
-            'file' => UploadedFile::fake()->createWithContent('invalid-barcode.csv', $header."Cement,,IN,1,123ABC,2026-01-12\n"),
+            'file' => UploadedFile::fake()->createWithContent('invalid-barcode.csv', $header."Cement,,IN,1,123ABC,2026-01-12,adjustment\n"),
         ])->assertUnprocessable()->assertJsonPath('errors.0.field', 'bar_code');
     }
 
@@ -673,6 +689,7 @@ class DataImportAndConfigurationTest extends TestCase
             $table->unsignedInteger('supplier_id');
             $table->unsignedInteger('unit_id');
             $table->string('item_name');
+            $table->decimal('unit_price', 12, 2)->nullable();
             $table->decimal('current_stock', 14, 2);
             $table->decimal('reorder_level', 14, 2);
         });

@@ -43,8 +43,8 @@ class FinExpenseController extends Controller
             'project_id' => $item->project_id,
             'project_name' => match ($expenseType) {
                 'office' => 'Office Expenses',
-                'admin' => 'Admin Expenses',
-                default => $item->project_name,
+                'admin' => 'Office',
+                default => ($item->entry_kind ?? null) === 'office_expense' ? 'Office' : $item->project_name,
             },
             'is_office_expense' => $isOfficeExpense,
             'expense_type' => $expenseType,
@@ -309,12 +309,13 @@ class FinExpenseController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'project_id' => 'nullable|exists:project_tbl,project_id',
+                'office_expense' => 'sometimes|boolean',
                 'fin_category_id' => 'required|exists:fin_expense_category_tbl,fin_category_id',
                 'expense_description' => 'required|string|max:255',
                 'amount' => 'required|numeric|min:0.01|max:999999999999.99',
                 'expense_date' => 'required|date|before_or_equal:today',
                 'remarks' => 'nullable|string|max:255',
-                'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'inventory_item_id' => 'nullable|integer|exists:inventory_item_tbl,item_id',
                 'inventory_quantity' => 'nullable|numeric|min:0.01|max:999999999999.99',
                 'inventory_bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
@@ -360,6 +361,7 @@ class FinExpenseController extends Controller
 
             $data = [
                 'project_id' => $validated['project_id'] ?? null,
+                'entry_kind' => ! empty($validated['office_expense']) && ! $isInventoryPurchase ? 'office_expense' : null,
                 'fin_category_id' => $validated['fin_category_id'],
                 'project_cost_component' => $this->normalizeCostComponent($validated['project_cost_component'] ?? null),
                 'expense_description' => trim($validated['expense_description']),
@@ -447,12 +449,13 @@ class FinExpenseController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'project_id' => 'nullable|exists:project_tbl,project_id',
+                'office_expense' => 'sometimes|boolean',
                 'fin_category_id' => 'required|exists:fin_expense_category_tbl,fin_category_id',
                 'expense_description' => 'required|string|max:255',
                 'amount' => 'required|numeric|min:0.01|max:999999999999.99',
                 'expense_date' => 'required|date|before_or_equal:today',
                 'remarks' => 'nullable|string|max:255',
-                'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'remove_proof_file' => 'sometimes|boolean',
             ]);
 
@@ -470,6 +473,7 @@ class FinExpenseController extends Controller
 
             $data = [
                 'project_id' => $validated['project_id'] ?? null,
+                'entry_kind' => ! empty($validated['office_expense']) ? 'office_expense' : null,
                 'fin_category_id' => $validated['fin_category_id'],
                 'project_cost_component' => $this->normalizeCostComponent($validated['project_cost_component'] ?? null),
                 'expense_description' => trim($validated['expense_description']),
@@ -550,6 +554,7 @@ class FinExpenseController extends Controller
             ->whereRaw('LOWER(TRIM(expense_description)) = ?', [strtolower(trim($data['expense_description']))]);
         $query = empty($data['project_id']) ? $query->whereNull('project_id') : $query->where('project_id', $data['project_id']);
         $query = empty($data['project_cost_component']) ? $query->whereNull('project_cost_component') : $query->where('project_cost_component', $data['project_cost_component']);
+        $query = empty($data['entry_kind']) ? $query->whereNull('entry_kind') : $query->where('entry_kind', $data['entry_kind']);
         if ($ignoreId !== null) {
             $query->where('fin_expense_id', '!=', $ignoreId);
         }
@@ -566,7 +571,11 @@ class FinExpenseController extends Controller
         $hasProject = ! blank($data['project_id'] ?? null);
         $errors = [];
 
-        if ($isDirect && ! $hasProject) {
+        $isOffice = ! empty($data['office_expense']);
+        if ($isOffice && $hasProject) {
+            $errors['project_id'][] = 'Office expenses cannot be linked to a project.';
+        }
+        if ($isDirect && ! $hasProject && ! $isOffice) {
             $errors['project_id'][] = 'A direct project expense requires a valid project.';
         }
         if (in_array(strtolower((string) $classification), ['admin', 'office'], true) && $hasProject) {

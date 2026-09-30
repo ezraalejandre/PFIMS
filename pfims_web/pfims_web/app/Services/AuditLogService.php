@@ -26,7 +26,7 @@ class AuditLogService
         'company_asset_tbl' => ['Company Assets', 'asset_name', '/finance?section=equipment'],
         'fin_equipment_expense_tbl' => ['Equipment Expenses', 'expense_type', '/finance?section=equipment'],
         'fin_equipment_rental_income_tbl' => ['Rental Income', 'rental_income_id', '/finance?section=equipment'],
-        'fin_project_contract_tbl' => ['Project Contracts', 'contract_id', '/finance?section=contracts'],
+        'fin_project_contract_tbl' => ['Project Contracts', 'contract_id', '/finance?section=budgets&subtab=contracts'],
         'reports' => ['Reports', 'title', '/reports'],
         'users' => ['User Management', 'name', '/settings?section=usermanagement'],
         'unit_tbl' => ['Configurations', 'unit_name', '/settings?section=configurations'],

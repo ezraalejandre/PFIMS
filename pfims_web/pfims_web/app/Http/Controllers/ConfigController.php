@@ -42,10 +42,8 @@ class ConfigController extends Controller
             'id' => 'fin_category_id',
             'name' => 'category_name',
             'fields' => [
-                'category_code' => ['label' => 'Category code', 'type' => 'text', 'required' => true, 'max' => 40],
                 'category_name' => ['label' => 'Category name', 'type' => 'text', 'required' => true, 'max' => 100],
-                'classification' => ['label' => 'Expense type', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Admin', 'office' => 'Office']],
-                'is_active' => ['label' => 'Status', 'type' => 'select', 'required' => true, 'options' => ['1' => 'Active', '0' => 'Inactive']],
+                'classification' => ['label' => 'Expense type', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Admin']],
             ],
         ],
         'project_phases' => [
@@ -100,10 +98,12 @@ class ConfigController extends Controller
     {
         $this->authorizeAdmin($request);
         $config = $this->configuration($type);
-        $validated = $this->normalize($type, $request->validate($this->rules($config), [
-            'category_code.regex' => 'Category code must start with a letter and use only letters, numbers, spaces, hyphens, or underscores.',
-        ]));
+        $validated = $this->normalize($type, $request->validate($this->rules($config)));
         $this->rejectDuplicate($config, $validated);
+        if ($type === 'exp_categories') {
+            $validated['category_code'] = $this->generatedCategoryCode($validated);
+            $validated['is_active'] = true;
+        }
         $model = $config['model'];
         $item = DB::transaction(function () use ($type, $validated, $model) {
             if ($type !== 'project_phases') {
@@ -129,10 +129,9 @@ class ConfigController extends Controller
         $model = $config['model'];
         /** @var Model $item */
         $item = $model::findOrFail($id);
-        $validated = $this->normalize($type, $request->validate($this->rules($config), [
-            'category_code.regex' => 'Category code must start with a letter and use only letters, numbers, spaces, hyphens, or underscores.',
-        ]));
+        $validated = $this->normalize($type, $request->validate($this->rules($config)));
         $this->rejectDuplicate($config, $validated, $id);
+        if ($type === 'exp_categories') $validated['category_code'] = $this->generatedCategoryCode($validated, $id);
         DB::transaction(function () use ($type, $item, $validated) {
             if ($type !== 'project_phases') {
                 $item->update($validated);
@@ -220,9 +219,6 @@ class ConfigController extends Controller
             if ($field === 'contact_number') {
                 $fieldRules[] = 'regex:/^(?=.*\d)[0-9+().\s-]+$/';
             }
-            if ($field === 'category_code') {
-                $fieldRules[] = 'regex:/^[A-Za-z][A-Za-z0-9_ -]*$/';
-            }
             $rules[$field] = $fieldRules;
         }
 
@@ -237,12 +233,9 @@ class ConfigController extends Controller
             }
         }
         if ($type === 'exp_categories') {
-            $data['category_code'] = Str::upper((string) preg_replace('/[^A-Za-z0-9]+/', '_', $data['category_code']));
-            if (in_array($data['category_code'], ['ADMINISTRATIVE_EXPENSES', 'SSS_PHILHEALTH_CONSTBOND'], true)
-                || Str::lower(trim((string) $data['category_name'])) === 'administrative expenses') {
+            if (Str::lower(trim((string) $data['category_name'])) === 'administrative expenses') {
                 throw ValidationException::withMessages(['category_name' => 'Choose a specific category; Admin is an expense type.']);
             }
-            $data['is_active'] = (bool) $data['is_active'];
         }
 
         return $data;
@@ -251,16 +244,30 @@ class ConfigController extends Controller
     private function rejectDuplicate(array $config, array $data, ?int $ignoreId = null): void
     {
         $fields = [$config['name']];
-        if (isset($data['category_code'])) {
-            $fields[] = 'category_code';
-        }
         foreach ($fields as $field) {
             $query = DB::table($config['table'])->whereRaw("LOWER(TRIM({$field})) = ?", [Str::lower(trim((string) $data[$field]))]);
+            if ($config['table'] === 'fin_expense_category_tbl') $query->where('classification', $data['classification']);
             if ($ignoreId !== null) {
                 $query->where($config['id'], '!=', $ignoreId);
             }
             abort_if($query->exists(), 409, ucfirst(str_replace('_', ' ', $field)).' already exists.');
         }
+    }
+
+    private function generatedCategoryCode(array $data, ?int $ignoreId = null): string
+    {
+        $base = trim((string) preg_replace('/[^A-Z0-9]+/', '_', Str::upper($data['category_name'])), '_');
+        if ($base === '' || ! preg_match('/^[A-Z]/', $base)) {
+            throw ValidationException::withMessages(['category_name' => 'Category name must begin with a letter.']);
+        }
+        $query = DB::table('fin_expense_category_tbl')->where('category_code', $base);
+        if ($ignoreId !== null) $query->where('fin_category_id', '!=', $ignoreId);
+        $code = $query->exists() ? Str::upper($data['classification']).'_'.$base : $base;
+        if (strlen($code) > 40 || DB::table('fin_expense_category_tbl')->where('category_code', $code)
+            ->when($ignoreId !== null, fn ($query) => $query->where('fin_category_id', '!=', $ignoreId))->exists()) {
+            throw ValidationException::withMessages(['category_name' => 'This name cannot produce a unique category code within 40 characters.']);
+        }
+        return $code;
     }
 
     private function meta(array $config): array

@@ -58,7 +58,6 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body class="reports-page" data-portal="{{ $portal }}" data-reports-api-base="{{ request()->getBaseUrl() }}/api/reports" data-report-view-icon="{{ asset('images/view.jpg') }}" data-report-download-icon="{{ asset('images/download.jpg') }}" data-report-header-image="{{ asset('images/report-header.jpeg') }}">
     <header class="top-header">
@@ -124,7 +123,6 @@
                 <p>Review filtered operational records and generate consistent system reports.</p>
             </div>
             <div class="report-header-actions">
-                <button type="button" class="btn btn-primary" id="addContract" hidden>+ Add Contract</button>
                 <button type="button" class="btn btn-primary" id="openExport">Configure export</button>
             </div>
         </section>
@@ -135,13 +133,34 @@
         <section class="panel content-card filter-panel">
             <div class="panel-heading">
                 <div>
-                    <h2 id="datasetTitle">Report</h2>
-                    <p>Filters update the summary and table together.</p>
+                    <h2 id="datasetTitle">Filters update the summary table.</h2>
                     <p id="reportScopeNote"></p>
                 </div>
             </div>
-            <div class="filters-grid">
+            <div class="filters-grid" id="reportFiltersGrid">
                 <label class="filter-control" data-filter="search">Search<input id="filterSearch" type="search" maxlength="100" placeholder="Search this report"></label>
+                @php($reportToday = now()->timezone('Asia/Manila'))
+                <div class="filter-control report-date-picker" data-filter="report_month"><span>Month</span>
+                    <input id="filterReportMonth" type="hidden" value="{{ $reportToday->month }}" data-default="{{ $reportToday->month }}">
+                    <button type="button" class="report-date-trigger" data-date-part="report_month" aria-expanded="false" aria-label="Choose report month">{{ $reportToday->format('F') }}</button>
+                    <div class="report-date-popover" hidden></div>
+                </div>
+                <div class="filter-control report-date-picker" data-filter="report_day"><span>Day</span>
+                    <input id="filterReportDay" type="hidden" value="{{ $reportToday->day }}" data-default="{{ $reportToday->day }}">
+                    <button type="button" class="report-date-trigger" data-date-part="report_day" aria-expanded="false" aria-label="Choose report day">{{ $reportToday->day }}</button>
+                    <div class="report-date-popover" hidden></div>
+                </div>
+                <div class="filter-control report-date-picker" data-filter="report_year"><span>Year</span>
+                    <input id="filterReportYear" type="hidden" value="{{ $reportToday->year }}" data-default="{{ $reportToday->year }}">
+                    <button type="button" class="report-date-trigger" data-date-part="report_year" aria-expanded="false" aria-label="Choose report year">{{ $reportToday->year }}</button>
+                    <div class="report-date-popover" hidden></div>
+                </div>
+                <label class="filter-control" data-filter="project_status">Project Status<select id="filterProjectStatus" data-default="Ongoing">
+                    <option value="Ongoing">Ongoing</option><option value="Completed">Completed</option>
+                </select></label>
+                <label class="filter-control" data-filter="expense_type">Expense Type<select id="filterExpenseType" data-default="Overall">
+                    <option value="Overall">Overall</option><option value="Direct">Direct</option><option value="Admin">Admin</option>
+                </select></label>
                 <label class="filter-control" data-filter="project_id">Project<select id="filterProject"><option value="">All projects</option></select></label>
                 <label class="filter-control" data-filter="status">Status<select id="filterStatus"><option value="">All statuses</option></select></label>
                 <label class="filter-control" data-filter="classification">Classification<select id="filterClassification"><option value="">All classifications</option></select></label>
@@ -155,16 +174,6 @@
         </section>
 
         <section class="kpi-grid" id="kpiGrid" aria-label="Report KPIs"></section>
-
-        <section class="panel content-card chart-panel" hidden>
-            <div class="panel-heading">
-                <div>
-                    <h2 id="chartTitle">Report chart</h2>
-                    <p>Calculated from all records matching the active filters.</p>
-                </div>
-            </div>
-            <div id="chart" class="chart" role="img" aria-label="Report chart"><canvas id="reportChartCanvas"></canvas></div>
-        </section>
 
         <section class="panel content-card live-data-panel">
             <div class="panel-heading">
@@ -243,44 +252,20 @@
             <label>Format<select id="exportFormat" name="format" required><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV (.csv)</option><option value="pdf">PDF (.pdf)</option></select></label>
             <div class="selection-group"><strong>Choose detailed fields</strong><div id="columnChoices" class="choice-grid columns"></div></div>
             <div class="active-filter-summary"><strong>Filters included in this export</strong><p id="exportFilterSummary">No filters applied.</p></div>
+            <div class="preview-toolbar">
+                <h3>Preview Export</h3>
+                <button type="button" class="btn btn-secondary" id="editExportDesign" aria-expanded="false" aria-controls="exportDesignControls">Edit Export</button>
+            </div>
+            <div class="export-design-controls" id="exportDesignControls" hidden>
+                <label>Header color<select id="exportHeaderColor"><option value="navy">Navy</option><option value="orange">Orange</option><option value="green">Green</option></select></label>
+                <label>Table spacing<select id="exportTableSpacing"><option value="standard">Standard</option><option value="compact">Compact</option></select></label>
+            </div>
             <div class="report-preview" id="reportPreview" aria-live="polite">Preparing preview…</div>
             <div class="dialog-actions">
                 <button type="button" class="btn btn-secondary" id="cancelExport">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="submitExport">Generate and download</button>
             </div>
         </form>
-    </dialog>
-
-    <dialog id="contractDialog" class="export-dialog contract-dialog" aria-labelledby="contractDialogTitle">
-        <form id="contractForm">
-            <div class="dialog-heading">
-                <div><p class="eyebrow">PROJECT CONTRACT</p><h2 id="contractDialogTitle">Contract details</h2></div>
-                <button type="button" class="icon-btn" id="closeContract" aria-label="Close">×</button>
-            </div>
-            <div class="contract-fields">
-                <label>Project<select id="contractProject" required></select></label>
-                <label>Contract price from budget<input id="contractPrice" type="text" readonly></label>
-                <label>Additional works contract<input id="contractAdditional" type="number" min="0" step="0.01" required></label>
-                <label>Original payment received<input id="contractPayment" type="number" min="0" step="0.01" required></label>
-                <label>Additional works payment<input id="contractAdditionalPayment" type="number" min="0" step="0.01" required></label>
-                <label class="contract-remarks">Remarks<input id="contractRemarks" type="text" maxlength="255"></label>
-            </div>
-            <div class="dialog-actions">
-                <button type="button" class="btn btn-secondary" id="cancelContract">Cancel</button>
-                <button type="button" class="btn btn-secondary" id="deleteContract" hidden>Delete</button>
-                <button type="button" class="btn btn-primary" id="editContract" hidden>Edit</button>
-                <button type="submit" class="btn btn-primary" id="saveContract">Save Contract</button>
-            </div>
-        </form>
-    </dialog>
-
-    <dialog id="contractDeleteDialog" class="export-dialog contract-delete-dialog">
-        <div class="dialog-heading"><div><p class="eyebrow">DELETE CONTRACT</p><h2>Confirm deletion</h2></div></div>
-        <p>Delete this contract record? This cannot be undone.</p>
-        <div class="dialog-actions">
-            <button type="button" class="btn btn-secondary" id="cancelContractDelete">Cancel</button>
-            <button type="button" class="btn btn-primary" id="confirmContractDelete">Delete</button>
-        </div>
     </dialog>
 
     <dialog id="historyDetailDialog" class="export-dialog history-detail-dialog" aria-labelledby="historyDetailTitle">
@@ -321,11 +306,15 @@
                 dataPerPage: 5,
                 historyPage: 1,
                 historyPerPage: 5,
-                historyRecords: {},
-                chartInstance: null
+                historyRecords: {}
             };
             const filterInputs = {
                 search: document.getElementById('filterSearch'),
+                report_month: document.getElementById('filterReportMonth'),
+                report_day: document.getElementById('filterReportDay'),
+                report_year: document.getElementById('filterReportYear'),
+                project_status: document.getElementById('filterProjectStatus'),
+                expense_type: document.getElementById('filterExpenseType'),
                 project_id: document.getElementById('filterProject'),
                 status: document.getElementById('filterStatus'),
                 classification: document.getElementById('filterClassification'),
@@ -335,7 +324,11 @@
                 start_date: document.getElementById('filterStart'),
                 end_date: document.getElementById('filterEnd')
             };
-            const moneyColumns = new Set(['budget_amount', 'actual_amount', 'variance', 'amount', 'remaining_amount',
+            const filterControls = Object.fromEntries(Object.entries(filterInputs)
+                .map(([name, input]) => [name, input.closest('[data-filter]')]));
+            let datasetRequest = 0;
+            let historyRequest = 0;
+            const moneyColumns = new Set(['budget_amount', 'actual_amount', 'variance', 'amount', 'remaining_amount', 'unit_price',
                 'construction_supply', 'salaries_wages', 'permits_taxes_licenses', 'transportation_expenses',
                 'utilities', 'delivery_expense', 'others', 'administrative_expenses', 'total',
                 'original_contract_price', 'additional_works_contract', 'total_contract_price',
@@ -348,6 +341,7 @@
             const queryString = object => new URLSearchParams(Object.entries(object)
                 .filter(([, value]) => value !== '' && value != null)).toString();
             const selectedFilters = () => Object.fromEntries(Object.entries(filterInputs)
+                .filter(([key]) => state.definition?.filters.includes(key))
                 .map(([key, input]) => [key, input.value.trim()])
                 .filter(([, value]) => value !== ''));
 
@@ -396,7 +390,13 @@
                     renderTabs();
 
                     if (!state.catalog.datasets.length) {
-                        throw new Error('No reports are available for this role.');
+                        document.getElementById('openExport').hidden = true;
+                        document.querySelectorAll('main .filter-panel, main .live-data-panel, main .history-panel').forEach(panel => { panel.hidden = true; });
+                        const notice = document.getElementById('notice');
+                        notice.textContent = 'No reports are currently available for this role.';
+                        notice.className = 'notice info';
+                        notice.hidden = false;
+                        return;
                     }
 
                     const requested = new URLSearchParams(window.location.search).get('section');
@@ -409,6 +409,7 @@
 
             function renderTabs() {
                 const tabs = document.getElementById('reportTabs');
+                tabs.hidden = state.catalog.datasets.length === 0;
                 tabs.innerHTML = state.catalog.datasets.map(item => `
                     <button type="button" class="tab" data-dataset="${escapeHtml(item.key)}">${escapeHtml(item.title)}</button>
                 `).join('');
@@ -419,6 +420,8 @@
             }
 
             async function selectDataset(key) {
+                window.clearTimeout(state.dataTimer);
+                datasetRequest++;
                 state.dataset = key;
                 document.body.dataset.reportDataset = key;
                 state.definition = state.catalog.datasets.find(item => item.key === key);
@@ -427,24 +430,41 @@
                 document.querySelectorAll('[data-dataset]').forEach(button => {
                     button.classList.toggle('active', button.dataset.dataset === key);
                 });
-                document.getElementById('datasetTitle').textContent = state.definition.title;
+                document.getElementById('datasetTitle').textContent = key === 'inventory'
+                    ? 'Filters update both the KPIs and summary table.'
+                    : 'Filters update the summary table.';
                 document.getElementById('recordsTitle').textContent = key === 'expense_summary'
-                    ? 'SUMMARY OF EXPENSES (PROJECT SITE-OVERALL EXPENSES)' : state.definition.title;
+                    ? 'SUMMARY OF EXPENSES (PROJECT SITE-OVERALL EXPENSES)'
+                    : (key === 'inventory' ? 'Inventory Items Summary' : state.definition.title);
                 document.getElementById('reportScopeNote').textContent = key === 'expense_summary'
-                    ? 'Ongoing projects only. Office expenses without a project link are excluded.' : '';
-                document.getElementById('addContract').hidden = key !== 'contracts';
-                document.querySelector('.chart-panel').hidden = key !== 'inventory';
-                document.querySelectorAll('[data-filter]').forEach(control => {
-                    control.hidden = !state.definition.filters.includes(control.dataset.filter);
+                    ? 'Project-linked expenses only. Office expenses without a project link are excluded.' : '';
+                document.getElementById('reportScopeNote').hidden = key === 'inventory';
+                document.getElementById('kpiGrid').hidden = key !== 'inventory';
+                const filterGrid = document.getElementById('reportFiltersGrid');
+                const clearFilters = document.getElementById('clearFilters');
+                Object.values(filterControls).forEach(control => {
+                    if (state.definition.filters.includes(control.dataset.filter)) {
+                        filterGrid.insertBefore(control, clearFilters.parentNode === filterGrid ? clearFilters : null);
+                    } else {
+                        control.remove();
+                    }
                 });
                 Object.entries(filterInputs).forEach(([name, input]) => {
                     if (!state.definition.filters.includes(name)) input.value = '';
+                    else if (key === 'expense_summary' && input.dataset.default) input.value = input.dataset.default;
                 });
+                updateDatePickerTriggers();
+                closeDatePickers();
                 renderColumnChoices();
+                document.getElementById('dataHead').innerHTML = '';
+                document.getElementById('dataFoot').innerHTML = '';
+                document.getElementById('rowSummary').textContent = 'Loading records…';
                 await Promise.all([loadDataset(), loadHistory()]);
             }
 
             async function loadDataset() {
+                const key = state.dataset;
+                const request = ++datasetRequest;
                 document.getElementById('dataBody').innerHTML = '<tr><td>Loading filtered records…</td></tr>';
 
                 try {
@@ -453,26 +473,28 @@
                         page: state.dataPage,
                         per_page: state.dataPerPage
                     };
-                    state.payload = await apiJson(`${reportsApiBase}/data/${state.dataset}?${queryString(query)}`);
+                    const payload = await apiJson(`${reportsApiBase}/data/${key}?${queryString(query)}`);
+                    if (request !== datasetRequest || key !== state.dataset) return;
+                    state.payload = payload;
                     state.dataPage = state.payload.pagination.current_page;
                     renderKpis();
                     renderDataTable();
-                    renderChart();
                     renderPagination('data', state.payload.pagination);
                     updateExportSummary();
                 } catch (error) {
+                    if (request !== datasetRequest || key !== state.dataset) return;
                     showNotice(error.message);
                     document.getElementById('dataBody').innerHTML = '<tr><td>Unable to load this report.</td></tr>';
                 }
             }
 
             function renderKpis() {
-                document.getElementById('kpiGrid').innerHTML = state.payload.kpis.map(kpi => `
+                document.getElementById('kpiGrid').innerHTML = state.dataset === 'inventory' ? state.payload.kpis.map(kpi => `
                     <article class="kpi-card">
                         <span>${escapeHtml(kpi.label)}</span>
                         <strong>${escapeHtml(kpi.value)}</strong>
                     </article>
-                `).join('');
+                `).join('') : '';
             }
 
             function displayValue(column, value) {
@@ -489,77 +511,40 @@
                 return value;
             }
 
+            const isTotalColumn = key => key === 'total' || key.startsWith('total_');
+            const summaryTitle = () => `SUMMARY OF EXPENSES (PROJECT SITE-${filterInputs.expense_type.value.toUpperCase()} EXPENSES)`;
+
             function renderDataTable() {
                 const columns = Object.entries(state.payload.columns);
+                if (state.dataset === 'expense_summary') document.getElementById('recordsTitle').textContent = summaryTitle();
                 document.getElementById('dataHead').innerHTML = '<tr>' + columns
-                    .map(([, label]) => `<th>${escapeHtml(label)}</th>`).join('')
-                    + (state.dataset === 'contracts' ? '<th>Actions</th>' : '') + '</tr>';
+                    .map(([key, label]) => `<th${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(label)}</th>`).join('')
+                    + '</tr>';
                 document.getElementById('dataBody').innerHTML = state.payload.rows.length
-                    ? state.payload.rows.map(row => '<tr>' + columns
-                        .map(([key]) => `<td>${escapeHtml(displayValue(key, row[key]))}</td>`).join('')
-                        + (state.dataset === 'contracts' ? `<td><button type="button" class="pfims-row-action contract-view" data-contract-id="${escapeHtml(row.contract_id)}" title="View contract details" aria-label="View contract details"><img src="${escapeHtml(document.body.dataset.reportViewIcon)}" alt=""></button></td>` : '')
+                    ? state.payload.rows.map(row => (state.dataset === 'contracts' ? '<tr class="report-contract-row">' : '<tr>') + columns
+                        .map(([key]) => {
+                            const contractProfit = state.dataset === 'contracts' && key.startsWith('profit_loss_');
+                            const classes = [isTotalColumn(key) ? 'report-total-column' : '',
+                                state.dataset === 'contracts' && key === 'project_name' ? 'report-contract-project' : '',
+                                contractProfit ? (Number(row[key]) < 0 ? 'amount-negative' : 'amount-positive') : '',
+                                state.dataset === 'expense_summary' && key === 'project_name' ? 'report-project-name' : ''].filter(Boolean).join(' ');
+                            const value = state.dataset === 'contracts' && key === 'actual_end_date' && !row[key]
+                                ? 'In Progress' : displayValue(key, row[key]);
+                            return `<td${classes ? ` class="${classes}"` : ''}>${escapeHtml(value)}</td>`;
+                        }).join('')
                         + '</tr>').join('')
-                    : `<tr><td colspan="${columns.length + (state.dataset === 'contracts' ? 1 : 0)}">No records match the selected filters.</td></tr>`;
-                document.getElementById('dataFoot').innerHTML = state.dataset === 'expense_summary' && state.payload.totals
-                    ? '<tr class="report-total-row">' + columns.map(([key]) => `<td>${escapeHtml(displayValue(key, state.payload.totals[key]))}</td>`).join('') + '</tr>'
+                    : `<tr><td colspan="${columns.length}">No records match the selected filters.</td></tr>`;
+                document.getElementById('dataFoot').innerHTML = state.dataset === 'expense_summary'
+                    ? [state.payload.totals, state.payload.previous_totals, state.payload.month_totals].filter(Boolean)
+                        .map((totalRow, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">` + columns.map(([key]) => `<td${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(displayValue(key, totalRow[key]))}</td>`).join('') + '</tr>').join('')
                     : '';
 
                 const pagination = state.payload.pagination;
-                document.getElementById('rowSummary').textContent = pagination.total
+                document.getElementById('rowSummary').textContent = state.dataset === 'expense_summary'
+                    ? (filterInputs.project_status.value === 'Completed' ? 'COMPLETED PROJECTS' : 'ONGOING PROJECTS')
+                    : pagination.total
                     ? `Showing ${pagination.from.toLocaleString()}–${pagination.to.toLocaleString()} of ${pagination.total.toLocaleString()} matching records.`
                     : 'No records match the selected filters.';
-            }
-
-            function renderChart() {
-                const chart = state.payload.chart;
-                document.getElementById('chartTitle').textContent = chart.title;
-                const host = document.getElementById('chart');
-                const canvas = document.getElementById('reportChartCanvas');
-
-                if (!chart.labels.length) {
-                    if (state.chartInstance) state.chartInstance.destroy();
-                    state.chartInstance = null;
-                    host.innerHTML = '<canvas id="reportChartCanvas"></canvas><p class="empty-state">No chart data for these filters.</p>';
-                    return;
-                }
-                if (typeof Chart === 'undefined' || !canvas) return;
-                if (state.chartInstance) state.chartInstance.destroy();
-                const palette = ['#c9a96e', '#547896', '#4f8b68', '#c95c5c', '#8d6cab', '#dd8b57', '#5d9b9b', '#a8a054'];
-                const semanticColors = {
-                    project: { Pending: '#9aa5b1', 'On Track': '#4f8b68', 'At Risk': '#e19a45', Delayed: '#c95c5c' },
-                    budget: { 'On Track': '#4f8b68', 'Near Limit': '#e19a45', 'Over Budget': '#c95c5c', 'No Budget': '#9aa5b1' }
-                };
-                const isPie = chart.type === 'pie';
-                const isHorizontal = chart.type === 'horizontalBar';
-                const sliceColors = chart.labels.map((label, colorIndex) => semanticColors[state.dataset]?.[label] || palette[colorIndex % palette.length]);
-                state.chartInstance = new Chart(canvas, {
-                    type: isPie ? 'pie' : 'bar',
-                    data: {
-                        labels: chart.labels,
-                        datasets: chart.series.map((series, index) => ({
-                            label: series.label,
-                            data: series.values.map(Number),
-                            backgroundColor: isPie ? sliceColors : palette[index % palette.length] + 'C7',
-                            borderColor: isPie ? '#ffffff' : palette[index % palette.length],
-                            borderWidth: 1,
-                            borderRadius: 4,
-                            hoverOffset: isPie ? 12 : 0,
-                            maxBarThickness: 48
-                        }))
-                    },
-                    options: {
-                        indexAxis: isHorizontal ? 'y' : 'x',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { mode: isPie ? 'nearest' : 'index', intersect: true },
-                        plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: {
-                            label: context => `${context.label}: ${context.dataset.label}: ${new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 }).format(Number(context.raw || 0))}`
-                        } } },
-                        scales: isPie ? {} : (isHorizontal
-                            ? { x: { beginAtZero: true, ticks: { precision: 0 } } }
-                            : { y: { beginAtZero: true, ticks: { precision: 0 } } })
-                    }
-                });
             }
 
             function paginationItems(current, last) {
@@ -615,7 +600,10 @@
 
             async function loadHistory() {
                 if (!state.dataset) return;
+                const key = state.dataset;
+                const request = ++historyRequest;
                 const filters = {
+                    dataset: key,
                     search: document.getElementById('historySearch').value.trim(),
                     start_date: document.getElementById('historyStart').value,
                     end_date: document.getElementById('historyEnd').value,
@@ -625,6 +613,7 @@
 
                 try {
                     const response = await apiJson(`${reportsApiBase}?${queryString(filters)}`);
+                    if (request !== historyRequest || key !== state.dataset) return;
                     const reports = response.data || [];
                     state.historyRecords = {};
                     state.historyPage = response.current_page;
@@ -652,9 +641,105 @@
                         : '<tr><td colspan="9">No exports have been generated yet.</td></tr>';
                     renderPagination('history', response);
                 } catch (error) {
+                    if (request !== historyRequest || key !== state.dataset) return;
                     showNotice(error.message);
                 }
             }
+
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            let yearPickerStart = 1900;
+            const datePickerNames = ['report_month', 'report_day', 'report_year'];
+
+            function updateDatePickerTriggers() {
+                datePickerNames.forEach(name => {
+                    const input = filterInputs[name];
+                    const trigger = input.closest('.report-date-picker').querySelector('.report-date-trigger');
+                    trigger.textContent = name === 'report_month'
+                        ? monthNames[Number(input.value) - 1] : input.value;
+                });
+            }
+
+            function closeDatePickers() {
+                datePickerNames.forEach(name => {
+                    const picker = filterInputs[name].closest('.report-date-picker');
+                    picker.querySelector('.report-date-popover').hidden = true;
+                    picker.querySelector('.report-date-trigger').setAttribute('aria-expanded', 'false');
+                });
+            }
+
+            function daysInSelectedMonth() {
+                return new Date(Number(filterInputs.report_year.value), Number(filterInputs.report_month.value), 0).getDate();
+            }
+
+            function limitSelectedDay() {
+                const dayInput = filterInputs.report_day;
+                dayInput.value = String(Math.min(Number(dayInput.value), daysInSelectedMonth()));
+            }
+
+            function renderDatePicker(name) {
+                const input = filterInputs[name];
+                const popover = input.closest('.report-date-picker').querySelector('.report-date-popover');
+                let values;
+                if (name === 'report_month') values = monthNames.map((label, index) => ({ value: index + 1, label }));
+                else if (name === 'report_day') values = Array.from({ length: daysInSelectedMonth() }, (_, index) => ({ value: index + 1, label: String(index + 1) }));
+                else values = Array.from({ length: 12 }, (_, index) => ({ value: yearPickerStart + index, label: String(yearPickerStart + index) }))
+                    .filter(item => item.value <= 2100);
+                const navigation = name === 'report_year' ? `<div class="report-year-navigation">
+                    <button type="button" data-year-shift="-12" aria-label="Previous years" ${yearPickerStart <= 1900 ? 'disabled' : ''}>‹</button>
+                    <span>${yearPickerStart}–${Math.min(yearPickerStart + 11, 2100)}</span>
+                    <button type="button" data-year-shift="12" aria-label="Next years" ${yearPickerStart >= 2089 ? 'disabled' : ''}>›</button>
+                </div>` : '';
+                popover.innerHTML = navigation + `<div class="report-date-options ${name}">` + values.map(item =>
+                    `<button type="button" data-picker-value="${item.value}" aria-pressed="${String(item.value) === input.value}">${escapeHtml(item.label)}</button>`
+                ).join('') + '</div>';
+                popover.querySelectorAll('[data-year-shift]').forEach(button => {
+                    button.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        yearPickerStart = Math.max(1900, Math.min(2089, yearPickerStart + Number(button.dataset.yearShift)));
+                        renderDatePicker(name);
+                    });
+                });
+                popover.querySelectorAll('[data-picker-value]').forEach(button => {
+                    button.addEventListener('click', () => {
+                        input.value = button.dataset.pickerValue;
+                        if (name === 'report_month' || name === 'report_year') limitSelectedDay();
+                        updateDatePickerTriggers();
+                        closeDatePickers();
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                });
+            }
+
+            datePickerNames.forEach(name => {
+                const picker = filterInputs[name].closest('.report-date-picker');
+                const trigger = picker.querySelector('.report-date-trigger');
+                const popover = picker.querySelector('.report-date-popover');
+                trigger.addEventListener('click', () => {
+                    const wasOpen = !popover.hidden;
+                    closeDatePickers();
+                    if (wasOpen) return;
+                    if (name === 'report_year') {
+                        yearPickerStart = Math.min(2089, 1900 + Math.floor((Number(filterInputs[name].value) - 1900) / 12) * 12);
+                    }
+                    renderDatePicker(name);
+                    popover.hidden = false;
+                    trigger.setAttribute('aria-expanded', 'true');
+                    popover.style.left = '0';
+                    popover.style.right = 'auto';
+                    if (popover.getBoundingClientRect().right > window.innerWidth - 8) {
+                        popover.style.left = 'auto';
+                        popover.style.right = '0';
+                    }
+                });
+            });
+            document.addEventListener('click', event => {
+                if (!event.target.closest('.report-date-picker')) closeDatePickers();
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') closeDatePickers();
+            });
 
             Object.entries(filterInputs).forEach(([name, input]) => {
                 input.addEventListener(name === 'search' ? 'input' : 'change', () => {
@@ -665,7 +750,11 @@
             });
 
             document.getElementById('clearFilters').addEventListener('click', () => {
-                Object.values(filterInputs).forEach(input => { input.value = ''; });
+                Object.values(filterInputs).forEach(input => {
+                    input.value = state.dataset === 'expense_summary' && input.dataset.default ? input.dataset.default : '';
+                });
+                updateDatePickerTriggers();
+                closeDatePickers();
                 state.dataPage = 1;
                 loadDataset();
             });
@@ -733,113 +822,17 @@
                 openHistoryDetails(state.historyRecords[String(button.dataset.reportId)]);
             });
 
-            const contractDialog = document.getElementById('contractDialog');
-            const contractDeleteDialog = document.getElementById('contractDeleteDialog');
-            let contractId = null;
-            let contractChoices = [];
-            const contractFields = ['contractAdditional', 'contractPayment', 'contractAdditionalPayment', 'contractRemarks'];
-            async function loadContractChoices() {
-                contractChoices = await apiJson('/api/project-contracts');
-                document.getElementById('contractProject').innerHTML = '<option value="">Select project</option>'
-                    + contractChoices.map(project => `<option value="${escapeHtml(project.project_id)}">${escapeHtml(project.project_name)}</option>`).join('');
-            }
-            function setContractMode(mode) {
-                const view = mode === 'view';
-                document.getElementById('contractProject').disabled = mode !== 'add';
-                contractFields.forEach(id => { document.getElementById(id).disabled = view; });
-                document.getElementById('editContract').hidden = !view;
-                document.getElementById('deleteContract').hidden = !view;
-                document.getElementById('saveContract').hidden = view;
-                document.getElementById('contractDialogTitle').textContent = mode === 'add' ? 'Add Contract'
-                    : (view ? 'Contract details' : 'Edit Contract');
-                document.getElementById('saveContract').textContent = mode === 'add' ? 'Save Contract' : 'Save Changes';
-            }
-            function displayContractPrice() {
-                const project = contractChoices.find(item => String(item.project_id) === document.getElementById('contractProject').value);
-                document.getElementById('contractPrice').value = displayValue('original_contract_price', project?.original_contract_price || 0);
-            }
-            document.getElementById('contractProject').addEventListener('change', displayContractPrice);
-            document.getElementById('addContract').addEventListener('click', async () => {
-                try {
-                    await loadContractChoices();
-                    contractId = null;
-                    document.getElementById('contractForm').reset();
-                    contractFields.slice(0, 3).forEach(id => { document.getElementById(id).value = '0'; });
-                    displayContractPrice();
-                    setContractMode('add');
-                    contractDialog.showModal();
-                } catch (error) { showNotice(error.message); }
-            });
-            document.getElementById('dataBody').addEventListener('click', async event => {
-                const button = event.target.closest('.contract-view');
-                if (!button) return;
-                const row = state.payload?.rows.find(item => String(item.contract_id) === button.dataset.contractId);
-                if (!row) return;
-                try {
-                    await loadContractChoices();
-                    contractId = row.contract_id;
-                    document.getElementById('contractProject').value = row.project_id;
-                    displayContractPrice();
-                    document.getElementById('contractAdditional').value = row.additional_works_contract;
-                    document.getElementById('contractPayment').value = row.original_payment_received;
-                    document.getElementById('contractAdditionalPayment').value = row.additional_works_payment;
-                    document.getElementById('contractRemarks').value = row.remarks || '';
-                    setContractMode('view');
-                    contractDialog.showModal();
-                } catch (error) { showNotice(error.message); }
-            });
-            document.getElementById('editContract').addEventListener('click', () => setContractMode('edit'));
-            ['closeContract', 'cancelContract'].forEach(id => document.getElementById(id).addEventListener('click', () => contractDialog.close()));
-            contractDialog.addEventListener('click', event => { if (event.target === contractDialog) contractDialog.close(); });
-            document.getElementById('contractForm').addEventListener('submit', async event => {
-                event.preventDefault();
-                const projectId = document.getElementById('contractProject').value;
-                const choice = contractChoices.find(item => String(item.project_id) === projectId);
-                const price = Number(choice?.original_contract_price || 0);
-                if (!contractId && price <= 0) {
-                    showNotice('Set a project budget before adding its contract.');
-                    return;
-                }
-                const payload = {
-                    project_id: Number(projectId), original_contract_price: price,
-                    additional_works_contract: Number(document.getElementById('contractAdditional').value),
-                    original_payment_received: Number(document.getElementById('contractPayment').value),
-                    additional_works_payment: Number(document.getElementById('contractAdditionalPayment').value),
-                    remarks: document.getElementById('contractRemarks').value.trim()
-                };
-                const save = document.getElementById('saveContract');
-                save.disabled = true;
-                try {
-                    await apiJson('/api/project-contracts' + (contractId ? '/' + encodeURIComponent(contractId) : ''), {
-                        method: contractId ? 'PUT' : 'POST',
-                        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf},
-                        body: JSON.stringify(payload)
-                    });
-                    contractDialog.close();
-                    await loadDataset();
-                    showNotice('Contract saved.', 'success');
-                } catch (error) { showNotice(error.message); }
-                finally { save.disabled = false; }
-            });
-            document.getElementById('deleteContract').addEventListener('click', () => contractDeleteDialog.showModal());
-            document.getElementById('cancelContractDelete').addEventListener('click', () => contractDeleteDialog.close());
-            document.getElementById('confirmContractDelete').addEventListener('click', async () => {
-                const button = document.getElementById('confirmContractDelete');
-                button.disabled = true;
-                try {
-                    await apiJson('/api/project-contracts/' + encodeURIComponent(contractId), {
-                        method: 'DELETE', headers: {'X-CSRF-TOKEN': csrf}
-                    });
-                    contractDeleteDialog.close();
-                    contractDialog.close();
-                    await loadDataset();
-                    showNotice('Contract deleted.', 'success');
-                } catch (error) { showNotice(error.message); }
-                finally { button.disabled = false; }
-            });
-
             const dialog = document.getElementById('exportDialog');
             const closeDialog = () => { if (dialog.open) dialog.close(); };
+            const exportDesign = () => ({
+                header_color: document.getElementById('exportHeaderColor').value,
+                table_spacing: document.getElementById('exportTableSpacing').value
+            });
+            document.getElementById('editExportDesign').addEventListener('click', event => {
+                const controls = document.getElementById('exportDesignControls');
+                controls.hidden = !controls.hidden;
+                event.currentTarget.setAttribute('aria-expanded', String(!controls.hidden));
+            });
             document.getElementById('openExport').addEventListener('click', () => {
                 updateExportSummary();
                 dialog.showModal();
@@ -865,23 +858,27 @@
                             dataset: state.dataset,
                             title: document.getElementById('exportTitle').value.trim(),
                             columns,
+                            design: exportDesign(),
                             filters: selectedFilters()
                         })
                     });
                     if (current !== previewRequest) return;
                     const format = document.getElementById('exportFormat').value;
                     const keys = Object.keys(data.columns);
+                    const balanceRows = [data.totals, data.previous_totals, data.month_totals].filter(Boolean);
                     const line = row => keys.map(key => String(row[key] ?? '').replaceAll('"', '""')).map(value => /[,"\n]/.test(value) ? `"${value}"` : value).join(',');
                     if (format === 'csv') {
                         host.innerHTML = `<p class="preview-note">CSV stores values only; it cannot contain an image or visual styling.</p><pre>${escapeHtml([
                             data.title, 'As of ' + data.as_of, data.scope, '',
-                            line(data.columns), ...data.rows.map(line),
-                            ...(data.totals ? [line(data.totals)] : [])
+                            line(Object.fromEntries(Object.entries(data.columns).map(([key, label]) => [key, label.toUpperCase()]))), ...data.rows.map(line),
+                            ...balanceRows.map(line)
                         ].join('\n'))}</pre>`;
                     } else {
-                        const header = Object.values(data.columns).map(label => `<th>${escapeHtml(label)}</th>`).join('');
-                        const cells = row => keys.map(key => `<td>${escapeHtml(displayValue(key, row[key]))}</td>`).join('');
-                        host.innerHTML = `<div class="preview-paper"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${data.totals ? `<tr class="report-total-row">${cells(data.totals)}</tr>` : ''}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} rows. Export includes all matching rows.</p>` : ''}</div>`;
+                        const header = Object.entries(data.columns).map(([key, label]) => `<th${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(label.toUpperCase())}</th>`).join('');
+                        const fileValue = (key, value) => typeof value === 'number' || (value !== '' && value !== null && !isNaN(Number(value)) && !['project_name', 'item_name', 'category_name', 'supplier_name', 'unit_name', 'stock_status'].includes(key))
+                            ? Number(value).toLocaleString('en-US', {minimumFractionDigits: key === 'item_id' ? 0 : 2, maximumFractionDigits: key === 'item_id' ? 0 : 2}) : (value ?? '');
+                        const cells = (row, isBalance = false) => keys.map(key => `<td${!isBalance && state.dataset === 'expense_summary' && key === 'project_name' ? ' class="report-project-name"' : (isTotalColumn(key) ? ' class="report-total-column"' : '')}>${escapeHtml(fileValue(key, row[key]))}</td>`).join('');
+                        host.innerHTML = `<div class="preview-paper ${exportDesign().table_spacing === 'compact' ? 'preview-compact' : ''}" data-header-color="${exportDesign().header_color}"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table data-pfims-standard-actions="off"><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${balanceRows.map((row, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">${cells(row, true)}</tr>`).join('')}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} rows. Export includes all matching rows.</p>` : ''}</div>`;
                     }
                     button.disabled = false;
                 } catch (error) {
@@ -894,6 +891,7 @@
                 state.previewTimer = window.setTimeout(loadExportPreview, 300);
             });
             document.getElementById('columnChoices').addEventListener('change', loadExportPreview);
+            document.getElementById('exportDesignControls').addEventListener('change', loadExportPreview);
             ['closeExport', 'cancelExport'].forEach(id => {
                 document.getElementById(id).addEventListener('click', closeDialog);
             });
@@ -934,6 +932,7 @@
                             title: document.getElementById('exportTitle').value.trim(),
                             format: document.getElementById('exportFormat').value,
                             columns,
+                            design: exportDesign(),
                             filters: selectedFilters()
                         })
                     });

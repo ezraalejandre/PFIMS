@@ -822,8 +822,13 @@
             <div id="financeHeaderActions" style="display:flex;gap:10px;flex-wrap:wrap;"{{ in_array($financeTab, ['expenses', 'budgets', 'receivables', 'cash', 'backhoe', 'bonds'], true) ? '' : ' hidden' }}>
                 <div class="finance-header-action-group" data-finance-tabs="expenses budgets"{{ in_array($financeTab, ['expenses', 'budgets'], true) ? '' : ' hidden' }}>
                     <button class="btn-add-data" onclick="openPfimsImport()">Import Expenses</button>
+                </div>
+                <div class="finance-header-action-group" data-finance-tabs="expenses"{{ $financeTab === 'expenses' ? '' : ' hidden' }}>
                     <button class="btn-add-expense" onclick="openAddExpenseModal()">+ Add Expense</button>
-                    <button class="btn-add-budget" onclick="openAddBudgetModal()">+ Add Budget</button>
+                </div>
+                <div class="finance-header-action-group" data-finance-tabs="budgets"{{ $financeTab === 'budgets' ? '' : ' hidden' }}>
+                    <button id="addBudgetHeaderButton" class="btn-add-budget" onclick="openAddBudgetModal()">+ Add Budget</button>
+                    <button id="addContractHeaderButton" class="btn-add-data gold" onclick="openAddContractModal()" hidden>+ Add Contract</button>
                 </div>
                 <div class="finance-header-action-group" data-finance-tabs="receivables"{{ $financeTab === 'receivables' ? '' : ' hidden' }}>
                     <button onclick="openAddReceivableModal()" class="btn-add-data gold">+ Add Entry</button>
@@ -883,6 +888,11 @@
 
         <!-- ─── TAB 2: BUDGETS ─── -->
         <div id="tabBudgets" class="report-section {{ $financeTab === 'budgets' ? 'active' : '' }}">
+            <div class="budget-contract-tabs" role="tablist" aria-label="Budgets and contracts">
+                <button type="button" class="tab active" id="budgetsSubtab" role="tab" aria-selected="true" onclick="switchBudgetContractsSubtab('budgets')">Budgets</button>
+                <button type="button" class="tab" id="contractsSubtab" role="tab" aria-selected="false" onclick="switchBudgetContractsSubtab('contracts')">Contracts</button>
+            </div>
+            <div id="budgetsSubpanel" role="tabpanel" aria-labelledby="budgetsSubtab">
             <div class="filter-row">
                 <input type="search" id="budgetSearch" maxlength="150" placeholder="Search project name..." oninput="filterBudgetTable()">
                 <select id="budgetProjectFilter" onchange="filterBudgetTable()"><option value="all">All Projects</option></select>
@@ -907,6 +917,20 @@
                     <span id="budgetRowsInfo">Total: 0 projects</span>
                 </div>
                 <div class="pagination-links" id="budgetPaginationLinks"></div>
+            </div>
+            </div>
+            <div id="contractsSubpanel" role="tabpanel" aria-labelledby="contractsSubtab" hidden>
+                <div class="filter-row">
+                    <input type="search" id="profitSearch" class="project-filter" maxlength="150" placeholder="Search project or contract..." aria-label="Search contracts" oninput="filterFinanceRows('profitSearch', 'profitBody')">
+                    <select id="profitYear" aria-label="Contract year" onchange="loadProfit()"><option value="">All Years</option></select>
+                    <button type="button" class="btn-clear-search" onclick="clearProfitSearch()">✕ Clear Filters</button>
+                </div>
+                <div class="report-table-wrapper">
+                    <table id="profitTable">
+                        <thead><tr><th>Project</th><th>Start Date</th><th>End Date</th><th>Contract Price</th><th>Addl. Works</th><th>Total Contract</th><th>Original Payment</th><th>Addl. Payment</th><th>Total Payment</th><th>Project Expense</th><th>Accounts Receivable</th><th>Profit/Loss (Payment)</th><th>Profit/Loss (Contract)</th></tr></thead>
+                        <tbody id="profitBody"><tr><td colspan="13" style="text-align:center;padding:20px;">Loading contracts...</td></tr></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -1113,48 +1137,20 @@
         <div class="modal-container">
             <div class="modal-header"><h2 id="addExpenseModalTitle">Add Expense</h2><button class="modal-close" onclick="closeAddExpenseModal()">×</button></div>
             <div class="modal-body">
-                <div class="form-group"><label>Expense Type <span class="required">*</span></label><select id="expenseType" onchange="updateExpenseType()"><option value="direct">Direct Expenses</option><option value="admin">Admin Expenses</option><option value="office">Office Expenses</option><option value="overall">Overall Expenses</option></select></div>
-                <div class="form-group" id="expenseProjectGroup"><label>Project</label><select id="expenseProject"><option value="">Select Project...</option></select></div>
-                <div class="form-group"><label>Expense Description <span class="required">*</span></label><input type="text" placeholder="e.g. Office Rent, Salary, Materials" id="expenseDesc"></div>
+                <div class="form-group"><label>Expense Type <span class="required">*</span></label><select id="expenseType" onchange="updateExpenseType()"><option value="direct">Direct</option><option value="admin">Admin</option></select></div>
                 <div class="form-group"><label>Category <span class="required">*</span></label>
                     <select id="expenseCategory" onchange="toggleExpenseAmountFields()">
                         <option value="">Select Category...</option>
                     </select>
                 </div>
-                <div id="expenseInventoryFields" style="display:none;">
-                    <div class="form-group"><label>Inventory Item <span class="required">*</span></label><select id="expenseInventoryItem" onchange="syncInventoryPurchaseDescription()"><option value="">Select Inventory Item...</option></select></div>
-                    <div class="form-group"><label>Quantity <span class="required">*</span></label><input type="number" id="expenseInventoryQuantity" min="0.01" step="0.01" placeholder="0.00" oninput="syncInventoryPurchaseDescription()"></div>
-                    <div class="form-group"><label>Receiving Reference / Barcode</label><input type="text" id="expenseInventoryBarCode" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
-                    <span class="file-upload-hint">Construction Supply expenses are recorded as Inventory Stock In and placed in storage without a project.</span>
-                </div>
-
-                <!-- Dynamic Amount Fields -->
-                <div id="dynamicAmountFields" class="dynamic-amount-fields" style="display:none;">
-                    <div class="form-group">
-                        <label>Labor Amount</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="expenseLaborAmount">
-                    </div>
-                    <div class="form-group">
-                        <label>Material Amount</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="expenseMaterialAmount">
-                    </div>
-                    <div class="form-group">
-                        <label>Equipment Amount</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="expenseEquipmentAmount">
-                    </div>
-                    <div class="form-group">
-                        <label>Other Amount</label>
-                        <input type="number" step="0.01" placeholder="0.00" id="expenseOtherAmount">
-                    </div>
-                </div>
-
-                <!-- Single Amount Field (for all categories) -->
-                <div id="singleAmountField" class="form-group">
+                <div class="form-group" id="expenseProjectGroup"><label>Project Name <span class="required">*</span></label><select id="expenseProject"><option value="">Select Project...</option></select></div>
+                <div class="form-group" id="singleAmountField">
                     <label>Amount <span class="required">*</span></label>
-                    <input type="number" step="0.01" placeholder="0.00" id="expenseAmount">
+                    <input type="number" min="0.01" step="0.01" placeholder="0.00" id="expenseAmount">
                 </div>
 
                 <div class="form-group"><label>Date <span class="required">*</span></label><input type="date" id="expenseDate" value="{{ date('Y-m-d') }}" max="{{ today()->toDateString() }}"></div>
+                <div class="form-group"><label>Expense Description <span class="required">*</span></label><input type="text" placeholder="Describe the expense" id="expenseDesc"></div>
                 <div class="form-group"><label>Remarks</label><input type="text" placeholder="Additional notes..." id="expenseRemarks"></div>
                 <div class="form-group">
                     <label>Expense Proof</label>
@@ -1193,6 +1189,27 @@
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddBudgetModal()">Cancel</button>
                 <button class="btn-save" onclick="saveBudget()">Add Budget</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── ADD CONTRACT MODAL ─── -->
+    <div id="addContractModal" class="modal-overlay pfims-add-modal">
+        <div class="modal-container">
+            <div class="modal-header"><h2 id="contractModalTitle">Add Contract</h2><button class="modal-close" onclick="closeAddContractModal()">×</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Project <span class="required">*</span></label><select id="contractProject" onchange="updateContractBudgetDisplay()"><option value="">Select Project...</option></select><span id="contractProjectDisplay" style="display:none;"></span></div>
+                <div class="form-group"><label>Contract Price from Budget</label><strong id="contractBudgetDisplay">₱0.00</strong></div>
+                <div class="form-group"><label>Additional Works Contract</label><input id="contractAddlWorks" type="number" min="0" step="0.01" value="0"></div>
+                <div class="form-group"><label>Original Payment Received</label><input id="contractPayment" type="number" min="0" step="0.01" value="0"></div>
+                <div class="form-group"><label>Additional Works Payment</label><input id="contractAddlPayment" type="number" min="0" step="0.01" value="0"></div>
+                <div class="form-group"><label>Remarks</label><input id="contractRemarks" type="text" maxlength="255"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeAddContractModal()">Cancel</button>
+                <button id="contractDeleteBtn" class="btn-delete" style="display:none;" onclick="deleteContract()">Delete</button>
+                <button id="contractEditBtn" class="btn-edit" style="display:none;" onclick="enableContractEdit()">Edit</button>
+                <button id="contractSaveBtn" class="btn-save" onclick="saveContract()">Save Contract</button>
             </div>
         </div>
     </div>
@@ -1746,9 +1763,19 @@
             var select = document.getElementById(selectId);
             if (!select) return;
             select.innerHTML = '<option value="">Select Category...</option>';
-            financeCategories.filter(function(category) {
+            var addCategoryOrder = {
+                direct: ['CONSTRUCTION_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPORTATION_EXPENSES', 'UTILITIES_WATER_POWER', 'DELIVERY_EXPENSE', 'OTHERS_SOS_ETC'],
+                admin: ['ADMIN_SALARIES_WAGES', 'ADMIN_PERMIT_TAXES_LICENSES', 'ADMIN_TRANSPORTATION_EXPENSES', 'ADMIN_UTILITIES_WATER_POWER', 'ADMIN_DELIVERY_EXPENSE', 'RENT_EXPENSE', 'STATIONARY_EXPENSE', 'DEPRECIATION_EXPENSE', 'REPAIR_MAINTENANCE', 'MISCELLANEOUS_EXPENSE', 'PENALTY_EXPENSE', 'SSS_PHILHEALTH', 'OTHERS']
+            };
+            var categories = financeCategories.filter(function(category) {
                 return type === 'overall' || expenseTypeForCategory(category) === type;
-            }).forEach(function(category) {
+            });
+            if (selectId === 'expenseCategory') {
+                var order = addCategoryOrder[type] || [];
+                categories = categories.filter(function(category) { return order.includes(category.category_code); });
+                categories.sort(function(a, b) { return order.indexOf(a.category_code) - order.indexOf(b.category_code); });
+            }
+            categories.forEach(function(category) {
                 var option = document.createElement('option');
                 option.value = category.fin_category_id || category.expense_category_id;
                 option.dataset.code = category.category_code || '';
@@ -1762,14 +1789,28 @@
         function updateExpenseType() {
             var type = document.getElementById('expenseType').value;
             filterExpenseCategorySelect('expenseCategory', type);
-            document.getElementById('expenseProject').value = '';
+            var projectSelect = document.getElementById('expenseProject');
+            projectSelect.innerHTML = '<option value="">Select Project...</option>';
+            projectSelect.add(new Option('Office', 'office'));
+            if (type === 'direct') {
+                financeProjects.forEach(function(project) {
+                    projectSelect.add(new Option(project.project_name, project.project_id));
+                });
+            }
             toggleExpenseAmountFields();
         }
 
         function updateDetailExpenseType(selectedId) {
             var type = document.getElementById('detailExpenseTypeEdit').value;
             filterExpenseCategorySelect('detailCategoryEdit', type, selectedId);
-            if (type !== 'direct') document.getElementById('detailProjectEdit').value = '';
+            var projectSelect = document.getElementById('detailProjectEdit');
+            var previousProject = projectSelect.value;
+            projectSelect.innerHTML = '<option value="">Select Project...</option>';
+            projectSelect.add(new Option('Office', 'office'));
+            if (type === 'direct') financeProjects.forEach(function(project) {
+                projectSelect.add(new Option(project.project_name, project.project_id));
+            });
+            projectSelect.value = type === 'direct' ? previousProject : 'office';
             updateDetailExpenseCategory();
         }
 
@@ -1779,7 +1820,7 @@
                 return String(item.fin_category_id || item.expense_category_id) === id;
             });
             var type = expenseTypeForCategory(category);
-            var showProject = type === 'direct';
+            var showProject = type === 'direct' || type === 'admin';
             document.getElementById('detailProjectEdit').style.display = isEditMode && showProject ? '' : 'none';
             if (!showProject) document.getElementById('detailProjectEdit').value = '';
         }
@@ -1791,74 +1832,8 @@
         // ─── DYNAMIC EXPENSE FIELDS ──────────────────────────────────
         function toggleExpenseAmountFields() {
             var categorySelect = document.getElementById('expenseCategory');
-            var selectedOption = categorySelect.options[categorySelect.selectedIndex];
-            var categoryCode = selectedOption ? selectedOption.getAttribute('data-code') || '' : '';
-            var categoryName = (selectedOption ? selectedOption.text : '').toLowerCase();
-            var dynamicFields = document.getElementById('dynamicAmountFields');
-            var singleField = document.getElementById('singleAmountField');
-            var inventoryFields = document.getElementById('expenseInventoryFields');
-            var isInventoryPurchase = ['CONST_SUPPLY', 'CONSTRUCTION_SUPPLY'].includes(categoryCode);
-
-            inventoryFields.style.display = isInventoryPurchase ? 'block' : 'none';
-            var type = document.getElementById('expenseType').value;
-            var category = financeCategories.find(function(item) { return String(item.fin_category_id || item.expense_category_id) === categorySelect.value; });
-            var showProject = type === 'direct' || (type === 'overall' && expenseTypeForCategory(category) === 'direct');
-            document.getElementById('expenseProjectGroup').hidden = !showProject || isInventoryPurchase;
-            document.getElementById('expenseDesc').readOnly = isInventoryPurchase;
-            if (isInventoryPurchase || !showProject) {
-                document.getElementById('expenseProject').value = '';
-            }
-            if (isInventoryPurchase) {
-                syncInventoryPurchaseDescription();
-            }
-
-            // Check if it's a category with sub-amounts (labor, material, equipment, other)
-            var isDynamicCategory = ['labor', 'material', 'equipment', 'other'].indexOf(categoryName) !== -1;
-
-            if (isDynamicCategory) {
-                dynamicFields.style.display = 'grid';
-                singleField.style.display = 'none';
-                // Show only the relevant field for the selected category
-                var fieldMap = {
-                    'labor': 'expenseLaborAmount',
-                    'material': 'expenseMaterialAmount',
-                    'equipment': 'expenseEquipmentAmount',
-                    'other': 'expenseOtherAmount'
-                };
-                var fieldId = fieldMap[categoryName];
-                if (fieldId) {
-                    document.querySelectorAll('#dynamicAmountFields input').forEach(function(input) {
-                        var parent = input.closest('.form-group');
-                        if (parent) {
-                            parent.style.display = 'none';
-                        }
-                    });
-                    var targetField = document.getElementById(fieldId);
-                    if (targetField) {
-                        var parentGroup = targetField.closest('.form-group');
-                        if (parentGroup) {
-                            parentGroup.style.display = 'block';
-                        }
-                    }
-                }
-            } else {
-                dynamicFields.style.display = 'none';
-                singleField.style.display = 'block';
-            }
-
-            // Update modal title based on category
-            var title = document.getElementById('addExpenseModalTitle');
-            if (title) {
-                if (expenseTypeForCategory(category) === 'office') {
-                    title.textContent = 'Add Office Expense';
-                } else if (isAdminCategory(categoryCode)) {
-                    title.textContent = 'Add Admin Expense';
-                } else if (isDynamicCategory) {
-                    title.textContent = 'Add ' + categoryName.charAt(0).toUpperCase() + categoryName.slice(1) + ' Expense';
-                } else {
-                    title.textContent = 'Add Expense';
-                }
-            }
+            document.getElementById('addExpenseModalTitle').textContent = 'Add Expense';
+            if (!categorySelect.value) document.getElementById('expenseAmount').value = '';
         }
 
         // ─── EXPENSE DETAIL FILE SELECTION ────────────────────────────
@@ -2061,6 +2036,28 @@
         }
 
         // ─── TAB SWITCHING ─────────────────────────────────────────────
+        function switchBudgetContractsSubtab(tab, updateUrl) {
+            var contracts = tab === 'contracts';
+            document.getElementById('budgetsSubpanel').hidden = contracts;
+            document.getElementById('contractsSubpanel').hidden = !contracts;
+            ['budgets', 'contracts'].forEach(function(name) {
+                var button = document.getElementById(name + 'Subtab');
+                var selected = name === (contracts ? 'contracts' : 'budgets');
+                button.classList.toggle('active', selected);
+                button.setAttribute('aria-selected', String(selected));
+            });
+            document.getElementById('addBudgetHeaderButton').hidden = contracts;
+            document.getElementById('addContractHeaderButton').hidden = !contracts;
+            if (updateUrl !== false) {
+                var url = new URL(window.location.href);
+                if (contracts) url.searchParams.set('subtab', 'contracts');
+                else url.searchParams.delete('subtab');
+                history.replaceState(null, '', url);
+            }
+            if (contracts) loadProfit();
+            else filterBudgetTable();
+        }
+
         function switchReportTab(tab) {
             currentReportTab = tab;
             var headerActions = document.getElementById('financeHeaderActions');
@@ -2085,6 +2082,8 @@
                     // Make sure budget data is loaded
                     if (budgetData.length === 0) {
                         fetchBudgetData();
+                    } else if (new URLSearchParams(window.location.search).get('subtab') === 'contracts') {
+                        switchBudgetContractsSubtab('contracts', false);
                     } else {
                         filterBudgetTable();
                     }
@@ -2199,7 +2198,6 @@
 
         function clearProfitSearch() {
             document.getElementById('profitSearch').value = '';
-            document.getElementById('profitType').value = 'direct';
             document.getElementById('profitYear').value = '';
             loadProfit();
         }
@@ -2393,6 +2391,11 @@
             })
             .then(function(data) {
                 financeProjects = data || [];
+                var contractYears = Array.from(new Set(financeProjects.map(function(project) {
+                    return String(project.start_date || '').slice(0, 4);
+                }).filter(function(year) { return /^\d{4}$/.test(year); }))).sort().reverse();
+                document.getElementById('profitYear').innerHTML = '<option value="">All Years</option>' + contractYears
+                    .map(function(year) { return '<option value="' + year + '">' + year + '</option>'; }).join('');
                 populateProjectDropdowns();
                 populateProjectFilter();
                 populateBudgetProjectFilter();
@@ -2589,11 +2592,12 @@
 
         // ─── POPULATE DROPDOWNS ───────────────────────────────────────
         function populateProjectDropdowns() {
-            var selects = ['expenseProject', 'budgetProject', 'detailProjectEdit', 'bondProject', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
+            var selects = ['budgetProject', 'detailProjectEdit', 'bondProject', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
             selects.forEach(function(id) {
                 var select = document.getElementById(id);
                 if (!select) return;
                 select.innerHTML = '<option value="">Select Project...</option>';
+                if (id === 'detailProjectEdit') select.add(new Option('Office', 'office'));
                 financeProjects.forEach(function(project) {
                     var option = document.createElement('option');
                     option.value = project.project_id;
@@ -2601,6 +2605,7 @@
                     select.appendChild(option);
                 });
             });
+            updateExpenseType();
         }
 
         function populateCategoryDropdown() {
@@ -3304,7 +3309,7 @@
             document.getElementById('detailDateDisplay').textContent = row.dataset.date;
             document.getElementById('detailRemarksDisplay').textContent = row.dataset.remarks || '—';
 
-            document.getElementById('detailProjectEdit').value = row.dataset.projectId || '';
+            document.getElementById('detailProjectEdit').value = row.dataset.entryKind === 'office_expense' || detailType === 'admin' ? 'office' : (row.dataset.projectId || '');
             document.getElementById('detailDescEdit').value = row.dataset.desc;
             updateDetailExpenseType(row.dataset.categoryId || '');
             document.getElementById('detailAmountEdit').value = row.dataset.amount;
@@ -3446,7 +3451,7 @@
                 return c.fin_category_id == categoryId || c.expense_category_id == categoryId;
             });
             var isDirectDetailCategory = detailCategory && String(detailCategory.classification || '').toLowerCase() === 'direct';
-            if (detailCategory && ['admin', 'office'].includes(String(detailCategory.classification || '').toLowerCase())) projectId = '';
+            if (detailCategory && ['admin', 'office'].includes(String(detailCategory.classification || '').toLowerCase())) projectId = 'office';
             if (isDirectDetailCategory && !projectId) {
                 showError('Direct project expenses require a project.');
                 return;
@@ -3456,7 +3461,8 @@
 
             var detailFormData = new FormData();
             detailFormData.append('_method', 'PUT');
-            detailFormData.append('project_id', projectId);
+            detailFormData.append('project_id', projectId === 'office' ? '' : projectId);
+            if (projectId === 'office') detailFormData.append('office_expense', '1');
             detailFormData.append('fin_category_id', categoryId);
             detailFormData.append('expense_description', desc);
             detailFormData.append('amount', amount);
@@ -3514,28 +3520,13 @@
         function openAddExpenseModal() {
             document.getElementById('addExpenseModal').classList.add('active');
             document.body.style.overflow = 'hidden';
-            document.getElementById('expenseProject').value = '';
             document.getElementById('expenseType').value = 'direct';
             updateExpenseType();
             document.getElementById('expenseDesc').value = '';
             document.getElementById('expenseCategory').value = '';
             document.getElementById('expenseAmount').value = '';
-            document.getElementById('expenseLaborAmount').value = '';
-            document.getElementById('expenseMaterialAmount').value = '';
-            document.getElementById('expenseEquipmentAmount').value = '';
-            document.getElementById('expenseOtherAmount').value = '';
             document.getElementById('expenseDate').value = '{{ date("Y-m-d") }}';
             document.getElementById('expenseRemarks').value = '';
-            document.getElementById('expenseInventoryItem').value = '';
-            document.getElementById('expenseInventoryQuantity').value = '';
-            document.getElementById('expenseInventoryBarCode').value = '';
-            document.getElementById('expenseInventoryFields').style.display = 'none';
-            document.getElementById('expenseDesc').readOnly = false;
-            populateExpenseInventoryItems();
-
-            // Reset dynamic fields visibility
-            document.getElementById('dynamicAmountFields').style.display = 'none';
-            document.getElementById('singleAmountField').style.display = 'block';
             document.getElementById('addExpenseModalTitle').textContent = 'Add Expense';
 
             var expenseProofFileInput = document.getElementById('expenseProofFile');
@@ -3550,95 +3541,33 @@
         }
 
         function saveExpense() {
-            var projectId = document.getElementById('expenseProject').value;
+            var type = document.getElementById('expenseType').value;
+            var projectChoice = document.getElementById('expenseProject').value;
+            var projectId = projectChoice === 'office' ? '' : projectChoice;
             var desc = document.getElementById('expenseDesc').value.trim();
             var categoryId = document.getElementById('expenseCategory').value;
             var selectedExpenseCategory = financeCategories.find(function(c) { return c.fin_category_id == categoryId || c.expense_category_id == categoryId; });
-            if (selectedExpenseCategory && ['admin', 'office'].includes(String(selectedExpenseCategory.classification || '').toLowerCase())) projectId = '';
             var date = document.getElementById('expenseDate').value;
             var remarks = document.getElementById('expenseRemarks').value.trim();
+            var amount = Number(document.getElementById('expenseAmount').value);
 
-            if (!categoryId || !date) {
+            if (!categoryId || !projectChoice || !date || !desc || !Number.isFinite(amount) || amount <= 0) {
                 showError('Please fill in all required fields.');
                 return;
             }
-
-            // Find the selected category
-            var category = financeCategories.find(function(c) {
-                return c.fin_category_id == categoryId || c.expense_category_id == categoryId;
-            });
-
-            if (!category) {
+            if (!selectedExpenseCategory || expenseTypeForCategory(selectedExpenseCategory) !== type ||
+                (type === 'admin' && projectChoice !== 'office')) {
                 showError('Invalid category selected.');
-                return;
-            }
-
-            var categoryName = category.category_name ? category.category_name.toLowerCase() : '';
-            var categoryCode = category.category_code || '';
-            var isDirectCategory = String(category.classification || '').toLowerCase() === 'direct';
-            var isInventoryPurchase = ['CONST_SUPPLY', 'CONSTRUCTION_SUPPLY'].includes(categoryCode);
-
-            if (isInventoryPurchase) {
-                var inventoryItemId = document.getElementById('expenseInventoryItem').value;
-                var inventoryQuantity = parseFloat(document.getElementById('expenseInventoryQuantity').value);
-                if (!inventoryItemId || !inventoryQuantity || inventoryQuantity <= 0) {
-                    showError('Please select an inventory item and enter a valid quantity.');
-                    return;
-                }
-                projectId = '';
-                syncInventoryPurchaseDescription();
-                desc = document.getElementById('expenseDesc').value.trim();
-            } else if (!desc) {
-                showError('Please enter an expense description.');
-                return;
-            }
-
-            if (!isInventoryPurchase && isDirectCategory && !projectId) {
-                showError('Direct project expenses require a project.');
                 return;
             }
 
             var expenseFormData = new FormData();
             expenseFormData.append('project_id', projectId);
+            if (projectChoice === 'office') expenseFormData.append('office_expense', '1');
             expenseFormData.append('fin_category_id', categoryId);
             expenseFormData.append('expense_description', desc);
             expenseFormData.append('expense_date', date);
-            if (isInventoryPurchase) {
-                expenseFormData.append('inventory_item_id', inventoryItemId);
-                expenseFormData.append('inventory_quantity', inventoryQuantity);
-                var inventoryBarCode = document.getElementById('expenseInventoryBarCode').value;
-                if (inventoryBarCode) expenseFormData.append('inventory_bar_code', inventoryBarCode);
-            }
             if (remarks) expenseFormData.append('remarks', remarks);
-
-            // Check if it's a dynamic category (labor, material, equipment, other)
-            var isDynamicCategory = ['labor', 'material', 'equipment', 'other'].indexOf(categoryName) !== -1;
-
-            var amount = 0;
-
-            if (isDynamicCategory) {
-                // Get the specific amount for the category
-                var amountFieldMap = {
-                    'labor': 'expenseLaborAmount',
-                    'material': 'expenseMaterialAmount',
-                    'equipment': 'expenseEquipmentAmount',
-                    'other': 'expenseOtherAmount'
-                };
-                var fieldId = amountFieldMap[categoryName];
-                amount = parseFloat(document.getElementById(fieldId).value) || 0;
-
-                if (amount <= 0) {
-                    showError('Please enter a valid amount for ' + categoryName + '.');
-                    return;
-                }
-            } else {
-                amount = parseFloat(document.getElementById('expenseAmount').value) || 0;
-                if (amount <= 0) {
-                    showError('Amount must be greater than 0.');
-                    return;
-                }
-            }
-
             expenseFormData.append('amount', amount);
 
             var expenseProofFileInput = document.getElementById('expenseProofFile');
@@ -3646,8 +3575,7 @@
                 expenseFormData.append('proof_file', expenseProofFileInput.files[0]);
             }
 
-            // Check if it's an admin category
-            var savedType = expenseTypeForCategory(category);
+            var savedType = type;
 
             fetch(API_BASE + '/finance-expenses', {
                 method: 'POST',
@@ -3678,39 +3606,6 @@
                 loadOverallExp();
             })
             .catch(function(error) { showError(error.message); });
-        }
-
-        function populateExpenseInventoryItems() {
-            var select = document.getElementById('expenseInventoryItem');
-            select.innerHTML = '<option value="">Loading inventory items...</option>';
-            select.disabled = true;
-            apiFetch('/inventory-items-list').then(function(items) {
-                select.innerHTML = '<option value="">Select Inventory Item...</option>';
-                (Array.isArray(items) ? items : []).forEach(function(item) {
-                    var option = document.createElement('option');
-                    option.value = item.item_id;
-                    option.textContent = item.item_name + ' (' + (item.unit_name || 'unit') + ')';
-                    option.dataset.itemName = item.item_name || '';
-                    option.dataset.unitName = item.unit_name || 'unit';
-                    select.appendChild(option);
-                });
-                select.disabled = false;
-            }).catch(function(error) {
-                select.innerHTML = '<option value="">Inventory items unavailable</option>';
-                showError(error.message || 'Unable to load inventory items.');
-            });
-        }
-
-        function syncInventoryPurchaseDescription() {
-            var select = document.getElementById('expenseInventoryItem');
-            var option = select.options[select.selectedIndex];
-            var quantity = parseFloat(document.getElementById('expenseInventoryQuantity').value);
-            if (!option || !option.value || !quantity || quantity <= 0) {
-                document.getElementById('expenseDesc').value = '';
-                return;
-            }
-            var displayQuantity = Number.isInteger(quantity) ? String(quantity) : String(quantity).replace(/0+$/, '').replace(/\.$/, '');
-            document.getElementById('expenseDesc').value = 'Purchased ' + displayQuantity + ' ' + String(option.dataset.unitName || 'unit').toLowerCase() + ' of ' + option.dataset.itemName;
         }
 
         // ─── ADD BUDGET ───────────────────────────────────────────────
@@ -3777,9 +3672,9 @@
         function openAddContractModal(row) {
             document.getElementById('addContractModal').classList.add('active');
             document.body.style.overflow = 'hidden';
-            
+            document.getElementById('addContractModal').classList.remove('is-editing');
             // Populate project dropdown
-            populateContractProjectDropdown();
+            if (!row) populateContractProjectDropdown().catch(function(error) { showError(error.message); });
             
             var projectSelect = document.getElementById('contractProject');
             var projectDisplay = document.getElementById('contractProjectDisplay');
@@ -3819,7 +3714,7 @@
                 document.getElementById('contractAddlPayment').value = '0';
                 document.getElementById('contractRemarks').value = '';
                 
-                document.getElementById('contractSaveBtn').textContent = 'Continue';
+                document.getElementById('contractSaveBtn').textContent = 'Save Contract';
                 
                 updateContractBudgetDisplay();
             }
@@ -3833,6 +3728,7 @@
                 control.disabled = true;
             });
             document.getElementById('contractEditBtn').style.display = 'inline-block';
+            document.getElementById('contractDeleteBtn').style.display = 'inline-block';
             document.querySelector('#addContractModal .btn-save').style.display = 'none';
         }
 
@@ -3844,6 +3740,7 @@
             });
             document.getElementById('contractProject').disabled = true;
             document.getElementById('contractEditBtn').style.display = 'none';
+            document.getElementById('contractDeleteBtn').style.display = 'none';
             document.getElementById('contractSaveBtn').textContent = 'Save Changes';
             document.getElementById('contractSaveBtn').style.display = 'inline-block';
         }
@@ -3851,18 +3748,22 @@
         function populateContractProjectDropdown() {
             var select = document.getElementById('contractProject');
             var currentValue = select.value;
-            select.innerHTML = '<option value="">Select Project...</option>';
-            financeProjects.forEach(function(project) {
-                var option = document.createElement('option');
-                option.value = project.project_id;
-                option.textContent = project.project_name;
-                // Add budget as data attribute
-                option.setAttribute('data-budget', project.budget || 0);
-                select.appendChild(option);
+            select.innerHTML = '<option value="">Loading projects...</option>';
+            return apiFetch('/project-contracts').then(function(choices) {
+                var existing = new Set(choices.filter(function(item) { return Number(item.contract_id) > 0; })
+                    .map(function(item) { return String(item.project_id); }));
+                select.innerHTML = '<option value="">Select Project...</option>';
+                financeProjects.forEach(function(project) {
+                    if (existing.has(String(project.project_id)) && String(project.project_id) !== String(currentValue)) return;
+                    var option = document.createElement('option');
+                    option.value = project.project_id;
+                    option.textContent = project.project_name;
+                    option.setAttribute('data-budget', project.budget || 0);
+                    select.appendChild(option);
+                });
+                if (currentValue) select.value = currentValue;
+                updateContractBudgetDisplay();
             });
-            if (currentValue) {
-                select.value = currentValue;
-            }
         }
 
         function updateContractBudgetDisplay() {
@@ -3888,6 +3789,7 @@
             document.getElementById('contractProjectDisplay').style.display = 'none';
             document.querySelectorAll('#addContractModal input, #addContractModal select, #addContractModal textarea').forEach(function(control) { control.disabled = false; });
             document.getElementById('contractEditBtn').style.display = 'none';
+            document.getElementById('contractDeleteBtn').style.display = 'none';
             document.querySelector('#addContractModal .btn-save').style.display = 'inline-block';
         }
 
@@ -3947,7 +3849,7 @@
                 .then(function() {
                     closeAddContractModal();
                     showSuccess('Contract ' + (editId ? 'updated' : 'added') + ' successfully!');
-                    loadProfit();
+                    if (currentReportTab === 'budgets') loadProfit();
                 })
                 .catch(function(error) { showError(error.message); });
         }
@@ -4509,6 +4411,31 @@
         });
 
         // ─── REPORTS ───────────────────────────────────────────────────
+        function financeLegacyCategoryCode(code) {
+            return {
+                CONSTRUCTION_SUPPLY: 'CONST_SUPPLY',
+                PERMITS_TAXES: 'PERMIT_TAXES_LICENSES',
+                TRANSPORTATION_EXPENSES: 'TRANSPO',
+                EQUIPMENT_RENTAL: 'TRANSPO',
+                UTILITIES_WATER_POWER: 'UTILITIES',
+                DELIVERY_EXPENSE: 'DELIVERY',
+                OTHERS_SOS_ETC: 'OTHERS',
+                ADMIN_SALARIES_WAGES: 'SALARIES_WAGES',
+                ADMIN_PERMIT_TAXES_LICENSES: 'PERMIT_TAXES_LICENSES',
+                ADMIN_TRANSPORTATION_EXPENSES: 'TRANSPO',
+                ADMIN_UTILITIES_WATER_POWER: 'UTILITIES',
+                ADMIN_DELIVERY_EXPENSE: 'DELIVERY',
+                RENT_EXPENSE: 'RENT',
+                STATIONARY_EXPENSE: 'STATIONERY',
+                DEPRECIATION_EXPENSE: 'DEPRECIATION',
+                REPAIR_MAINTENANCE: 'REPAIR_MAINT',
+                MISCELLANEOUS_EXPENSE: 'MISC',
+                PENALTY_EXPENSE: 'PENALTY',
+                SSS_PHILHEALTH: 'SSS_PHILHEALTH',
+                OTHERS: 'OTHERS'
+            }[code] || code;
+        }
+
         // EXPOVRALL - Load directly from fin_expense_tbl
         function loadExpovrall() {
             var month = document.getElementById('expovrallMonth').value;
@@ -4537,7 +4464,7 @@
             .then(function(expenses) {
                 var categoryIds = financeCategories
                     .filter(function(c) {
-                        return categoryCodes.indexOf(c.category_code) !== -1;
+                        return categoryCodes.indexOf(financeLegacyCategoryCode(c.category_code)) !== -1;
                     })
                     .map(function(c) { return c.fin_category_id || c.expense_category_id; });
 
@@ -4564,7 +4491,7 @@
                         return (c.fin_category_id || c.expense_category_id) == catId;
                     });
                     if (category) {
-                        var code = category.category_code;
+                        var code = financeLegacyCategoryCode(category.category_code);
                         if (categoryCodes.indexOf(code) !== -1) {
                             var amount = parseFloat(e.amount) || 0;
                             projects[projectName][code] = (projects[projectName][code] || 0) + amount;
@@ -4634,11 +4561,11 @@
                 })
                 .then(function(expenses) {
                     var directCategoryIds = financeCategories
-                        .filter(function(c) { return directCats.indexOf(c.category_code) !== -1; })
+                        .filter(function(c) { return c.classification === 'direct' && directCats.indexOf(financeLegacyCategoryCode(c.category_code)) !== -1; })
                         .map(function(c) { return c.fin_category_id || c.expense_category_id; });
 
                     var adminCategoryIds = financeCategories
-                        .filter(function(c) { return adminCats.indexOf(c.category_code) !== -1; })
+                        .filter(function(c) { return c.classification === 'admin' && adminCats.indexOf(financeLegacyCategoryCode(c.category_code)) !== -1; })
                         .map(function(c) { return c.fin_category_id || c.expense_category_id; });
 
                     var monthExpenses = expenses.filter(function(e) {
@@ -4671,7 +4598,7 @@
                             return (c.fin_category_id || c.expense_category_id) == catId;
                         });
                         if (category) {
-                            var code = category.category_code;
+                            var code = financeLegacyCategoryCode(category.category_code);
                             if (directCats.indexOf(code) !== -1) {
                                 var amount = parseFloat(e.amount) || 0;
                                 directProjects[projectName][code] = (directProjects[projectName][code] || 0) + amount;
@@ -4696,7 +4623,7 @@
                             return (c.fin_category_id || c.expense_category_id) == catId;
                         });
                         if (category) {
-                            var code = category.category_code;
+                            var code = financeLegacyCategoryCode(category.category_code);
                             if (adminCats.indexOf(code) !== -1) {
                                 var amount = parseFloat(e.amount) || 0;
                                 adminProjects[projectName][code] = (adminProjects[projectName][code] || 0) + amount;
@@ -5039,14 +4966,27 @@
         }
 
         // PROFIT/LOSS
+        var profitRequest = 0;
         function loadProfit() {
-            var type = document.getElementById('profitType').value;
-            var endpoint = type === 'direct' ? '/reports/profit-direct' : '/reports/profit-overall';
+            var request = ++profitRequest;
             var year = document.getElementById('profitYear').value;
-            if (year) endpoint += '?year=' + encodeURIComponent(year);
+            var params = new URLSearchParams({ per_page: '100' });
+            if (year) {
+                params.set('start_date', year + '-01-01');
+                params.set('end_date', year + '-12-31');
+            }
+            function loadPage(page, rows) {
+                params.set('page', String(page));
+                return apiFetch('/reports/data/contracts?' + params.toString()).then(function(result) {
+                    rows.push.apply(rows, result.rows || []);
+                    return page < Number(result.pagination && result.pagination.last_page || 1)
+                        ? loadPage(page + 1, rows) : rows;
+                });
+            }
 
-            apiFetch(endpoint)
+            loadPage(1, [])
                 .then(function(data) {
+                    if (request !== profitRequest) return;
                     var tbody = document.getElementById('profitBody');
                     tbody.innerHTML = '';
 
@@ -5096,6 +5036,7 @@
                     filterFinanceRows('profitSearch', 'profitBody');
                 })
                 .catch(function(error) {
+                    if (request !== profitRequest) return;
                     showError('Error loading Profit/Loss: ' + error.message);
                 });
         }
@@ -5878,8 +5819,9 @@
                     };
 
                     data.forEach(function(row) {
-                        if (categoryMapping[row.category_code]) {
-                            categories[categoryMapping[row.category_code]] += parseFloat(row.category_total) || 0;
+                        var legacyCode = financeLegacyCategoryCode(row.category_code);
+                        if (categoryMapping[legacyCode]) {
+                            categories[categoryMapping[legacyCode]] += parseFloat(row.category_total) || 0;
                         }
                     });
 
@@ -5949,7 +5891,8 @@
                 case 'budgets':
                     initialLoad = fetchProjects()
                         .then(function() { return fetchExpenses(); })
-                        .then(function() { return fetchBudgetData(); });
+                        .then(function() { return fetchBudgetData(); })
+                        .then(function() { switchBudgetContractsSubtab(new URLSearchParams(window.location.search).get('subtab') === 'contracts' ? 'contracts' : 'budgets', false); });
                     break;
                 case 'profit':
                 case 'receivables':

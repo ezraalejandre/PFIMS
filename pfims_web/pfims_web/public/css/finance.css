@@ -379,7 +379,7 @@ body {
 }
 
 /* ─── FILTER TABS ─── */
-.filter-tabs {
+.filter-tabs, .budget-contract-tabs {
     display: flex;
     gap: 8px;
     margin-bottom: 20px;
@@ -390,7 +390,7 @@ body {
     background: #fff;
 }
 
-.filter-tabs .tab {
+.filter-tabs .tab, .budget-contract-tabs .tab {
     padding: 8px 18px;
     border-radius: 7px;
     border: 0;
@@ -402,16 +402,19 @@ body {
     transition: 0.2s;
 }
 
-.filter-tabs .tab:hover {
+.filter-tabs .tab:hover, .budget-contract-tabs .tab:hover {
     background: #eef2f6;
     color: #172033;
 }
 
-.filter-tabs .tab.active {
+.filter-tabs .tab.active, .budget-contract-tabs .tab.active {
     background: #172033;
     color: #fff;
     border-color: transparent;
 }
+.budget-contract-tabs [role="tab"]:focus-visible { outline: 2px solid #e19a45; outline-offset: 2px; }
+#budgetsSubpanel[hidden], #contractsSubpanel[hidden] { display: none !important; }
+#addBudgetHeaderButton[hidden], #addContractHeaderButton[hidden] { display: none !important; }
 
 /* ─── FILTER ROW ─── */
 .filter-row {
