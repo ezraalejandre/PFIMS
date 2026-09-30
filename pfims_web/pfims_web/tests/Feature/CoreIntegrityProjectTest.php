@@ -431,6 +431,12 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringContainsString('data-status="${escapeHtml(project.status', file_get_contents(resource_path('views/dashboard.blade.php')));
 
         $sharedUi = file_get_contents(public_path('js/pfims-system-ui.js'));
+        $this->assertStringContainsString("var isStatusSelect = /status|state/i.test(select.id + ' ' + label);", $sharedUi);
+        $this->assertStringContainsString("trigger.dataset.statusTone = statusTone(", $sharedUi);
+        $this->assertStringContainsString("option.dataset.statusTone = statusTone(", $sharedUi);
+        $sharedCss = file_get_contents(public_path('css/ui-refresh.css'));
+        $this->assertStringContainsString('.pfims-select-option[data-status-tone="danger"]', $sharedCss);
+        $this->assertStringContainsString('html[data-theme="dark"] .pfims-select-option[data-status-tone="success"]', $sharedCss);
         $this->assertStringContainsString('window.showPfimsAlert = function', $sharedUi);
         $this->assertStringContainsString("window.showSuccess = function", $sharedUi);
         $this->assertStringContainsString("['Project Cost Prediction', '/ml-dashboard-test?section=predictive']", $sharedUi);

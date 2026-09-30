@@ -536,6 +536,16 @@
         wrapper.appendChild(trigger);
         document.documentElement.appendChild(menu);
         var activeIndex = -1;
+        var isStatusSelect = /status|state/i.test(select.id + ' ' + label);
+        function statusTone(value) {
+            if (!isStatusSelect) return '';
+            var normalized = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+            if (['ongoing', 'on track', 'in stock', 'sufficient', 'healthy', 'active', 'released', 'settled'].includes(normalized)) return 'success';
+            if (['pending', 'at risk', 'near limit', 'low stock', 'reorder needed', 'missing amount', 'no project'].includes(normalized)) return 'warning';
+            if (['delayed', 'over budget', 'out of stock', 'forfeited', 'missing amount and project'].includes(normalized)) return 'danger';
+            if (normalized === 'completed') return 'complete';
+            return '';
+        }
 
         function selectedText() {
             return select.options[select.selectedIndex]?.textContent || select.getAttribute('aria-label') || 'Select';
@@ -548,6 +558,7 @@
         function rebuild() {
             trigger.textContent = selectedText();
             trigger.disabled = select.disabled;
+            trigger.dataset.statusTone = statusTone(select.options[select.selectedIndex]?.value || selectedText());
             menu.replaceChildren();
             Array.from(select.options).forEach(function (nativeOption, index) {
                 var option = document.createElement('button');
@@ -558,6 +569,7 @@
                 option.disabled = nativeOption.disabled;
                 option.setAttribute('role', 'option');
                 option.setAttribute('aria-selected', String(nativeOption.selected));
+                option.dataset.statusTone = statusTone(nativeOption.value || nativeOption.textContent);
                 option.id = menu.id + '-option-' + index;
                 option.addEventListener('click', function () {
                     select.value = nativeOption.value;
