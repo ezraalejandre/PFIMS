@@ -827,6 +827,13 @@ html[data-theme="dark"] .dashboard-modal-close:hover {
     font-weight: 700;
 }
 
+.dashboard-page .project-status[data-status="Ongoing"],
+.dashboard-page .project-status[data-status="On Track"] { background: #e8f5e9; color: #2e7d32; }
+.dashboard-page .project-status[data-status="At Risk"],
+.dashboard-page .project-status[data-status="Pending"] { background: #fff3e0; color: #e65100; }
+.dashboard-page .project-status[data-status="Delayed"] { background: #ffebee; color: #d32f2f; }
+.dashboard-page .project-status[data-status="Completed"] { background: #e8eaf6; color: #3949ab; }
+
 .progress {
     display: inline-block;
     width: 72px;
@@ -870,6 +877,13 @@ html[data-theme="dark"] .dashboard-page .project-status {
     background: #2a3850;
     color: #f1f5f9;
 }
+
+html[data-theme="dark"] .dashboard-page .project-status[data-status="Ongoing"],
+html[data-theme="dark"] .dashboard-page .project-status[data-status="On Track"] { background: #173b2b; color: #8bd8a8; }
+html[data-theme="dark"] .dashboard-page .project-status[data-status="At Risk"],
+html[data-theme="dark"] .dashboard-page .project-status[data-status="Pending"] { background: #483116; color: #ffc17a; }
+html[data-theme="dark"] .dashboard-page .project-status[data-status="Delayed"] { background: #4a2024; color: #ff9b9b; }
+html[data-theme="dark"] .dashboard-page .project-status[data-status="Completed"] { background: #29345c; color: #b9c4ff; }
 
 @media (max-width: 1024px) {
     .filters {

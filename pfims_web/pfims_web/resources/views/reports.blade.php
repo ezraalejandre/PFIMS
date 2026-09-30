@@ -530,7 +530,12 @@
                                 state.dataset === 'expense_summary' && key === 'project_name' ? 'report-project-name' : ''].filter(Boolean).join(' ');
                             const value = state.dataset === 'contracts' && key === 'actual_end_date' && !row[key]
                                 ? 'In Progress' : displayValue(key, row[key]);
-                            return `<td${classes ? ` class="${classes}"` : ''}>${escapeHtml(value)}</td>`;
+                            const stockTone = state.dataset === 'inventory' && key === 'stock_status'
+                                ? ({ 'Sufficient': 'success', 'Reorder Needed': 'warning', 'Out of Stock': 'danger' })[row[key]] : null;
+                            const content = stockTone
+                                ? `<span class="report-stock-status is-${stockTone}">${escapeHtml(value)}</span>`
+                                : escapeHtml(value);
+                            return `<td${classes ? ` class="${classes}"` : ''}>${content}</td>`;
                         }).join('')
                         + '</tr>').join('')
                     : `<tr><td colspan="${columns.length}">No records match the selected filters.</td></tr>`;

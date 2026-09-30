@@ -509,6 +509,8 @@ class CentralizedReportsTest extends TestCase
         $this->assertStringContainsString('.report-year-navigation span { font-weight: 400; }', $pickerCss);
         $this->assertStringContainsString('.preview-paper[data-header-color="orange"] th:not(.report-total-column) { background: #c96c00 !important; }', $pickerCss);
         $this->assertStringContainsString('.preview-paper table { min-width: 940px; border-collapse: collapse !important; }', $pickerCss);
+        $this->assertStringContainsString('class="report-stock-status is-${stockTone}"', file_get_contents(resource_path('views/reports.blade.php')));
+        $this->assertStringContainsString('.reports-page .report-stock-status.is-danger', $pickerCss);
         $this->assertStringContainsString("table.closest('.report-preview')", file_get_contents(public_path('js/pfims-system-ui.js')));
     }
 

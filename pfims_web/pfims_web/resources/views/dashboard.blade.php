@@ -408,7 +408,7 @@
                             <td>${escapeHtml(project.client_name || '—')}</td>
                             <td>${escapeHtml(project.project_manager || '—')}</td>
                             <td>${escapeHtml(project.status === 'Completed' ? '—' : (project.phase || '—'))}</td>
-                            <td><span class="project-status">${escapeHtml(project.status || '—')}</span></td>
+                            <td><span class="project-status" data-status="${escapeHtml(project.status || '')}">${escapeHtml(project.status || '—')}</span></td>
                             <td>${escapeHtml(project.start_date || '—')}</td>
                             <td>${escapeHtml(project.estimated_end_date || '—')}</td>
                             <td>${escapeHtml(project.worker_count || 0)}</td>

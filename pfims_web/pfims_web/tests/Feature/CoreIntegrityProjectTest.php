@@ -427,6 +427,8 @@ class CoreIntegrityProjectTest extends TestCase
         $dashboardCss = file_get_contents(public_path('css/centralized-dashboard.css'));
         $this->assertStringContainsString('grid-template-columns: repeat(2, minmax(0, 1fr));', $dashboardCss);
         $this->assertMatchesRegularExpression('/\.budget-panel\s*\{\s*grid-column:\s*auto;/', $dashboardCss);
+        $this->assertStringContainsString('.dashboard-page .project-status[data-status="Delayed"]', $dashboardCss);
+        $this->assertStringContainsString('data-status="${escapeHtml(project.status', file_get_contents(resource_path('views/dashboard.blade.php')));
 
         $sharedUi = file_get_contents(public_path('js/pfims-system-ui.js'));
         $this->assertStringContainsString('window.showPfimsAlert = function', $sharedUi);

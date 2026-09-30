@@ -9,6 +9,14 @@
     --reports-danger: var(--ui-danger, #d93636);
 }
 
+.reports-page .report-stock-status { display: inline-block; padding: 4px 8px; border-radius: 999px; font-weight: 700; }
+.reports-page .report-stock-status.is-success { background: #e8f5e9; color: #2e7d32; }
+.reports-page .report-stock-status.is-warning { background: #fff3e0; color: #e65100; }
+.reports-page .report-stock-status.is-danger { background: #ffebee; color: #d32f2f; }
+html[data-theme="dark"] .reports-page .report-stock-status.is-success { background: #173b2b; color: #8bd8a8; }
+html[data-theme="dark"] .reports-page .report-stock-status.is-warning { background: #483116; color: #ffc17a; }
+html[data-theme="dark"] .reports-page .report-stock-status.is-danger { background: #4a2024; color: #ff9b9b; }
+
 * {
     box-sizing: border-box;
     margin: 0;
