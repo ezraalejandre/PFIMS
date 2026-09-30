@@ -3609,6 +3609,63 @@ body.landing-page .pfims-page-loader {
 :is(.table-wrap, .table-responsive, .analytics-table-wrapper).is-at-start::before,
 :is(.table-wrap, .table-responsive, .analytics-table-wrapper).is-at-end::after { opacity: 0; }
 
+/* Keep the record identifier visible while wide tables scroll horizontally. */
+body:not(.landing-page) :where(
+    .table-wrapper,
+    .table-wrap,
+    .table-responsive,
+    .table-container,
+    .budget-table-wrapper,
+    .items-table-wrapper,
+    .forecast-table-wrapper,
+    .report-table-wrapper,
+    .analytics-table-wrapper
+) > table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    box-shadow: 1px 0 0 var(--ui-border);
+}
+
+body:not(.landing-page) :where(
+    .table-wrapper,
+    .table-wrap,
+    .table-responsive,
+    .table-container,
+    .budget-table-wrapper,
+    .items-table-wrapper,
+    .forecast-table-wrapper,
+    .report-table-wrapper,
+    .analytics-table-wrapper
+) > table td:first-child {
+    background-color: var(--ui-surface-solid);
+}
+
+body:not(.landing-page) :where(
+    .table-wrapper,
+    .table-wrap,
+    .table-responsive,
+    .table-container,
+    .budget-table-wrapper,
+    .items-table-wrapper,
+    .forecast-table-wrapper,
+    .report-table-wrapper,
+    .analytics-table-wrapper
+) > table th:first-child {
+    z-index: 4;
+}
+
+.finance-page .report-table-wrapper .total-row td:first-child,
+.finance-page .report-table-wrapper .sub-total-row td:first-child {
+    background-color: inherit;
+}
+
+/* Export previews represent the exported document and must not pin cells. */
+.reports-page .report-preview .table-wrap > table :is(th, td):first-child {
+    position: static;
+    box-shadow: none;
+}
+
 @media (max-width: 1024px) {
     :where(.main-content, main) select,
     :where(.main-content, main) .pfims-select,
