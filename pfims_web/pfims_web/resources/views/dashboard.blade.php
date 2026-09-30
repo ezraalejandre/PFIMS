@@ -106,7 +106,7 @@
                                     <a href="{{ url($links[$key]) }}">Expenses</a>
                                     <a href="{{ url($links[$key]) }}?section=budgets">Budgets</a>
                                     <a href="{{ url($links[$key]) }}?section=ar-ap">AR / AP</a>
-                                    <a href="{{ url($links[$key]) }}?section=cash-position">Cash Position</a>
+                                    <a href="{{ url($links[$key]) }}?section=cash-position">Cash Asset</a>
                                     <a href="{{ url($links[$key]) }}?section=equipment">Equipment</a>
                                     <a href="{{ url($links[$key]) }}?section=bonds">Bonds</a>
                                     <a href="{{ url('/ml-dashboard-test') }}?section=budget-comparison">Budget-Spending Comparison</a>

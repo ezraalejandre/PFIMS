@@ -192,8 +192,8 @@
                         </div>
 
                         <div style="overflow-x: auto; margin-top: 15px;">
-                            <table class="user-table" id="configTable">
-                                <thead><tr><th>ID</th><th>Name</th><th id="configStageHeader" style="display:none;">Stage</th><th style="text-align: center;">Action</th></tr></thead>
+                            <table class="user-table" id="configTable" data-column-chooser="off">
+                                <thead><tr><th>Name</th><th id="configStageHeader" style="display:none;">Stage</th><th style="text-align: center;">Action</th></tr></thead>
                                 <tbody id="configTableBody"></tbody>
                             </table>
                         </div>
@@ -828,7 +828,7 @@
             if (!isAdmin) return;
             var tbody = document.getElementById('configTableBody');
             if (!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px;">Loading...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding: 16px;">Loading...</td></tr>';
 
             fetch(configApiBase + '/' + type, {
                 credentials: 'same-origin',
@@ -844,12 +844,12 @@
                     configMeta[type] = data.meta || null;
                     renderConfigTable();
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px; color: red;">Failed to load data.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding: 16px; color: red;">Failed to load data.</td></tr>';
                 }
             })
             .catch(function(err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding: 16px; color: red;">Failed to load data.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding: 16px; color: red;">Failed to load data.</td></tr>';
             });
         }
 
@@ -870,14 +870,12 @@
             }
 
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="' + (showsStage ? '4' : '3') + '" style="text-align:center; padding: 16px;">No items found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="' + (showsStage ? '3' : '2') + '" style="text-align:center; padding: 16px;">No items found.</td></tr>';
                 return;
             }
 
             items.forEach(function(item) {
                 var tr = document.createElement('tr');
-                var idCell = document.createElement('td');
-                idCell.textContent = item[fields.id];
                 var nameCell = document.createElement('td');
                 var strong = document.createElement('strong');
                 strong.textContent = item[fields.name];
@@ -912,7 +910,7 @@
                 if (currentConfigType === 'project_phases') {
                     actionCell.append(edit, remove);
                 }
-                tr.append(idCell, nameCell);
+                tr.appendChild(nameCell);
                 if (stageCell) tr.appendChild(stageCell);
                 tr.appendChild(actionCell);
                 tbody.appendChild(tr);

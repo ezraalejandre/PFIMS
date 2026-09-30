@@ -115,20 +115,42 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->putJson('/api/construction-bonds/1', ['bond_date' => $future])->assertUnprocessable();
     }
 
-    public function test_cash_accounts_endpoint_returns_database_accounts_for_the_add_modal(): void
+    public function test_cash_asset_hides_site_revolving_fund_without_deleting_its_history_and_accepts_title_only_accounts(): void
     {
         DB::table('company_bank_account_tbl')->insert([
             ['account_id' => 2, 'account_name' => 'Site revolving fund', 'account_type' => 'cash_on_hand_field'],
             ['account_id' => 1, 'account_name' => 'Company treasury', 'account_type' => 'treasury'],
         ]);
+        Schema::create('fin_cash_position_tbl', function (Blueprint $table) {
+            $table->increments('cash_position_id');
+            $table->unsignedInteger('account_id');
+            $table->date('period_month');
+            $table->decimal('balance_amount', 14, 2);
+        });
+        DB::table('fin_cash_position_tbl')->insert([
+            ['account_id' => 1, 'period_month' => '2026-01-01', 'balance_amount' => 100],
+            ['account_id' => 2, 'period_month' => '2026-01-01', 'balance_amount' => 75],
+        ]);
 
         $this->getJson('/api/cash-accounts')
             ->assertOk()
-            ->assertJsonCount(2)
+            ->assertJsonCount(1)
             ->assertJsonPath('0.account_id', 1)
-            ->assertJsonPath('0.account_name', 'Company treasury')
-            ->assertJsonPath('1.account_id', 2)
-            ->assertJsonPath('1.account_name', 'Site revolving fund');
+            ->assertJsonPath('0.account_name', 'Company treasury');
+        $this->getJson('/api/reports/cash-asset?period=2026-01-01')
+            ->assertOk()->assertJsonCount(1)->assertJsonPath('0.account_name', 'Company treasury');
+        $this->getJson('/api/cash-positions')->assertOk()->assertJsonCount(1);
+        $this->postJson('/api/cash-positions', [
+            'account_id' => 2, 'period_month' => '2026-01-01', 'balance_amount' => 1,
+        ])->assertUnprocessable();
+        $this->assertDatabaseHas('fin_cash_position_tbl', ['account_id' => 2, 'balance_amount' => 75]);
+
+        $this->postJson('/api/cash-accounts', ['account_name' => '  New Savings  '])
+            ->assertCreated()->assertJsonPath('account_name', 'New Savings')
+            ->assertJsonPath('account_type', 'treasury');
+        $this->postJson('/api/cash-accounts', ['account_name' => 'new savings'])->assertStatus(409);
+        $this->getJson('/api/cash-accounts')->assertOk()->assertJsonCount(2)
+            ->assertJsonPath('1.account_name', 'New Savings');
     }
 
     public function test_expense_overall_summary_aggregates_source_rows_without_a_database_view(): void

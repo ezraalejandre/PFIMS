@@ -37,7 +37,7 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString("in_array(\$financeTab, ['expenses', 'budgets'], true)", $view);
         foreach ([
             ['receivables', 'openAddReceivableModal()', '+ Add Entry'],
-            ['cash', 'openAddCashModal()', '+ Add Cash Position'],
+            ['cash', 'openAddCashModal()', '+ Add Cash Asset'],
             ['backhoe', 'openAddBackhoeExpenseModal()', '+ Add Expense'],
             ['backhoe', 'openAddBackhoeRentalModal()', '+ Add Rental Income'],
             ['bonds', 'openAddBondModal()', '+ Add Bond'],
@@ -288,7 +288,7 @@ class FinanceModalPresentationTest extends TestCase
         $this->assertStringContainsString("textContent = 'Edit Expense'", $view);
         $this->assertStringContainsString("textContent = 'Edit Budget'", $view);
         $this->assertStringContainsString("textContent = 'Edit AR/AP Entry'", $view);
-        $this->assertStringContainsString("textContent = 'Edit Cash Position'", $view);
+        $this->assertStringContainsString("textContent = 'Edit Cash Asset'", $view);
         $this->assertStringContainsString("textContent = 'Edit Construction Bond'", $view);
         $this->assertStringContainsString("textContent = 'Save Changes'", $view);
         $this->assertStringContainsString("classList.add('is-editing')", $view);

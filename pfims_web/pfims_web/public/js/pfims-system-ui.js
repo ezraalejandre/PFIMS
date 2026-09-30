@@ -121,7 +121,7 @@
         ],
         finance: [
             ['Expenses', ''], ['Budgets', '?section=budgets'],
-            ['AR / AP', '?section=ar-ap'], ['Cash Position', '?section=cash-position'],
+            ['AR / AP', '?section=ar-ap'], ['Cash Asset', '?section=cash-position'],
             ['Equipment', '?section=equipment'], ['Bonds', '?section=bonds'],
             ['Budget-Spending Comparison', '/ml-dashboard-test?section=budget-comparison']
         ],
@@ -574,7 +574,7 @@
     }
 
     function installColumnChooser(table) {
-        if (table.dataset.columnChooser === 'ready' || !table.tHead || !table.tBodies.length) return;
+        if (table.dataset.columnChooser === 'ready' || table.dataset.columnChooser === 'off' || !table.tHead || !table.tBodies.length) return;
         var headings = Array.from(table.tHead.rows[0]?.cells || []);
         if (headings.length < 2) return;
 
@@ -773,7 +773,7 @@
 
     function installExpandableActionButtons() {
         document.querySelectorAll('button, a').forEach(function (control) {
-            if (control.dataset.pfimsActionLabel === 'ready'
+            if (control.dataset.pfimsActionLabel === 'ready' || control.hasAttribute('data-pfims-no-expand')
                 || control.closest('.sidebar, .pagination-links, .pfims-select-options, .pfims-column-chooser-menu')) return;
 
             var visibleText = (control.textContent || '').replace(/\s+/g, ' ').trim();

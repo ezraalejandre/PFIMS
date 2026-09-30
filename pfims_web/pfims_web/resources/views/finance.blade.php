@@ -829,7 +829,8 @@
                     <button onclick="openAddReceivableModal()" class="btn-add-data gold">+ Add Entry</button>
                 </div>
                 <div class="finance-header-action-group" data-finance-tabs="cash"{{ $financeTab === 'cash' ? '' : ' hidden' }}>
-                    <button onclick="openAddCashModal()" class="btn-add-data gold">+ Add Cash Position</button>
+                    <button onclick="openAddCashAccountModal()" class="btn-add-data">+ Add Account</button>
+                    <button onclick="openAddCashModal()" class="btn-add-data gold">+ Add Cash Asset</button>
                 </div>
                 <div class="finance-header-action-group" data-finance-tabs="backhoe"{{ $financeTab === 'backhoe' ? '' : ' hidden' }}>
                     <button onclick="openAddBackhoeExpenseModal()" class="btn-add-data">+ Add Expense</button>
@@ -1016,7 +1017,7 @@
             </div>
             <div class="report-table-wrapper">
                 <table id="receivableTable">
-                    <thead><tr><th>Date</th><th>Counterparty</th><th>Project</th><th>30 Days</th><th>31-60 Days</th><th>61-90 Days</th><th>91-120 Days</th><th>Total</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Counterparty Name</th><th>Project</th><th>30 Days</th><th>31-60 Days</th><th>61-90 Days</th><th>91-120 Days</th><th>Total</th><th>Status</th></tr></thead>
                     <tbody id="receivableBody"><tr><td colspan="9" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
                 </table>
             </div>
@@ -1235,10 +1236,25 @@
         </div>
     </div>
 
-    <!-- ─── ADD CASH POSITION MODAL ─── -->
+    <!-- ─── ADD CASH ASSET MODAL ─── -->
+    <div id="addCashAccountModal" class="modal-overlay pfims-add-modal">
+        <div class="modal-container">
+            <div class="modal-header"><h2>Add Account</h2><button class="modal-close" onclick="closeAddCashAccountModal()">×</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label for="cashAccountTitle">Account Title <span class="required">*</span></label>
+                    <input type="text" id="cashAccountTitle" maxlength="100" placeholder="Enter account title" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeAddCashAccountModal()">Cancel</button>
+                <button class="btn-save" id="saveCashAccountButton" data-pfims-no-expand onclick="saveCashAccount()">Add Account</button>
+            </div>
+        </div>
+    </div>
+
     <div id="addCashModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
-            <div class="modal-header"><h2>Add Cash Position</h2><button class="modal-close" onclick="closeAddCashModal()">×</button></div>
+            <div class="modal-header"><h2>Add Cash Asset</h2><button class="modal-close" onclick="closeAddCashModal()">×</button></div>
             <div class="modal-body">
                 <div class="form-group"><label>Account <span class="required">*</span></label>
                     <select id="cashAccount">
@@ -1251,7 +1267,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddCashModal()">Cancel</button>
-                <button class="btn-save" onclick="saveCashPosition()">Add Cash Position</button>
+                <button class="btn-save" onclick="saveCashPosition()">Add Cash Asset</button>
             </div>
         </div>
     </div>
@@ -1582,7 +1598,7 @@
     <!-- ─── CASH ASSET DETAIL MODAL ─── -->
     <div id="cashDetailModal" class="modal-overlay modal-update finance-edit-modal">
         <div class="modal-container">
-            <div class="modal-header"><div><h2 id="cashModalTitle">Cash Position Details</h2></div><button class="modal-close" onclick="closeCashModal()">×</button></div>
+            <div class="modal-header"><div><h2 id="cashModalTitle">Cash Asset Details</h2></div><button class="modal-close" onclick="closeCashModal()">×</button></div>
             <div class="detail-grid">
                 <div class="detail-item">
                     <label>Account</label>
@@ -2699,6 +2715,43 @@
                     throw error;
                 });
         }
+
+        function openAddCashAccountModal() {
+            document.getElementById('cashAccountTitle').value = '';
+            document.getElementById('addCashAccountModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            document.getElementById('cashAccountTitle').focus();
+        }
+
+        function closeAddCashAccountModal() {
+            document.getElementById('addCashAccountModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function saveCashAccount() {
+            var title = document.getElementById('cashAccountTitle').value.trim();
+            if (!title) {
+                showError('Account title is required.');
+                return;
+            }
+            var button = document.getElementById('saveCashAccountButton');
+            button.disabled = true;
+            apiFetch('/cash-accounts', { method: 'POST', body: JSON.stringify({ account_name: title }) })
+                .then(function() {
+                    closeAddCashAccountModal();
+                    showSuccess('Account added successfully!');
+                    return fetchCashAccounts();
+                })
+                .catch(function(error) { showError(error.message); })
+                .finally(function() { button.disabled = false; });
+        }
+
+        document.getElementById('addCashAccountModal').addEventListener('click', function(event) {
+            if (event.target === this) closeAddCashAccountModal();
+        });
+        document.getElementById('cashAccountTitle').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') saveCashAccount();
+        });
 
         function populateBondProjectFilter() {
             var filter = document.getElementById('bondProjectFilter');
@@ -4165,7 +4218,7 @@
             if (e.target === this) closeReceivableModal();
         });
 
-        // ─── ADD CASH POSITION ────────────────────────────────────────
+        // ─── ADD CASH ASSET ──────────────────────────────────────────
         function openAddCashModal() {
             document.getElementById('addCashModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -4203,7 +4256,7 @@
             apiFetch('/cash-positions', { method: 'POST', body: JSON.stringify(payload) })
                 .then(function() {
                     closeAddCashModal();
-                    showSuccess('Cash position added successfully!');
+                    showSuccess('Cash Asset added successfully!');
                     loadCashAsset();
                 })
                 .catch(function(error) { showError(error.message); });
@@ -5159,7 +5212,7 @@
 
         function openCashModal(row) {
             currentCashRow = row;
-            document.getElementById('cashModalTitle').textContent = 'Cash Position Details';
+            document.getElementById('cashModalTitle').textContent = 'Cash Asset Details';
             
             var accountName = row.dataset.accountName || '';
             var period = row.dataset.period || '';
@@ -5211,7 +5264,7 @@
 
             if (isCashEditMode) {
                 document.getElementById('cashDetailModal').classList.add('is-editing');
-                document.getElementById('cashModalTitle').textContent = 'Edit Cash Position';
+                document.getElementById('cashModalTitle').textContent = 'Edit Cash Asset';
                 editBtn.style.display = 'none';
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
@@ -5231,7 +5284,7 @@
                 
             } else {
                 document.getElementById('cashDetailModal').classList.remove('is-editing');
-                document.getElementById('cashModalTitle').textContent = 'Cash Position Details';
+                document.getElementById('cashModalTitle').textContent = 'Cash Asset Details';
                 editBtn.style.display = 'inline-block';
                 deleteBtn.style.display = 'none';
                 saveBtn.style.display = 'none';
@@ -5273,7 +5326,7 @@
             apiFetch('/cash-positions/' + cashId, { method: 'PUT', body: JSON.stringify(payload) })
                 .then(function() {
                     closeCashModal();
-                    showSuccess('Cash position updated successfully!');
+                    showSuccess('Cash Asset updated successfully!');
                     loadCashAsset();
                 })
                 .catch(function(error) { showError(error.message); });
@@ -5283,11 +5336,11 @@
             if (!currentCashRow) return;
             var cashId = currentCashRow.getAttribute('data-cash-id');
             
-            openDeleteModal('Are you sure you want to permanently delete this cash position?', function() {
+            openDeleteModal('Are you sure you want to permanently delete this Cash Asset record?', function() {
                 apiFetch('/cash-positions/' + cashId, { method: 'DELETE' })
                     .then(function() {
                         closeCashModal();
-                        showSuccess('Cash position deleted successfully!');
+                        showSuccess('Cash Asset deleted successfully!');
                         loadCashAsset();
                         currentCashRow = null;
                     })

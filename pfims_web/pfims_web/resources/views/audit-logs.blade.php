@@ -48,7 +48,7 @@
                         @if($key === 'projects')
                             <div class="nav-dropdown"><a href="{{ url('/projects') }}">Project Records</a><a href="{{ url('/ml-dashboard-test') }}?section=predictive">Project Cost Prediction</a></div>
                         @elseif($key === 'finance')
-                            <div class="nav-dropdown"><a href="{{ url('/finance') }}">Expenses</a><a href="{{ url('/finance') }}?section=budgets">Budgets</a><a href="{{ url('/finance') }}?section=ar-ap">AR / AP</a><a href="{{ url('/finance') }}?section=cash-position">Cash Position</a><a href="{{ url('/finance') }}?section=equipment">Equipment</a><a href="{{ url('/finance') }}?section=bonds">Bonds</a><a href="{{ url('/ml-dashboard-test') }}?section=budget-comparison">Budget-Spending Comparison</a></div>
+                            <div class="nav-dropdown"><a href="{{ url('/finance') }}">Expenses</a><a href="{{ url('/finance') }}?section=budgets">Budgets</a><a href="{{ url('/finance') }}?section=ar-ap">AR / AP</a><a href="{{ url('/finance') }}?section=cash-position">Cash Asset</a><a href="{{ url('/finance') }}?section=equipment">Equipment</a><a href="{{ url('/finance') }}?section=bonds">Bonds</a><a href="{{ url('/ml-dashboard-test') }}?section=budget-comparison">Budget-Spending Comparison</a></div>
                         @elseif($key === 'inventory')
                             <div class="nav-dropdown"><a href="{{ url('/inventory') }}">Items</a><a href="{{ url('/suppliers') }}">Suppliers</a><a href="{{ url('/inventory') }}?section=transactions">Transactions</a><a href="{{ url('/ml-dashboard-test') }}?section=material-projection">Material Projection</a></div>
                         @endif

@@ -175,6 +175,10 @@ class FinReportController extends Controller
 
         $query = DB::table('fin_cash_position_tbl')
             ->leftJoin('company_bank_account_tbl', 'fin_cash_position_tbl.account_id', '=', 'company_bank_account_tbl.account_id')
+            ->whereNot(function ($hidden) {
+                $hidden->where('company_bank_account_tbl.account_type', 'cash_on_hand_field')
+                    ->whereRaw('LOWER(company_bank_account_tbl.account_name) = ?', ['site revolving fund']);
+            })
             ->select('fin_cash_position_tbl.*', 'company_bank_account_tbl.account_name', 'company_bank_account_tbl.account_type');
 
         if ($period) {

@@ -337,7 +337,7 @@ class CoreIntegrityProjectTest extends TestCase
             }
 
             if (in_array($dashboard['role'], ['admin', 'accounting'], true)) {
-                foreach (['Expenses', 'Budgets', 'AR / AP', 'Cash Position', 'Equipment', 'Bonds', 'Budget-Spending Comparison'] as $financeTab) {
+                foreach (['Expenses', 'Budgets', 'AR / AP', 'Cash Asset', 'Equipment', 'Bonds', 'Budget-Spending Comparison'] as $financeTab) {
                     $response->assertSee('>'.$financeTab.'</a>', false);
                 }
             }

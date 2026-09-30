@@ -20,7 +20,7 @@ class AuditLogService
         'inventory_item_tbl' => ['Inventory', 'item_name', '/inventory?section=items'],
         'inventory_transaction_tbl' => ['Inventory Transactions', 'inventory_transaction_id', '/inventory?section=transactions'],
         'supplier_tbl' => ['Suppliers', 'supplier_name', '/suppliers'],
-        'fin_cash_position_tbl' => ['Cash Position', 'cash_position_id', '/finance?section=cash-position'],
+        'fin_cash_position_tbl' => ['Cash Asset', 'cash_position_id', '/finance?section=cash-position'],
         'fin_construction_bond_tbl' => ['Construction Bonds', 'bond_provider', '/finance?section=construction-bonds'],
         'fin_receivable_payable_tbl' => ['Receivables and Payables', 'counterparty_name', '/finance?section=receivables-payables'],
         'company_asset_tbl' => ['Company Assets', 'asset_name', '/finance?section=equipment'],

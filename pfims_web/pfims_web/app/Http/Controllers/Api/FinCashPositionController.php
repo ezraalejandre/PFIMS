@@ -14,15 +14,43 @@ class FinCashPositionController extends Controller
     {
         return response()->json(
             CompanyBankAccount::query()
+                ->whereNot(function ($query) {
+                    $query->where('account_type', 'cash_on_hand_field')
+                        ->whereRaw('LOWER(account_name) = ?', ['site revolving fund']);
+                })
                 ->select(['account_id', 'account_name', 'account_type'])
                 ->orderBy('account_name')
                 ->get()
         );
     }
 
+    public function storeAccount(Request $request)
+    {
+        $data = $request->validate([
+            'account_name' => ['required', 'string', 'max:100'],
+        ]);
+        $name = trim($data['account_name']);
+        if ($name === '') {
+            return response()->json(['message' => 'Account title is required.'], 422);
+        }
+        if (CompanyBankAccount::query()->whereRaw('LOWER(account_name) = ?', [mb_strtolower($name)])->exists()) {
+            return response()->json(['message' => 'An account with this title already exists.'], 409);
+        }
+
+        $account = CompanyBankAccount::create(['account_name' => $name, 'account_type' => 'treasury']);
+
+        return response()->json($account->only(['account_id', 'account_name', 'account_type']), 201);
+    }
+
     public function index()
     {
-        return response()->json(FinCashPosition::with('account:account_id,account_name')->get());
+        return response()->json(FinCashPosition::with('account:account_id,account_name')
+            ->whereHas('account', function ($query) {
+                $query->whereNot(function ($hidden) {
+                    $hidden->where('account_type', 'cash_on_hand_field')
+                        ->whereRaw('LOWER(account_name) = ?', ['site revolving fund']);
+                });
+            })->get());
     }
 
     public function store(Request $request)
@@ -38,12 +66,15 @@ class FinCashPositionController extends Controller
         }
 
         $data = $validator->validated();
+        if ($this->isHiddenAccount((int) $data['account_id'])) {
+            return response()->json(['message' => 'This account is not available in Cash Asset.'], 422);
+        }
         $existing = FinCashPosition::where('account_id', $data['account_id'])
             ->where('period_month', $data['period_month'])
             ->first();
 
         if ($existing) {
-            return response()->json(['message' => 'A cash position already exists for this account and month. Edit the existing record instead.'], 409);
+            return response()->json(['message' => 'A Cash Asset record already exists for this account and month. Edit the existing record instead.'], 409);
         }
 
         $cash = FinCashPosition::create($data);
@@ -55,7 +86,7 @@ class FinCashPositionController extends Controller
     {
         $cash = FinCashPosition::find($id);
         if (! $cash) {
-            return response()->json(['message' => 'Cash position not found'], 404);
+            return response()->json(['message' => 'Cash Asset record not found'], 404);
         }
 
         $validator = Validator::make($request->all(), [
@@ -67,13 +98,16 @@ class FinCashPositionController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
         $data = $validator->validated();
+        if ($this->isHiddenAccount((int) ($data['account_id'] ?? $cash->account_id))) {
+            return response()->json(['message' => 'This account is not available in Cash Asset.'], 422);
+        }
         $candidate = array_merge($cash->only($cash->getFillable()), $data);
         $duplicate = FinCashPosition::where('account_id', $candidate['account_id'])
             ->where('period_month', $candidate['period_month'])
             ->where('cash_position_id', '!=', $id)
             ->exists();
         if ($duplicate) {
-            return response()->json(['message' => 'A cash position already exists for this account and month.'], 409);
+            return response()->json(['message' => 'A Cash Asset record already exists for this account and month.'], 409);
         }
         $cash->update($data);
 
@@ -84,11 +118,18 @@ class FinCashPositionController extends Controller
     {
         $cash = FinCashPosition::find($id);
         if (! $cash) {
-            return response()->json(['message' => 'Cash position not found'], 404);
+            return response()->json(['message' => 'Cash Asset record not found'], 404);
         }
 
         $cash->delete();
 
-        return response()->json(['message' => 'Cash position deleted successfully']);
+        return response()->json(['message' => 'Cash Asset record deleted successfully']);
+    }
+
+    private function isHiddenAccount(int $accountId): bool
+    {
+        return CompanyBankAccount::query()->whereKey($accountId)
+            ->where('account_type', 'cash_on_hand_field')
+            ->whereRaw('LOWER(account_name) = ?', ['site revolving fund'])->exists();
     }
 }
