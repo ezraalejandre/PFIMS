@@ -16,7 +16,7 @@ class ProjectImportService
         'actual_end_date', 'worker_count', 'phase', 'status', 'budget',
     ];
 
-    private const STATUSES = ['Pending', 'On Track', 'At Risk', 'Delayed', 'Completed'];
+    private const STATUSES = ['Ongoing', 'Pending', 'At Risk', 'Delayed', 'Completed'];
 
     public function __construct(
         private TabularImportReader $reader,

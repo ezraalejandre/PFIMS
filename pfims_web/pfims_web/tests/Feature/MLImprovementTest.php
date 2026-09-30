@@ -356,7 +356,7 @@ class MLImprovementTest extends TestCase
             'estimated_end_date' => '2026-07-01',
             'worker_count' => 8,
             'completion_percentage' => 20,
-            'status' => 'On Track',
+            'status' => 'Ongoing',
         ], 500000, 0);
 
         $service = app(AutomaticModelRetraining::class);
@@ -457,7 +457,7 @@ class MLImprovementTest extends TestCase
             'actual_end_date' => null,
             'worker_count' => 20,
             'completion_percentage' => 70,
-            'status' => 'On Track',
+            'status' => 'Ongoing',
         ], 500000, 300000);
 
         $this->insertProject([

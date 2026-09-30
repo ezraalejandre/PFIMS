@@ -1186,7 +1186,7 @@
         "actual_end_date": null,
         "worker_count": 7,
         "completion_percentage": 50,
-        "status": "On Track",
+        "status": "Ongoing",
         "phase": "Structure",
         "data_source": "company_inspired_sample",
         "project_id": 75
@@ -1214,7 +1214,7 @@
         "actual_end_date": null,
         "worker_count": 8,
         "completion_percentage": 22,
-        "status": "On Track",
+        "status": "Ongoing",
         "phase": "Foundation",
         "data_source": "company_inspired_sample",
         "project_id": 77
@@ -1228,7 +1228,7 @@
         "actual_end_date": null,
         "worker_count": 8,
         "completion_percentage": 37,
-        "status": "On Track",
+        "status": "Ongoing",
         "phase": "Structure",
         "data_source": "company_inspired_sample",
         "project_id": 78
@@ -1256,7 +1256,7 @@
         "actual_end_date": null,
         "worker_count": 9,
         "completion_percentage": 21,
-        "status": "On Track",
+        "status": "Ongoing",
         "phase": "Foundation",
         "data_source": "company_inspired_sample",
         "project_id": 80

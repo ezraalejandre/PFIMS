@@ -45,7 +45,7 @@ class DataImportAndConfigurationTest extends TestCase
         ]);
         $operations = $this->user('operations');
         $header = "project_name,client_name,project_manager,start_date,estimated_end_date,actual_end_date,worker_count,phase,status,budget\n";
-        $csv = $header."Imported Project,Client One,Manager One,2026-01-01,2026-06-01,,12,Construction,On Track,500000.00\n";
+        $csv = $header."Imported Project,Client One,Manager One,2026-01-01,2026-06-01,,12,Construction,Ongoing,500000.00\n";
 
         $this->actingAs($operations)->postJson('/api/imports/projects', [
             'file' => UploadedFile::fake()->createWithContent('projects.csv', $csv),
@@ -54,7 +54,7 @@ class DataImportAndConfigurationTest extends TestCase
         $projectId = (int) DB::table('project_tbl')->where('project_name', 'Imported Project')->value('project_id');
         $this->assertDatabaseHas('project_tbl', [
             'project_id' => $projectId, 'client_name' => 'Client One', 'project_manager' => 'Manager One',
-            'phase' => 'Construction', 'completion_percentage' => 100, 'status' => 'On Track',
+            'phase' => 'Construction', 'completion_percentage' => 100, 'status' => 'Ongoing',
         ]);
         $this->assertDatabaseHas('budgets_tbl', ['project_id' => $projectId, 'budget_amount' => 500000, 'actual_amount' => 0]);
 

@@ -156,7 +156,7 @@
             </div>
             <div class="project-filter-field" hidden>
                 <label for="projectStatusFilter">Project Status</label>
-                <select id="projectStatusFilter" onchange="filterProjects()"><option value="">All statuses</option><option>Pending</option><option>On Track</option><option>At Risk</option><option>Delayed</option><option>Completed</option></select>
+                <select id="projectStatusFilter" onchange="filterProjects()"><option value="">All statuses</option><option>Ongoing</option><option>Pending</option><option>At Risk</option><option>Delayed</option><option>Completed</option></select>
             </div>
             <div class="project-filter-field" hidden>
                 <label for="projectPhaseFilter">Phase</label>
@@ -412,7 +412,7 @@
                     <div class="form-group">
                         <label>Status</label>
                         <select id="editStatus">
-                            <option value="On Track">On Track</option>
+                            <option value="Ongoing">Ongoing</option>
                             <option value="At Risk">At Risk</option>
                             <option value="Delayed">Delayed</option>
                             <option value="Completed">Completed</option>
@@ -906,7 +906,7 @@ if (currentStep === 2) {
                 actualEndDate: actualDate || '',
                 phase: record.phase || 'Planning',
                 progress: record.completion_percentage || 0,
-                status: record.status || 'On Track',
+                status: record.status || 'Ongoing',
                 duration: calculateDuration(record.start_date, actualDate),
                 startDateDisplay: formatDate(record.start_date),
                 estEndDateDisplay: formatDate(record.estimated_end_date),
@@ -1017,7 +1017,7 @@ if (currentStep === 2) {
             wrapper.classList.remove('col-hide-est-end', 'col-hide-actual-end', 'col-hide-progress');
             if (status === 'Completed') {
                 wrapper.classList.add('col-hide-est-end', 'col-hide-progress');
-            } else if (status === 'On Track' || status === 'Pending' || status === 'At Risk' || status === 'Delayed') {
+            } else if (status === 'Ongoing' || status === 'Pending' || status === 'At Risk' || status === 'Delayed') {
                 wrapper.classList.add('col-hide-actual-end');
             }
         }
@@ -1061,7 +1061,7 @@ if (currentStep === 2) {
         });
         
         var onSchedule = projects.filter(function(p) {
-            return p.status === 'On Track';
+            return p.status === 'Ongoing';
         });
         
         var delayed = projects.filter(function(p) {
@@ -1092,7 +1092,7 @@ if (currentStep === 2) {
             var scope = document.getElementById('projectChartScope');
             if (!chart || !scope) return;
             var statuses = [
-                { label: 'Pending', color: '#9aa5b1' }, { label: 'On Track', color: '#4f8b68' },
+                { label: 'Ongoing', color: '#4f8b68' }, { label: 'Pending', color: '#9aa5b1' },
                 { label: 'At Risk', color: '#e19a45' }, { label: 'Delayed', color: '#c95c5c' }
             ];
             var active = projects.filter(function(project) { return project.status !== 'Completed'; });
@@ -1211,7 +1211,7 @@ if (currentStep === 2) {
             row.dataset.duration = project.duration || '';
             row.dataset.phase = project.phase || 'Planning';
             row.dataset.progress = project.progress || 0;
-            row.dataset.status = project.status || 'On Track';
+            row.dataset.status = project.status || 'Ongoing';
             row.dataset.budget = project.budget || '';
 
             function openProjectFromAction(editMode) {
@@ -1255,7 +1255,7 @@ if (currentStep === 2) {
                         '<div class="mini-bar"><div class="fill" style="width:' + progress + '%;"></div></div>' +
                     '</div>' +
                 '</td>' +
-                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'On Track' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>' +
+                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'Ongoing' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>' +
                 '<td class="action-cell"><button type="button" class="pfims-row-action" title="View project" aria-label="View project"><img src="' + escapeHtml(document.body.dataset.projectViewIcon) + '" alt=""></button><button type="button" class="pfims-row-action" title="Edit project" aria-label="Edit project"><img src="' + escapeHtml(document.body.dataset.projectEditIcon) + '" alt=""></button></td>';
             var actionButtons = row.querySelectorAll('.pfims-row-action');
             actionButtons[0].onclick = function(event) { event.stopPropagation(); openProjectFromAction(false); };
@@ -1335,7 +1335,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                 worker_count: workers ? parseInt(workers, 10) : 0,
                 phase: 'Planning',
                 completion_percentage: 0,
-                status: 'On Track'
+                status: 'Ongoing'
             };
 
             setButtonLoading(saveBtn, true, 'Saving...');
@@ -1405,7 +1405,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                 actualEndDate: (row && row.dataset && row.dataset.actualEndDate) || '',
                 phase: phase,
                 progress: progress || 0,
-                status: status || 'On Track',
+                status: status || 'Ongoing',
                 startDateDisplay: startDate,
                 estEndDateDisplay: estEndDate,
                 actualEndDateDisplay: actualEndDate || '—',
@@ -1424,7 +1424,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             var statusEl = document.getElementById('updateStatus');
             statusEl.textContent = status;
             statusEl.className = 'status-badge';
-            if (status === 'On Track') statusEl.classList.add('on-track');
+            if (status === 'Ongoing') statusEl.classList.add('on-track');
             else if (status === 'Delayed') statusEl.classList.add('delayed');
             else if (status === 'Completed') statusEl.classList.add('completed');
             else statusEl.classList.add('at-risk');
@@ -1530,7 +1530,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             }
             managerSelect.value = existingManager;
             document.getElementById('editPhase').value = currentEditData.phase || 'Planning';
-            document.getElementById('editStatus').value = currentEditData.status || 'On Track';
+            document.getElementById('editStatus').value = currentEditData.status || 'Ongoing';
             document.getElementById('editStartDate').value = currentEditData.startDate || '';
             document.getElementById('editEstEndDate').value = currentEditData.endDate || '';
             document.getElementById('editActualEndDate').value = currentEditData.actualEndDate || '';

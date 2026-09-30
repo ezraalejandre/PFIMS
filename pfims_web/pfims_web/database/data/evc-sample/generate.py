@@ -106,7 +106,7 @@ for i in range(82):
     else:
         actual_end = None
         completion = min(94,max(12,round((AS_OF-start).days/(end-start).days*100)-RNG.randint(0,18)))
-        status = 'Delayed' if end < AS_OF else ('At Risk' if i % 3 == 0 else 'On Track')
+        status = 'Delayed' if end < AS_OF else ('At Risk' if i % 3 == 0 else 'Ongoing')
         phase = 'Finishing' if completion > 70 else ('Structure' if completion > 30 else 'Foundation')
     scope, low, high = scopes[i % len(scopes)]
     budget = round(RNG.uniform(low,high)/5000)*5000

@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
-    private const STATUSES = ['Pending', 'On Track', 'At Risk', 'Delayed', 'Completed'];
+    private const STATUSES = ['Ongoing', 'Pending', 'At Risk', 'Delayed', 'Completed'];
 
     public function __construct(
         private NotificationService $notifications,

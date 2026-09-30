@@ -30,7 +30,8 @@ class DashboardController extends Controller
         return response()->json([
             'filters' => $filters,
             'filter_options' => [
-                'statuses' => DB::table('project_tbl')->whereNotNull('status')->distinct()->orderBy('status')->pluck('status'),
+                'statuses' => DB::table('project_tbl')->whereNotNull('status')->distinct()->pluck('status')
+                    ->sortBy(fn (string $status) => $status === 'Ongoing' ? '0' : '1'.$status)->values(),
                 'stock_statuses' => ['In stock', 'Low stock', 'Out of stock'],
             ],
             'stat_cards' => $this->statCards($filters),

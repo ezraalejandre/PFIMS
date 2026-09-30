@@ -60,7 +60,7 @@ class CoreIntegrityProjectTest extends TestCase
             'estimated_end_date' => today()->addMonth()->toDateString(),
             'worker_count' => 25,
             'phase' => 'Planning',
-            'status' => 'On Track',
+            'status' => 'Ongoing',
             'completion_percentage' => 99,
         ];
         $this->actingAs($admin)->postJson('/api/projects', $payload)
@@ -72,6 +72,20 @@ class CoreIntegrityProjectTest extends TestCase
         $this->actingAs($admin)->postJson('/api/projects', $payload)
             ->assertUnprocessable()->assertJsonValidationErrors('project_name');
         $this->assertDatabaseCount('project_tbl', 1);
+    }
+
+    public function test_legacy_on_track_projects_are_renamed_without_changing_other_project_statuses(): void
+    {
+        $legacy = $this->project(['status' => 'On Track']);
+        $pending = $this->project(['status' => 'Pending']);
+        $migration = require database_path('migrations/2026_09_30_030000_rename_project_on_track_status.php');
+
+        $migration->up();
+        $migration->up();
+
+        $this->assertSame('Ongoing', DB::table('project_tbl')->where('project_id', $legacy)->value('status'));
+        $this->assertSame('Pending', DB::table('project_tbl')->where('project_id', $pending)->value('status'));
+        $this->assertSame(0, DB::table('project_tbl')->where('status', 'On Track')->count());
     }
 
     public function test_project_update_derives_completion_from_phase_and_updates_budget_atomically(): void
@@ -153,7 +167,7 @@ class CoreIntegrityProjectTest extends TestCase
         $matching = $this->project([
             'project_name' => 'Civic Center', 'client_name' => 'City Government',
             'project_manager' => 'Maria Cruz', 'start_date' => '2026-03-10',
-            'phase' => 'Structure', 'status' => 'On Track',
+            'phase' => 'Structure', 'status' => 'Ongoing',
         ]);
         $this->project([
             'project_name' => 'Old Warehouse', 'client_name' => 'Private Client',
@@ -161,7 +175,7 @@ class CoreIntegrityProjectTest extends TestCase
             'phase' => 'Planning', 'status' => 'Delayed',
         ]);
 
-        $this->actingAs($admin)->getJson('/api/projects?search=Maria&status=On%20Track&phase=Structure&start_date=2026-01-01&end_date=2026-12-31')
+        $this->actingAs($admin)->getJson('/api/projects?search=Maria&status=Ongoing&phase=Structure&start_date=2026-01-01&end_date=2026-12-31')
             ->assertOk()->assertJsonCount(1)->assertJsonPath('0.project_id', $matching);
         $this->actingAs($admin)->getJson('/api/projects?status=NotReal')->assertUnprocessable();
         $this->actingAs($admin)->getJson('/api/project-phases')
