@@ -569,6 +569,10 @@
                     },
                     body: new FormData(form)
                 });
+                if (res.status === 419) {
+                    showLoginInlineError('This sign-in page has been open too long. Refresh the page, then try signing in again.');
+                    return;
+                }
                 var data = await res.json();
 
                 if (res.ok && data.success && data.requires_first_login_verification) {

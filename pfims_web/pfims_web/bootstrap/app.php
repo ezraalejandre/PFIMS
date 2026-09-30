@@ -7,7 +7,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
-use Illuminate\Session\TokenMismatchException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,9 +22,23 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', PreventAuthenticatedPageCaching::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (TokenMismatchException $exception, Request $request) {
+        $exceptions->render(function (HttpException $exception, Request $request) {
+            if ($exception->getStatusCode() !== 419) {
+                return null;
+            }
+
             if ($request->is('logout')) {
                 return redirect()->route('login');
+            }
+
+            if ($request->is('login')) {
+                $message = 'This sign-in page has been open too long. Refresh the page, then try signing in again.';
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['message' => $message], 419);
+                }
+
+                return redirect()->route('login')->withErrors(['email' => $message]);
             }
 
             return null;

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Session\TokenMismatchException;
 use Tests\TestCase;
 
 class LogoutSecurityTest extends TestCase
@@ -54,5 +56,20 @@ class LogoutSecurityTest extends TestCase
         $this->withMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
 
         $this->post('/logout')->assertRedirect(route('login'));
+    }
+
+    public function test_expired_sign_in_page_explains_that_it_must_be_refreshed(): void
+    {
+        Route::post('/login', function () {
+            throw new TokenMismatchException;
+        });
+
+        $message = 'This sign-in page has been open too long. Refresh the page, then try signing in again.';
+        $this->postJson('/login')->assertStatus(419)->assertJsonPath('message', $message);
+        $this->post('/login')->assertRedirect(route('login'))->assertSessionHasErrors(['email' => $message]);
+        $this->get('/')->assertOk()->assertSee($message);
+        $landing = file_get_contents(resource_path('views/landing.blade.php'));
+        $this->assertStringContainsString('if (res.status === 419)', $landing);
+        $this->assertStringContainsString($message, $landing);
     }
 }
