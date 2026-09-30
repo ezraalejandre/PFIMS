@@ -838,7 +838,7 @@
                     <button onclick="openAddCashModal()" class="btn-add-data gold">+ Add Cash Asset</button>
                 </div>
                 <div class="finance-header-action-group" data-finance-tabs="backhoe"{{ $financeTab === 'backhoe' ? '' : ' hidden' }}>
-                    <button onclick="openAddBackhoeExpenseModal()" class="btn-add-data">+ Add Expense</button>
+                    <button onclick="openAddBackhoeExpenseModal()" class="btn-add-data">+ Add Backhoe Expense</button>
                     <button onclick="openAddBackhoeRentalModal()" class="btn-add-data gold">+ Add Rental Income</button>
                 </div>
                 <div class="finance-header-action-group" data-finance-tabs="bonds"{{ $financeTab === 'bonds' ? '' : ' hidden' }}>
@@ -1347,7 +1347,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddBackhoeExpenseModal()">Cancel</button>
-                <button class="btn-save" id="backhoeExpenseSaveBtn" onclick="saveBackhoeExpense()">Add Expense</button>
+                <button class="btn-save" id="backhoeExpenseSaveBtn" onclick="saveBackhoeExpense()">Add Backhoe Expense</button>
             </div>
         </div>
     </div>
@@ -4215,7 +4215,7 @@
         function openAddBackhoeExpenseModal() {
             equipmentEditState = { type: null, id: null };
             document.getElementById('backhoeExpenseModalTitle').textContent = 'Add Backhoe Expense';
-            document.getElementById('backhoeExpenseSaveBtn').textContent = 'Add Expense';
+            document.getElementById('backhoeExpenseSaveBtn').textContent = 'Add Backhoe Expense';
             document.getElementById('addBackhoeExpenseModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             document.getElementById('backhoeExpenseAsset').value = '';

@@ -50,7 +50,7 @@ class FinanceModalPresentationTest extends TestCase
         foreach ([
             ['receivables', 'openAddReceivableModal()', '+ Add Entry'],
             ['cash', 'openAddCashModal()', '+ Add Cash Asset'],
-            ['backhoe', 'openAddBackhoeExpenseModal()', '+ Add Expense'],
+            ['backhoe', 'openAddBackhoeExpenseModal()', '+ Add Backhoe Expense'],
             ['backhoe', 'openAddBackhoeRentalModal()', '+ Add Rental Income'],
             ['bonds', 'openAddBondModal()', '+ Add Bond'],
         ] as [$tab, $handler, $label]) {
