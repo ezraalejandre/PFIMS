@@ -864,15 +864,28 @@
 
         function dataRows() {
             return Array.from(body.rows).filter(function (row) {
-                return !(row.cells.length === 1 && /loading|no\s+records|no\s+data|empty|fetching|please wait/i.test(row.textContent || ''));
+                return row.dataset.pfimsEmpty !== 'true' && !(row.cells.length === 1
+                    && /loading|no\s+records|no\s+data|no\s+.*\s+found|empty|fetching|please wait/i.test(row.textContent || ''));
             });
         }
         function render() {
             var rows = dataRows();
+            if (rows.length) {
+                body.querySelectorAll('tr[data-pfims-empty="true"]').forEach(function (row) { row.remove(); });
+            } else if (!body.rows.length) {
+                var emptyRow = body.insertRow();
+                emptyRow.dataset.pfimsEmpty = 'true';
+                var emptyCell = emptyRow.insertCell();
+                emptyCell.colSpan = Math.max(1, table.tHead?.rows[0]?.cells.length || 1);
+                emptyCell.textContent = 'No Data Found';
+                emptyCell.className = 'pfims-empty-table-cell';
+            }
             var totalPages = Math.max(1, Math.ceil(rows.length / perPage));
             page = Math.min(page, totalPages);
+            var placeholderRows = rows.length ? [] : Array.from(body.rows).filter(function (row) { return !rows.includes(row); });
             Array.from(body.rows).forEach(function (row) { row.hidden = true; });
             rows.forEach(function (row, index) { row.hidden = index < (page - 1) * perPage || index >= page * perPage; });
+            placeholderRows.forEach(function (row) { row.hidden = false; });
             total.textContent = 'Total: ' + rows.length;
             links.replaceChildren();
             function button(label, target, active, disabled) {

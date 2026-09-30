@@ -3620,7 +3620,7 @@ body:not(.landing-page) :where(
     .forecast-table-wrapper,
     .report-table-wrapper,
     .analytics-table-wrapper
-) > table :is(th, td):first-child {
+) > table :is(th, td):first-child:not([colspan]) {
     position: sticky;
     left: 0;
     z-index: 3;
@@ -3637,7 +3637,7 @@ body:not(.landing-page) :where(
     .forecast-table-wrapper,
     .report-table-wrapper,
     .analytics-table-wrapper
-) > table td:first-child {
+) > table td:first-child:not([colspan]) {
     background-color: var(--ui-surface-solid);
 }
 
@@ -3664,6 +3664,12 @@ body:not(.landing-page) :where(
 .reports-page .report-preview .table-wrap > table :is(th, td):first-child {
     position: static;
     box-shadow: none;
+}
+
+.pfims-empty-table-cell {
+    padding: 20px !important;
+    color: var(--ui-muted) !important;
+    text-align: center !important;
 }
 
 @media (max-width: 1024px) {
