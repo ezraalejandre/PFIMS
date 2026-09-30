@@ -455,7 +455,9 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringNotContainsString("}).format(now) + ' at ';", $sharedUi);
         $this->assertStringContainsString("host.classList.add('pfims-search-host')", $sharedUi);
         $this->assertStringContainsString("cell.offsetParent === null", $sharedUi);
-        $this->assertStringNotContainsString("forEach(installCustomSelect)", $sharedUi);
+        $this->assertStringContainsString("forEach(installCustomSelect)", $sharedUi);
+        $this->assertStringContainsString("menu.style.maxHeight = height + 'px'", $sharedUi);
+        $this->assertStringContainsString("select.dispatchEvent(new Event('change', { bubbles: true }))", $sharedUi);
 
         $sharedCss = file_get_contents(public_path('css/ui-refresh.css'));
         $this->assertStringContainsString('.finance-page .pfims-add-modal .modal-container', $sharedCss);

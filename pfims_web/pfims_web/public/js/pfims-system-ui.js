@@ -519,7 +519,22 @@
         menu.className = 'pfims-select-options';
         menu.setAttribute('role', 'listbox');
         menu.hidden = true;
-        wrapper.append(trigger, menu);
+        menu.id = 'pfims-select-options-' + Math.random().toString(36).slice(2);
+        trigger.setAttribute('aria-controls', menu.id);
+        var fieldLabel = select.id ? document.querySelector('label[for="' + CSS.escape(select.id) + '"]') : null;
+        var enclosingLabel = select.closest('label');
+        function directLabelText(element) {
+            var text = Array.from(element?.childNodes || []).filter(function (node) { return node.nodeType === Node.TEXT_NODE; })
+                .map(function (node) { return node.textContent.trim(); }).filter(Boolean).join(' ');
+            return text || element?.querySelector(':scope > span:not(.pfims-select)')?.textContent?.trim() || '';
+        }
+        var siblingLabel = wrapper.parentElement?.querySelector(':scope > label');
+        var label = select.getAttribute('aria-label') || directLabelText(fieldLabel)
+            || directLabelText(enclosingLabel) || directLabelText(siblingLabel) || 'Choose an option';
+        trigger.setAttribute('aria-label', label);
+        wrapper.appendChild(trigger);
+        document.documentElement.appendChild(menu);
+        var activeIndex = -1;
 
         function selectedText() {
             return select.options[select.selectedIndex]?.textContent || select.getAttribute('aria-label') || 'Select';
@@ -527,12 +542,13 @@
         function close() {
             menu.hidden = true;
             trigger.setAttribute('aria-expanded', 'false');
+            trigger.removeAttribute('aria-activedescendant');
         }
         function rebuild() {
             trigger.textContent = selectedText();
             trigger.disabled = select.disabled;
             menu.replaceChildren();
-            Array.from(select.options).forEach(function (nativeOption) {
+            Array.from(select.options).forEach(function (nativeOption, index) {
                 var option = document.createElement('button');
                 option.type = 'button';
                 option.className = 'pfims-select-option';
@@ -541,8 +557,10 @@
                 option.disabled = nativeOption.disabled;
                 option.setAttribute('role', 'option');
                 option.setAttribute('aria-selected', String(nativeOption.selected));
+                option.id = menu.id + '-option-' + index;
                 option.addEventListener('click', function () {
                     select.value = nativeOption.value;
+                    select.dispatchEvent(new Event('input', { bubbles: true }));
                     select.dispatchEvent(new Event('change', { bubbles: true }));
                     trigger.textContent = selectedText();
                     close();
@@ -551,16 +569,85 @@
                 menu.appendChild(option);
             });
         }
+        select.pfimsSyncTrigger = function () {
+            if (trigger.textContent !== selectedText() || trigger.disabled !== select.disabled) rebuild();
+        };
+
+        function positionMenu() {
+            var rect = trigger.getBoundingClientRect();
+            var bodyStyle = window.getComputedStyle(document.body);
+            var scale = parseFloat(bodyStyle.zoom) || 1;
+            menu.style.setProperty('--pfims-menu-scale', scale);
+            menu.style.fontFamily = bodyStyle.fontFamily;
+            menu.style.fontSize = ((parseFloat(bodyStyle.fontSize) || 16) * scale) + 'px';
+            var viewportHeight = window.visualViewport?.height || window.innerHeight;
+            var below = viewportHeight - rect.bottom - 8;
+            var above = rect.top - 8;
+            var menuStyle = window.getComputedStyle(menu);
+            var rowHeight = menu.firstElementChild?.getBoundingClientRect().height || 34 * scale;
+            var menuSpacing = parseFloat(menuStyle.paddingTop) + parseFloat(menuStyle.paddingBottom)
+                + parseFloat(menuStyle.borderTopWidth) + parseFloat(menuStyle.borderBottomWidth);
+            var fiveRowsHeight = rowHeight * 5 + menuSpacing;
+            var openAbove = below < fiveRowsHeight && above > below;
+            var available = Math.max(34 * scale, openAbove ? above : below);
+            var height = Math.min(fiveRowsHeight, available);
+            menu.style.maxHeight = height + 'px';
+            menu.style.width = Math.min(rect.width, window.innerWidth - 16) + 'px';
+            menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+            menu.style.top = (openAbove ? Math.max(8, rect.top - Math.min(menu.scrollHeight, height) - 4) : rect.bottom + 4) + 'px';
+        }
+
+        function activate(index) {
+            var options = Array.from(menu.children);
+            if (!options.length || options.every(function (option) { return option.disabled; })) return;
+            activeIndex = (index + options.length) % options.length;
+            while (options[activeIndex]?.disabled) activeIndex = (activeIndex + 1) % options.length;
+            options.forEach(function (option, optionIndex) { option.classList.toggle('is-active', optionIndex === activeIndex); });
+            trigger.setAttribute('aria-activedescendant', options[activeIndex].id);
+            options[activeIndex].scrollIntoView({ block: 'nearest' });
+        }
+
+        function open() {
+            if (trigger.disabled) return;
+            document.querySelectorAll('.pfims-select-options:not([hidden])').forEach(function (other) { other.hidden = true; });
+            document.querySelectorAll('.pfims-select-trigger[aria-expanded="true"]').forEach(function (other) {
+                if (other !== trigger) other.setAttribute('aria-expanded', 'false');
+            });
+            rebuild();
+            menu.hidden = false;
+            trigger.setAttribute('aria-expanded', 'true');
+            positionMenu();
+            activate(Math.max(0, select.selectedIndex));
+        }
 
         trigger.addEventListener('click', function () {
-            var opening = menu.hidden;
-            document.querySelectorAll('.pfims-select-options:not([hidden])').forEach(function (other) { other.hidden = true; });
-            if (opening) rebuild();
-            menu.hidden = !opening;
-            trigger.setAttribute('aria-expanded', String(opening));
+            if (menu.hidden) open(); else close();
         });
-        select.addEventListener('change', function () { trigger.textContent = selectedText(); });
-        document.addEventListener('click', function (event) { if (!wrapper.contains(event.target)) close(); });
+        trigger.addEventListener('focus', select.pfimsSyncTrigger);
+        trigger.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') { close(); return; }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (menu.hidden) open();
+                else activate(activeIndex + (event.key === 'ArrowDown' ? 1 : -1));
+            } else if (event.key === 'Home' || event.key === 'End') {
+                event.preventDefault();
+                if (menu.hidden) open();
+                activate(event.key === 'Home' ? 0 : menu.children.length - 1);
+            } else if ((event.key === 'Enter' || event.key === ' ') && !menu.hidden) {
+                event.preventDefault();
+                menu.children[activeIndex]?.click();
+            }
+        });
+        select.addEventListener('change', rebuild);
+        select.addEventListener('focus', function () { trigger.focus(); });
+        document.addEventListener('click', function (event) {
+            if (!wrapper.contains(event.target) && !menu.contains(event.target)) close();
+        });
+        window.addEventListener('scroll', function (event) {
+            if (!menu.hidden && event.target !== menu && !menu.contains(event.target)) close();
+        }, true);
+        window.addEventListener('resize', close);
         new MutationObserver(rebuild).observe(select, { childList: true, subtree: true, attributes: true });
         rebuild();
     }
@@ -1419,6 +1506,11 @@
         document.querySelectorAll('.pagination-wrapper select').forEach(normalizePageSize);
         normalizePaginationTotals();
         document.querySelectorAll('input[type="search"]').forEach(installSearchSuggestions);
+        document.querySelectorAll('main select, .modal-overlay select, dialog select').forEach(installCustomSelect);
+        window.setInterval(function () {
+            if (document.hidden) return;
+            document.querySelectorAll('select.pfims-native-select').forEach(function (select) { select.pfimsSyncTrigger?.(); });
+        }, 250);
         installTableTooltips();
         installAccurateChartHover();
         installDetailsFooterBridge();
@@ -1440,6 +1532,7 @@
             document.querySelectorAll('.pagination-wrapper select').forEach(normalizePageSize);
             normalizePaginationTotals();
             document.querySelectorAll('input[type="search"]').forEach(installSearchSuggestions);
+            document.querySelectorAll('main select, .modal-overlay select, dialog select').forEach(installCustomSelect);
             installQuietScrollbars();
             installTableScrollFades();
             document.querySelectorAll('table').forEach(installActionsForClickableRows);

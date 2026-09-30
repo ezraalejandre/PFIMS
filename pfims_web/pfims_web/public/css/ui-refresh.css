@@ -50,6 +50,77 @@ a[data-icon-label]:hover .button-label, a[data-icon-label]:focus-visible .button
     display: none !important;
 }
 
+.pfims-select {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+.pfims-select .pfims-native-select {
+    width: 100%;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.pfims-select-trigger {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 0 30px 0 12px;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text);
+    font: inherit;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pfims-select::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    border-right: 4px solid transparent;
+    border-left: 4px solid transparent;
+    border-top: 5px solid var(--ui-text);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.pfims-select:focus-within .pfims-native-select {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 1px;
+}
+
+.pfims-select-options {
+    position: fixed;
+    z-index: 10050;
+    display: block;
+    padding: calc(6px * var(--pfims-menu-scale, 1));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 9px;
+    background: var(--ui-surface-solid);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-soft);
+}
+
+.pfims-select-options[hidden] { display: none !important; }
+.pfims-select-options .pfims-select-option {
+    min-height: calc(34px * var(--pfims-menu-scale, 1)) !important;
+    padding: calc(8px * var(--pfims-menu-scale, 1)) calc(10px * var(--pfims-menu-scale, 1)) !important;
+}
+.pfims-select-options .pfims-select-option.is-active { background: var(--ui-accent-soft) !important; }
+.rows-info .pfims-select { width: 5rem; }
+
 .pfims-search-suggestions button,
 .pfims-select-option {
     display: block !important;
@@ -170,7 +241,6 @@ body { color: #263244; }
    content tree here as well makes labels and table text effectively tiny. */
 :where(.main-content, main) :where(h1, .page-title) { font-size: clamp(1.25rem, 2vw, 1.65rem) !important; }
 :where(.main-content, main) :where(button, input, select, textarea, .pfims-select-trigger) { min-height: 32px; }
-.pfims-select { max-width: 12rem; }
 .rows-info .pfims-select { max-width: 5rem; }
 button[data-icon-label], a[data-icon-label] { display: inline-flex; align-items: center; gap: 0; min-width: 34px; justify-content: center; overflow: hidden; transition: gap .18s ease, padding .18s ease; }
 button[data-icon-label]:hover, button[data-icon-label]:focus-visible,
