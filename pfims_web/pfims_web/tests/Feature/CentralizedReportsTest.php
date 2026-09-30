@@ -487,6 +487,7 @@ class CentralizedReportsTest extends TestCase
                 ->assertSee('id="historyPagination"', false)
                 ->assertSee('id="historyPageSize"', false)
                 ->assertSee('data-pfims-standard-actions="off"', false)
+                ->assertSee('id="editExportDesign" data-pfims-no-expand', false)
                 ->assertSee('class="pfims-row-action history-view-button"', false)
                 ->assertSee('class="pfims-row-action history-download-button"', false)
                 ->assertSee('download title="Download report"', false)
@@ -506,6 +507,9 @@ class CentralizedReportsTest extends TestCase
         $this->assertStringContainsString('font-weight: 400 !important;', $pickerCss);
         $this->assertStringContainsString('body.reports-page .report-date-picker .report-date-options button[aria-pressed="true"] { font-weight: 700 !important; }', $pickerCss);
         $this->assertStringContainsString('.report-year-navigation span { font-weight: 400; }', $pickerCss);
+        $this->assertStringContainsString('.preview-paper[data-header-color="orange"] th:not(.report-total-column) { background: #c96c00 !important; }', $pickerCss);
+        $this->assertStringContainsString('.preview-paper table { min-width: 940px; border-collapse: collapse !important; }', $pickerCss);
+        $this->assertStringContainsString("table.closest('.report-preview')", file_get_contents(public_path('js/pfims-system-ui.js')));
     }
 
     public function test_configured_csv_export_is_downloaded_and_persisted_as_export_history(): void

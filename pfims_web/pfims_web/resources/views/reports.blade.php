@@ -254,7 +254,7 @@
             <div class="active-filter-summary"><strong>Filters included in this export</strong><p id="exportFilterSummary">No filters applied.</p></div>
             <div class="preview-toolbar">
                 <h3>Preview Export</h3>
-                <button type="button" class="btn btn-secondary" id="editExportDesign" aria-expanded="false" aria-controls="exportDesignControls">Edit Export</button>
+                <button type="button" class="btn btn-secondary" id="editExportDesign" data-pfims-no-expand aria-expanded="false" aria-controls="exportDesignControls">Edit Export</button>
             </div>
             <div class="export-design-controls" id="exportDesignControls" hidden>
                 <label>Header color<select id="exportHeaderColor"><option value="navy">Navy</option><option value="orange">Orange</option><option value="green">Green</option></select></label>

@@ -501,7 +501,8 @@
     }
 
     function installCustomSelect(select) {
-        if (select.dataset.pfimsSelect === 'ready' || select.multiple || Number(select.size || 0) > 1) return;
+        if (select.dataset.pfimsSelect === 'ready' || select.closest('#exportDialog')
+            || select.multiple || Number(select.size || 0) > 1) return;
         select.dataset.pfimsSelect = 'ready';
         select.classList.add('pfims-native-select');
 
@@ -661,7 +662,8 @@
     }
 
     function installColumnChooser(table) {
-        if (table.dataset.columnChooser === 'ready' || table.dataset.columnChooser === 'off' || !table.tHead || !table.tBodies.length) return;
+        if (table.dataset.columnChooser === 'ready' || table.dataset.columnChooser === 'off'
+            || table.closest('.report-preview') || !table.tHead || !table.tBodies.length) return;
         var headings = Array.from(table.tHead.rows[0]?.cells || []);
         if (headings.length < 2) return;
 
