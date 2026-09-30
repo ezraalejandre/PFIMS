@@ -469,6 +469,8 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringContainsString('.pfims-filter-heading', $sharedCss);
         $this->assertStringContainsString('.pfims-search-suggestions[hidden]', $sharedCss);
         $this->assertStringContainsString('.pfims-search-suggestions button', $sharedCss);
+        $this->assertStringContainsString('.dashboard-tab-panel > :is(.chart-grid, .project-panel)::before', $sharedCss);
+        $this->assertStringContainsString('.reports-page .main-content > .history-panel::before', $sharedCss);
         $this->assertStringContainsString('select option', $sharedCss);
         $this->assertStringContainsString('--pfims-desktop-scale: 75%;', $sharedCss);
         $this->assertStringContainsString('@media (min-width: 1025px)', $sharedCss);

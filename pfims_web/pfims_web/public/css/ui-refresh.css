@@ -3742,6 +3742,24 @@ body:not(.landing-page) :where(
     text-align: center !important;
 }
 
+/* Separate major content groups without adding a rule below filter panels. */
+.dashboard-tab-panel > :is(.chart-grid, .project-panel),
+.reports-page .main-content > .history-panel {
+    position: relative;
+}
+
+.dashboard-tab-panel > :is(.chart-grid, .project-panel)::before,
+.reports-page .main-content > .history-panel::before {
+    content: '';
+    position: absolute;
+    top: -11px;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: var(--ui-border, #e2e8f0);
+    pointer-events: none;
+}
+
 @media (max-width: 1024px) {
     :where(.main-content, main) select,
     :where(.main-content, main) .pfims-select,
