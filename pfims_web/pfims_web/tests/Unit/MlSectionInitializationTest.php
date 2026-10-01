@@ -16,4 +16,13 @@ class MlSectionInitializationTest extends TestCase
         $this->assertStringContainsString("targetSection === 'materialProjectionSection' && ['admin', 'operations'].includes(currentPortal)", $view);
         $this->assertStringContainsString("targetSection === 'budgetComparisonSection' && ['admin', 'accounting'].includes(currentPortal)", $view);
     }
+
+    public function test_model_performance_pill_names_only_the_active_training_source(): void
+    {
+        $view = file_get_contents(dirname(__DIR__, 2).'/resources/views/ml-dashboard-test.blade.php');
+
+        $this->assertStringContainsString('`${samplesTrained} synthetic`', $view);
+        $this->assertStringContainsString('`${samplesTrained} real projects`', $view);
+        $this->assertStringNotContainsString("' / estimated inventory costs'", $view);
+    }
 }

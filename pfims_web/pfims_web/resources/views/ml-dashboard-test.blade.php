@@ -1315,7 +1315,6 @@
         const accuracy = metrics.accuracy;
         const rSquared = metrics.r_squared;
         const samplesTrained = parseInt(metrics.samples_trained) || 0;
-        const realSamples = parseInt(metrics.real_samples_available) || 0;
 
         document.getElementById('metricAccuracy').textContent = displayPercent(accuracy);
         document.getElementById('metricMAE').textContent = metrics.mae_formatted || 'Unavailable';
@@ -1343,8 +1342,8 @@
             : 'Segment monitoring is unavailable while the synthetic fallback is active.';
         document.getElementById('metricInterpretation').textContent = metrics.interpretation || 'No data available';
         document.getElementById('samplesCount').textContent = metrics.uses_synthetic_data
-            ? `${samplesTrained} synthetic / ${realSamples} real`
-            : `${samplesTrained} real projects${metrics.estimated_historical_purchase_count > 0 ? ' / estimated inventory costs' : ''}`;
+            ? `${samplesTrained} synthetic`
+            : `${samplesTrained} real projects`;
     }
 
     function metricsCurrency(value) {
