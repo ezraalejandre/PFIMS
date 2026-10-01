@@ -398,6 +398,23 @@ class FinanceInventoryFiltersTest extends TestCase
         ]);
     }
 
+    public function test_editing_unallocated_purchase_quantity_keeps_the_recorded_unit_cost(): void
+    {
+        $this->post('/api/inventory/transaction', [
+            'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
+            'quantity' => 3, 'bar_code' => 700051, 'transaction_date' => '2026-09-20',
+        ], ['Accept' => 'application/json'])->assertCreated();
+        $transactionId = DB::table('inventory_transaction_tbl')->max('inventory_transaction_id');
+        $this->assertSame(900.0, (float) DB::table('fin_expense_tbl')
+            ->where('inventory_transaction_id', $transactionId)->value('amount'));
+
+        $this->patchJson('/api/inventory/transaction/'.$transactionId, [
+            'quantity' => 4, 'bar_code' => 700051, 'transaction_date' => '2026-09-20',
+        ])->assertOk();
+        $this->assertSame(1200.0, (float) DB::table('fin_expense_tbl')
+            ->where('inventory_transaction_id', $transactionId)->value('amount'));
+    }
+
     public function test_stock_out_allocates_fifo_purchase_cost_without_another_finance_expense(): void
     {
         Storage::fake('public');

@@ -61,8 +61,18 @@ class ProjectCostLedger
                 });
             }
             $unvalued += $unallocated->count();
-            $unvalued += DB::table('inventory_transaction_tbl')->where('project_id', $projectId)
-                ->where('transaction_type', 'IN')->count();
+            $projectReceipts = DB::table('inventory_transaction_tbl as receipt')
+                ->where('receipt.project_id', $projectId)->where('receipt.transaction_type', 'IN');
+            if (Schema::hasTable('fin_expense_tbl') && Schema::hasColumns('fin_expense_tbl',
+                ['inventory_transaction_id', 'project_id', 'entry_kind', 'amount'])) {
+                $projectReceipts->whereNotExists(function ($query) {
+                    $query->selectRaw('1')->from('fin_expense_tbl as purchase')
+                        ->whereColumn('purchase.inventory_transaction_id', 'receipt.inventory_transaction_id')
+                        ->whereColumn('purchase.project_id', 'receipt.project_id')
+                        ->where('purchase.entry_kind', 'inventory_purchase')->where('purchase.amount', '>', 0);
+                });
+            }
+            $unvalued += $projectReceipts->count();
         }
 
         return ['direct' => $direct, 'allocated' => $allocated, 'total' => round($direct + $allocated, 2), 'unvalued_count' => $unvalued];

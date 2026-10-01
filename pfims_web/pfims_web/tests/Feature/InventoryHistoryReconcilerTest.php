@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Services\InventoryHistoryReconciler;
+use App\Services\LegacyInventoryPriceBackfill;
+use App\Services\ProjectCostLedger;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -21,11 +23,25 @@ class InventoryHistoryReconcilerTest extends TestCase
             $table->decimal('quantity', 10, 2)->nullable();
             $table->date('transaction_date');
             $table->string('movement_reason')->nullable();
+            $table->string('bar_code')->nullable();
+            $table->string('proof_file_path')->nullable();
+            $table->string('proof_file_name')->nullable();
+        });
+        Schema::create('unit_tbl', function (Blueprint $table) {
+            $table->increments('unit_id');
+            $table->string('unit_name');
+        });
+        Schema::create('inventory_item_tbl', function (Blueprint $table) {
+            $table->increments('item_id');
+            $table->string('item_name');
+            $table->unsignedInteger('unit_id')->nullable();
+            $table->decimal('unit_price', 12, 2)->nullable();
         });
         Schema::create('fin_expense_category_tbl', function (Blueprint $table) {
             $table->increments('fin_category_id');
             $table->string('category_code');
             $table->string('category_name');
+            $table->boolean('is_active')->default(true);
         });
         Schema::create('fin_expense_tbl', function (Blueprint $table) {
             $table->increments('fin_expense_id');
@@ -35,6 +51,12 @@ class InventoryHistoryReconcilerTest extends TestCase
             $table->decimal('amount', 12, 2)->nullable();
             $table->date('expense_date');
             $table->string('entry_kind')->nullable();
+            $table->string('project_cost_component')->nullable();
+            $table->string('expense_description')->nullable();
+            $table->string('remarks')->nullable();
+            $table->string('proof_file_path')->nullable();
+            $table->string('proof_file_name')->nullable();
+            $table->timestamps();
         });
         Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
             $table->increments('allocation_id');
@@ -53,9 +75,45 @@ class InventoryHistoryReconcilerTest extends TestCase
             $table->decimal('actual_amount', 14, 2)->default(0);
         });
         DB::table('fin_expense_category_tbl')->insert([
-            ['fin_category_id' => 1, 'category_code' => 'CONST_SUPPLY', 'category_name' => 'Construction supplies'],
+            ['fin_category_id' => 1, 'category_code' => 'CONSTRUCTION_SUPPLY', 'category_name' => 'Construction supplies'],
             ['fin_category_id' => 2, 'category_code' => 'OTHER', 'category_name' => 'Other'],
         ]);
+    }
+
+    public function test_legacy_pricing_creates_one_purchase_per_receipt_and_values_project_withdrawals_once(): void
+    {
+        DB::table('unit_tbl')->insert(['unit_id' => 1, 'unit_name' => 'pcs']);
+        DB::table('inventory_item_tbl')->insert([
+            ['item_id' => 1, 'item_name' => 'Bolts', 'unit_id' => 1, 'unit_price' => 5],
+            ['item_id' => 2, 'item_name' => 'Paint', 'unit_id' => 1, 'unit_price' => 10],
+        ]);
+        DB::table('budgets_tbl')->insert([
+            ['project_id' => 7, 'actual_amount' => 0],
+            ['project_id' => 8, 'actual_amount' => 0],
+        ]);
+        DB::table('inventory_transaction_tbl')->insert([
+            ['inventory_transaction_id' => 1, 'item_id' => 1, 'transaction_type' => 'IN', 'project_id' => null, 'quantity' => 10, 'transaction_date' => '2026-01-01', 'movement_reason' => 'legacy_unpriced'],
+            ['inventory_transaction_id' => 2, 'item_id' => 1, 'transaction_type' => 'IN', 'project_id' => 7, 'quantity' => 4, 'transaction_date' => '2026-01-02', 'movement_reason' => null],
+            ['inventory_transaction_id' => 3, 'item_id' => 2, 'transaction_type' => 'IN', 'project_id' => null, 'quantity' => 2, 'transaction_date' => '2026-01-02', 'movement_reason' => 'adjustment'],
+            ['inventory_transaction_id' => 4, 'item_id' => 1, 'transaction_type' => 'OUT', 'project_id' => 8, 'quantity' => 11, 'transaction_date' => '2026-01-03', 'movement_reason' => null],
+        ]);
+
+        $backfill = app(LegacyInventoryPriceBackfill::class);
+        $this->assertCount(2, $backfill->candidates());
+        $this->assertSame(['storage_purchases' => 1, 'project_purchases' => 1], $backfill->apply());
+        $this->assertSame(['storage_purchases' => 0, 'project_purchases' => 0], $backfill->apply());
+        $this->assertSame(2, DB::table('fin_expense_tbl')->count());
+        $this->assertSame(20.0, (float) DB::table('fin_expense_tbl')->where('inventory_transaction_id', 2)->value('amount'));
+        $this->assertSame(7, DB::table('fin_expense_tbl')->where('inventory_transaction_id', 2)->value('project_id'));
+        $this->assertSame('adjustment', DB::table('inventory_transaction_tbl')->where('inventory_transaction_id', 3)->value('movement_reason'));
+
+        $result = app(InventoryHistoryReconciler::class)->allocateSafeWithdrawals();
+        $this->assertSame([4], $result['allocated_withdrawals']);
+        $this->assertSame([], $result['unreconciled_withdrawals']);
+        $this->assertSame(55.0, (float) DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', 4)->sum('allocated_amount'));
+        $this->assertSame(0, app(ProjectCostLedger::class)->forProject(7)['unvalued_count']);
+        $this->assertSame(0.0, app(ProjectCostLedger::class)->forProject(7)['total']);
+        $this->assertSame(55.0, app(ProjectCostLedger::class)->forProject(8)['total']);
     }
 
     public function test_audit_is_read_only_and_only_proven_receipts_are_classified(): void

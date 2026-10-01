@@ -398,7 +398,7 @@ class InventoryController extends Controller
                 'transaction_date' => $validated['transaction_date'],
             ]);
 
-            $this->syncLinkedStockInExpense($transaction);
+            $this->syncLinkedStockInExpense($transaction, (float) $before['quantity']);
 
             $this->recalculateItemStock($transaction->item_id);
             if ($quantityChanged && $wasAllocated) {
@@ -508,7 +508,7 @@ class InventoryController extends Controller
             ->exists();
     }
 
-    private function syncLinkedStockInExpense(InventoryTransaction $transaction): void
+    private function syncLinkedStockInExpense(InventoryTransaction $transaction, float $previousQuantity): void
     {
         if ($transaction->transaction_type !== 'IN' || ! Schema::hasTable('fin_expense_tbl')) {
             return;
@@ -518,15 +518,26 @@ class InventoryController extends Controller
         if (! $item) {
             return;
         }
+        $expense = DB::table('fin_expense_tbl')
+            ->where('inventory_transaction_id', $transaction->inventory_transaction_id)->first();
+        if (! $expense) {
+            return;
+        }
         $unit = DB::table('unit_tbl')->where('unit_id', $item->unit_id)->value('unit_name') ?: 'unit';
+        $historicalEstimate = str_starts_with((string) $expense->remarks, 'Historical item-price estimate:');
+        $updates = [
+            'expense_description' => $this->stockInExpenseDescription($transaction, $item->item_name, $unit),
+            'expense_date' => $transaction->transaction_date,
+            'remarks' => $historicalEstimate ? $expense->remarks : $this->stockInExpenseRemarks($transaction->bar_code),
+            'updated_at' => now(),
+        ];
+        if ($expense->entry_kind === 'inventory_purchase' && $previousQuantity > 0
+            && (float) $transaction->quantity !== $previousQuantity) {
+            $updates['amount'] = round((float) $expense->amount / $previousQuantity * (float) $transaction->quantity, 2);
+        }
         DB::table('fin_expense_tbl')
             ->where('inventory_transaction_id', $transaction->inventory_transaction_id)
-            ->update([
-                'expense_description' => $this->stockInExpenseDescription($transaction, $item->item_name, $unit),
-                'expense_date' => $transaction->transaction_date,
-                'remarks' => $this->stockInExpenseRemarks($transaction->bar_code),
-                'updated_at' => now(),
-            ]);
+            ->update($updates);
     }
 
     private function stockInExpenseDescription(InventoryTransaction $transaction, string $itemName, string $unit): string

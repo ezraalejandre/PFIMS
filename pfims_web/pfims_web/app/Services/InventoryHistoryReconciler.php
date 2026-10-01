@@ -33,7 +33,7 @@ class InventoryHistoryReconciler
                 ->leftJoin('fin_expense_category_tbl as category', 'category.fin_category_id', '=', 'expense.fin_category_id')
                 ->where('expense.inventory_transaction_id', $id)
                 ->select('expense.*', 'category.category_code', 'category.category_name')->get();
-            if ($receipt->project_id !== null || count($expenses) > 1) {
+            if (count($expenses) > 1) {
                 $report['ambiguous_receipts'][] = ['id' => $id, 'reason' => 'project_link_or_multiple_finance_rows'];
 
                 continue;
@@ -51,7 +51,11 @@ class InventoryHistoryReconciler
             $category = strtolower((string) $expense->category_code.' '.(string) $expense->category_name);
             $constructionSupply = str_contains($category, 'const_supply') || str_contains($category, 'construction suppl');
             $sameDate = substr((string) $receipt->transaction_date, 0, 10) === substr((string) $expense->expense_date, 0, 10);
-            if ($expense->project_id === null && is_numeric($expense->amount) && (float) $expense->amount > 0
+            $projectMatches = $receipt->project_id === null
+                ? $expense->project_id === null
+                : (int) $expense->project_id === (int) $receipt->project_id
+                    && $expense->entry_kind === 'inventory_purchase';
+            if ($projectMatches && is_numeric($expense->amount) && (float) $expense->amount > 0
                 && $constructionSupply && $sameDate
                 && in_array($receipt->movement_reason, [null, 'purchase'], true)
                 && in_array($expense->entry_kind, [null, 'inventory_purchase'], true)) {
@@ -103,6 +107,7 @@ class InventoryHistoryReconciler
         }
         $audit = $this->report();
         $ambiguousReceiptIds = array_column($audit['ambiguous_receipts'], 'id');
+        $provenProjectReceiptIds = array_column($audit['safe_purchase_receipts'], 'id');
         $result = ['allocated_withdrawals' => [], 'unreconciled_withdrawals' => []];
         foreach ($audit['unallocated_withdrawals'] as $id) {
             $out = DB::table('inventory_transaction_tbl')->where('inventory_transaction_id', $id)->first();
@@ -115,7 +120,8 @@ class InventoryHistoryReconciler
                 ->where('item_id', $out->item_id)->where('transaction_type', 'IN')
                 ->where('inventory_transaction_id', '<=', $id)
                 ->get(['inventory_transaction_id', 'project_id', 'movement_reason']);
-            if ($priorReceipts->contains(fn ($receipt) => $receipt->project_id !== null
+            if ($priorReceipts->contains(fn ($receipt) => ($receipt->project_id !== null
+                    && ! in_array((int) $receipt->inventory_transaction_id, $provenProjectReceiptIds, true))
                 || $receipt->movement_reason === null
                 || in_array((int) $receipt->inventory_transaction_id, $ambiguousReceiptIds, true))) {
                 $result['unreconciled_withdrawals'][] = ['id' => $id, 'reason' => 'ambiguous_prior_receipt'];

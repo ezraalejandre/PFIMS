@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\InventoryHistoryReconciler;
+use App\Services\LegacyInventoryPriceBackfill;
 use App\Services\MLService;
 use App\Services\ProjectCostSnapshotService;
 use Illuminate\Foundation\Inspiring;
@@ -67,3 +68,20 @@ Artisan::command('inventory:audit-history {--apply-safe : Classify only one-to-o
 
     return 0;
 })->purpose('Audit legacy inventory valuation and classify only explicitly approved safe receipts');
+
+Artisan::command('inventory:price-legacy {--apply : Create linked purchase expenses from current item prices}', function (LegacyInventoryPriceBackfill $backfill) {
+    if (! $this->option('apply')) {
+        $candidates = $backfill->candidates();
+        $this->line('Dry run: '.count($candidates).' unpriced legacy purchase receipts; '
+            .collect($candidates)->filter(fn ($candidate) => $candidate['receipt']->project_id !== null)->count().' project-linked.');
+        $this->warn('Amounts are estimates based on current item prices, not historical invoices. No records changed.');
+
+        return 0;
+    }
+
+    $result = $backfill->apply();
+    $this->info("Created {$result['storage_purchases']} storage and {$result['project_purchases']} project-linked purchase expenses.");
+    $this->warn('These historical amounts are estimates based on current item prices.');
+
+    return 0;
+})->purpose('Backfill legacy purchase amounts from quantity times current item Unit Price');

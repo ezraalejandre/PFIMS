@@ -574,6 +574,30 @@ class MLImprovementTest extends TestCase
         $this->assertArrayHasKey('Critical risk', $metrics['risk_business_actions']);
     }
 
+    public function test_model_performance_discloses_current_price_estimates_in_historical_costs(): void
+    {
+        Schema::table('fin_expense_tbl', function (Blueprint $table) {
+            $table->unsignedInteger('inventory_transaction_id')->nullable();
+            $table->string('entry_kind')->nullable();
+            $table->string('remarks')->nullable();
+        });
+        for ($index = 1; $index <= 10; $index++) {
+            $this->insertCompletedProject($index);
+        }
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => null, 'fin_category_id' => 1, 'amount' => 100,
+            'expense_date' => '2025-01-01', 'entry_kind' => 'inventory_purchase',
+            'remarks' => 'Historical item-price estimate: quantity × current Unit Price.',
+        ]);
+
+        $metrics = (new MLService($this->modelPath))->retrain()['metrics'];
+        $this->assertSame('real_trained_model', $metrics['model_source']);
+        $this->assertSame(1, $metrics['estimated_historical_purchase_count']);
+        $this->assertStringContainsString('estimated historical inventory costs', $metrics['status']);
+        $this->assertStringContainsString('current item prices', $metrics['warnings'][0]);
+        $this->assertStringContainsString('provisional', $metrics['interpretation']);
+    }
+
     public function test_snapshot_training_is_stage_aware_targets_remaining_cost_and_keeps_projects_out_of_both_partitions(): void
     {
         $projectIds = [];

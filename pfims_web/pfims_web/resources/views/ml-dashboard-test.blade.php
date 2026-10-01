@@ -1344,7 +1344,7 @@
         document.getElementById('metricInterpretation').textContent = metrics.interpretation || 'No data available';
         document.getElementById('samplesCount').textContent = metrics.uses_synthetic_data
             ? `${samplesTrained} synthetic / ${realSamples} real`
-            : `${samplesTrained} real samples`;
+            : `${samplesTrained} real projects${metrics.estimated_historical_purchase_count > 0 ? ' / estimated inventory costs' : ''}`;
     }
 
     function metricsCurrency(value) {

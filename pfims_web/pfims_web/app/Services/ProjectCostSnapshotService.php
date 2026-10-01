@@ -193,9 +193,19 @@ class ProjectCostSnapshotService
                 });
             }
             $result['unvalued_count'] += $unallocated->count();
-            $result['unvalued_count'] += DB::table('inventory_transaction_tbl')
-                ->where('project_id', $projectId)->where('transaction_type', 'IN')
-                ->whereDate('transaction_date', '<=', $capturedAt->toDateString())->count();
+            $projectReceipts = DB::table('inventory_transaction_tbl as receipt')
+                ->where('receipt.project_id', $projectId)->where('receipt.transaction_type', 'IN')
+                ->whereDate('receipt.transaction_date', '<=', $capturedAt->toDateString());
+            if (Schema::hasColumns('fin_expense_tbl',
+                ['inventory_transaction_id', 'project_id', 'entry_kind', 'amount'])) {
+                $projectReceipts->whereNotExists(function ($query) {
+                    $query->selectRaw('1')->from('fin_expense_tbl as purchase')
+                        ->whereColumn('purchase.inventory_transaction_id', 'receipt.inventory_transaction_id')
+                        ->whereColumn('purchase.project_id', 'receipt.project_id')
+                        ->where('purchase.entry_kind', 'inventory_purchase')->where('purchase.amount', '>', 0);
+                });
+            }
+            $result['unvalued_count'] += $projectReceipts->count();
         }
 
         return $result;

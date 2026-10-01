@@ -212,6 +212,11 @@ class MLService
 
             // Deploy on all verified records after independent chronological evaluation.
             [$candidateModel, $productionTransformer] = $this->buildLeastSquaresModel($trainingCohort, $featureNames);
+            $estimatedHistoricalPurchases = Schema::hasTable('fin_expense_tbl')
+                && Schema::hasColumns('fin_expense_tbl', ['entry_kind', 'remarks'])
+                ? DB::table('fin_expense_tbl')->where('entry_kind', 'inventory_purchase')
+                    ->where('remarks', 'like', 'Historical item-price estimate:%')->count()
+                : 0;
             $candidateMetadata = [
                 'schema_version' => self::MODEL_SCHEMA_VERSION,
                 'trained_at' => now()->toIso8601String(),
@@ -222,6 +227,7 @@ class MLService
                     ? 'remaining_cost_then_add_recorded_spend'
                     : 'final_cost',
                 'uses_synthetic_data' => $usesSampleData,
+                'estimated_historical_purchase_count' => $estimatedHistoricalPurchases,
                 'real_samples_available' => $realSampleCount,
                 'sample_samples_available' => $sampleCount,
                 'samples_trained' => $trainingCohort->count(),
@@ -249,6 +255,7 @@ class MLService
                     'persisted_budget_and_final_actual_amount_are_positive',
                     'persisted_budget_history_is_not_claimed_as_immutable_initial_budget',
                     $usesSampleData ? 'company_inspired_sample_not_verified_company_performance' : 'operational_company_records',
+                    ...($estimatedHistoricalPurchases > 0 ? ['historical_purchase_amounts_estimated_from_current_item_prices'] : []),
                 ],
             ];
             $this->model = $candidateModel;
@@ -1833,15 +1840,22 @@ class MLService
             'synthetic_fallback_model' => ['Synthetic fallback examples are active. No unseen-project evaluation metrics are reported.'],
             default => [],
         };
+        $estimatedHistoricalPurchases = (int) ($this->metadata['estimated_historical_purchase_count'] ?? 0);
+        if ($estimatedHistoricalPurchases > 0) {
+            $provenanceWarnings[] = "{$estimatedHistoricalPurchases} historical inventory purchases were priced using current item prices, not original invoices. Model metrics are conditional on these estimates.";
+        }
 
         return [
             'status' => match ($source) {
-                'real_trained_model' => 'Model is trained on verified completed projects',
+                'real_trained_model' => $estimatedHistoricalPurchases > 0
+                    ? 'Model is trained on completed projects with estimated historical inventory costs'
+                    : 'Model is trained on verified completed projects',
                 'sample_trained_model' => 'Model is trained on a company-inspired sample dataset',
                 default => 'Synthetic fallback model is active',
             },
             'model_source' => $source,
             'uses_synthetic_data' => (bool) ($this->metadata['uses_synthetic_data'] ?? false),
+            'estimated_historical_purchase_count' => $estimatedHistoricalPurchases,
             'samples_trained' => (int) ($this->metadata['samples_trained'] ?? 0),
             'real_samples_available' => (int) ($this->metadata['real_samples_available'] ?? 0),
             'sample_samples_available' => (int) ($this->metadata['sample_samples_available'] ?? 0),
@@ -1880,7 +1894,10 @@ class MLService
             'feature_ranges' => $this->metadata['feature_ranges'] ?? [],
             'trained_at' => $this->metadata['trained_at'] ?? null,
             'fallback_reason' => $this->metadata['fallback_reason'] ?? null,
-            'interpretation' => $this->getInterpretation($metrics, $sufficiency, $source),
+            'interpretation' => $this->getInterpretation($metrics, $sufficiency, $source)
+                .($estimatedHistoricalPurchases > 0
+                    ? ' Historical inventory costs use current-price estimates, not original invoices; treat these performance figures as provisional.'
+                    : ''),
         ];
     }
 
@@ -1954,7 +1971,9 @@ class MLService
             'message' => $realModelTrained
                 ? ($metrics['model_source'] === 'sample_trained_model'
                     ? 'Model retrained on a company-inspired sample dataset; metrics are sample evaluation only.'
-                    : 'Model retrained on verified completed projects.')
+                    : (($metrics['estimated_historical_purchase_count'] ?? 0) > 0
+                        ? 'Model retrained on completed projects; historical inventory costs use current-price estimates, not original invoices.'
+                        : 'Model retrained on verified completed projects.'))
                 : 'Retraining completed, but the transparent synthetic fallback remains active.',
             'model_source' => $metrics['model_source'], 'metrics' => $metrics,
         ];
