@@ -144,6 +144,58 @@ class CentralizedReportsTest extends TestCase
             ->assertJsonPath('columns.current_stock', 'Current Stock');
     }
 
+    public function test_export_row_limit_matches_preview_and_downloaded_inventory_file(): void
+    {
+        Storage::fake('public');
+        DB::table('inventory_item_tbl')->insert(array_map(fn (int $number) => [
+            'item_id' => $number, 'item_name' => sprintf('Item %02d', $number),
+            'current_stock' => $number, 'reorder_level' => 1,
+        ], range(1, 7)));
+
+        $config = ['dataset' => 'inventory', 'title' => 'Limited Inventory',
+            'columns' => ['item_name', 'current_stock'], 'row_limit' => 5];
+        $this->actingAs($this->user('admin'))->postJson('/api/reports/preview', $config)
+            ->assertOk()->assertJsonPath('row_count', 5)->assertJsonCount(5, 'rows');
+        $this->postJson('/api/reports/export', $config + ['format' => 'csv'])->assertOk();
+
+        $report = Report::query()->firstOrFail();
+        $csv = Storage::disk('public')->get($report->file_path);
+        $this->assertSame(5, $report->row_count);
+        $this->assertSame(5, $report->export_options['row_limit']);
+        $this->assertStringContainsString('Item 01', $csv);
+        $this->assertStringNotContainsString('Item 07', $csv);
+        $this->postJson('/api/reports/preview', array_diff_key($config, ['row_limit' => true]))
+            ->assertOk()->assertJsonPath('row_count', 7);
+        $this->postJson('/api/reports/preview', array_merge($config, ['row_limit' => 0]))->assertUnprocessable();
+    }
+
+    public function test_limited_expense_export_totals_only_include_exported_projects(): void
+    {
+        DB::table('project_tbl')->insert([
+            ['project_id' => 1, 'project_name' => 'Alpha Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01'],
+            ['project_id' => 2, 'project_name' => 'Beta Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01'],
+        ]);
+        DB::table('fin_expense_category_tbl')->insert([
+            'fin_category_id' => 1, 'category_code' => 'CONSTRUCTION_SUPPLY',
+            'category_name' => 'Construction Supply', 'classification' => 'direct',
+        ]);
+        DB::table('fin_expense_tbl')->insert([
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 25, 'expense_date' => '2026-08-31'],
+            ['project_id' => 1, 'fin_category_id' => 1, 'amount' => 75, 'expense_date' => '2026-09-30'],
+            ['project_id' => 2, 'fin_category_id' => 1, 'amount' => 200, 'expense_date' => '2026-09-30'],
+        ]);
+
+        $this->actingAs($this->user('admin'))->postJson('/api/reports/preview', [
+            'dataset' => 'expense_summary', 'title' => 'One Project',
+            'columns' => ['project_name', 'construction_supply', 'total'], 'row_limit' => 1,
+            'filters' => ['report_month' => 9, 'report_day' => 30, 'report_year' => 2026],
+        ])->assertOk()->assertJsonPath('row_count', 1)
+            ->assertJsonPath('rows.0.project_name', 'Alpha Site')
+            ->assertJsonPath('totals.total', 100)
+            ->assertJsonPath('previous_totals.total', 25)
+            ->assertJsonPath('month_totals.total', 75);
+    }
+
     public function test_expenses_summary_uses_ongoing_project_costs_without_storage_or_office_spending(): void
     {
         DB::table('project_tbl')->insert([

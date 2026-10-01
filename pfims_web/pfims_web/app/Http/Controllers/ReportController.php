@@ -248,6 +248,7 @@ class ReportController extends Controller
             'sections' => 'nullable|array|min:1',
             'sections.*' => ['required', 'string', 'distinct', Rule::in(['summary', 'kpis', 'chart', 'data'])],
             'filters' => 'nullable|array',
+            'row_limit' => 'nullable|integer|min:1|max:10000',
         ]);
 
         $definition = $this->authorizeDataset($validated['dataset']);
@@ -265,6 +266,7 @@ class ReportController extends Controller
         $filterRequest = Request::create('/', 'GET', $validated['filters'] ?? []);
         $filters = $this->validatedFilters($filterRequest);
         $rows = $this->datasetRows($validated['dataset'], $filters);
+        $rows = $this->limitExportRows($rows, $validated['row_limit'] ?? null);
         $kpis = $this->datasetKpis($validated['dataset'], $rows);
         $chart = $this->datasetChart($validated['dataset'], $rows);
         $role = $this->role();
@@ -284,7 +286,7 @@ class ReportController extends Controller
                 'status' => 'Completed', 'generation_method' => 'system_export',
                 'dataset_key' => $validated['dataset'], 'export_format' => 'csv',
                 'row_count' => $rows->count(), 'selected_columns' => $validated['columns'],
-                'filters_applied' => $filters, 'export_options' => ['sections' => $validated['sections'] ?? ['summary', 'data']],
+                'filters_applied' => $filters, 'export_options' => ['sections' => $validated['sections'] ?? ['summary', 'data'], 'row_limit' => $validated['row_limit'] ?? null],
                 'generated_at' => now(), 'user_id' => Auth::id(),
             ]);
         } catch (\Throwable $exception) {
@@ -308,6 +310,7 @@ class ReportController extends Controller
             'design.header_color' => ['nullable', Rule::in(['navy', 'orange', 'green'])],
             'design.table_spacing' => ['nullable', Rule::in(['standard', 'compact'])],
             'filters' => 'nullable|array',
+            'row_limit' => 'nullable|integer|min:1|max:10000',
         ]);
         $definition = $this->authorizeDataset($validated['dataset']);
         if (array_diff($validated['columns'], array_keys($definition['columns'])) !== []) {
@@ -318,6 +321,7 @@ class ReportController extends Controller
         if ($validated['dataset'] === 'expense_summary') {
             $rows = $this->summaryRowsForColumns($rows, $validated['columns']);
         }
+        $rows = $this->limitExportRows($rows, $validated['row_limit'] ?? null);
         $balances = $validated['dataset'] === 'expense_summary'
             ? $this->summaryBalances($rows, $filters, $validated['columns']) : [];
         return response()->json([
@@ -341,6 +345,7 @@ class ReportController extends Controller
         if ($validated['dataset'] === 'expense_summary') {
             $rows = $this->summaryRowsForColumns($rows, array_keys($columns));
         }
+        $rows = $this->limitExportRows($rows, $validated['row_limit'] ?? null);
         $balances = $validated['dataset'] === 'expense_summary'
             ? $this->summaryBalances($rows, $filters, array_keys($columns)) : [];
         $totals = $balances ? array_values($balances) : null;
@@ -363,7 +368,7 @@ class ReportController extends Controller
                 'status' => 'Completed', 'generation_method' => 'system_export',
                 'dataset_key' => $validated['dataset'], 'export_format' => $format,
                 'row_count' => $rows->count(), 'selected_columns' => array_keys($columns),
-                'filters_applied' => $filters, 'export_options' => ['sections' => ['summary', 'data'], 'design' => $validated['design'] ?? []],
+                'filters_applied' => $filters, 'export_options' => ['sections' => ['summary', 'data'], 'design' => $validated['design'] ?? [], 'row_limit' => $validated['row_limit'] ?? null],
                 'generated_at' => now(), 'user_id' => Auth::id(),
             ]);
         } catch (\Throwable $exception) {
@@ -846,6 +851,7 @@ class ReportController extends Controller
     {
         $previousCutoff = $this->summaryCutoffDate($filters)->startOfMonth()->subDay()->toDateString();
         $previousRows = $this->expenseSummaryRows($filters, $previousCutoff);
+        $previousRows = $previousRows->whereIn('project_id', $rows->pluck('project_id')->all());
         if ($columns !== null) $previousRows = $this->summaryRowsForColumns($previousRows, $columns);
         $current = $this->summaryTotals($rows, 'TOTAL(As of Current Month)');
         $previous = $this->summaryTotals($previousRows, 'TOTAL BALANCE(As of Previous Month)');
@@ -854,6 +860,11 @@ class ReportController extends Controller
             if ($key !== 'project_name') $month[$key] = round($current[$key] - $previous[$key], 2);
         }
         return ['totals' => $current, 'previous_totals' => $previous, 'month_totals' => $month];
+    }
+
+    private function limitExportRows(Collection $rows, ?int $limit): Collection
+    {
+        return $limit === null ? $rows : $rows->take($limit)->values();
     }
 
     private function summaryRowsForColumns(Collection $rows, array $columns): Collection

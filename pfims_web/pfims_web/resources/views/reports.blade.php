@@ -250,6 +250,7 @@
             </div>
             <label>Report title<input id="exportTitle" name="title" required minlength="3" maxlength="120"></label>
             <label>Format<select id="exportFormat" name="format" required><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV (.csv)</option><option value="pdf">PDF (.pdf)</option></select></label>
+            <label>Rows to export<select id="exportRowLimit" name="row_limit"><option value="">All matching rows</option><option value="5">First 5 rows</option><option value="10">First 10 rows</option><option value="25">First 25 rows</option><option value="50">First 50 rows</option><option value="100">First 100 rows</option><option value="500">First 500 rows</option><option value="1000">First 1,000 rows</option></select></label>
             <div class="selection-group"><strong>Choose detailed fields</strong><div id="columnChoices" class="choice-grid columns"></div></div>
             <div class="active-filter-summary"><strong>Filters included in this export</strong><p id="exportFilterSummary">No filters applied.</p></div>
             <div class="preview-toolbar">
@@ -864,6 +865,7 @@
                             title: document.getElementById('exportTitle').value.trim(),
                             columns,
                             design: exportDesign(),
+                            row_limit: document.getElementById('exportRowLimit').value || null,
                             filters: selectedFilters()
                         })
                     });
@@ -877,13 +879,13 @@
                             data.title, 'As of ' + data.as_of, data.scope, '',
                             line(Object.fromEntries(Object.entries(data.columns).map(([key, label]) => [key, label.toUpperCase()]))), ...data.rows.map(line),
                             ...balanceRows.map(line)
-                        ].join('\n'))}</pre>`;
+                        ].join('\n'))}</pre>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} exported rows.</p>` : ''}`;
                     } else {
                         const header = Object.entries(data.columns).map(([key, label]) => `<th${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(label.toUpperCase())}</th>`).join('');
                         const fileValue = (key, value) => typeof value === 'number' || (value !== '' && value !== null && !isNaN(Number(value)) && !['project_name', 'item_name', 'category_name', 'supplier_name', 'unit_name', 'stock_status'].includes(key))
                             ? Number(value).toLocaleString('en-US', {minimumFractionDigits: key === 'item_id' ? 0 : 2, maximumFractionDigits: key === 'item_id' ? 0 : 2}) : (value ?? '');
                         const cells = (row, isBalance = false) => keys.map(key => `<td${!isBalance && state.dataset === 'expense_summary' && key === 'project_name' ? ' class="report-project-name"' : (isTotalColumn(key) ? ' class="report-total-column"' : '')}>${escapeHtml(fileValue(key, row[key]))}</td>`).join('');
-                        host.innerHTML = `<div class="preview-paper ${exportDesign().table_spacing === 'compact' ? 'preview-compact' : ''}" data-header-color="${exportDesign().header_color}"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table data-pfims-standard-actions="off"><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${balanceRows.map((row, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">${cells(row, true)}</tr>`).join('')}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} rows. Export includes all matching rows.</p>` : ''}</div>`;
+                        host.innerHTML = `<div class="preview-paper ${exportDesign().table_spacing === 'compact' ? 'preview-compact' : ''}" data-header-color="${exportDesign().header_color}"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table data-pfims-standard-actions="off"><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${balanceRows.map((row, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">${cells(row, true)}</tr>`).join('')}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} exported rows.</p>` : ''}</div>`;
                     }
                     button.disabled = false;
                 } catch (error) {
@@ -891,6 +893,7 @@
                 }
             }
             document.getElementById('exportFormat').addEventListener('change', loadExportPreview);
+            document.getElementById('exportRowLimit').addEventListener('change', loadExportPreview);
             document.getElementById('exportTitle').addEventListener('input', () => {
                 window.clearTimeout(state.previewTimer);
                 state.previewTimer = window.setTimeout(loadExportPreview, 300);
@@ -938,6 +941,7 @@
                             format: document.getElementById('exportFormat').value,
                             columns,
                             design: exportDesign(),
+                            row_limit: document.getElementById('exportRowLimit').value || null,
                             filters: selectedFilters()
                         })
                     });
