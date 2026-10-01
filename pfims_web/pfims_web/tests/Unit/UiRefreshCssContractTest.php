@@ -18,6 +18,19 @@ class UiRefreshCssContractTest extends TestCase
         $this->assertStringContainsString('menu.scrollTop = active.offsetTop', $script);
     }
 
+    public function test_phone_pages_keep_side_gutters_and_header_action_labels_visible(): void
+    {
+        $css = file_get_contents(dirname(__DIR__, 2).'/public/css/ui-refresh.css');
+        $phoneRules = substr($css, strrpos($css, '/* Phone pages keep a readable inset'));
+
+        $this->assertStringContainsString('@media (max-width: 640px)', $phoneRules);
+        $this->assertStringContainsString('padding-inline: 16px !important;', $phoneRules);
+        $this->assertStringContainsString('.pfims-expand-action .button-label', $phoneRules);
+        $this->assertStringContainsString('max-width: none !important;', $phoneRules);
+        $this->assertStringContainsString('opacity: 1 !important;', $phoneRules);
+        $this->assertStringContainsString('transition: none !important;', $phoneRules);
+    }
+
     public function test_desktop_density_is_applied_once_and_breakpoint_is_preserved(): void
     {
         $css = file_get_contents(dirname(__DIR__, 2).'/public/css/ui-refresh.css');

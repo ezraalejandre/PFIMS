@@ -5648,3 +5648,34 @@ html[data-theme="dark"] :where(
         overflow-wrap: anywhere;
     }
 }
+
+/* Phone pages keep a readable inset; page-header actions show their labels
+   without the desktop icon-to-label hover expansion. */
+@media (max-width: 640px) {
+    body:not(.landing-page) .main-content,
+    body.dashboard-page > .main-content,
+    body.reports-page .main-content,
+    html.sidebar-collapsed body.dashboard-page > .main-content,
+    html.sidebar-collapsed .reports-page .main-content {
+        padding-inline: 16px !important;
+    }
+
+    :is(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header, .report-header-actions, .header-actions, .dashboard-heading-actions)
+    :is(button, a).pfims-expand-action[data-icon-label],
+    :is(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header, .report-header-actions, .header-actions, .dashboard-heading-actions)
+    :is(button, a).pfims-expand-action[data-icon-label]:is(:hover, :focus-visible) {
+        gap: 7px !important;
+        padding-inline: 11px !important;
+        transition: none !important;
+    }
+
+    :is(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header, .report-header-actions, .header-actions, .dashboard-heading-actions)
+    .pfims-expand-action .button-label,
+    :is(.page-header, .page-heading, .page-header-with-btn, .dashboard-page-header, .report-header-actions, .header-actions, .dashboard-heading-actions)
+    .pfims-expand-action:is(:hover, :focus-visible) .button-label {
+        max-width: none !important;
+        opacity: 1 !important;
+        font-size: .82rem !important;
+        transition: none !important;
+    }
+}
