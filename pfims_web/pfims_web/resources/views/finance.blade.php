@@ -1070,7 +1070,7 @@
                 </label>
             </div>
             <div class="report-table-wrapper">
-                <table id="backhoeTable">
+                <table id="backhoeTable" data-pfims-standard-actions="off">
                     <thead><tr><th>Asset</th><th>Period</th><th>Gas/Diesel</th><th>Payroll (Operator)</th><th>Repair</th><th>Other</th><th>Delivery</th><th>Transport</th><th>Total</th><th>Rental Income</th><th>Net Income</th><th>Actions</th></tr></thead>
                     <tbody id="backhoeBody"><tr><td colspan="12" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
                 </table>
@@ -1376,7 +1376,7 @@
             <div class="modal-body">
                 <div id="equipmentDetailSummary" class="detail-grid"></div>
                 <h3 style="margin:18px 0 10px;">Underlying records</h3>
-                <div class="report-table-wrapper"><table><thead><tr><th>Type</th><th>Date/Period</th><th>Project</th><th>Amount</th><th>Remarks</th><th>Actions</th></tr></thead><tbody id="equipmentDetailBody"></tbody></table></div>
+                <div class="report-table-wrapper"><table data-pfims-standard-actions="off"><thead><tr><th>Type</th><th>Date/Period</th><th>Project</th><th>Amount</th><th>Remarks</th><th>Actions</th></tr></thead><tbody id="equipmentDetailBody"></tbody></table></div>
             </div>
             <div class="modal-footer"><button class="btn-cancel" onclick="closeEquipmentDetailModal()">Close</button></div>
         </div>
@@ -5391,7 +5391,7 @@
                         var rentalPeriod = String(record.period_month || '').substring(0, 7);
                         var rentalAsset = assets.find(function(item) { return String(item.asset_id) === String(record.asset_id); });
                         var rentalKey = record.asset_id + '|' + rentalPeriod;
-                        if (!rentalPeriod || reportPeriodKeys[rentalKey] || (assetId && String(assetId) !== String(record.asset_id)) || (month && rentalPeriod !== month)) return;
+                        if (!rentalPeriod || reportPeriodKeys[rentalKey] || (month && rentalPeriod !== month)) return;
                         if (!rentalAsset || rentalAsset.asset_type !== 'heavy_equipment') return;
                         reportRows.push({
                             asset_id: record.asset_id,
