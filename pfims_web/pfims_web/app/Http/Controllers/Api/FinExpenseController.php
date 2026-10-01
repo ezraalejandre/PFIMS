@@ -340,6 +340,14 @@ class FinExpenseController extends Controller
             if (! $isInventoryPurchase && ($errors = $this->projectComponentErrors($validated))) {
                 return response()->json(['errors' => $errors], 422);
             }
+            if (! empty($validated['project_id']) && ! DB::table('budgets_tbl')
+                ->where('project_id', $validated['project_id'])
+                ->where('budget_amount', '>', 0)
+                ->exists()) {
+                return response()->json(['errors' => [
+                    'project_id' => ['Add a budget for this project before recording an expense.'],
+                ]], 422);
+            }
 
             $inventoryItem = null;
             if ($isInventoryPurchase) {

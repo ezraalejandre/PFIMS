@@ -3560,6 +3560,12 @@
                 showError('Invalid category selected.');
                 return;
             }
+            if (projectId && !(budgetDataCache || budgetData).some(function(budget) {
+                return String(budget.project_id) === String(projectId) && Number(budget.budget_amount) > 0;
+            })) {
+                showError('Add a budget for this project before recording an expense.');
+                return;
+            }
 
             var expenseFormData = new FormData();
             expenseFormData.append('project_id', projectId);
@@ -3588,7 +3594,8 @@
             .then(function(response) {
                 if (!response.ok) {
                     return response.json().then(function(data) {
-                        throw new Error(data.message || data.error || 'Unable to save expense.');
+                        var projectErrors = data.errors && data.errors.project_id;
+                        throw new Error((projectErrors && projectErrors[0]) || data.message || data.error || 'Unable to save expense.');
                     });
                 }
                 return response.json();

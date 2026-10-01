@@ -579,6 +579,7 @@ class DataImportAndConfigurationTest extends TestCase
             'project_id' => 1, 'fin_category_id' => 1, 'project_cost_component' => 'material', 'expense_description' => 'Cement delivery',
             'amount' => 25000, 'expense_date' => '2026-01-10', 'created_at' => now(), 'updated_at' => now(),
         ]);
+        DB::table('budgets_tbl')->insert(['project_id' => 1, 'budget_amount' => 50000, 'actual_amount' => 0]);
         $this->actingAs($admin)->postJson('/api/finance-expenses', [
             'project_id' => 1, 'fin_category_id' => 1, 'project_cost_component' => 'material', 'expense_description' => ' cement delivery ',
             'amount' => 25000, 'expense_date' => '2026-01-10',

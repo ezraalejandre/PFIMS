@@ -660,6 +660,8 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_project_construction_supply_expense_does_not_create_a_storage_transaction(): void
     {
+        $this->createProjectBudgetsTable();
+        DB::table('budgets_tbl')->insert(['project_id' => 1, 'budget_amount' => 10000, 'actual_amount' => 0]);
         $transactionCount = DB::table('inventory_transaction_tbl')->count();
 
         $this->postJson('/api/finance-expenses', [
@@ -680,6 +682,37 @@ class FinanceInventoryFiltersTest extends TestCase
             'amount' => 1800,
         ]);
         $this->assertSame($transactionCount, DB::table('inventory_transaction_tbl')->count());
+    }
+
+    public function test_project_expense_requires_a_positive_budget_before_it_is_added(): void
+    {
+        $this->createProjectBudgetsTable();
+        $payload = [
+            'project_id' => 1,
+            'fin_category_id' => 1,
+            'expense_description' => 'Unbudgeted project material',
+            'amount' => 1800,
+            'expense_date' => '2026-09-20',
+        ];
+
+        $this->postJson('/api/finance-expenses', $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors(['project_id']);
+        DB::table('budgets_tbl')->insert(['project_id' => 1, 'budget_amount' => 0, 'actual_amount' => 0]);
+        $this->postJson('/api/finance-expenses', $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors(['project_id']);
+        DB::table('budgets_tbl')->where('project_id', 1)->update(['budget_amount' => 10000]);
+        $this->postJson('/api/finance-expenses', $payload)->assertCreated();
+        $this->assertDatabaseCount('fin_expense_tbl', 4);
+    }
+
+    private function createProjectBudgetsTable(): void
+    {
+        Schema::create('budgets_tbl', function (Blueprint $table) {
+            $table->increments('budget_id');
+            $table->integer('project_id');
+            $table->decimal('budget_amount', 14, 2);
+            $table->decimal('actual_amount', 14, 2)->default(0);
+        });
     }
 
     public function test_admin_expense_uses_office_label_without_a_project_or_proof(): void
