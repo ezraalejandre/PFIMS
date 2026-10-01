@@ -176,7 +176,7 @@
 
         <!-- Table with Progress Bar -->
         <div class="table-wrapper">
-            <table>
+            <table data-pfims-standard-actions="off">
                 <thead>
                     <tr>
                         <th>Project Name</th>
@@ -365,6 +365,8 @@
 
             <div class="modal-footer" style="justify-content: flex-end; gap: 12px;">
                 <button class="btn-cancel" onclick="closeUpdateModal()">Close</button>
+                <button type="button" class="btn-edit-project" id="projectDetailsEditBtn">Edit</button>
+                <button type="button" class="btn-delete" id="projectDetailsDeleteBtn">Delete</button>
             </div>
         </div>
     </div>
@@ -1438,6 +1440,9 @@ if (new Date(endDate) <= new Date(startDate)) {
             document.body.style.overflow = '';
         }
 
+        document.getElementById('projectDetailsEditBtn').addEventListener('click', openEditProjectModal);
+        document.getElementById('projectDetailsDeleteBtn').addEventListener('click', deleteProject);
+
         // ─── DELETE PROJECT ───
                 function deleteProject() {
             if (!currentProjectRow) {
@@ -1474,12 +1479,9 @@ if (new Date(endDate) <= new Date(startDate)) {
                     if (!response.ok) {
                         // Try to parse error message
                         return response.text().then(function(text) {
-                            try {
-                                var data = JSON.parse(text);
-                                throw new Error(data.message || 'Failed to delete project');
-                            } catch (e) {
-                                throw new Error('Failed to delete project. Server error.');
-                            }
+                            var data;
+                            try { data = JSON.parse(text); } catch (e) { data = null; }
+                            throw new Error((data && data.message) || 'Failed to delete project. Server error.');
                         });
                     }
                     return response.json();
