@@ -313,7 +313,6 @@ class CentralizedReportsTest extends TestCase
         $config = [
             'dataset' => 'expense_summary', 'title' => 'Summary of Expenses',
             'columns' => ['project_name', 'construction_supply', 'total'], 'filters' => [],
-            'design' => ['header_color' => 'orange', 'table_spacing' => 'compact'],
         ];
         $this->actingAs($admin)->postJson('/api/reports/preview', $config)
             ->assertOk()->assertJsonPath('row_count', 1)
@@ -342,10 +341,11 @@ class CentralizedReportsTest extends TestCase
                 $this->assertStringContainsString('Preview Site', $zip->getFromName('xl/worksheets/sheet1.xml'));
                 $this->assertStringContainsString('TOTAL BALANCE(As of Previous Month)', $zip->getFromName('xl/worksheets/sheet1.xml'));
                 $this->assertStringContainsString('FF176638', $zip->getFromName('xl/styles.xml'));
-                $this->assertStringContainsString('FFC96C00', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('FFF8FAFC', $zip->getFromName('xl/styles.xml'));
+                $this->assertStringContainsString('FF475569', $zip->getFromName('xl/styles.xml'));
                 $this->assertStringContainsString('horizontal="center"', $zip->getFromName('xl/styles.xml'));
                 $this->assertStringContainsString('<borders count="2">', $zip->getFromName('xl/styles.xml'));
-                $this->assertStringContainsString('ht="30"', $zip->getFromName('xl/worksheets/sheet1.xml'));
+                $this->assertStringContainsString('ht="42"', $zip->getFromName('xl/worksheets/sheet1.xml'));
                 $this->assertStringContainsString('PROJECT', $zip->getFromName('xl/worksheets/sheet1.xml'));
                 $this->assertStringContainsString('FFF2F4F7', $zip->getFromName('xl/styles.xml'));
                 $this->assertStringContainsString('FFFDEAEA', $zip->getFromName('xl/styles.xml'));
@@ -539,7 +539,8 @@ class CentralizedReportsTest extends TestCase
                 ->assertSee('id="historyPagination"', false)
                 ->assertSee('id="historyPageSize"', false)
                 ->assertSee('data-pfims-standard-actions="off"', false)
-                ->assertSee('id="editExportDesign" data-pfims-no-expand', false)
+                ->assertDontSee('id="editExportDesign"', false)
+                ->assertDontSee('id="exportDesignControls"', false)
                 ->assertSee('class="pfims-row-action history-view-button"', false)
                 ->assertSee('class="pfims-row-action history-download-button"', false)
                 ->assertSee('download title="Download report"', false)
@@ -559,7 +560,7 @@ class CentralizedReportsTest extends TestCase
         $this->assertStringContainsString('font-weight: 400 !important;', $pickerCss);
         $this->assertStringContainsString('body.reports-page .report-date-picker .report-date-options button[aria-pressed="true"] { font-weight: 700 !important; }', $pickerCss);
         $this->assertStringContainsString('.report-year-navigation span { font-weight: 400; }', $pickerCss);
-        $this->assertStringContainsString('.preview-paper[data-header-color="orange"] th:not(.report-total-column) { background: #c96c00 !important; }', $pickerCss);
+        $this->assertStringContainsString('.preview-paper th:not(.report-total-column) { background: #f8fafc !important; color: #475569 !important;', $pickerCss);
         $this->assertStringContainsString('.preview-paper table { min-width: 940px; border-collapse: collapse !important; }', $pickerCss);
         $this->assertStringContainsString('class="report-stock-status is-${stockTone}"', file_get_contents(resource_path('views/reports.blade.php')));
         $this->assertStringContainsString('.reports-page .report-stock-status.is-danger', $pickerCss);

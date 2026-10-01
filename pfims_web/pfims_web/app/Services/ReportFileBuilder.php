@@ -55,7 +55,8 @@ class ReportFileBuilder
 
     private function pdf(string $title, string $scope, array $columns, array $rows, ?array $totals, array $design): string
     {
-        $headerColor = match ($design['header_color'] ?? 'navy') { 'orange' => '#c96c00', 'green' => '#176638', default => '#1a2b3c' };
+        $headerColor = match ($design['header_color'] ?? '') { 'orange' => '#c96c00', 'green' => '#176638', 'navy' => '#1a2b3c', default => '#f8fafc' };
+        $headerTextColor = empty($design['header_color']) ? '#475569' : '#ffffff';
         $cellPadding = ($design['table_spacing'] ?? 'standard') === 'compact' ? '3px' : '6px';
         $logo = base64_encode(file_get_contents(public_path('images/report-header.jpeg')));
         $head = implode('', array_map(fn ($key, $label) => '<th'.($this->isTotalColumn($key) ? ' class="total-column"' : '').'>'.$this->html(mb_strtoupper($label)).'</th>', array_keys($columns), array_values($columns)));
@@ -72,7 +73,7 @@ class ReportFileBuilder
             header { text-align:center; margin-bottom:15px; } header img { width:330px; height:auto; }
             h1 { font-size:14px; margin:7px 0 3px; } p { margin:2px 0; }
             table { border-collapse:collapse; width:100%; table-layout:fixed; margin-top:12px; }
-            th { background:'.$headerColor.'; color:white; font-size:7px; padding:'.$cellPadding.'; overflow-wrap:anywhere; border:1px solid #aab6c2; text-align:center; }
+            th { background:'.$headerColor.'; color:'.$headerTextColor.'; font-size:7px; padding:'.$cellPadding.'; overflow-wrap:anywhere; border:1px solid #aab6c2; text-align:center; }
             td { border:1px solid #aab6c2; padding:'.$cellPadding.'; text-align:center; overflow-wrap:anywhere; }
             tr.project-row td:first-child { font-weight:bold; }
             tr.total td { font-weight:bold; border-top:2px solid #1a2b3c; background:#f2f4f7; }
@@ -113,7 +114,8 @@ class ReportFileBuilder
 
     private function xlsx(string $title, string $scope, array $columns, array $rows, ?array $totals, array $design): string
     {
-        $headerRgb = match ($design['header_color'] ?? 'navy') { 'orange' => 'FFC96C00', 'green' => 'FF176638', default => 'FF1A2B3C' };
+        $headerRgb = match ($design['header_color'] ?? '') { 'orange' => 'FFC96C00', 'green' => 'FF176638', 'navy' => 'FF1A2B3C', default => 'FFF8FAFC' };
+        $headerFontRgb = empty($design['header_color']) ? 'FF475569' : 'FFFFFFFF';
         $compact = ($design['table_spacing'] ?? 'standard') === 'compact';
         $file = tempnam(sys_get_temp_dir(), 'pfims-report-');
         $zip = new ZipArchive;
@@ -171,6 +173,7 @@ class ReportFileBuilder
                 .'<xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/>'
                 .'</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
             $stylesXml = str_replace('FF1A2B3C', $headerRgb, $stylesXml);
+            $stylesXml = str_replace('FFFFFFFF', $headerFontRgb, $stylesXml);
             $stylesXml = str_replace('<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>',
                 '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFAAB6C2"/></left><right style="thin"><color rgb="FFAAB6C2"/></right><top style="thin"><color rgb="FFAAB6C2"/></top><bottom style="thin"><color rgb="FFAAB6C2"/></bottom><diagonal/></border></borders>', $stylesXml);
             $stylesXml = preg_replace_callback('/<xf\b[^>]*\bxfId="0"[^>]*\/>/', static function ($match) {

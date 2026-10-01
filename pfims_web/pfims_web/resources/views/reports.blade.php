@@ -255,11 +255,6 @@
             <div class="active-filter-summary"><strong>Filters included in this export</strong><p id="exportFilterSummary">No filters applied.</p></div>
             <div class="preview-toolbar">
                 <h3>Preview Export</h3>
-                <button type="button" class="btn btn-secondary" id="editExportDesign" data-pfims-no-expand aria-expanded="false" aria-controls="exportDesignControls">Edit Export</button>
-            </div>
-            <div class="export-design-controls" id="exportDesignControls" hidden>
-                <label>Header color<select id="exportHeaderColor"><option value="navy">Navy</option><option value="orange">Orange</option><option value="green">Green</option></select></label>
-                <label>Table spacing<select id="exportTableSpacing"><option value="standard">Standard</option><option value="compact">Compact</option></select></label>
             </div>
             <div class="report-preview" id="reportPreview" aria-live="polite">Preparing preview…</div>
             <div class="dialog-actions">
@@ -830,15 +825,6 @@
 
             const dialog = document.getElementById('exportDialog');
             const closeDialog = () => { if (dialog.open) dialog.close(); };
-            const exportDesign = () => ({
-                header_color: document.getElementById('exportHeaderColor').value,
-                table_spacing: document.getElementById('exportTableSpacing').value
-            });
-            document.getElementById('editExportDesign').addEventListener('click', event => {
-                const controls = document.getElementById('exportDesignControls');
-                controls.hidden = !controls.hidden;
-                event.currentTarget.setAttribute('aria-expanded', String(!controls.hidden));
-            });
             document.getElementById('openExport').addEventListener('click', () => {
                 updateExportSummary();
                 dialog.showModal();
@@ -864,29 +850,18 @@
                             dataset: state.dataset,
                             title: document.getElementById('exportTitle').value.trim(),
                             columns,
-                            design: exportDesign(),
                             row_limit: document.getElementById('exportRowLimit').value || null,
                             filters: selectedFilters()
                         })
                     });
                     if (current !== previewRequest) return;
-                    const format = document.getElementById('exportFormat').value;
                     const keys = Object.keys(data.columns);
                     const balanceRows = [data.totals, data.previous_totals, data.month_totals].filter(Boolean);
-                    const line = row => keys.map(key => String(row[key] ?? '').replaceAll('"', '""')).map(value => /[,"\n]/.test(value) ? `"${value}"` : value).join(',');
-                    if (format === 'csv') {
-                        host.innerHTML = `<p class="preview-note">CSV stores values only; it cannot contain an image or visual styling.</p><pre>${escapeHtml([
-                            data.title, 'As of ' + data.as_of, data.scope, '',
-                            line(Object.fromEntries(Object.entries(data.columns).map(([key, label]) => [key, label.toUpperCase()]))), ...data.rows.map(line),
-                            ...balanceRows.map(line)
-                        ].join('\n'))}</pre>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} exported rows.</p>` : ''}`;
-                    } else {
-                        const header = Object.entries(data.columns).map(([key, label]) => `<th${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(label.toUpperCase())}</th>`).join('');
-                        const fileValue = (key, value) => typeof value === 'number' || (value !== '' && value !== null && !isNaN(Number(value)) && !['project_name', 'item_name', 'category_name', 'supplier_name', 'unit_name', 'stock_status'].includes(key))
-                            ? Number(value).toLocaleString('en-US', {minimumFractionDigits: key === 'item_id' ? 0 : 2, maximumFractionDigits: key === 'item_id' ? 0 : 2}) : (value ?? '');
-                        const cells = (row, isBalance = false) => keys.map(key => `<td${!isBalance && state.dataset === 'expense_summary' && key === 'project_name' ? ' class="report-project-name"' : (isTotalColumn(key) ? ' class="report-total-column"' : '')}>${escapeHtml(fileValue(key, row[key]))}</td>`).join('');
-                        host.innerHTML = `<div class="preview-paper ${exportDesign().table_spacing === 'compact' ? 'preview-compact' : ''}" data-header-color="${exportDesign().header_color}"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table data-pfims-standard-actions="off"><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${balanceRows.map((row, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">${cells(row, true)}</tr>`).join('')}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} exported rows.</p>` : ''}</div>`;
-                    }
+                    const header = Object.entries(data.columns).map(([key, label]) => `<th${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(label.toUpperCase())}</th>`).join('');
+                    const fileValue = (key, value) => typeof value === 'number' || (value !== '' && value !== null && !isNaN(Number(value)) && !['project_name', 'item_name', 'category_name', 'supplier_name', 'unit_name', 'stock_status'].includes(key))
+                        ? Number(value).toLocaleString('en-US', {minimumFractionDigits: key === 'item_id' ? 0 : 2, maximumFractionDigits: key === 'item_id' ? 0 : 2}) : (value ?? '');
+                    const cells = (row, isBalance = false) => keys.map(key => `<td${!isBalance && state.dataset === 'expense_summary' && key === 'project_name' ? ' class="report-project-name"' : (isTotalColumn(key) ? ' class="report-total-column"' : '')}>${escapeHtml(fileValue(key, row[key]))}</td>`).join('');
+                    host.innerHTML = `<div class="preview-paper"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table data-pfims-standard-actions="off"><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${balanceRows.map((row, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">${cells(row, true)}</tr>`).join('')}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} exported rows.</p>` : ''}</div>`;
                     button.disabled = false;
                 } catch (error) {
                     if (current === previewRequest) host.textContent = 'Preview unavailable: ' + error.message;
@@ -899,7 +874,6 @@
                 state.previewTimer = window.setTimeout(loadExportPreview, 300);
             });
             document.getElementById('columnChoices').addEventListener('change', loadExportPreview);
-            document.getElementById('exportDesignControls').addEventListener('change', loadExportPreview);
             ['closeExport', 'cancelExport'].forEach(id => {
                 document.getElementById(id).addEventListener('click', closeDialog);
             });
@@ -940,7 +914,6 @@
                             title: document.getElementById('exportTitle').value.trim(),
                             format: document.getElementById('exportFormat').value,
                             columns,
-                            design: exportDesign(),
                             row_limit: document.getElementById('exportRowLimit').value || null,
                             filters: selectedFilters()
                         })

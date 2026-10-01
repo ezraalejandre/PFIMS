@@ -961,10 +961,6 @@ html[data-theme="dark"] .reports-page .table-wrap .report-total-row-month td { b
     margin-top: 12px;
 }
 .preview-toolbar h3 { margin: 0; font-size: 1rem; }
-.export-design-controls:not([hidden]) { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
-.export-design-controls label { min-width: 160px; }
-.export-design-controls select { display: block; width: 100%; }
-.export-design-controls[hidden] { display: none; }
 
 .report-preview .preview-paper {
     min-width: 0;
@@ -989,10 +985,7 @@ html[data-theme="dark"] .reports-page .table-wrap .report-total-row-month td { b
     text-align: center !important;
     vertical-align: middle;
 }
-.preview-paper th:not(.report-total-column) { background: #1a2b3c !important; color: #fff !important; text-transform: uppercase; }
-.preview-paper[data-header-color="orange"] th:not(.report-total-column) { background: #c96c00 !important; }
-.preview-paper[data-header-color="green"] th:not(.report-total-column) { background: #176638 !important; }
-.preview-paper.preview-compact th, .preview-paper.preview-compact td { padding: 3px; }
+.preview-paper th:not(.report-total-column) { background: #f8fafc !important; color: #475569 !important; text-transform: uppercase; }
 .preview-note { margin: 0 0 8px; color: #64748b; font-size: .78rem; }
 .report-preview pre { white-space: pre; font-size: .72rem; }
 

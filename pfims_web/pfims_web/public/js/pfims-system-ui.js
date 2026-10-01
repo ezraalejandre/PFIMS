@@ -501,7 +501,7 @@
     }
 
     function installCustomSelect(select) {
-        if (select.dataset.pfimsSelect === 'ready' || select.closest('#exportDialog')
+        if (select.dataset.pfimsSelect === 'ready'
             || select.multiple || Number(select.size || 0) > 1) return;
         select.dataset.pfimsSelect = 'ready';
         select.classList.add('pfims-native-select');
@@ -880,6 +880,7 @@
     function installExpandableActionButtons() {
         document.querySelectorAll('button, a').forEach(function (control) {
             if (control.dataset.pfimsActionLabel === 'ready' || control.hasAttribute('data-pfims-no-expand')
+                || control.matches('.pfims-select-trigger')
                 || control.closest('.sidebar, .pagination-links, .pfims-select-options, .pfims-column-chooser-menu')) return;
 
             var visibleText = (control.textContent || '').replace(/\s+/g, ' ').trim();
