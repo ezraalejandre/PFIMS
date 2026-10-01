@@ -6,6 +6,18 @@ use PHPUnit\Framework\TestCase;
 
 class UiRefreshCssContractTest extends TestCase
 {
+    public function test_shared_select_hides_native_content_and_keeps_menu_text_regular(): void
+    {
+        $css = file_get_contents(dirname(__DIR__, 2).'/public/css/ui-refresh.css');
+        $script = file_get_contents(dirname(__DIR__, 2).'/public/js/pfims-system-ui.js');
+
+        $this->assertStringContainsString('opacity: 0 !important;', $css);
+        $this->assertStringContainsString('appearance: none !important;', $css);
+        $this->assertStringContainsString('font-weight: 400 !important;', $css);
+        $this->assertStringContainsString("select.setAttribute('aria-hidden', 'true');", $script);
+        $this->assertStringContainsString('menu.scrollTop = active.offsetTop', $script);
+    }
+
     public function test_desktop_density_is_applied_once_and_breakpoint_is_preserved(): void
     {
         $css = file_get_contents(dirname(__DIR__, 2).'/public/css/ui-refresh.css');

@@ -505,6 +505,8 @@
             || select.multiple || Number(select.size || 0) > 1) return;
         select.dataset.pfimsSelect = 'ready';
         select.classList.add('pfims-native-select');
+        select.tabIndex = -1;
+        select.setAttribute('aria-hidden', 'true');
 
         var wrapper = document.createElement('span');
         wrapper.className = 'pfims-select';
@@ -617,7 +619,10 @@
             while (options[activeIndex]?.disabled) activeIndex = (activeIndex + 1) % options.length;
             options.forEach(function (option, optionIndex) { option.classList.toggle('is-active', optionIndex === activeIndex); });
             trigger.setAttribute('aria-activedescendant', options[activeIndex].id);
-            options[activeIndex].scrollIntoView({ block: 'nearest' });
+            var active = options[activeIndex];
+            if (active.offsetTop < menu.scrollTop) menu.scrollTop = active.offsetTop;
+            else if (active.offsetTop + active.offsetHeight > menu.scrollTop + menu.clientHeight)
+                menu.scrollTop = active.offsetTop + active.offsetHeight - menu.clientHeight;
         }
 
         function open() {
@@ -654,11 +659,11 @@
         });
         select.addEventListener('change', rebuild);
         select.addEventListener('focus', function () { trigger.focus(); });
-        document.addEventListener('click', function (event) {
+        document.addEventListener('pointerdown', function (event) {
             if (!wrapper.contains(event.target) && !menu.contains(event.target)) close();
         });
         window.addEventListener('scroll', function (event) {
-            if (!menu.hidden && event.target !== menu && !menu.contains(event.target)) close();
+            if (!menu.hidden && event.target !== menu && !menu.contains(event.target)) positionMenu();
         }, true);
         window.addEventListener('resize', close);
         new MutationObserver(rebuild).observe(select, { childList: true, subtree: true, attributes: true });
