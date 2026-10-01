@@ -8,7 +8,7 @@ $contracts = [
         'budgetProjectFilter', 'budgetStatusFilter', 'budgetSearch',
         'expovrallMonth', 'loadExpovrall()', 'expdirectMonth', 'loadExpDirect()', 'adminexpMonth', 'loadAdminExp()',
         'directexpMonth', 'loadDirectExp()', 'overallexpMonth', 'loadOverallExp()', 'profitType', 'loadProfit()',
-        'receivableType', 'loadReceivables()', 'cashMonth', 'loadCashAsset()', 'backhoeAsset', 'backhoeMonth',
+        'receivableType', 'loadReceivables()', 'cashMonth', 'loadCashAsset()', 'backhoeMonth',
         'loadBackhoe()', 'bondProjectFilter', 'bondStatusFilter', 'loadBonds()', 'summaryMonth', 'loadSummary()',
         'partials.data-import', 'finance-analytics.js',
     ],

@@ -1065,11 +1065,6 @@
         <!-- ─── TAB 12: BACKHOE ─── -->
         <div id="tabBackhoe" class="report-section {{ $financeTab === 'backhoe' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
-                <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Asset:
-                    <select id="backhoeAsset" onchange="loadBackhoe()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
-                        <option value="">All</option>
-                    </select>
-                </label>
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
                     <input type="month" id="backhoeMonth" value="{{ date('Y-m') }}" onchange="loadBackhoe()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
                 </label>
@@ -2742,10 +2737,10 @@
             var button = document.getElementById('saveCashAccountButton');
             button.disabled = true;
             apiFetch('/cash-accounts', { method: 'POST', body: JSON.stringify({ account_name: title }) })
-                .then(function() {
+                .then(function(account) {
                     closeAddCashAccountModal();
-                    showSuccess('Account added successfully!');
-                    return fetchCashAccounts();
+                    showSuccess('Account added. Enter its balance to display it in Cash Asset.');
+                    return openAddCashModal(account.account_id);
                 })
                 .catch(function(error) { showError(error.message); })
                 .finally(function() { button.disabled = false; });
@@ -4128,13 +4123,15 @@
         });
 
         // ─── ADD CASH ASSET ──────────────────────────────────────────
-        function openAddCashModal() {
+        function openAddCashModal(selectedAccountId) {
             document.getElementById('addCashModal').classList.add('active');
             document.body.style.overflow = 'hidden';
             document.getElementById('cashPeriod').value = '{{ date("Y-m") }}';
             document.getElementById('cashBalance').value = '';
             document.getElementById('cashRemarks').value = '';
-            fetchCashAccounts().catch(function(error) {
+            return fetchCashAccounts().then(function() {
+                if (selectedAccountId) document.getElementById('cashAccount').value = String(selectedAccountId);
+            }).catch(function(error) {
                 showError(error.message || 'Unable to load cash accounts.');
             });
         }
@@ -5344,14 +5341,10 @@
 
         // BACKHOE
         function loadBackhoe() {
-            var assetId = document.getElementById('backhoeAsset').value;
             var month = document.getElementById('backhoeMonth').value;
             
             var url = '/reports/backhoe-profitability';
             var params = [];
-            if (assetId) {
-                params.push('asset_id=' + assetId);
-            }
             if (month) {
                 params.push('period=' + month + '-01');
             }
