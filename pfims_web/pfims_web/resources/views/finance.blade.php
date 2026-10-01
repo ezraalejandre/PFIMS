@@ -2587,7 +2587,7 @@
 
         // ─── POPULATE DROPDOWNS ───────────────────────────────────────
         function populateProjectDropdowns() {
-            var selects = ['budgetProject', 'detailProjectEdit', 'bondProject', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
+            var selects = ['budgetProject', 'detailProjectEdit', 'bondProject', 'bondDetailProjectEdit', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
             selects.forEach(function(id) {
                 var select = document.getElementById(id);
                 if (!select) return;
@@ -5585,6 +5585,19 @@
         }
 
         // BONDS
+        function bondCalendarDate(value) {
+            if (!value) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+            var date = new Date(value);
+            if (isNaN(date.getTime())) return '';
+            var parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
+            }).formatToParts(date);
+            var values = {};
+            parts.forEach(function(part) { values[part.type] = part.value; });
+            return values.year + '-' + values.month + '-' + values.day;
+        }
+
         function loadBonds() {
             var projectFilter = document.getElementById('bondProjectFilter').value;
             var statusFilter = document.getElementById('bondStatusFilter').value;
@@ -5618,24 +5631,17 @@
                         var tr = document.createElement('tr');
                         var statusClass = 'status-' + (row.status || 'active');
                         
-                        var dateFormatted = '—';
-                        if (row.bond_date) {
-                            var dateObj = new Date(row.bond_date);
-                            if (!isNaN(dateObj.getTime())) {
-                                dateFormatted = dateObj.toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit'
-                                });
-                            }
-                        }
+                        var bondDate = bondCalendarDate(row.bond_date);
+                        var dateFormatted = bondDate ? new Date(bondDate + 'T00:00:00').toLocaleDateString('en-US', {
+                            year: 'numeric', month: '2-digit', day: '2-digit'
+                        }) : '—';
                         
                         var projectName = row.project ? row.project.project_name : (row.project_name || 'Project ' + row.project_id);
                         
                         tr.setAttribute('data-bond-id', row.bond_id);
                         tr.setAttribute('data-project-id', row.project_id);
                         tr.setAttribute('data-project-name', projectName);
-                        tr.setAttribute('data-date', row.bond_date || '');
+                        tr.setAttribute('data-date', bondDate);
                         tr.setAttribute('data-amount', row.amount || 0);
                         tr.setAttribute('data-provider', row.bond_provider || '');
                         tr.setAttribute('data-status', row.status || 'active');
