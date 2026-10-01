@@ -152,7 +152,7 @@
         <section id="overviewPanel" class="dashboard-tab-panel active" role="tabpanel" aria-labelledby="overviewTab">
         <div class="notice" id="notice" role="alert" hidden></div>
 
-        <section class="panel filters" aria-label="Dashboard filters">
+        <section class="panel filters" aria-label="Dashboard filters"@if($portal === 'accounting') data-filter-description="Filters update the budget and expenses graph and matching records."@endif>
             <label>
                 Search
                 <input id="search" type="search" maxlength="100" placeholder="Project, client, manager, or phase">
@@ -173,16 +173,19 @@
             <button id="clear" class="btn-secondary" type="button">Clear filters</button>
         </section>
 
+        @if($portal !== 'accounting')
         <h2 class="dashboard-section-title">Projects Performance</h2>
-
         <section class="kpis" id="kpis" aria-label="Dashboard key performance indicators"></section>
+        @endif
 
-        <section class="chart-grid{{ $portal === 'operations' ? ' single-chart' : '' }}" aria-label="Dashboard charts">
+        <section class="chart-grid{{ $portal !== 'admin' ? ' single-chart' : '' }}" aria-label="Dashboard charts">
+            @if($portal !== 'accounting')
             <article class="panel chart-card">
                 <h2>Completion trend</h2>
                 <p>Average current completion of projects started in each month.</p>
                 <div class="chart"><canvas id="completionChart"></canvas></div>
             </article>
+            @endif
             @if($portal !== 'operations')
             <article class="panel chart-card budget-panel">
                 <h2>Budget vs recorded expenses</h2>
@@ -352,7 +355,8 @@
             }
 
             function renderDashboard() {
-                document.getElementById('kpis').innerHTML = state.data.stat_cards.map(card => `
+                const kpis = document.getElementById('kpis');
+                if (kpis) kpis.innerHTML = state.data.stat_cards.map(card => `
                     <article class="kpi-card">
                         <span>${escapeHtml(card.label)}</span>
                         <strong>${escapeHtml(card.value)}</strong>
@@ -361,9 +365,11 @@
                     </article>
                 `).join('');
 
-                renderChart('completionChart', 'line', state.data.completion_trend.months, [
-                    { label: 'Completion %', values: state.data.completion_trend.values }
-                ]);
+                if (document.getElementById('completionChart')) {
+                    renderChart('completionChart', 'line', state.data.completion_trend.months, [
+                        { label: 'Completion %', values: state.data.completion_trend.values }
+                    ]);
+                }
                 if (document.getElementById('budgetChart')) {
                     renderChart('budgetChart', 'bar', state.data.budget_vs_expense.months, [
                         { label: 'Budget', values: state.data.budget_vs_expense.allocated_budget },

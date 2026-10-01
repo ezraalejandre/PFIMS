@@ -75,6 +75,21 @@ class RoleAccessTest extends TestCase
             ->assertSee('data-portal="admin"', false);
     }
 
+    public function test_accounting_dashboard_shows_only_budget_expense_chart(): void
+    {
+        $this->actingAs($this->user('accounting'))->get('/adashboard')
+            ->assertOk()
+            ->assertSee('id="budgetChart"', false)
+            ->assertDontSee('id="completionChart"', false)
+            ->assertDontSee('id="kpis"', false)
+            ->assertDontSee('Projects Performance');
+
+        $this->actingAs($this->user('admin'))->get('/dashboard')
+            ->assertOk()
+            ->assertSee('id="completionChart"', false)
+            ->assertSee('id="kpis"', false);
+    }
+
     public function test_legacy_profile_apis_require_authentication(): void
     {
         $this->postJson('/api/profile', ['email' => 'admin@example.test'])->assertUnauthorized();
