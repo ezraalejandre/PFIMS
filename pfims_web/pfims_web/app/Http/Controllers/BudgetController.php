@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Budget;
+use App\Services\BudgetHistoryService;
 use App\Services\NotificationService;
 use App\Services\ProjectCostLedger;
 use Illuminate\Http\JsonResponse;
@@ -48,6 +49,7 @@ class BudgetController extends Controller
         $data = $request->validate([
             'project_id' => ['required', 'integer', 'exists:project_tbl,project_id'],
             'budget_amount' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
+            'revision_reason' => ['nullable', 'string', 'max:500'],
             'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
         ]);
 
@@ -69,13 +71,13 @@ class BudgetController extends Controller
                     throw new \DomainException('This project already has a budget.');
                 }
 
-                return Budget::create([
+                return app(BudgetHistoryService::class)->create([
                     'project_id' => $data['project_id'],
                     'budget_amount' => $data['budget_amount'],
                     'actual_amount' => app(ProjectCostLedger::class)->forProject((int) $data['project_id'])['total'],
                     'proof_file_path' => $path,
                     'proof_file_name' => $path ? mb_substr($request->file('proof_file')->getClientOriginalName(), 0, 255) : null,
-                ]);
+                ], $data['revision_reason'] ?? 'Initial budget entered through Finance.', true);
             });
         } catch (\DomainException $exception) {
             if ($path) {
@@ -114,6 +116,7 @@ class BudgetController extends Controller
         $data = $request->validate([
             'project_id' => ['sometimes', 'required', 'integer', 'exists:project_tbl,project_id'],
             'budget_amount' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
+            'revision_reason' => ['nullable', 'string', 'max:500'],
             'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'remove_proof_file' => ['nullable', 'boolean'],
         ]);
@@ -151,7 +154,7 @@ class BudgetController extends Controller
                     $changes['proof_file_path'] = null;
                     $changes['proof_file_name'] = null;
                 }
-                $budget->update($changes);
+                app(BudgetHistoryService::class)->revise($budget, $changes, $data['revision_reason'] ?? 'Budget updated through Finance.');
             });
         } catch (\Throwable $exception) {
             if ($newPath) {
@@ -180,12 +183,31 @@ class BudgetController extends Controller
         }
 
         $path = $budget->proof_file_path;
-        $budget->delete();
+        try {
+            app(BudgetHistoryService::class)->remove($budget, 'Budget deleted through Finance.');
+        } catch (\DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
+        }
         if ($path) {
             Storage::disk('public')->delete($path);
         }
 
         return response()->json(['message' => 'Budget deleted']);
+    }
+
+    public function history(int $id): JsonResponse
+    {
+        $budget = Budget::find($id);
+        if (! $budget) {
+            return response()->json(['message' => 'Budget not found'], 404);
+        }
+
+        return response()->json([
+            'budget_context' => app(BudgetHistoryService::class)->context((int) $budget->project_id, (float) $budget->budget_amount, (int) $budget->budget_id),
+            'history' => \Illuminate\Support\Facades\Schema::hasTable('project_budget_history')
+                ? DB::table('project_budget_history')->where('project_id', $budget->project_id)->orderBy('history_id')->get()
+                : [],
+        ]);
     }
 
     private function present(Budget $budget): array
@@ -196,6 +218,7 @@ class BudgetController extends Controller
             'project_id' => $budget->project_id,
             'project_name' => $budget->project?->project_name,
             'budget_amount' => $budget->budget_amount,
+            'budget_context' => app(BudgetHistoryService::class)->context((int) $budget->project_id, (float) $budget->budget_amount, (int) $budget->budget_id),
             'actual_amount' => $cost['total'],
             'direct_cost' => $cost['direct'],
             'inventory_usage_cost' => $cost['allocated'],

@@ -29,8 +29,6 @@ class MLService
 
     private const FIN_FEATURE_IMPROVEMENT_THRESHOLD_PERCENT = 5.0;
 
-    private const OVERRUN_RISK_TOLERANCE = 0.05;
-
     private const MINIMUM_BASELINE_MAPE_IMPROVEMENT_POINTS = 2.0;
 
     private const FORECAST_HORIZON_DAYS = 30;
@@ -370,6 +368,7 @@ class MLService
                         : "'operational' as data_source"),
                     DB::raw($projectTypeSelect.' as raw_project_type'),
                     'budgets_tbl.budget_amount as budget', 'budgets_tbl.actual_amount as budget_actual', DB::raw("{$actualCost} as actual_cost"),
+                    'budgets_tbl.budget_id',
                     DB::raw(($finExpenses === null ? '0' : 'COALESCE(fin_expenses.fin_material_expense, 0)')." + {$featureAllocated} as material_cost"),
                     DB::raw($finExpenses === null ? '0 as labor_cost' : 'COALESCE(fin_expenses.fin_labor_expense, 0) as labor_cost'),
                     DB::raw(($finExpenses === null ? '0' : 'COALESCE(fin_expenses.fin_total_expense, 0)')." + {$featureAllocated} as fin_total_expense"),
@@ -415,6 +414,7 @@ class MLService
                     $row->project_type_source = blank($row->raw_project_type ?? null)
                         ? 'normalized_project_name'
                         : $this->projectTypeSource();
+                    $row->budget_context = app(BudgetHistoryService::class)->context((int) $row->project_id, (float) $row->budget, (int) $row->budget_id);
 
                     return $row;
                 })
@@ -648,6 +648,7 @@ class MLService
             'project_tbl.start_date', 'project_tbl.estimated_end_date',
             'project_tbl.worker_count', 'project_tbl.completion_percentage',
             'budgets_tbl.budget_amount as budget',
+            'budgets_tbl.budget_id',
             DB::raw(($finance === null ? '0' : 'COALESCE(prediction_finance.fin_total_expense, 0)')." + {$allocated} as fin_total_expense"),
             DB::raw(($finance === null ? '0' : 'COALESCE(prediction_finance.fin_material_expense, 0)')." + {$allocated} as fin_material_expense"),
             DB::raw($finance === null ? '0 as fin_labor_expense' : 'COALESCE(prediction_finance.fin_labor_expense, 0) as fin_labor_expense'),
@@ -675,6 +676,7 @@ class MLService
 
                 return [
                     'project_id' => (int) $project->project_id,
+                    'budget_context' => app(BudgetHistoryService::class)->context((int) $project->project_id, (float) $project->budget, (int) $project->budget_id),
                     'project_name' => $project->project_name ?: 'Project #'.$project->project_id,
                     'status' => $project->status ?: 'Unspecified',
                     'budget' => (float) $project->budget,
@@ -1345,8 +1347,8 @@ class MLService
 
         $tp = $fp = $tn = $fn = 0;
         foreach ($predictions as $index => $prediction) {
-            $actualRisk = $actuals[$index] > $budgets[$index] * (1 + self::OVERRUN_RISK_TOLERANCE);
-            $predictedRisk = $prediction > $budgets[$index] * (1 + self::OVERRUN_RISK_TOLERANCE);
+            $actualRisk = app(ProjectOverrunPolicy::class)->classify($actuals[$index], $budgets[$index])['material_overrun'] === true;
+            $predictedRisk = app(ProjectOverrunPolicy::class)->classify($prediction, $budgets[$index])['material_overrun'] === true;
             if ($actualRisk && $predictedRisk) {
                 $tp++;
             } elseif (! $actualRisk && $predictedRisk) {
@@ -1644,7 +1646,7 @@ class MLService
                 'prediction_usable' => false,
                 'support_level' => 'insufficient_evidence',
                 'forecast_context' => $context,
-                'status_reason' => 'The model has not outperformed the original-budget baseline on the untouched holdout.',
+                'status_reason' => 'The model has not outperformed the recorded-budget baseline on the untouched holdout.',
             ];
         }
         if (! $productionModelIsBest) {
@@ -1878,6 +1880,12 @@ class MLService
             },
             'warnings' => $provenanceWarnings,
             'classification_definition' => 'Precision, recall and F1 classify project-overrun risk when cost exceeds budget by more than 5%. Values are percentages and are unavailable when the holdout has no applicable positive cases.',
+            'overrun_definitions' => [
+                'budget_basis' => ($this->metadata['prediction_strategy'] ?? null) === 'progress_snapshot_model' ? 'budget_recorded_at_snapshot' : 'latest_recorded_budget',
+                'any_overrun' => 'Final cost exceeds the recorded budget used for evaluation.',
+                'material_overrun' => 'Final cost exceeds that budget by more than 5%. Exactly 5% is not a material overrun.',
+                'original_budget' => 'Evaluated separately when an initial recorded budget is available; existing and imported budgets are not assumed to be original.',
+            ],
             'monitoring_segments' => $metrics['monitoring_segments'] ?? null,
             'split_selection' => $this->metadata['split_selection'] ?? null,
             'cross_validation' => $this->metadata['cross_validation'] ?? null,

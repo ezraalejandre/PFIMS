@@ -106,6 +106,12 @@ class ProjectCostSnapshotService
                     ? ($project->data_source ?: 'operational')
                     : 'operational',
             ];
+            if (Schema::hasColumn('ml_project_cost_snapshots', 'budget_history_id')) {
+                $budgetContext = app(BudgetHistoryService::class)->context($projectId, (float) $budget->budget_amount, (int) $budget->budget_id);
+                $snapshot['budget_history_id'] = $budgetContext['current_budget_version_id'];
+                $snapshot['original_budget_amount'] = $budgetContext['original_budget_amount'];
+                $snapshot['budget_basis'] = $budgetContext['budget_basis'];
+            }
             foreach ($activity as $column => $value) {
                 if (Schema::hasColumn('ml_project_cost_snapshots', $column)) {
                     $snapshot[$column] = $value;

@@ -256,7 +256,42 @@ class MLImprovementTest extends TestCase
             ->assertJsonPath('input_features.project_name', 'Active Warehouse')
             ->assertJsonPath('input_features.budget', 1200000)
             ->assertJsonPath('input_features.worker_count', 12)
-            ->assertJsonPath('input_features.fin_total_expense', 400000);
+            ->assertJsonPath('input_features.fin_total_expense', 400000)
+            ->assertJsonPath('budget_context.budget_basis', 'latest_recorded_budget')
+            ->assertJsonPath('budget_context.original_budget_amount', null)
+            ->assertJsonPath('overrun_outcomes.material_overrun_threshold_percent', 5)
+            ->assertJsonPath('overrun_outcomes.original_budget.any_overrun', null);
+    }
+
+    public function test_snapshots_keep_the_budget_version_known_at_capture_after_a_revision(): void
+    {
+        Carbon::setTestNow('2025-04-10 09:30:00');
+        $projectId = $this->insertProject([
+            'project_name' => 'Budget version history', 'start_date' => '2025-01-01',
+            'estimated_end_date' => '2025-07-01', 'actual_end_date' => null,
+            'worker_count' => 12, 'completion_percentage' => 25, 'status' => 'In Progress',
+        ], 1000000, 0);
+        $migration = require database_path('migrations/2026_10_02_000001_create_project_budget_history.php');
+        $migration->up();
+        $this->mock(AutomaticModelRetraining::class, fn ($mock) => $mock->shouldReceive('afterDataChange')->zeroOrMoreTimes());
+        $snapshots = app(ProjectCostSnapshotService::class);
+        $this->assertTrue($snapshots->capture($projectId, 'before_revision'));
+        $first = DB::table('ml_project_cost_snapshots')->where('capture_reason', 'before_revision')->first();
+        $this->assertNotNull($first->budget_history_id);
+        $this->assertNull($first->original_budget_amount);
+
+        Carbon::setTestNow('2025-04-11 09:30:00');
+        $budget = \App\Models\Budget::where('project_id', $projectId)->firstOrFail();
+        app(\App\Services\BudgetHistoryService::class)->revise($budget, ['budget_amount' => 1200000], 'Scope revision');
+        $this->assertTrue($snapshots->capture($projectId, 'after_revision'));
+        $second = DB::table('ml_project_cost_snapshots')->where('capture_reason', 'after_revision')->first();
+        $this->assertNotSame($first->budget_history_id, $second->budget_history_id);
+        $this->assertSame(1000000.0, (float) DB::table('ml_project_cost_snapshots')->where('snapshot_id', $first->snapshot_id)->value('planned_budget'));
+        $this->assertSame(1200000.0, (float) $second->planned_budget);
+        $this->assertSame('latest_recorded_budget', $second->budget_basis);
+        $migration->down();
+        $this->assertFalse(Schema::hasColumn('ml_project_cost_snapshots', 'budget_history_id'));
+        $this->assertDatabaseCount('ml_project_cost_snapshots', 2);
     }
 
     public function test_snapshot_capture_is_append_only_and_uses_the_planned_schedule(): void

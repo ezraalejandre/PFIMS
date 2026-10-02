@@ -119,6 +119,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     // ─── BUDGET ROUTES ──────────────────────────────────────────────
     Route::get('/budgets', [BudgetController::class, 'index']);
     Route::post('/budgets', [BudgetController::class, 'store']);
+    Route::get('/budgets/{id}/history', [BudgetController::class, 'history'])->whereNumber('id');
     Route::put('/budgets/{id}', [BudgetController::class, 'update']);
     Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']);
 

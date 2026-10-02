@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\MLService;
+use App\Services\ProjectOverrunPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -142,6 +143,15 @@ class MLController extends Controller
             $budget = (float) $validated['budget'];
             $variance = $prediction - $budget;
             $variancePercentage = $budget > 0 ? ($variance / $budget) * 100 : 0;
+            $budgetContext = $selectedProject['budget_context'] ?? [
+                'budget_basis' => 'manually_supplied_budget',
+                'current_budget_amount' => $budget,
+                'current_budget_id' => null,
+                'current_budget_version_id' => null,
+                'budget_recorded_at' => null,
+                'original_budget_amount' => null,
+                'original_budget_status' => 'unavailable',
+            ];
             $riskLevel = match (true) {
                 $variancePercentage <= 0 => 'On track',
                 $variancePercentage <= 2 => 'Low risk',
@@ -194,6 +204,8 @@ class MLController extends Controller
                 'formatted' => '₱'.number_format($prediction, 2),
                 'variance' => round($variance, 2),
                 'variance_percentage' => round($variancePercentage, 2),
+                'budget_context' => $budgetContext,
+                'overrun_outcomes' => app(ProjectOverrunPolicy::class)->outcomes($prediction, $budgetContext),
                 'status' => $status,
                 'risk_level' => $riskLevel,
                 'business_action' => $businessAction,

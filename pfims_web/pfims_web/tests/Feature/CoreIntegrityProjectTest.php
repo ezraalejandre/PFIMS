@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Budget;
+use App\Services\BudgetHistoryService;
+use App\Services\ProjectOverrunPolicy;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -64,6 +67,8 @@ class CoreIntegrityProjectTest extends TestCase
         parent::setUp();
         Schema::dropAllTables();
         $this->createSchema();
+        $migration = require database_path('migrations/2026_10_02_000001_create_project_budget_history.php');
+        $migration->up();
         foreach (['Planning', 'Foundation', 'Structure', 'Finishing', 'Complete'] as $index => $phase) {
             DB::table('project_phase_tbl')->insert(['phase_name' => $phase, 'stage_order' => $index + 1]);
         }
@@ -80,6 +85,105 @@ class CoreIntegrityProjectTest extends TestCase
         $this->postJson('/api/expenses', [])->assertUnauthorized();
 
         $this->actingAs($this->user())->getJson('/api/units')->assertOk();
+    }
+
+    public function test_budget_history_preserves_initial_amount_and_records_only_amount_changes(): void
+    {
+        $projectId = $this->project();
+        $this->actingAs($this->user());
+        $created = $this->postJson('/api/budgets', [
+            'project_id' => $projectId, 'budget_amount' => 1000, 'revision_reason' => 'Initial allocation',
+        ])->assertCreated()->assertJsonPath('budget_context.original_budget_amount', 1000);
+        $budgetId = $created->json('budget_id');
+        $firstVersion = $created->json('budget_context.current_budget_version_id');
+
+        $updated = $this->putJson("/api/budgets/{$budgetId}", [
+            'budget_amount' => 1200, 'revision_reason' => 'Approved additional work',
+        ])->assertOk()->assertJsonPath('budget_context.original_budget_amount', 1000)
+            ->assertJsonPath('budget_context.current_budget_amount', 1200);
+        $this->assertNotSame($firstVersion, $updated->json('budget_context.current_budget_version_id'));
+        $this->putJson("/api/budgets/{$budgetId}", ['budget_amount' => 1200])->assertOk();
+        $history = $this->getJson("/api/budgets/{$budgetId}/history")->assertOk()->assertJsonCount(2, 'history');
+        $this->assertSame('Approved additional work', $history->json('history.1.reason'));
+        $this->assertNotNull($history->json('history.1.recorded_by'));
+        $this->assertSame('revised', $history->json('history.1.event_type'));
+    }
+
+    public function test_existing_budget_backfill_is_idempotent_and_does_not_invent_original_approval(): void
+    {
+        $projectId = $this->project();
+        $budgetId = DB::table('budgets_tbl')->insertGetId(['project_id' => $projectId, 'budget_amount' => 500, 'actual_amount' => 123]);
+        $migration = require database_path('migrations/2026_10_02_000001_create_project_budget_history.php');
+        $migration->up();
+        $migration->up();
+        $this->assertDatabaseCount('project_budget_history', 1);
+        $this->assertDatabaseHas('project_budget_history', ['budget_id' => $budgetId, 'event_type' => 'opening_observed', 'effective_at' => null]);
+        $context = app(BudgetHistoryService::class)->context($projectId);
+        $this->assertNull($context['original_budget_amount']);
+        $this->assertSame('unavailable', $context['original_budget_status']);
+        $this->assertDatabaseHas('budgets_tbl', ['budget_id' => $budgetId, 'budget_amount' => 500, 'actual_amount' => 123]);
+        $migration->down();
+        $this->assertDatabaseHas('budgets_tbl', ['budget_id' => $budgetId, 'budget_amount' => 500, 'actual_amount' => 123]);
+    }
+
+    public function test_project_budget_edit_records_revision_with_original_budget_outcomes(): void
+    {
+        $projectId = $this->project();
+        app(BudgetHistoryService::class)->create(['project_id' => $projectId, 'budget_amount' => 1000, 'actual_amount' => 0], 'Initial budget', true);
+        $this->actingAs($this->user())->putJson("/api/projects/{$projectId}", [
+            'budget' => 1200, 'budget_revision_reason' => 'Scope revision',
+        ])->assertOk()->assertJsonPath('budget_context.original_budget_amount', 1000);
+        $this->assertDatabaseHas('project_budget_history', ['project_id' => $projectId, 'budget_amount' => 1200, 'reason' => 'Scope revision']);
+        $outcomes = app(ProjectOverrunPolicy::class)->outcomes(1100, app(BudgetHistoryService::class)->context($projectId));
+        $this->assertFalse($outcomes['current_budget']['any_overrun']);
+        $this->assertTrue($outcomes['original_budget']['material_overrun']);
+    }
+
+    public function test_imported_budget_does_not_claim_an_original_and_direct_correction_does_not_claim_a_version(): void
+    {
+        $projectId = $this->project();
+        $budget = app(BudgetHistoryService::class)->create(['project_id' => $projectId, 'budget_amount' => 1000, 'actual_amount' => 0], 'Imported budget');
+        $this->assertNull(app(BudgetHistoryService::class)->context($projectId)['original_budget_amount']);
+        DB::table('budgets_tbl')->where('budget_id', $budget->budget_id)->update(['budget_amount' => 1100]);
+        $context = app(BudgetHistoryService::class)->context($projectId);
+        $this->assertSame(1100.0, $context['current_budget_amount']);
+        $this->assertNull($context['current_budget_version_id']);
+        app(BudgetHistoryService::class)->revise($budget, ['budget_amount' => 1200], 'Application revision');
+        $this->assertDatabaseHas('project_budget_history', ['project_id' => $projectId, 'budget_amount' => 1100, 'event_type' => 'observed_correction', 'effective_at' => null]);
+        $this->assertDatabaseHas('project_budget_history', ['project_id' => $projectId, 'budget_amount' => 1200, 'event_type' => 'revised']);
+    }
+
+    public function test_budget_reassignment_and_removal_keep_history_without_moving_the_original(): void
+    {
+        $source = $this->project();
+        $destination = $this->project(['project_name' => 'History destination']);
+        $budget = app(BudgetHistoryService::class)->create(['project_id' => $source, 'budget_amount' => 500, 'actual_amount' => 0], 'Initial', true);
+        $this->actingAs($this->user())->putJson("/api/budgets/{$budget->budget_id}", [
+            'project_id' => $destination, 'budget_amount' => 600,
+        ])->assertOk()->assertJsonPath('budget_context.original_budget_amount', null);
+        $this->assertDatabaseHas('project_budget_history', ['project_id' => $source, 'event_type' => 'reassigned_from', 'budget_amount' => null]);
+        $this->assertDatabaseHas('project_budget_history', ['project_id' => $destination, 'event_type' => 'reassigned_to', 'budget_amount' => 600]);
+        $this->deleteJson("/api/budgets/{$budget->budget_id}")->assertOk();
+        $this->assertDatabaseHas('project_budget_history', ['project_id' => $destination, 'event_type' => 'removed', 'budget_amount' => null]);
+        $this->assertNull(app(BudgetHistoryService::class)->context($destination)['current_budget_amount']);
+    }
+
+    public function test_budget_and_history_roll_back_together_and_history_requires_authentication(): void
+    {
+        $projectId = $this->project();
+        $budgetId = DB::table('budgets_tbl')->insertGetId(['project_id' => $projectId, 'budget_amount' => 500, 'actual_amount' => 0]);
+        $this->getJson("/api/budgets/{$budgetId}/history")->assertUnauthorized();
+        try {
+            DB::transaction(function () use ($budgetId) {
+                app(BudgetHistoryService::class)->revise(Budget::findOrFail($budgetId), ['budget_amount' => 700], 'Rollback test');
+                throw new \RuntimeException('Abort transaction');
+            });
+            $this->fail('Expected rollback.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Abort transaction', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('project_budget_history', 0);
+        $this->assertDatabaseHas('budgets_tbl', ['budget_id' => $budgetId, 'budget_amount' => 500]);
     }
 
     public function test_project_validation_and_normalized_natural_key_prevent_duplicates(): void

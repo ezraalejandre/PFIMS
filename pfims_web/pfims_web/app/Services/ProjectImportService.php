@@ -113,11 +113,11 @@ class ProjectImportService
                 $budget = $record['budget'];
                 unset($record['budget']);
                 $projectId = DB::table('project_tbl')->insertGetId($record);
-                DB::table('budgets_tbl')->insert([
+                app(BudgetHistoryService::class)->create([
                     'project_id' => $projectId,
                     'budget_amount' => $budget,
                     'actual_amount' => 0,
-                ]);
+                ], 'Budget observed in a project import; original approval history is unavailable.');
                 $ids[] = (int) $projectId;
             }
             return $ids;

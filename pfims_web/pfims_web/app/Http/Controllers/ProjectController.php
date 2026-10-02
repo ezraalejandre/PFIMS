@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
+use App\Models\Budget;
+use App\Services\BudgetHistoryService;
 use App\Services\AutomaticModelRetraining;
 use App\Services\NotificationService;
 use App\Services\AuditLogService;
@@ -126,11 +128,11 @@ class ProjectController extends Controller
             ]);
 
             if (array_key_exists('budget', $data) && $data['budget'] !== null) {
-                DB::table('budgets_tbl')->insert([
+                app(BudgetHistoryService::class)->create([
                     'project_id' => $projectId,
                     'budget_amount' => $data['budget'],
                     'actual_amount' => 0,
-                ]);
+                ], $data['budget_revision_reason'] ?? 'Initial budget entered with a new project.', ($data['status'] ?? 'Pending') !== 'Completed');
             }
 
             return $projectId;
@@ -177,16 +179,15 @@ class ProjectController extends Controller
             }
 
             if (array_key_exists('budget', $data) && $data['budget'] !== null) {
-                $budget = DB::table('budgets_tbl')->where('project_id', $id)->orderByDesc('budget_id')->first();
+                $budget = Budget::where('project_id', $id)->orderByDesc('budget_id')->first();
                 if ($budget) {
-                    DB::table('budgets_tbl')->where('budget_id', $budget->budget_id)
-                        ->update(['budget_amount' => $data['budget']]);
+                    app(BudgetHistoryService::class)->revise($budget, ['budget_amount' => $data['budget']], $data['budget_revision_reason'] ?? 'Budget updated through Projects.');
                 } else {
-                    DB::table('budgets_tbl')->insert([
+                    app(BudgetHistoryService::class)->create([
                         'project_id' => $id,
                         'budget_amount' => $data['budget'],
                         'actual_amount' => 0,
-                    ]);
+                    ], $data['budget_revision_reason'] ?? 'Budget first entered for an existing project.');
                 }
             }
         });
@@ -273,6 +274,7 @@ class ProjectController extends Controller
             'phase' => [...$optionalOnCreate, 'string', Rule::exists('project_phase_tbl', 'phase_name')],
             'status' => [...$optionalOnCreate, 'string', 'in:'.implode(',', self::STATUSES)],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'budget_revision_reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         $validator->after(function ($validator) use ($request, $existing) {
@@ -333,6 +335,7 @@ class ProjectController extends Controller
         $latestBudget = DB::table('budgets_tbl')->where('project_id', $id)->orderByDesc('budget_id')->first();
         $project = DB::table('project_tbl')->where('project_id', $id)->first();
         $project->budget = (float) ($latestBudget->budget_amount ?? 0);
+        $project->budget_context = app(BudgetHistoryService::class)->context($id);
 
         return $project;
     }

@@ -17,6 +17,8 @@ class DataImportAndConfigurationTest extends TestCase
         parent::setUp();
         Schema::dropAllTables();
         $this->createSchema();
+        $migration = require database_path('migrations/2026_10_02_000001_create_project_budget_history.php');
+        $migration->up();
         $this->seedLookups();
     }
 
@@ -57,6 +59,8 @@ class DataImportAndConfigurationTest extends TestCase
             'phase' => 'Construction', 'completion_percentage' => 100, 'status' => 'Ongoing',
         ]);
         $this->assertDatabaseHas('budgets_tbl', ['project_id' => $projectId, 'budget_amount' => 500000, 'actual_amount' => 0]);
+        $this->assertDatabaseHas('project_budget_history', ['project_id' => $projectId, 'event_type' => 'observed_created', 'budget_amount' => 500000]);
+        $this->assertNull(app(\App\Services\BudgetHistoryService::class)->context($projectId)['original_budget_amount']);
 
         $duplicateAndNew = $header
             ."Imported Project,Client One,Another Manager,2026-01-01,2026-07-01,,20,Planning,Pending,1000.00\n"
