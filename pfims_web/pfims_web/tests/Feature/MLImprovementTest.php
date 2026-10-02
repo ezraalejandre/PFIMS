@@ -1213,6 +1213,136 @@ class MLImprovementTest extends TestCase
         $this->artisan('ml:audit-data')->assertExitCode(0);
     }
 
+    public function test_snapshot_timing_keeps_observed_schedule_and_coalesces_duplicate_event_hooks(): void
+    {
+        (require database_path('migrations/2026_10_02_000002_add_capture_quality_to_project_cost_snapshots.php'))->up();
+        Carbon::setTestNow('2025-06-01 09:00:00');
+        $id = $this->insertProject([
+            'project_name' => 'Observed progress', 'status' => 'Ongoing', 'completion_percentage' => 25,
+            'start_date' => '2025-05-01', 'estimated_end_date' => '2025-05-31', 'worker_count' => 4,
+        ], 1000, 200);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $id, 'fin_category_id' => 2, 'amount' => 200, 'expense_date' => '2025-05-15',
+        ]);
+        $snapshots = app(ProjectCostSnapshotService::class);
+        $this->assertTrue($snapshots->capture($id, 'stock_out_created'));
+        $this->assertFalse($snapshots->capture($id, 'data_change'));
+        $first = DB::table('ml_project_cost_snapshots')->first();
+        $this->assertSame(2, (int) $first->capture_schema_version);
+        $this->assertSame('2025-05-31', $first->planned_end_date);
+        $this->assertSame(30, (int) $first->planned_duration_days);
+        $this->assertSame(31, (int) $first->elapsed_days);
+        $this->assertSame(0, (int) $first->remaining_planned_days);
+        $this->assertSame(1, (int) $first->days_past_planned_end);
+        $this->assertTrue((bool) $first->cost_coverage_complete);
+        $this->assertNull($first->final_actual_cost);
+        DB::table('project_tbl')->where('project_id', $id)->update(['estimated_end_date' => '2025-06-15', 'completion_percentage' => 40]);
+        $this->assertTrue($snapshots->capture($id, 'data_change'));
+        $second = DB::table('ml_project_cost_snapshots')->orderByDesc('snapshot_id')->first();
+        $this->assertSame(14, (int) $second->remaining_planned_days);
+        $this->assertSame(0, (int) $second->days_past_planned_end);
+        $this->assertSame('2025-05-31', DB::table('ml_project_cost_snapshots')->where('snapshot_id', $first->snapshot_id)->value('planned_end_date'));
+        // A weekly observation is retained even without a financial change; duplicate jobs are blocked.
+        $this->assertTrue($snapshots->capture($id, 'weekly_schedule'));
+        $this->assertFalse($snapshots->capture($id, 'weekly_schedule'));
+        Carbon::setTestNow('2025-06-02 09:00:00');
+        $this->assertTrue($snapshots->capture($id, 'weekly_schedule'));
+        DB::table('budgets_tbl')->where('project_id', $id)->update(['actual_amount' => 300]);
+        $this->assertTrue($snapshots->capture($id, 'data_change'));
+        $this->assertFalse((bool) DB::table('ml_project_cost_snapshots')->orderByDesc('snapshot_id')->value('cost_coverage_complete'));
+        DB::table('project_tbl')->where('project_id', $id)->update(['start_date' => '2025-06-03']);
+        $count = DB::table('ml_project_cost_snapshots')->count();
+        $this->assertFalse($snapshots->capture($id, 'data_change'));
+        $this->assertSame($count, DB::table('ml_project_cost_snapshots')->count());
+        Carbon::setTestNow('2025-06-10 09:00:00');
+        DB::table('budgets_tbl')->where('project_id', $id)->update(['actual_amount' => 200]);
+        DB::table('project_tbl')->where('project_id', $id)->update([
+            'status' => 'Completed', 'completion_percentage' => 100, 'actual_end_date' => '2025-06-10',
+        ]);
+        $snapshots->capture($id, 'project_completed');
+        $ml = new MLService($this->modelPath, loadModel: false);
+        $rows = $this->invokeProtected($ml, 'getSnapshotTrainingData');
+        $this->assertSame('2025-05-01', $rows->firstWhere('snapshot_id', $first->snapshot_id)->planned_start_date);
+    }
+
+    public function test_capture_quality_migration_does_not_reconstruct_history_and_readiness_counts_projects(): void
+    {
+        Carbon::setTestNow('2025-06-01');
+        $id = $this->insertProject([
+            'project_name' => 'Historical observation', 'status' => 'Ongoing', 'completion_percentage' => 20,
+            'start_date' => '2025-01-01', 'estimated_end_date' => '2025-12-31', 'worker_count' => 4,
+        ], 1000, 0);
+        $snapshots = app(ProjectCostSnapshotService::class);
+        $snapshots->capture($id);
+        $before = DB::table('ml_project_cost_snapshots')->first();
+        $migration = require database_path('migrations/2026_10_02_000002_add_capture_quality_to_project_cost_snapshots.php');
+        $migration->up();
+        $historical = DB::table('ml_project_cost_snapshots')->first();
+        $this->assertNull($historical->capture_schema_version);
+        $this->assertNull($historical->planned_end_date);
+        $this->assertNull($historical->cost_coverage_complete);
+        foreach ((array) $before as $column => $value) {
+            $this->assertSame($value, $historical->{$column});
+        }
+        $snapshots->capture($id, 'weekly_schedule');
+        $ml = new MLService($this->modelPath, loadModel: false);
+        $readiness = $ml->getSnapshotReadiness();
+        $this->assertFalse(File::exists($this->modelPath));
+        $this->assertFalse(File::exists($this->modelPath.'.meta.json'));
+        $this->artisan('ml:audit-snapshots')->assertExitCode(0);
+        $this->assertSame(2, $readiness['collected_snapshot_rows']);
+        $this->assertSame(0, $readiness['finalized_projects']);
+        $this->assertSame(['early' => 10, 'middle' => 10, 'late' => 10], $readiness['projects_still_needed_by_stage']);
+        $this->assertFalse($readiness['eligible']);
+        $migration->down();
+        $this->assertFalse(Schema::hasColumn('ml_project_cost_snapshots', 'elapsed_days'));
+        $this->assertEquals($before, DB::table('ml_project_cost_snapshots')->where('snapshot_id', $before->snapshot_id)->first());
+        $this->assertDatabaseCount('ml_project_cost_snapshots', 2);
+    }
+
+    public function test_snapshot_activity_excludes_rows_posted_after_the_observation_despite_backdated_business_dates(): void
+    {
+        (require database_path('migrations/2026_09_28_000001_add_activity_to_project_cost_snapshots.php'))->up();
+        (require database_path('migrations/2026_10_02_000002_add_capture_quality_to_project_cost_snapshots.php'))->up();
+        Schema::table('fin_expense_tbl', fn (Blueprint $table) => $table->dateTime('created_at')->nullable());
+        Schema::table('inventory_transaction_tbl', fn (Blueprint $table) => $table->dateTime('recorded_at')->nullable());
+        Carbon::setTestNow('2025-06-01 12:00:00');
+        $id = $this->insertProject([
+            'project_name' => 'Known at observation', 'status' => 'Ongoing', 'completion_percentage' => 50,
+            'start_date' => '2025-05-01', 'estimated_end_date' => '2025-07-31', 'worker_count' => 4,
+        ], 1000, 200);
+        foreach ([['2025-05-25', '2025-05-25 09:00:00', 2], ['2025-05-26', '2025-06-02 09:00:00', 7]] as [$date, $recordedAt, $quantity]) {
+            DB::table('fin_expense_tbl')->insert([
+                'project_id' => $id, 'fin_category_id' => 2, 'amount' => 100, 'expense_date' => $date, 'created_at' => $recordedAt,
+            ]);
+            DB::table('inventory_transaction_tbl')->insert([
+                'project_id' => $id, 'transaction_type' => 'OUT', 'quantity' => $quantity,
+                'transaction_date' => $date, 'recorded_at' => $recordedAt,
+            ]);
+        }
+        $snapshots = app(ProjectCostSnapshotService::class);
+        $activity = $snapshots->activityForProject($id, now());
+        $this->assertSame(1, $activity['direct_expense_count_30d']);
+        $this->assertSame(100.0, $activity['direct_expense_amount_30d']);
+        $this->assertSame(1, $activity['stock_out_count_30d']);
+        $this->assertSame(2.0, $activity['stock_out_quantity_30d']);
+        $snapshots->capture($id);
+        $observed = DB::table('ml_project_cost_snapshots')->first();
+        $this->assertSame(100.0, (float) $observed->cumulative_total_expense);
+        $this->assertFalse((bool) $observed->cost_coverage_complete);
+        Carbon::setTestNow('2025-06-03 12:00:00');
+        $this->assertSame(2, $snapshots->activityForProject($id, now())['direct_expense_count_30d']);
+        // Even an apparently finalized record must be excluded if its observed costs were incomplete.
+        DB::table('project_tbl')->where('project_id', $id)->update([
+            'status' => 'Completed', 'completion_percentage' => 100, 'actual_end_date' => '2025-06-03',
+        ]);
+        DB::table('ml_project_cost_snapshots')->update(['final_actual_cost' => 200, 'finalized_at' => now()]);
+        $ml = (new \ReflectionClass(MLService::class))->newInstanceWithoutConstructor();
+        $this->assertCount(0, $this->invokeProtected($ml, 'getSnapshotTrainingData'));
+        $snapshots->capture($id);
+        $this->assertSame(0, DB::table('ml_project_cost_snapshots')->whereNotNull('final_actual_cost')->count());
+    }
+
     protected function createSchema(): void
     {
         Schema::create('users', function (Blueprint $table) {

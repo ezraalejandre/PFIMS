@@ -21,6 +21,13 @@ Artisan::command('ml:audit-data', function (ProjectCostDataQualityService $quali
     return 0;
 })->purpose('Read-only project final-cost eligibility and exclusion audit; never retrains or changes records');
 
+Artisan::command('ml:audit-snapshots', function () {
+    $ml = new MLService(loadModel: false);
+    $this->line(json_encode($ml->getSnapshotReadiness(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Report progress-stage coverage and the completed-project observations still needed');
+
 Artisan::command('ml:retrain {--scheduled : Mark this run as scheduler-triggered}', function (MLService $ml) {
     $result = $ml->retrain();
     $this->info($result['message']);

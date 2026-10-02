@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -49,7 +50,13 @@ class ProjectCostSnapshotService
 
             $start = Carbon::parse($project->start_date)->startOfDay();
             $plannedEnd = Carbon::parse($project->estimated_end_date)->startOfDay();
-            if ($plannedEnd->lt($start)) {
+            $capturedAt = now();
+            if ($plannedEnd->lt($start) || $start->gt($capturedAt->copy()->startOfDay())) {
+                return false;
+            }
+            if ($reason === 'weekly_schedule' && DB::table('ml_project_cost_snapshots')
+                ->where('project_id', $projectId)->where('capture_reason', 'weekly_schedule')
+                ->where('captured_at', '>=', $capturedAt->copy()->startOfWeek())->exists()) {
                 return false;
             }
             $workerCount = filter_var($project->worker_count ?? null, FILTER_VALIDATE_INT);
@@ -66,7 +73,6 @@ class ProjectCostSnapshotService
                 return false;
             }
 
-            $capturedAt = now();
             $finance = $this->financeTotals($projectId, $capturedAt);
             $activity = $this->activityForProject($projectId, $capturedAt, $finance);
             $isCompleted = strcasecmp((string) ($project->status ?? ''), 'Completed') === 0
@@ -113,9 +119,42 @@ class ProjectCostSnapshotService
                 $snapshot['original_budget_amount'] = $budgetContext['original_budget_amount'];
                 $snapshot['budget_basis'] = $budgetContext['budget_basis'];
             }
+            if (Schema::hasColumn('ml_project_cost_snapshots', 'capture_schema_version')) {
+                $quality = app(ProjectCostDataQualityService::class)->inspect($projectId);
+                $costErrors = array_diff($quality['errors'], [
+                    'not_completed', 'invalid_start_date', 'invalid_estimated_end_date', 'invalid_actual_end_date',
+                    'estimated_end_date_before_start', 'actual_end_date_before_start', 'future_completion',
+                    'invalid_worker_count', 'missing_positive_final_cost',
+                ]);
+                $snapshot += [
+                    'capture_schema_version' => 2,
+                    'planned_start_date' => $start->toDateString(), 'planned_end_date' => $plannedEnd->toDateString(),
+                    'planned_duration_days' => max(1, (int) $start->diffInDays($plannedEnd)),
+                    'elapsed_days' => (int) $start->diffInDays($capturedAt->copy()->startOfDay()),
+                    'remaining_planned_days' => max(0, (int) $capturedAt->copy()->startOfDay()->diffInDays($plannedEnd, false)),
+                    'days_past_planned_end' => max(0, (int) $plannedEnd->diffInDays($capturedAt->copy()->startOfDay(), false)),
+                    'cost_coverage_complete' => $costErrors === [] && $finance['unvalued_count'] === 0
+                        && abs($quality['final_cost'] - $finance['total']) <= 0.01,
+                ];
+                if (! $snapshot['cost_coverage_complete']) {
+                    $finalCost = null;
+                    $snapshot['final_actual_cost'] = null;
+                    $snapshot['finalized_at'] = null;
+                }
+            }
             foreach ($activity as $column => $value) {
                 if (Schema::hasColumn('ml_project_cost_snapshots', $column)) {
                     $snapshot[$column] = $value;
+                }
+            }
+            // Coalesce duplicate hooks for the same committed state, while retaining weekly observations.
+            if (in_array($reason, ['data_change', 'stock_out_created', 'stock_out_updated', 'stock_out_deleted'], true)) {
+                $latest = DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)
+                    ->where('captured_at', '>=', $capturedAt->copy()->subSeconds(5))
+                    ->orderByDesc('snapshot_id')->first();
+                if ($latest && collect($snapshot)->except(['captured_at', 'capture_reason', 'finalized_at', 'elapsed_duration_months'])
+                    ->every(fn ($value, $column) => ($latest->{$column} ?? null) == $value)) {
+                    return false;
                 }
             }
             DB::table('ml_project_cost_snapshots')->insert($snapshot);
@@ -126,7 +165,8 @@ class ProjectCostSnapshotService
                 DB::table('ml_project_cost_snapshots')
                     ->where('project_id', $projectId)
                     ->update(['final_actual_cost' => $finalCost, 'finalized_at' => $capturedAt]);
-            } elseif ($isCompleted && Schema::hasTable('inventory_cost_allocation_tbl')) {
+            } elseif ($isCompleted && (Schema::hasTable('inventory_cost_allocation_tbl')
+                || Schema::hasColumn('ml_project_cost_snapshots', 'capture_schema_version'))) {
                 // Corrections can invalidate a previously reconciled outcome.
                 DB::table('ml_project_cost_snapshots')
                     ->where('project_id', $projectId)
@@ -151,6 +191,7 @@ class ProjectCostSnapshotService
         if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
             $query->whereNull('expense.inventory_transaction_id');
         }
+        $this->limitToKnownRows($query, 'fin_expense_tbl', 'expense', $capturedAt);
         $rows = $query
             ->select('expense.amount', 'expense.expense_date', 'expense.project_cost_component', 'category.category_code', 'category.category_name')
             ->get();
@@ -170,8 +211,12 @@ class ProjectCostSnapshotService
             $allocations = DB::table('inventory_cost_allocation_tbl as allocation')
                 ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'allocation.out_transaction_id')
                 ->where('allocation.project_id', $projectId)
-                ->whereDate('movement.transaction_date', '<=', $capturedAt->toDateString())
-                ->get(['allocation.valuation_status', 'allocation.allocated_amount', 'movement.transaction_date']);
+                ->whereDate('movement.transaction_date', '<=', $capturedAt->toDateString());
+            $this->limitToKnownRows($allocations, 'inventory_transaction_tbl', 'movement', $capturedAt);
+            if (Schema::hasColumn('inventory_cost_allocation_tbl', 'allocated_at')) {
+                $allocations->where('allocation.allocated_at', '<=', $capturedAt);
+            }
+            $allocations = $allocations->get(['allocation.valuation_status', 'allocation.allocated_amount', 'movement.transaction_date']);
             foreach ($allocations as $allocation) {
                 if ($allocation->valuation_status !== 'valued') {
                     $result['unvalued_count']++;
@@ -193,6 +238,7 @@ class ProjectCostSnapshotService
                 ->where('withdrawal.project_id', $projectId)
                 ->where('withdrawal.transaction_type', 'OUT')
                 ->whereDate('withdrawal.transaction_date', '<=', $capturedAt->toDateString());
+            $this->limitToKnownRows($unallocated, 'inventory_transaction_tbl', 'withdrawal', $capturedAt);
             if (Schema::hasTable('inventory_cost_allocation_tbl')) {
                 $unallocated->whereNotExists(function ($query) {
                     $query->selectRaw('1')->from('inventory_cost_allocation_tbl as allocation')
@@ -203,6 +249,7 @@ class ProjectCostSnapshotService
             $projectReceipts = DB::table('inventory_transaction_tbl as receipt')
                 ->where('receipt.project_id', $projectId)->where('receipt.transaction_type', 'IN')
                 ->whereDate('receipt.transaction_date', '<=', $capturedAt->toDateString());
+            $this->limitToKnownRows($projectReceipts, 'inventory_transaction_tbl', 'receipt', $capturedAt);
             if (Schema::hasColumns('fin_expense_tbl',
                 ['inventory_transaction_id', 'project_id', 'entry_kind', 'amount'])) {
                 $projectReceipts->whereNotExists(function ($query) {
@@ -238,6 +285,7 @@ class ProjectCostSnapshotService
             if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
                 $direct->whereNull('inventory_transaction_id');
             }
+            $this->limitToKnownRows($direct, 'fin_expense_tbl', 'fin_expense_tbl', $capturedAt);
             $features['direct_expense_count_7d'] = (clone $direct)->whereBetween('expense_date', [$sevenDaysAgo, $asOf])->count();
             $month = (clone $direct)->whereBetween('expense_date', [$thirtyDaysAgo, $asOf]);
             $features['direct_expense_count_30d'] = (clone $month)->count();
@@ -246,6 +294,7 @@ class ProjectCostSnapshotService
         if (Schema::hasTable('inventory_transaction_tbl')) {
             $withdrawals = DB::table('inventory_transaction_tbl')
                 ->where('project_id', $projectId)->where('transaction_type', 'OUT');
+            $this->limitToKnownRows($withdrawals, 'inventory_transaction_tbl', 'inventory_transaction_tbl', $capturedAt);
             $features['stock_out_count_7d'] = (clone $withdrawals)->whereBetween('transaction_date', [$sevenDaysAgo, $asOf])->count();
             $month = (clone $withdrawals)->whereBetween('transaction_date', [$thirtyDaysAgo, $asOf]);
             $features['stock_out_count_30d'] = (clone $month)->count();
@@ -253,6 +302,17 @@ class ProjectCostSnapshotService
         }
 
         return $features;
+    }
+
+    private function limitToKnownRows(Builder $query, string $table, string $alias, Carbon $capturedAt): void
+    {
+        $column = $table === 'fin_expense_tbl' ? 'created_at' : 'recorded_at';
+        if (Schema::hasColumn($table, $column)) {
+            $query->where(function ($query) use ($alias, $column, $capturedAt) {
+                // Legacy missing timestamps remain visible, but never prove a historical posting time.
+                $query->whereNull($alias.'.'.$column)->orWhere($alias.'.'.$column, '<=', $capturedAt);
+            });
+        }
     }
 
     private function normalizeComponent(object $row): string

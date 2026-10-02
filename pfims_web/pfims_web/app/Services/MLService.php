@@ -99,11 +99,13 @@ class MLService
         'status_reason' => 'No prediction has been produced.',
     ];
 
-    public function __construct(?string $modelPath = null)
+    public function __construct(?string $modelPath = null, bool $loadModel = true)
     {
         $this->modelPath = $modelPath ?: $this->defaultModelPath();
         $this->metadataPath = $this->modelPath.'.meta.json';
-        $this->loadOrTrainModel();
+        if ($loadModel) {
+            $this->loadOrTrainModel();
+        }
     }
 
     /** Keep automated-test artifacts isolated from the model served by the application. */
@@ -488,7 +490,10 @@ class MLService
             ->join('project_tbl as project', 'project.project_id', '=', 'snapshot.project_id')
             ->select(
                 'snapshot.snapshot_id', 'snapshot.project_id', 'snapshot.captured_at',
-                'project.actual_end_date as completed_at', 'project.start_date as planned_start_date', 'snapshot.planned_budget as budget',
+                'project.actual_end_date as completed_at',
+                DB::raw(Schema::hasColumn('ml_project_cost_snapshots', 'planned_start_date')
+                    ? 'COALESCE(snapshot.planned_start_date, project.start_date) as planned_start_date'
+                    : 'project.start_date as planned_start_date'), 'snapshot.planned_budget as budget',
                 'snapshot.planned_duration_months as duration_months', 'snapshot.elapsed_duration_months',
                 'snapshot.worker_count', 'snapshot.phase',
                 'snapshot.completion_percentage',
@@ -520,6 +525,12 @@ class MLService
                 'snapshot.unvalued_stock_out_count')
                 ->whereNotNull('snapshot.direct_expense_count_30d')
                 ->whereNotNull('snapshot.stock_out_count_30d');
+        }
+        if (Schema::hasColumn('ml_project_cost_snapshots', 'cost_coverage_complete')) {
+            // Legacy rows keep their existing validation path; newly captured incomplete costs cannot train.
+            $query->where(function ($query) {
+                $query->whereNull('snapshot.capture_schema_version')->orWhere('snapshot.cost_coverage_complete', true);
+            });
         }
 
         $qualityByProject = [];
@@ -554,6 +565,26 @@ class MLService
                     && $budgetActual !== null && abs((float) $budgetActual - $cost['total']) <= 0.01
                     && $qualityByProject[$row->project_id];
             })->values();
+    }
+
+    public function getSnapshotReadiness(): array
+    {
+        $readiness = $this->selectTrainingCohort()['snapshot_readiness'];
+        $readiness['projects_still_needed_by_stage'] = collect($readiness['projects_by_stage'])
+            ->map(fn ($count) => max(0, $readiness['minimum_projects_per_stage'] - $count))->all();
+        $readiness['collected_snapshot_rows'] = Schema::hasTable('ml_project_cost_snapshots')
+            ? DB::table('ml_project_cost_snapshots')->count() : 0;
+        if (Schema::hasColumn('ml_project_cost_snapshots', 'cost_coverage_complete')) {
+            $snapshots = DB::table('ml_project_cost_snapshots');
+            $readiness['capture_quality_rows'] = [
+                'historical_quality_unknown' => (clone $snapshots)->whereNull('capture_schema_version')->count(),
+                'complete_cost_coverage' => (clone $snapshots)->where('cost_coverage_complete', true)->count(),
+                'incomplete_cost_coverage' => (clone $snapshots)->where('cost_coverage_complete', false)->count(),
+            ];
+        }
+        $readiness['scope'] = 'Current snapshot readiness, separate from the saved model evaluation.';
+
+        return $readiness;
     }
 
     /**
