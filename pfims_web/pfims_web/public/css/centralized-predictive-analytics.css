@@ -727,3 +727,19 @@ html[data-theme="dark"] .embedded-ml-dashboard .prediction-result {
         width: 100%;
     }
 }
+
+/* Performance evaluation controls share the page typography and responsive layout. */
+.embedded-ml-dashboard .performance-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: end;
+    margin-bottom: 16px;
+}
+.embedded-ml-dashboard .performance-controls .filter-control {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+.embedded-ml-dashboard #modelMetrics p { overflow-wrap: anywhere; }
+.embedded-ml-dashboard #modelMetrics summary { cursor: pointer; font-weight: 600; }
+.embedded-ml-dashboard #modelMetrics .metric-label { white-space: normal; }

@@ -1092,44 +1092,44 @@
                 <div class="card-header">
                     <div>
                         <div class="card-title" id="modelPerformanceTitle">Model Performance</div>
-                        <p class="analytics-panel-description">Evaluation, selection, and governance details for the active prediction model.</p>
+                        <p class="analytics-panel-description">Understand cost errors, missed overruns, and the model used for forecasts.</p>
                     </div>
                     <span class="badge badge-info" id="samplesCount">0 samples</span>
                 </div>
                 <div id="modelMetrics">
+                    <div class="performance-controls">
+                        <label class="filter-control">Performance shown<select id="performanceSource"><option value="active">Active forecasting model</option><option value="presentation_progress">Progress model evaluation</option><option value="planning">Planning model evaluation</option></select></label>
+                        <label class="filter-control">Evaluation observations<select id="performanceWeighting"><option value="all">All project stages</option><option value="latest">Latest stage per project</option></select></label>
+                        @if($portal === 'admin')
+                        <button type="button" id="refreshPerformance" class="analytics-button">Refresh evaluation</button>
+                        @endif
+                    </div>
+                    <p id="performanceStatus" role="status" aria-live="polite">Loading performance…</p>
+                    <p id="performanceScope" class="analytics-panel-description"></p>
                     <section class="metric-section" aria-labelledby="modelQualityTitle">
-                        <h3 class="metric-section-title" id="modelQualityTitle">Prediction quality</h3>
+                        <h3 class="metric-section-title" id="modelQualityTitle">Final cost prediction error</h3>
                         <div class="model-status-grid">
-                            <div class="metric-item"><span class="metric-label">Avg. Closeness</span><span class="metric-value" id="metricAccuracy">-</span></div>
-                            <div class="metric-item"><span class="metric-label">MAE</span><span class="metric-value" id="metricMAE">-</span></div>
-                            <div class="metric-item"><span class="metric-label">R-Squared</span><span class="metric-value" id="metricRSquared">-</span></div>
+                            <div class="metric-item"><span class="metric-label">Average percentage error (MAPE)</span><span class="metric-value" id="metricMAPE">—</span></div>
+                            <div class="metric-item"><span class="metric-label">Average peso error (MAE)</span><span class="metric-value" id="metricMAE">—</span></div>
+                            <div class="metric-item"><span class="metric-label">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
                         </div>
+                        <p class="analytics-panel-description">Lower cost error is better. A 7% MAPE means forecasts differed from actual final costs by 7% on average; it is not a guarantee for an individual project.</p>
                     </section>
                     <section class="metric-section" aria-labelledby="overrunDetectionTitle">
-                        <h3 class="metric-section-title" id="overrunDetectionTitle">Cost-overrun detection at 5%</h3>
+                        <h3 class="metric-section-title" id="overrunDetectionTitle">Budget overrun detection</h3>
+                        <label class="filter-control">Overrun definition<select id="performanceThreshold"><option value="material_overrun">More than 5% above budget</option><option value="any_overrun">Any amount above budget</option></select></label>
                         <div class="model-status-grid">
-                            <div class="metric-item"><span class="metric-label">Precision</span><span class="metric-value" id="metricPrecision">-</span></div>
-                            <div class="metric-item"><span class="metric-label">Recall</span><span class="metric-value" id="metricRecall">-</span></div>
-                            <div class="metric-item"><span class="metric-label">F1 Score</span><span class="metric-value" id="metricF1">-</span></div>
+                            <div class="metric-item"><span class="metric-label">Precision · alerts that were correct</span><span class="metric-value" id="metricPrecision">—</span></div>
+                            <div class="metric-item"><span class="metric-label">Recall · actual overruns detected</span><span class="metric-value" id="metricRecall">—</span></div>
+                            <div class="metric-item"><span class="metric-label">F1 · balance of precision and recall</span><span class="metric-value" id="metricF1">—</span></div>
                         </div>
+                        <p id="performanceCounts"></p>
+                        <p class="analytics-panel-description">Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Exactly 5% is excluded from the “more than 5%” definition. Budget means the recorded budget used for evaluation.</p>
                     </section>
-                    <section class="metric-section" aria-labelledby="modelSelectionTitle">
-                        <h3 class="metric-section-title" id="modelSelectionTitle">Model selection</h3>
-                        <div class="model-status-grid">
-                            <div class="metric-item"><span class="metric-label">Selected Split</span><span class="metric-value" id="metricSplit">-</span></div>
-                            <div class="metric-item"><span class="metric-label">Feature Decision</span><span class="metric-value" id="metricFeatureDecision">-</span></div>
-                            <div class="metric-item"><span class="metric-label">Model Comparison</span><span class="metric-value" id="metricModelComparison">-</span></div>
-                        </div>
-                    </section>
-                    <section class="metric-section" aria-labelledby="modelGovernanceTitle">
-                        <h3 class="metric-section-title" id="modelGovernanceTitle">Validation and governance</h3>
-                        <div class="model-detail-grid">
-                            <div class="metric-item metric-detail"><span class="metric-label">Validation</span><span class="metric-value" id="metricValidation">-</span></div>
-                            <div class="metric-item metric-detail"><span class="metric-label">Finance Feature Gate</span><span class="metric-value" id="metricFinancePolicy">-</span></div>
-                            <div class="metric-item metric-detail"><span class="metric-label">Holdout Monitoring</span><span class="metric-value" id="metricMonitoring">-</span></div>
-                            <div class="metric-item metric-detail metric-interpretation"><span class="metric-label">Interpretation</span><span class="metric-value" id="metricInterpretation">-</span></div>
-                        </div>
-                    </section>
+                    <details class="metric-section"><summary>Evaluation details and prediction inputs</summary>
+                        <p id="performanceValidation"></p><p id="performanceComparison"></p><p id="performanceFeatures"></p><p id="performanceUpdated"></p>
+                        <p class="analytics-panel-description">Projects are kept together in training and testing. The newest 20% are reserved for testing; feature selection and temporal cross-validation use only earlier training projects. Repeated stages from one project are related observations. Completed-project evaluation does not establish accuracy for every ongoing project.</p>
+                    </details>
                 </div>
             </section>
         </div>
@@ -1244,6 +1244,7 @@
     </main>
 @endunless
 
+    <script src="{{ asset('js/ml-performance.js') }}?v={{ filemtime(public_path('js/ml-performance.js')) }}"></script>
     <script>
     // ─── CONFIGURATION ─────────────────────────────────────────────
     const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
@@ -1306,44 +1307,7 @@
 
     // ─── UPDATE MODEL METRICS ─────────────────────────────────────
     function updateModelMetrics(metrics) {
-        if (!metrics) return;
-
-        const displayPercent = value => value === null || value === undefined || Number.isNaN(Number(value))
-            ? '-' : Number(value).toFixed(2) + '%';
-        const displayNumber = (value, decimals = 4) => value === null || value === undefined || Number.isNaN(Number(value))
-            ? '-' : Number(value).toFixed(decimals);
-        const accuracy = metrics.accuracy;
-        const rSquared = metrics.r_squared;
-        const samplesTrained = parseInt(metrics.samples_trained) || 0;
-
-        document.getElementById('metricAccuracy').textContent = displayPercent(accuracy);
-        document.getElementById('metricMAE').textContent = metrics.mae_formatted || 'Unavailable';
-        document.getElementById('metricRSquared').textContent = displayNumber(rSquared);
-        document.getElementById('metricPrecision').textContent = displayPercent(metrics.precision);
-        document.getElementById('metricRecall').textContent = displayPercent(metrics.recall);
-        document.getElementById('metricF1').textContent = displayPercent(metrics.f1_score);
-        document.getElementById('metricSplit').textContent = (metrics.split_selection?.selected_method || metrics.evaluation_method || '-').replaceAll('_', ' ');
-        document.getElementById('metricFeatureDecision').textContent = (metrics.feature_set?.decision || '-').replaceAll('_', ' ');
-        const comparison = metrics.model_comparison;
-        document.getElementById('metricModelComparison').textContent = comparison
-            ? `${comparison.production_model.replaceAll('_', ' ')} retained; ${comparison.comparison_result.replaceAll('_', ' ')}`
-            : '-';
-        const cv = metrics.cross_validation;
-        document.getElementById('metricValidation').textContent = cv
-            ? `${cv.method.replaceAll('_', ' ')}: mean MAE ${metricsCurrency(cv.average_mean_absolute_error)}, mean MAPE ${displayPercent(cv.average_mean_absolute_percentage_error)}. ${metrics.split_selection?.scoring_rule || ''}`
-            : 'Cross-validation is unavailable while the synthetic fallback is active.';
-        const featureSet = metrics.feature_set;
-        document.getElementById('metricFinancePolicy').textContent = featureSet
-            ? `${(featureSet.decision || 'not evaluated').replaceAll('_', ' ')}. ${featureSet.finance_feature_leakage_note || 'Finance features require an as-of date and must pass the documented validation gate.'}`
-            : 'Finance features are not evaluated while the synthetic fallback is active.';
-        const monitoring = metrics.monitoring_segments;
-        document.getElementById('metricMonitoring').textContent = monitoring
-            ? `MAE, MAPE, precision, recall and F1 are reported by ${Object.keys(monitoring.by_project_size || {}).length} budget-size and ${Object.keys(monitoring.by_project_type || {}).length} project-type holdout segment(s).`
-            : 'Segment monitoring is unavailable while the synthetic fallback is active.';
-        document.getElementById('metricInterpretation').textContent = metrics.interpretation || 'No data available';
-        document.getElementById('samplesCount').textContent = metrics.uses_synthetic_data
-            ? `${samplesTrained} synthetic`
-            : `${samplesTrained} real projects`;
+        window.pfimsPerformance.update(metrics);
     }
 
     function metricsCurrency(value) {
