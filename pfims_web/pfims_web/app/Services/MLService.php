@@ -90,6 +90,8 @@ class MLService
 
     protected array $lastPredictionWarnings = [];
 
+    protected array $lastEngineeredFeatures = [];
+
     protected bool $lastPredictionWasConstrained = false;
 
     protected array $lastPredictionSupport = [
@@ -238,6 +240,7 @@ class MLService
                 'split_selection' => $splitSelection['summary'],
                 'cross_validation' => $featureSelection['cross_validation'],
                 'feature_set' => $featureSelection,
+                'feature_engineering_version' => ProjectCostFeatureBuilder::catalog()['formula_version'],
                 'model_comparison' => $comparison,
                 'budget_baseline_comparison' => $baselineComparison,
                 'snapshot_readiness' => $cohortSelection['snapshot_readiness'],
@@ -463,7 +466,9 @@ class MLService
             $hasActivity = Schema::hasColumn('ml_project_cost_snapshots', 'direct_expense_count_30d');
             return [
                 'records' => $operationalSnapshots,
-                'feature_names' => $hasActivity ? self::SNAPSHOT_ACTIVITY_FEATURE_NAMES : self::SNAPSHOT_FEATURE_NAMES,
+                'feature_names' => $hasActivity
+                    ? [...self::SNAPSHOT_ACTIVITY_FEATURE_NAMES, ...ProjectCostFeatureBuilder::FEATURE_NAMES]
+                    : self::SNAPSHOT_FEATURE_NAMES,
                 'strategy' => 'progress_snapshot_model',
                 'snapshot_readiness' => $readiness,
             ];
@@ -527,16 +532,26 @@ class MLService
                 ->whereNotNull('snapshot.stock_out_count_30d');
         }
         if (Schema::hasColumn('ml_project_cost_snapshots', 'cost_coverage_complete')) {
+            $query->addSelect('snapshot.planned_duration_days', 'snapshot.elapsed_days', 'snapshot.cost_coverage_complete');
             // Legacy rows keep their existing validation path; newly captured incomplete costs cannot train.
             $query->where(function ($query) {
                 $query->whereNull('snapshot.capture_schema_version')->orWhere('snapshot.cost_coverage_complete', true);
             });
+        }
+        foreach (['direct_expense_count_7d', 'stock_out_count_7d', 'valued_stock_out_cost',
+            'direct_expense_amount_7d', 'valued_stock_out_cost_7d', 'valued_stock_out_cost_30d'] as $column) {
+            if (Schema::hasColumn('ml_project_cost_snapshots', $column)) {
+                $query->addSelect('snapshot.'.$column);
+            }
         }
 
         $qualityByProject = [];
 
         return $query->get()
             ->map(function ($row) {
+                foreach (app(ProjectCostFeatureBuilder::class)->build((array) $row)['values'] as $name => $value) {
+                    $row->{$name} = $value;
+                }
                 $row->actual_cost = max(0.0, (float) $row->actual_cost - (float) $row->fin_total_expense);
                 $row->project_type = $this->normalizeProjectType(null, $row->project_name ?? null);
                 $row->project_type_source = 'normalized_project_name';
@@ -696,6 +711,7 @@ class MLService
                         : 'CASE WHEN prediction_finance.finance_as_of_date IS NULL THEN prediction_allocations.allocation_as_of_date WHEN prediction_allocations.allocation_as_of_date IS NULL THEN prediction_finance.finance_as_of_date WHEN prediction_finance.finance_as_of_date >= prediction_allocations.allocation_as_of_date THEN prediction_finance.finance_as_of_date ELSE prediction_allocations.allocation_as_of_date END as finance_as_of_date')))
         )
             ->whereNotNull('project_tbl.start_date')
+            ->whereDate('project_tbl.start_date', '<=', today())
             ->whereNotNull('project_tbl.estimated_end_date')
             ->whereColumn('project_tbl.estimated_end_date', '>=', 'project_tbl.start_date')
             ->where('project_tbl.worker_count', '>=', 1)
@@ -707,7 +723,11 @@ class MLService
             ->map(function ($project) {
                 $duration = max(1, Carbon::parse($project->start_date)->startOfDay()
                     ->diffInMonths(Carbon::parse($project->estimated_end_date)->startOfDay()));
-                $activity = app(ProjectCostSnapshotService::class)->activityForProject((int) $project->project_id);
+                $activity = app(ProjectCostSnapshotService::class)->forecastInputs((int) $project->project_id,
+                    Carbon::parse($project->start_date)->startOfDay(), Carbon::parse($project->estimated_end_date)->startOfDay());
+                foreach (['fin_total_expense', 'fin_material_expense', 'fin_labor_expense', 'fin_equipment_expense', 'fin_other_expense', 'finance_as_of_date'] as $name) {
+                    $project->{$name} = $activity[$name];
+                }
                 $days = max(1, min(30, (int) Carbon::parse($project->start_date)->startOfDay()->diffInDays(now()->startOfDay()) + 1));
 
                 return [
@@ -731,6 +751,10 @@ class MLService
                     'stock_out_frequency_30d' => $activity['stock_out_count_30d'] / $days * 7,
                     'expense_amount_per_day_30d' => $activity['direct_expense_amount_30d'] / $days,
                     'has_unvalued_stock_out' => $activity['unvalued_stock_out_count'] > 0 ? 1 : 0,
+                    'forecast_feature_context' => $activity,
+                    'feature_indicators' => app(ProjectCostFeatureBuilder::class)->build($activity + [
+                        'budget' => (float) $project->budget, 'completion_percentage' => (float) $project->completion_percentage,
+                    ])['indicators'],
                 ];
             })->values();
     }
@@ -1300,7 +1324,7 @@ class MLService
             'fin_equipment_expense', 'fin_other_expense', 'expense_frequency_30d',
             'stock_out_frequency_30d', 'expense_amount_per_day_30d',
             'has_unvalued_stock_out' => max(0, (float) ($row->{$name} ?? 0)),
-            default => 0.0,
+            default => in_array($name, ProjectCostFeatureBuilder::FEATURE_NAMES, true) ? (float) ($row->{$name} ?? 0) : 0.0,
         };
     }
 
@@ -1475,10 +1499,13 @@ class MLService
         };
     }
 
-    public function predict(array $features): float
+    public function predict(array $features, array $context = []): float
     {
         $features = $this->normalizePredictionFeatures($features);
         $this->validateFeatureVector($features);
+        $this->lastEngineeredFeatures = app(ProjectCostFeatureBuilder::class)->build(array_replace($context,
+            array_combine(self::FEATURE_NAMES, array_map('floatval', $features)),
+            ['fin_total_expense' => $this->recordedSpend($features)]));
         $this->lastPredictionWarnings = $this->predictionWarnings($features);
         $this->lastPredictionWasConstrained = false;
         if (! $this->model) {
@@ -1491,7 +1518,7 @@ class MLService
             }
             $featureNames = $transformer['feature_names'] ?? self::BASE_FEATURE_NAMES;
             $transformed = $this->transformFeatureVector(
-                $this->predictionFeatureVector($features, $featureNames),
+                $this->predictionFeatureVector($features, $featureNames, $this->lastEngineeredFeatures['values']),
                 $transformer['selected_feature_indexes'],
                 $transformer['ranges']
             );
@@ -1531,9 +1558,9 @@ class MLService
         );
     }
 
-    protected function predictionFeatureVector(array $features, array $featureNames): array
+    protected function predictionFeatureVector(array $features, array $featureNames, array $engineered = []): array
     {
-        $byName = array_combine(self::FEATURE_NAMES, array_map('floatval', $features));
+        $byName = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), $engineered);
 
         return array_map(fn (string $name) => (float) ($byName[$name] ?? 0), $featureNames);
     }
@@ -1603,13 +1630,19 @@ class MLService
         $expenseFrequency30d = 0,
         $stockOutFrequency30d = 0,
         $expenseAmountPerDay30d = 0,
-        $hasUnvaluedStockOut = 0
+        $hasUnvaluedStockOut = 0,
+        array $context = []
     ): float {
         return $this->predict(array_map('floatval', [
             $budget, $durationMonths, $workerCount, $completionPercentage, $materialCost, $laborCost,
             $finTotalExpense, $finMaterialExpense, $finLaborExpense, $finEquipmentExpense, $finOtherExpense,
             $expenseFrequency30d, $stockOutFrequency30d, $expenseAmountPerDay30d, $hasUnvaluedStockOut,
-        ]));
+        ]), $context);
+    }
+
+    public function getLastFeatureIndicators(): array
+    {
+        return $this->lastEngineeredFeatures['indicators'] ?? [];
     }
 
     public function getLastPredictionSource(): string
@@ -1642,6 +1675,10 @@ class MLService
         $baselineSupported = (bool) ($this->metadata['budget_baseline_comparison']['model_outperforms_budget_baseline'] ?? false);
         $productionModelIsBest = (bool) ($this->metadata['model_comparison']['production_model_is_best_option'] ?? false);
         $snapshotReady = (bool) ($this->metadata['snapshot_readiness']['eligible'] ?? false);
+        if ($strategy === 'progress_snapshot_model' && ($this->lastEngineeredFeatures['values']['snapshot_cost_coverage_complete'] ?? 0) !== 1) {
+            return ['prediction_usable' => false, 'support_level' => 'incomplete_cost_coverage',
+                'forecast_context' => $context, 'status_reason' => 'Complete observed project costs are required for a progress forecast.'];
+        }
 
         if ($source !== 'real_trained_model') {
             return [
@@ -1746,12 +1783,13 @@ class MLService
         if ($hasFinanceInputs && $includedFinanceFeatures === []) {
             $warnings[] = 'Finance totals were received but were not used because the finance feature gate has not met its cross-validated improvement threshold.';
         }
-        foreach (self::FEATURE_NAMES as $index => $name) {
+        $byName = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), $this->lastEngineeredFeatures['values'] ?? []);
+        foreach ($byName as $name => $value) {
             $range = $this->metadata['feature_ranges'][$name] ?? null;
             if (! is_array($range)) {
                 continue;
             }
-            $value = (float) $features[$index];
+            $value = (float) $value;
             if ($value < $range['min'] || $value > $range['max']) {
                 $rangeSource = match ($source) {
                     'real_trained_model' => 'verified training projects',
@@ -1926,6 +1964,7 @@ class MLService
             'split_selection' => $this->metadata['split_selection'] ?? null,
             'cross_validation' => $this->metadata['cross_validation'] ?? null,
             'feature_set' => $this->metadata['feature_set'] ?? null,
+            'feature_engineering' => $this->featureEngineeringMetadata(),
             'model_comparison' => $this->metadata['model_comparison'] ?? null,
             'budget_baseline_comparison' => $this->metadata['budget_baseline_comparison'] ?? null,
             'snapshot_readiness' => $this->metadata['snapshot_readiness'] ?? null,
@@ -1958,6 +1997,7 @@ class MLService
             'classification_definition' => 'Precision, recall and F1 are 5% overrun-risk classification metrics.',
             'monitoring_segments' => null, 'split_selection' => null, 'cross_validation' => null,
             'feature_set' => null, 'model_comparison' => null,
+            'feature_engineering' => $this->featureEngineeringMetadata(),
             'budget_baseline_comparison' => null, 'snapshot_readiness' => null,
             'prediction_strategy' => 'unavailable', 'prediction_target' => 'unavailable',
             'data_capture_policy' => $this->dataCapturePolicy(),
@@ -1965,6 +2005,18 @@ class MLService
             'risk_business_actions' => $this->riskBusinessActions(),
             'sample_sufficiency' => $this->sampleSufficiency(0), 'feature_ranges' => [],
             'trained_at' => null, 'fallback_reason' => null, 'interpretation' => $interpretation,
+        ];
+    }
+
+    protected function featureEngineeringMetadata(): array
+    {
+        $active = array_values(array_intersect($this->metadata['transformer']['selected_feature_names'] ?? [],
+            ProjectCostFeatureBuilder::FEATURE_NAMES));
+
+        return ProjectCostFeatureBuilder::catalog() + [
+            'active_feature_names' => $active,
+            'active_model_formula_version' => $this->metadata['feature_engineering_version'] ?? null,
+            'status' => $active === [] ? 'prepared_for_future_training' : 'active_in_saved_model',
         ];
     }
 

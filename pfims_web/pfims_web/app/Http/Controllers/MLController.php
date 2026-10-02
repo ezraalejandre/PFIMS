@@ -137,7 +137,8 @@ class MLController extends Controller
                 $validated['expense_frequency_30d'],
                 $validated['stock_out_frequency_30d'],
                 $validated['expense_amount_per_day_30d'],
-                $validated['has_unvalued_stock_out']
+                $validated['has_unvalued_stock_out'],
+                $selectedProject['forecast_feature_context'] ?? []
             );
 
             $budget = (float) $validated['budget'];
@@ -206,6 +207,7 @@ class MLController extends Controller
                 'variance_percentage' => round($variancePercentage, 2),
                 'budget_context' => $budgetContext,
                 'overrun_outcomes' => app(ProjectOverrunPolicy::class)->outcomes($prediction, $budgetContext),
+                'feature_indicators' => $this->ml->getLastFeatureIndicators(),
                 'status' => $status,
                 'risk_level' => $riskLevel,
                 'business_action' => $businessAction,

@@ -1343,6 +1343,99 @@ class MLImprovementTest extends TestCase
         $this->assertSame(0, DB::table('ml_project_cost_snapshots')->whereNotNull('final_actual_cost')->count());
     }
 
+    public function test_engineered_features_match_between_observed_training_and_live_prediction_with_inventory_cost_burn(): void
+    {
+        (require database_path('migrations/2026_09_28_000001_add_activity_to_project_cost_snapshots.php'))->up();
+        (require database_path('migrations/2026_10_02_000002_add_capture_quality_to_project_cost_snapshots.php'))->up();
+        $recentMigration = require database_path('migrations/2026_10_02_000003_add_recent_costs_to_project_cost_snapshots.php');
+        $recentMigration->up();
+        Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
+            $table->bigIncrements('allocation_id');
+            $table->integer('project_id');
+            $table->integer('in_transaction_id');
+            $table->integer('out_transaction_id');
+            $table->decimal('quantity', 10, 2);
+            $table->decimal('unit_cost', 18, 6);
+            $table->decimal('allocated_amount', 14, 2);
+            $table->string('valuation_status');
+            $table->dateTime('allocated_at');
+        });
+        Carbon::setTestNow('2025-06-05 12:00:00');
+        $id = $this->insertProject([
+            'project_name' => 'Shared feature calculation', 'status' => 'Ongoing', 'completion_percentage' => 50,
+            'start_date' => '2025-05-01', 'estimated_end_date' => '2025-06-15', 'worker_count' => 4,
+        ], 500, 400);
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $id, 'fin_category_id' => 2, 'amount' => 100, 'expense_date' => '2025-06-04',
+        ]);
+        $receipt = DB::table('inventory_transaction_tbl')->insertGetId([
+            'item_id' => 1, 'transaction_type' => 'IN', 'quantity' => 10, 'transaction_date' => '2025-05-31',
+        ]);
+        $out = DB::table('inventory_transaction_tbl')->insertGetId([
+            'item_id' => 1, 'project_id' => $id, 'transaction_type' => 'OUT', 'quantity' => 10, 'transaction_date' => '2025-06-03',
+        ]);
+        DB::table('inventory_cost_allocation_tbl')->insert([
+            'project_id' => $id, 'in_transaction_id' => $receipt, 'out_transaction_id' => $out,
+            'quantity' => 10, 'unit_cost' => 30, 'allocated_amount' => 300, 'valuation_status' => 'valued', 'allocated_at' => now(),
+        ]);
+        $ml = new MLService($this->modelPath, loadModel: false);
+        $live = $ml->getPredictionProjects()->firstWhere('project_id', $id);
+        $this->assertSame(400.0, $live['fin_total_expense']);
+        $this->assertSame(800.0, $live['feature_indicators']['progress_based_final_cost']);
+        $this->assertSame(300.0, $live['forecast_feature_context']['valued_stock_out_cost_30d']);
+        $admin = $this->user('admin');
+        $this->actingAs($admin)->postJson('/api/ml/predict/cost', [
+            'project_id' => $id, 'feature_indicators' => ['progress_based_final_cost' => 1],
+            'forecast_feature_context' => ['cost_coverage_complete' => false],
+        ])->assertOk()->assertJsonPath('feature_indicators.progress_based_final_cost', 800)
+            ->assertJsonPath('feature_indicators.cost_coverage_complete', true);
+        $snapshots = app(ProjectCostSnapshotService::class);
+        $snapshots->capture($id);
+        $snapshot = DB::table('ml_project_cost_snapshots')->first();
+        $this->assertSame(100.0, (float) $snapshot->direct_expense_amount_7d);
+        $this->assertSame(300.0, (float) $snapshot->valued_stock_out_cost_7d);
+        $this->assertSame(300.0, (float) $snapshot->valued_stock_out_cost_30d);
+        $expected = app(\App\Services\ProjectCostFeatureBuilder::class)->build($live['forecast_feature_context'] + [
+            'budget' => 500, 'completion_percentage' => 50,
+        ])['values'];
+        Carbon::setTestNow('2025-06-10 12:00:00');
+        DB::table('project_tbl')->where('project_id', $id)->update([
+            'status' => 'Completed', 'completion_percentage' => 100, 'actual_end_date' => '2025-06-10',
+        ]);
+        $snapshots->capture($id, 'project_completed');
+        $training = $this->invokeProtected($ml, 'getSnapshotTrainingData')->firstWhere('snapshot_id', $snapshot->snapshot_id);
+        $this->assertNotNull($training);
+        $trainVector = $this->invokeProtected($ml, 'rowToFeatures', $training, \App\Services\ProjectCostFeatureBuilder::FEATURE_NAMES);
+        $predictVector = $this->invokeProtected($ml, 'predictionFeatureVector', array_fill(0, 15, 0),
+            \App\Services\ProjectCostFeatureBuilder::FEATURE_NAMES, $expected);
+        $this->assertEquals($trainVector, $predictVector);
+        $this->assertContains(1.6, $trainVector); // Progress estimate is above budget, without using the final label.
+        $recentMigration->down();
+        $this->assertFalse(Schema::hasColumn('ml_project_cost_snapshots', 'valued_stock_out_cost_30d'));
+        $this->assertSame(2, DB::table('ml_project_cost_snapshots')->count());
+    }
+
+    public function test_recent_burn_excludes_pre_start_costs_while_preserving_them_in_total_spending(): void
+    {
+        Carbon::setTestNow('2025-06-03');
+        $id = $this->insertProject([
+            'project_name' => 'Startup cost windows', 'status' => 'Ongoing', 'completion_percentage' => 30,
+            'start_date' => '2025-06-01', 'estimated_end_date' => '2025-06-30', 'worker_count' => 4,
+        ], 1000, 300);
+        DB::table('fin_expense_tbl')->insert([
+            ['project_id' => $id, 'fin_category_id' => 2, 'amount' => 100, 'expense_date' => '2025-05-31'],
+            ['project_id' => $id, 'fin_category_id' => 2, 'amount' => 200, 'expense_date' => '2025-06-02'],
+        ]);
+        $input = app(ProjectCostSnapshotService::class)->forecastInputs($id, Carbon::parse('2025-06-01'), Carbon::parse('2025-06-30'));
+        $this->assertSame(300.0, $input['fin_total_expense']);
+        $this->assertSame(200.0, $input['direct_expense_amount_7d']);
+        $this->assertSame(200.0, $input['direct_expense_amount_30d']);
+        $this->assertSame(1, $input['direct_expense_count_30d']);
+        $values = app(\App\Services\ProjectCostFeatureBuilder::class)->build($input + ['budget' => 1000, 'completion_percentage' => 30])['values'];
+        $this->assertEqualsWithDelta(200 / 3, $values['cost_burn_rate_30d'], 0.000001);
+        $this->assertSame(0, $values['time_forecast_available']);
+    }
+
     protected function createSchema(): void
     {
         Schema::create('users', function (Blueprint $table) {

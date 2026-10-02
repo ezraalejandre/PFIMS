@@ -120,12 +120,6 @@ class ProjectCostSnapshotService
                 $snapshot['budget_basis'] = $budgetContext['budget_basis'];
             }
             if (Schema::hasColumn('ml_project_cost_snapshots', 'capture_schema_version')) {
-                $quality = app(ProjectCostDataQualityService::class)->inspect($projectId);
-                $costErrors = array_diff($quality['errors'], [
-                    'not_completed', 'invalid_start_date', 'invalid_estimated_end_date', 'invalid_actual_end_date',
-                    'estimated_end_date_before_start', 'actual_end_date_before_start', 'future_completion',
-                    'invalid_worker_count', 'missing_positive_final_cost',
-                ]);
                 $snapshot += [
                     'capture_schema_version' => 2,
                     'planned_start_date' => $start->toDateString(), 'planned_end_date' => $plannedEnd->toDateString(),
@@ -133,8 +127,7 @@ class ProjectCostSnapshotService
                     'elapsed_days' => (int) $start->diffInDays($capturedAt->copy()->startOfDay()),
                     'remaining_planned_days' => max(0, (int) $capturedAt->copy()->startOfDay()->diffInDays($plannedEnd, false)),
                     'days_past_planned_end' => max(0, (int) $plannedEnd->diffInDays($capturedAt->copy()->startOfDay(), false)),
-                    'cost_coverage_complete' => $costErrors === [] && $finance['unvalued_count'] === 0
-                        && abs($quality['final_cost'] - $finance['total']) <= 0.01,
+                    'cost_coverage_complete' => $this->costCoverageComplete($projectId, $finance),
                 ];
                 if (! $snapshot['cost_coverage_complete']) {
                     $finalCost = null;
@@ -271,14 +264,22 @@ class ProjectCostSnapshotService
         $finance ??= $this->financeTotals($projectId, $capturedAt);
         $features = [
             'direct_expense_count_7d' => 0, 'direct_expense_count_30d' => 0,
+            'direct_expense_amount_7d' => 0,
             'direct_expense_amount_30d' => 0, 'stock_out_count_7d' => 0,
             'stock_out_count_30d' => 0, 'stock_out_quantity_30d' => 0,
             'valued_stock_out_cost' => $finance['allocated_material'],
+            'valued_stock_out_cost_7d' => 0, 'valued_stock_out_cost_30d' => 0,
             'unvalued_stock_out_count' => $finance['unvalued_count'],
         ];
         $asOf = $capturedAt->toDateString();
         $sevenDaysAgo = $capturedAt->copy()->subDays(6)->toDateString();
         $thirtyDaysAgo = $capturedAt->copy()->subDays(29)->toDateString();
+        $projectStart = DB::table('project_tbl')->where('project_id', $projectId)->value('start_date');
+        if ($projectStart && $projectStart <= $asOf) {
+            // Recent rates use the observed project days in their denominator, excluding pre-start costs.
+            $sevenDaysAgo = max($sevenDaysAgo, $projectStart);
+            $thirtyDaysAgo = max($thirtyDaysAgo, $projectStart);
+        }
 
         if (Schema::hasTable('fin_expense_tbl')) {
             $direct = DB::table('fin_expense_tbl')->where('project_id', $projectId);
@@ -287,6 +288,7 @@ class ProjectCostSnapshotService
             }
             $this->limitToKnownRows($direct, 'fin_expense_tbl', 'fin_expense_tbl', $capturedAt);
             $features['direct_expense_count_7d'] = (clone $direct)->whereBetween('expense_date', [$sevenDaysAgo, $asOf])->count();
+            $features['direct_expense_amount_7d'] = (float) (clone $direct)->whereBetween('expense_date', [$sevenDaysAgo, $asOf])->sum('amount');
             $month = (clone $direct)->whereBetween('expense_date', [$thirtyDaysAgo, $asOf]);
             $features['direct_expense_count_30d'] = (clone $month)->count();
             $features['direct_expense_amount_30d'] = (float) $month->sum('amount');
@@ -300,8 +302,49 @@ class ProjectCostSnapshotService
             $features['stock_out_count_30d'] = (clone $month)->count();
             $features['stock_out_quantity_30d'] = (float) $month->sum('quantity');
         }
+        if (Schema::hasTable('inventory_cost_allocation_tbl')) {
+            $allocated = DB::table('inventory_cost_allocation_tbl as allocation')
+                ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'allocation.out_transaction_id')
+                ->where('allocation.project_id', $projectId)->where('allocation.valuation_status', 'valued');
+            $this->limitToKnownRows($allocated, 'inventory_transaction_tbl', 'movement', $capturedAt);
+            if (Schema::hasColumn('inventory_cost_allocation_tbl', 'allocated_at')) {
+                $allocated->where('allocation.allocated_at', '<=', $capturedAt);
+            }
+            $features['valued_stock_out_cost_7d'] = (float) (clone $allocated)
+                ->whereBetween('movement.transaction_date', [$sevenDaysAgo, $asOf])->sum('allocation.allocated_amount');
+            $features['valued_stock_out_cost_30d'] = (float) $allocated
+                ->whereBetween('movement.transaction_date', [$thirtyDaysAgo, $asOf])->sum('allocation.allocated_amount');
+        }
 
         return $features;
+    }
+
+    public function forecastInputs(int $projectId, Carbon $start, Carbon $plannedEnd): array
+    {
+        $at = now();
+        $finance = $this->financeTotals($projectId, $at);
+
+        return $this->activityForProject($projectId, $at, $finance) + [
+            'planned_duration_days' => max(1, (int) $start->diffInDays($plannedEnd)),
+            'elapsed_days' => max(0, (int) $start->diffInDays($at->copy()->startOfDay(), false)),
+            'cost_coverage_complete' => $this->costCoverageComplete($projectId, $finance),
+            'fin_total_expense' => $finance['total'], 'fin_material_expense' => $finance['material'],
+            'fin_labor_expense' => $finance['labor'], 'fin_equipment_expense' => $finance['equipment'],
+            'fin_other_expense' => $finance['other'], 'finance_as_of_date' => $finance['as_of_date'],
+        ];
+    }
+
+    private function costCoverageComplete(int $projectId, array $finance): bool
+    {
+        $quality = app(ProjectCostDataQualityService::class)->inspect($projectId);
+        $costErrors = array_diff($quality['errors'], [
+            'not_completed', 'invalid_start_date', 'invalid_estimated_end_date', 'invalid_actual_end_date',
+            'estimated_end_date_before_start', 'actual_end_date_before_start', 'future_completion',
+            'invalid_worker_count', 'missing_positive_final_cost',
+        ]);
+
+        return $costErrors === [] && $finance['unvalued_count'] === 0
+            && abs($quality['final_cost'] - $finance['total']) <= 0.01;
     }
 
     private function limitToKnownRows(Builder $query, string $table, string $alias, Carbon $capturedAt): void
