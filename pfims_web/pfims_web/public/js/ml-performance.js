@@ -28,6 +28,7 @@
         put('metricPrecision', percent(scores.precision));
         put('metricRecall', percent(scores.recall));
         put('metricF1', percent(scores.f1_score));
+        put('metricOverrunAccuracy', percent(detection?.classification_accuracy ?? (legacy ? active.overrun_classification_accuracy : null)));
         const observations = metrics?.evaluation_observations ?? (candidate ? null : active.test_samples);
         const projects = metrics?.evaluation_projects ?? (candidate ? report?.holdout_project_ids?.length : null);
         put('samplesCount', `${projects ?? 'Unknown'} test projects · ${observations ?? 'Unknown'} observations`);

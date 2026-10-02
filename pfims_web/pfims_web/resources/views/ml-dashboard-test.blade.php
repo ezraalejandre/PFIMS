@@ -1122,9 +1122,10 @@
                             <div class="metric-item"><span class="metric-label">Precision · alerts that were correct</span><span class="metric-value" id="metricPrecision">—</span></div>
                             <div class="metric-item"><span class="metric-label">Recall · actual overruns detected</span><span class="metric-value" id="metricRecall">—</span></div>
                             <div class="metric-item"><span class="metric-label">F1 · balance of precision and recall</span><span class="metric-value" id="metricF1">—</span></div>
+                            <div class="metric-item"><span class="metric-label">Accuracy · all outcomes classified correctly</span><span class="metric-value" id="metricOverrunAccuracy">—</span></div>
                         </div>
                         <p id="performanceCounts"></p>
-                        <p class="analytics-panel-description">Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Exactly 5% is excluded from the “more than 5%” definition. Budget means the recorded budget used for evaluation.</p>
+                        <p class="analytics-panel-description">Accuracy is the percentage of overrun and within-budget outcomes classified correctly. Read it alongside recall: high accuracy can still hide missed overruns when most outcomes are within budget. Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Exactly 5% is excluded from the “more than 5%” definition. Budget means the recorded budget used for evaluation.</p>
                     </section>
                     <details class="metric-section"><summary>Evaluation details and prediction inputs</summary>
                         <p id="performanceValidation"></p><p id="performanceComparison"></p><p id="performanceFeatures"></p><p id="performanceUpdated"></p>
