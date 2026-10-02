@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class ReportController extends Controller
 {
     public function __construct(private AuditLogService $audit) {}
 
-    private const REPORT_TABS = ['expense_summary', 'inventory'];
+    private const REPORT_TABS = ['expense_summary', 'inventory', 'contracts'];
 
     private const SUMMARY_COLUMNS = [
         'project_name' => 'Project Name',
@@ -46,7 +47,7 @@ class ReportController extends Controller
         'expense_summary' => [
             'title' => 'Expenses Summary', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
             'columns' => self::SUMMARY_COLUMNS,
-            'filters' => ['search', 'report_month', 'report_day', 'report_year', 'project_status', 'expense_type'],
+            'filters' => ['search', 'report_month', 'report_year', 'project_status', 'expense_type'],
         ],
         'contracts' => [
             'title' => 'Contracts', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
@@ -59,7 +60,7 @@ class ReportController extends Controller
                 'profit_loss_payment_basis' => 'Profit/Loss (Payment)',
                 'profit_loss_contract_basis' => 'Profit/Loss (Contract)',
             ],
-            'filters' => ['search', 'project_id', 'status', 'start_date', 'end_date'],
+            'filters' => ['search', 'report_month', 'report_year'],
         ],
         'project' => [
             'title' => 'Project', 'type' => 'project', 'roles' => ['admin', 'operations'],
@@ -103,7 +104,7 @@ class ReportController extends Controller
                 'reorder_level' => 'Reorder Level', 'stock_status' => 'Stock Status',
                 'last_transaction_date' => 'Last Movement',
             ],
-            'filters' => ['search', 'category_id', 'supplier_id', 'stock_status'],
+            'filters' => ['search', 'category_id', 'supplier_id', 'stock_status', 'report_month', 'report_year'],
         ],
         'supplier' => [
             'title' => 'Supplier', 'type' => 'supplier', 'roles' => ['admin', 'operations'],
@@ -169,8 +170,8 @@ class ReportController extends Controller
 
     private function catalogPayload(string $role): array
     {
-        $datasets = collect(self::DATASETS)
-            ->only(self::REPORT_TABS)
+        $datasets = collect(self::REPORT_TABS)
+            ->mapWithKeys(fn (string $key) => [$key => self::DATASETS[$key]])
             ->filter(fn (array $definition) => in_array($role, $definition['roles'], true))
             ->map(fn (array $definition, string $key) => [
                 'key' => $key, 'title' => $definition['title'], 'type' => $definition['type'],
@@ -222,6 +223,7 @@ class ReportController extends Controller
 
         return response()->json([
             'dataset' => $dataset, 'title' => $definition['title'], 'columns' => $definition['columns'],
+            'as_of' => $this->summaryCutoffDate($filters)->format('F j, Y'),
             'rows' => $pageRows, 'total_rows' => $total,
             'truncated' => $total > $perPage, 'kpis' => $this->datasetKpis($dataset, $rows),
             'chart' => $this->datasetChart($dataset, $rows), 'filters' => $filters,
@@ -324,10 +326,13 @@ class ReportController extends Controller
         $rows = $this->limitExportRows($rows, $validated['row_limit'] ?? null);
         $balances = $validated['dataset'] === 'expense_summary'
             ? $this->summaryBalances($rows, $filters, $validated['columns']) : [];
+        if ($validated['dataset'] === 'contracts') {
+            $balances = ['totals' => $this->contractTotals($rows, $validated['columns'])];
+        }
         return response()->json([
             'title' => $validated['title'],
             'scope' => $this->reportScope($validated['dataset'], $filters),
-            'as_of' => now()->format('F j, Y'),
+            'as_of' => $this->summaryCutoffDate($filters)->format('F j, Y'),
             'columns' => array_intersect_key($definition['columns'], array_flip($validated['columns'])),
             'rows' => $rows->take(8)->values(),
             'row_count' => $rows->count(),
@@ -348,10 +353,13 @@ class ReportController extends Controller
         $rows = $this->limitExportRows($rows, $validated['row_limit'] ?? null);
         $balances = $validated['dataset'] === 'expense_summary'
             ? $this->summaryBalances($rows, $filters, array_keys($columns)) : [];
+        if ($validated['dataset'] === 'contracts') {
+            $balances = ['totals' => $this->contractTotals($rows, array_keys($columns))];
+        }
         $totals = $balances ? array_values($balances) : null;
         $format = $validated['format'];
         $file = app(ReportFileBuilder::class)->build($format, $validated['title'],
-            $this->reportScope($validated['dataset'], $filters), $columns, $rows->all(), $totals, $validated['design'] ?? []);
+            $this->reportScope($validated['dataset'], $filters), $columns, $rows->all(), $totals, array_merge($validated['design'] ?? [], ['as_of' => $this->summaryCutoffDate($filters)->format('F j, Y')]));
         $role = $this->role();
         $fileName = (Str::slug($validated['title']) ?: $validated['dataset']).'-'.now()->format('Ymd-His')
             .'-'.strtolower(Str::random(4)).'.'.$format;
@@ -465,7 +473,8 @@ class ReportController extends Controller
     {
         $cutoffDate ??= $this->summaryCutoffDate($filters)->toDateString();
         $projects = DB::table('project_tbl as p')
-            ->select('p.project_id', 'p.project_name', 'p.status');
+            ->select('p.project_id', 'p.project_name', 'p.status')
+            ->where(fn ($query) => $query->whereDate('p.start_date', '<=', $cutoffDate)->orWhereNull('p.start_date'));
         if (($filters['project_status'] ?? 'Ongoing') === 'Completed') {
             $projects->where('p.status', 'Completed');
         } else {
@@ -549,6 +558,17 @@ class ReportController extends Controller
         });
     }
 
+    private function contractTotals(Collection $rows, array $columns): array
+    {
+        $totals = ['project_name' => 'TOTAL'];
+        foreach ($columns as $key) {
+            if (! in_array($key, ['project_name', 'start_date', 'actual_end_date'], true)) {
+                $totals[$key] = $rows->sum(fn ($row) => (int) round((float) ($row[$key] ?? 0) * 100)) / 100;
+            }
+        }
+        return $totals;
+    }
+
     private function contractRows(array $filters): Collection
     {
         $query = DB::table('fin_project_contract_tbl as c')
@@ -556,14 +576,22 @@ class ReportController extends Controller
             ->leftJoin('budgets_tbl as b', 'b.project_id', '=', 'p.project_id')
             ->select('c.*', 'p.project_name', 'p.start_date', 'p.actual_end_date', 'p.status', 'b.budget_amount');
         $this->applyProjectFilters($query, $filters, 'p');
+        $cutoff = $this->summaryCutoffDate($filters)->toDateString();
+        $query->whereDate('p.start_date', '<=', $cutoff);
         $ledger = app(ProjectCostLedger::class);
 
-        return $query->orderBy('p.project_name')->limit(10000)->get()->map(function ($contract) use ($ledger) {
+        return $query->orderByDesc('c.contract_id')->limit(10000)->get()->map(function ($contract) use ($ledger, $cutoff) {
             $price = (float) ($contract->budget_amount ?? $contract->original_contract_price ?? 0);
             $additional = (float) $contract->additional_works_contract;
             $payment = (float) $contract->original_payment_received;
             $additionalPayment = (float) $contract->additional_works_payment;
-            $cost = $ledger->forProject((int) $contract->project_id)['total'];
+            $cost = (float) $ledger->directExpenses()->where('cost_expense.project_id', $contract->project_id)->whereDate('cost_expense.expense_date', '<=', $cutoff)->sum('cost_expense.amount');
+            if (Schema::hasTable('inventory_cost_allocation_tbl')) {
+                $cost += (float) DB::table('inventory_cost_allocation_tbl as allocation')
+                    ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'allocation.out_transaction_id')
+                    ->where('allocation.project_id', $contract->project_id)->where('allocation.valuation_status', 'valued')
+                    ->whereDate('movement.transaction_date', '<=', $cutoff)->sum('allocation.allocated_amount');
+            }
             $totalContract = $price + $additional;
             $totalPayment = $payment + $additionalPayment;
             return [
@@ -674,20 +702,26 @@ class ReportController extends Controller
     private function inventoryQuery(array $filters): Builder
     {
         $lastMovement = DB::table('inventory_transaction_tbl')
+            ->whereDate('transaction_date', '<=', $this->summaryCutoffDate($filters)->toDateString())
             ->select('item_id', DB::raw('MAX(transaction_date) as last_transaction_date'))->groupBy('item_id');
         $defaultThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
+        $cutoff = $this->summaryCutoffDate($filters)->toDateString();
+        $futureMovement = DB::table('inventory_transaction_tbl')->whereDate('transaction_date', '>', $cutoff)
+            ->select('item_id')->selectRaw("SUM(CASE WHEN transaction_type = 'IN' THEN quantity WHEN transaction_type = 'OUT' THEN -quantity ELSE 0 END) as stock_change")->groupBy('item_id');
+        $stockSql = '(COALESCE(i.current_stock, 0) - COALESCE(future_movement.stock_change, 0))';
         $effectiveThresholdSql = "CASE WHEN i.reorder_level IS NULL OR i.reorder_level < {$defaultThreshold} THEN {$defaultThreshold} ELSE i.reorder_level END";
-        $statusSql = "CASE WHEN COALESCE(i.current_stock, 0) <= 0 THEN 'Out of Stock' WHEN COALESCE(i.current_stock, 0) <= {$effectiveThresholdSql} THEN 'Reorder Needed' ELSE 'Sufficient' END";
+        $statusSql = "CASE WHEN {$stockSql} <= 0 THEN 'Out of Stock' WHEN {$stockSql} <= {$effectiveThresholdSql} THEN 'Reorder Needed' ELSE 'Sufficient' END";
         $query = DB::table('inventory_item_tbl as i')
             ->leftJoin('inventory_category_tbl as c', 'c.inventory_category_id', '=', 'i.inventory_category_id')
             ->leftJoin('supplier_tbl as s', 's.supplier_id', '=', 'i.supplier_id')
             ->leftJoin('unit_tbl as u', 'u.unit_id', '=', 'i.unit_id')
             ->leftJoinSub($lastMovement, 'movement', 'movement.item_id', '=', 'i.item_id')
+            ->leftJoinSub($futureMovement, 'future_movement', 'future_movement.item_id', '=', 'i.item_id')
             ->select(['i.item_id', 'i.item_name', 'i.unit_price',
                 DB::raw("COALESCE(c.inventory_category_name, 'Uncategorized') as category_name"),
                 DB::raw("COALESCE(s.supplier_name, 'Unassigned') as supplier_name"),
                 DB::raw("COALESCE(u.unit_name, '') as unit_name"),
-                DB::raw('COALESCE(i.current_stock, 0) as current_stock'),
+                DB::raw("{$stockSql} as current_stock"),
                 DB::raw("{$effectiveThresholdSql} as reorder_level"), DB::raw("{$statusSql} as stock_status"),
                 'movement.last_transaction_date']);
         if (! empty($filters['category_id'])) {
@@ -705,6 +739,11 @@ class ReportController extends Controller
                 ->orWhere('c.inventory_category_name', 'like', "%{$search}%")->orWhere('s.supplier_name', 'like', "%{$search}%"));
         }
 
+        $query->where(function ($inner) {
+            $inner->whereNotNull('movement.last_transaction_date')->orWhereNotExists(function ($transactions) {
+                $transactions->selectRaw('1')->from('inventory_transaction_tbl as dated_movement')->whereColumn('dated_movement.item_id', 'i.item_id');
+            });
+        });
         return $query->orderBy('stock_status')->orderBy('i.item_name');
     }
 
@@ -767,7 +806,7 @@ class ReportController extends Controller
             return CarbonImmutable::createSafe(
                 (int) ($filters['report_year'] ?? $today->year),
                 (int) ($filters['report_month'] ?? $today->month),
-                (int) ($filters['report_day'] ?? $today->day),
+                (int) ($filters['report_day'] ?? CarbonImmutable::create((int) ($filters['report_year'] ?? $today->year), (int) ($filters['report_month'] ?? $today->month), 1)->daysInMonth),
                 0, 0, 0, 'Asia/Manila'
             );
         } catch (\Throwable) {

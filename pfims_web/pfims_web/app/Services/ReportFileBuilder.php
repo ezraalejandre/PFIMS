@@ -9,8 +9,10 @@ use ZipArchive;
 /** Builds the same selected report columns for CSV, Excel and PDF. */
 class ReportFileBuilder
 {
+    private string $asOf;
     public function build(string $format, string $title, string $scope, array $columns, array $rows, ?array $totals, array $design = []): string
     {
+        $this->asOf = $design['as_of'] ?? now()->format('F j, Y');
         return match ($format) {
             'csv' => $this->csv($title, $scope, $columns, $rows, $totals),
             'xlsx' => $this->xlsx($title, $scope, $columns, $rows, $totals, $design),
@@ -29,7 +31,7 @@ class ReportFileBuilder
         $stream = fopen('php://temp', 'w+');
         fwrite($stream, "\xEF\xBB\xBF");
         fputcsv($stream, [$title]);
-        fputcsv($stream, ['As of '.now()->format('F j, Y')]);
+        fputcsv($stream, ['As of '.$this->asOf]);
         fputcsv($stream, [$scope]);
         fputcsv($stream, []);
         fputcsv($stream, array_map('mb_strtoupper', array_values($columns)));
@@ -83,7 +85,7 @@ class ReportFileBuilder
             tr.total.month td, tr.total.month td.total-column { background:#fdeaea; color:#a52525; }
             thead { display:table-header-group; } tr { page-break-inside:avoid; }
             </style></head><body><header><img src="data:image/jpeg;base64,'.$logo.'"><h1>'.$this->html($title).'</h1>
-            <p>As of '.now()->format('F j, Y').'</p><p>'.$this->html($scope).'</p></header>
+            <p>As of '.$this->html($this->asOf).'</p><p>'.$this->html($scope).'</p></header>
             <table'.($expenseSummary ? ' class="summary"' : '').'><thead><tr>'.$head.'</tr></thead><tbody>'.$body.'</tbody></table></body></html>';
         $options = new Options;
         $options->set('isRemoteEnabled', false);
@@ -186,7 +188,7 @@ class ReportFileBuilder
             $lastColumn = $this->excelColumn($columnCount);
             $xmlRows = '<row r="1" ht="32" customHeight="1"/><row r="2" ht="32" customHeight="1"/><row r="3" ht="32" customHeight="1"/>';
             $xmlRows .= '<row r="5">'.$this->xlsxCell('A5', $title, 1).'</row>';
-            $xmlRows .= '<row r="6">'.$this->xlsxCell('A6', 'As of '.now()->format('F j, Y')).'</row>';
+            $xmlRows .= '<row r="6">'.$this->xlsxCell('A6', 'As of '.$this->asOf).'</row>';
             $xmlRows .= '<row r="7">'.$this->xlsxCell('A7', $scope, 1).'</row>';
             $expenseSummary = count($this->totalRows($totals)) === 3 && isset($columns['project_name']);
             $headerCells = '';

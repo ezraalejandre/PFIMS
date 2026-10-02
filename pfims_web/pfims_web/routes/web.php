@@ -177,6 +177,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('role.portal:admin,accounting,operations');
 
     // Validated, transactional CSV/XLSX imports and downloadable CSV templates.
+    Route::post('/api/imports/contracts', [DataImportController::class, 'contracts'])->middleware('throttle:10,1');
     Route::post('/api/imports/finance-expenses', [DataImportController::class, 'finance'])
         ->middleware('throttle:10,1');
     Route::post('/api/imports/inventory', [DataImportController::class, 'inventory'])
@@ -184,7 +185,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/imports/projects', [DataImportController::class, 'projects'])
         ->middleware('throttle:10,1');
     Route::get('/api/imports/templates/{type}', [DataImportController::class, 'template'])
-        ->whereIn('type', ['projects', 'finance-expenses', 'inventory-items', 'inventory-transactions']);
+        ->whereIn('type', ['projects', 'finance-expenses', 'contracts', 'inventory-items', 'inventory-transactions']);
 });
 
 Route::get('/audit-logs', [AuditLogController::class, 'index'])

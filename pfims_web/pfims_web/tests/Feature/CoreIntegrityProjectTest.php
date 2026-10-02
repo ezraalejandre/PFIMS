@@ -11,6 +11,54 @@ use Tests\TestCase;
 
 class CoreIntegrityProjectTest extends TestCase
 {
+    public function test_budget_project_can_be_changed_but_cannot_replace_another_budget(): void
+    {
+        $source = $this->project();
+        $destination = $this->project(['project_name' => 'Destination']);
+        $budgetId = DB::table('budgets_tbl')->insertGetId(['project_id' => $source, 'budget_amount' => 500, 'actual_amount' => 0]);
+        $this->actingAs($this->user())->putJson("/api/budgets/{$budgetId}", ['project_id' => $destination, 'budget_amount' => 600])
+            ->assertOk()->assertJsonPath('project_id', $destination);
+        $this->assertDatabaseHas('budgets_tbl', ['budget_id' => $budgetId, 'project_id' => $destination, 'budget_amount' => 600]);
+        DB::table('budgets_tbl')->insert(['project_id' => $source, 'budget_amount' => 100, 'actual_amount' => 0]);
+        $this->putJson("/api/budgets/{$budgetId}", ['project_id' => $source, 'budget_amount' => 700])
+            ->assertUnprocessable()->assertJsonValidationErrors('project_id');
+        $this->assertDatabaseHas('budgets_tbl', ['budget_id' => $budgetId, 'project_id' => $destination, 'budget_amount' => 600]);
+    }
+
+    public function test_project_without_linked_records_can_be_deleted_with_its_zero_budget(): void
+    {
+        $id = $this->project();
+        DB::table('budgets_tbl')->insert(['project_id' => $id, 'budget_amount' => 0, 'actual_amount' => 0]);
+        $this->actingAs($this->user())->deleteJson("/api/projects/{$id}")->assertOk();
+        $this->assertDatabaseMissing('project_tbl', ['project_id' => $id]);
+        $this->assertDatabaseMissing('budgets_tbl', ['project_id' => $id]);
+        $this->deleteJson("/api/projects/{$id}")->assertNotFound();
+    }
+
+    public function test_project_with_linked_contract_is_blocked_without_a_server_error(): void
+    {
+        Schema::create('fin_project_contract_tbl', function (Blueprint $table) {
+            $table->id();
+            $table->integer('project_id');
+            $table->foreign('project_id')->references('project_id')->on('project_tbl');
+        });
+        $id = $this->project();
+        DB::table('fin_project_contract_tbl')->insert(['project_id' => $id]);
+        $this->actingAs($this->user())->deleteJson("/api/projects/{$id}")
+            ->assertConflict()->assertJsonPath('message', 'Project cannot be deleted while it has contracts. Remove those records first.');
+        $this->assertDatabaseHas('project_tbl', ['project_id' => $id]);
+        $this->assertDatabaseHas('fin_project_contract_tbl', ['project_id' => $id]);
+    }
+
+    public function test_project_with_budget_allocation_cannot_be_deleted(): void
+    {
+        $id = $this->project();
+        DB::table('budgets_tbl')->insert(['project_id' => $id, 'budget_amount' => 100, 'actual_amount' => 0]);
+        $this->actingAs($this->user())->deleteJson("/api/projects/{$id}")->assertConflict();
+        $this->assertDatabaseHas('project_tbl', ['project_id' => $id]);
+        $this->assertDatabaseHas('budgets_tbl', ['project_id' => $id]);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -286,9 +334,8 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('function filterProjects()', false)
                 ->assertSee("document.getElementById('editProjectName').value = currentEditData.name || '';", false)
                 ->assertSee("document.getElementById('editClientName').value = currentEditData.client || '';", false)
-                ->assertSee("var existingManager = currentEditData.manager || '';", false)
-                ->assertSee('managerSelect.add(currentManagerOption);', false)
-                ->assertSee("managerSelect.value = existingManager;", false)
+                ->assertSee('type="text" id="editProjectManager"', false)
+                ->assertSee("document.getElementById('editProjectManager').value = currentEditData.manager || '';", false)
                 ->assertSee("project_manager: manager,", false)
                 ->assertSee("currentEditData.manager = updatedProject.project_manager || manager;", false)
                 ->assertSee("currentEditData.progress = parseFloat(updatedProject.completion_percentage) || 0;", false)

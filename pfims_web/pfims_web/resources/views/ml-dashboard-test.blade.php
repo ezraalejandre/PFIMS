@@ -1146,7 +1146,7 @@
                     </div>
                     <div class="filters-grid" aria-label="Material Projection filters">
                         <label class="filter-control">Search<input id="materialForecastSearch" type="search" maxlength="100" placeholder="Material name"></label>
-                        <label class="filter-control">Stock status<select id="materialForecastStatus"><option value="">All stock states</option><option>Healthy</option><option>Low Stock</option><option>Reorder Needed</option></select></label>
+                        <label class="filter-control">Stock status<select id="materialForecastStatus"><option value="">All stock states</option><option value="Sufficient">Sufficient</option><option>Low Stock</option><option>Reorder Needed</option></select></label>
                         <button type="button" id="clearMaterialForecastFilters">Clear</button>
                     </div>
                     <div class="table-wrapper">
@@ -1198,7 +1198,7 @@
                         <label class="filter-control">Search<input id="budgetVarianceSearch" type="search" maxlength="100" placeholder="Project name"></label>
                         <label class="filter-control">Project<select id="budgetVarianceProject"><option value="">All projects</option></select></label>
                         <label class="filter-control">Position<select id="budgetVarianceStatus"><option value="">All positions</option><option value="within">Within budget</option><option value="over">Over budget</option></select></label>
-                        <button type="button" id="clearBudgetVarianceFilters">Clear</button>
+                        <label class="filter-control">Year<select id="budgetVarianceYear"><option value="">All years</option></select></label><button type="button" id="clearBudgetVarianceFilters">Clear</button>
                     </div>
                     <div class="table-wrapper">
                         <table class="analytics-table">
@@ -1540,6 +1540,7 @@
         const tbody = document.getElementById('materialForecastBody');
         if (predictions !== materialForecastRows) materialForecastRows = predictions ? Object.values(predictions) : [];
         const query = (document.getElementById('materialForecastSearch')?.value || '').trim().toLowerCase();
+        materialForecastRows.forEach(row => { if (row.stock_status === 'Healthy') row.stock_status = 'Sufficient'; if (row.status === 'Healthy') row.status = 'Sufficient'; });
         const status = document.getElementById('materialForecastStatus')?.value || '';
         const filteredRows = materialForecastRows.filter(item => (!query || String(item.item_name || '').toLowerCase().includes(query)) && (!status || item.status === status));
         const pageSize = Number(document.getElementById('materialForecastPageSize')?.value || 5);
@@ -1654,13 +1655,17 @@
         const query = (document.getElementById('budgetVarianceSearch')?.value || '').trim().toLowerCase();
         const project = document.getElementById('budgetVarianceProject')?.value || '';
         const position = document.getElementById('budgetVarianceStatus')?.value || '';
+        const year = document.getElementById('budgetVarianceYear')?.value || '';
+        const yearSelect = document.getElementById('budgetVarianceYear');
+        const years = [...new Set(budgetVarianceRows.map(row => String(row.start_date || '').substring(0,4)).filter(Boolean))].sort().reverse();
+        if (yearSelect.options.length !== years.length + 1) { yearSelect.innerHTML = '<option value="">All years</option>' + years.map(y => '<option>' + y + '</option>').join(''); yearSelect.value = year; }
         const filteredRows = budgetVarianceRows.filter(item => {
             const projectName = String(item.project_name || '');
             const matchesSearch = !query || projectName.toLowerCase().includes(query);
             const matchesProject = !project || projectName === project;
             const overBudget = Number(item.variance || 0) < 0;
             const rowPosition = String(item.position || (overBudget ? 'over' : 'within')).toLowerCase();
-            return matchesSearch && matchesProject && (!position || rowPosition === position);
+            return matchesSearch && matchesProject && (!year || String(item.start_date || '').startsWith(year)) && (!position || rowPosition === position);
         });
         const pageSize = Number(document.getElementById('budgetVariancePageSize')?.value || 5);
         const totalPages = Math.max(Math.ceil(filteredRows.length / pageSize), 1);
@@ -1807,11 +1812,11 @@
             budgetVariancePage = Number(button.dataset.budgetPage);
             updateBudgetVariance(budgetVarianceRows);
         });
-        ['budgetVarianceSearch', 'budgetVarianceProject', 'budgetVarianceStatus'].forEach(id => document.getElementById(id).addEventListener('input', () => { budgetVariancePage = 1; updateBudgetVariance(budgetVarianceRows); }));
+        ['budgetVarianceSearch', 'budgetVarianceProject', 'budgetVarianceStatus', 'budgetVarianceYear'].forEach(id => document.getElementById(id).addEventListener('input', () => { budgetVariancePage = 1; updateBudgetVariance(budgetVarianceRows); }));
         document.getElementById('clearBudgetVarianceFilters').addEventListener('click', () => {
             document.getElementById('budgetVarianceSearch').value = '';
             document.getElementById('budgetVarianceProject').value = '';
-            document.getElementById('budgetVarianceStatus').value = '';
+            document.getElementById('budgetVarianceStatus').value = ''; document.getElementById('budgetVarianceYear').value = '';
             budgetVariancePage = 1;
             updateBudgetVariance(budgetVarianceRows);
         });

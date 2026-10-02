@@ -112,6 +112,7 @@ class BudgetController extends Controller
         }
 
         $data = $request->validate([
+            'project_id' => ['sometimes', 'required', 'integer', 'exists:project_tbl,project_id'],
             'budget_amount' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
             'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'remove_proof_file' => ['nullable', 'boolean'],
@@ -125,6 +126,24 @@ class BudgetController extends Controller
             }
             DB::transaction(function () use ($budget, $data, $request, $newPath) {
                 $changes = ['budget_amount' => $data['budget_amount']];
+                $projectId = (int) ($data['project_id'] ?? $budget->project_id);
+                if ($projectId !== (int) $budget->project_id) {
+                    DB::table('project_tbl')->whereIn('project_id', [$budget->project_id, $projectId])
+                        ->orderBy('project_id')->lockForUpdate()->get();
+                    if (Budget::where('project_id', $projectId)->where('budget_id', '!=', $budget->budget_id)->exists()) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'project_id' => 'The selected project already has a budget.',
+                        ]);
+                    }
+                    $cost = app(ProjectCostLedger::class)->forProject((int) $budget->project_id);
+                    if ($cost['total'] > 0 || $cost['unvalued_count'] > 0) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'project_id' => 'A budget with recorded expenses cannot be moved to another project.',
+                        ]);
+                    }
+                    $changes['project_id'] = $projectId;
+                    $changes['actual_amount'] = app(ProjectCostLedger::class)->forProject($projectId)['total'];
+                }
                 if ($newPath) {
                     $changes['proof_file_path'] = $newPath;
                     $changes['proof_file_name'] = mb_substr($request->file('proof_file')->getClientOriginalName(), 0, 255);

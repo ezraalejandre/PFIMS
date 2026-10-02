@@ -12,6 +12,27 @@ use Tests\TestCase;
 
 class CentralizedReportsTest extends TestCase
 {
+    public function test_contracts_require_budget_and_import_appears_newest_first_in_search(): void
+    {
+        $this->actingAs($this->user('admin'));
+        foreach ([91 => 'First Contract Project', 92 => 'Newest Contract Project'] as $id => $name) {
+            DB::table('project_tbl')->insert(['project_id' => $id, 'project_name' => $name, 'status' => 'Ongoing', 'start_date' => '2026-01-01']);
+        }
+        $this->postJson('/api/project-contracts', ['project_id' => 91])->assertUnprocessable();
+        DB::table('budgets_tbl')->insert([
+            ['project_id' => 91, 'budget_amount' => 1000], ['project_id' => 92, 'budget_amount' => 2000],
+        ]);
+        $this->postJson('/api/project-contracts', ['project_id' => 91, 'original_contract_price' => 1000])->assertCreated();
+        $csv = "project_name,additional_works_contract,original_payment_received,additional_works_payment,remarks\nNewest Contract Project,100,500,50,Imported\n";
+        $this->post('/api/imports/contracts', ['file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('contracts.csv', $csv)], ['Accept' => 'application/json'])
+            ->assertCreated()->assertJsonPath('data.imported', 1);
+        $this->getJson('/api/reports/data/contracts')->assertOk()->assertJsonPath('rows.0.project_name', 'Newest Contract Project');
+        $this->getJson('/api/reports/data/contracts?search=Newest')->assertOk()->assertJsonPath('total_rows', 1)->assertJsonPath('rows.0.total_contract_price', 2100);
+        $this->get('/api/imports/templates/contracts')->assertOk();
+        $this->post('/api/imports/contracts', ['file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('contracts.csv', $csv)], ['Accept' => 'application/json'])
+            ->assertUnprocessable();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -83,7 +104,7 @@ class CentralizedReportsTest extends TestCase
 
         $this->actingAs($accounting)->getJson('/api/reports/catalog')
             ->assertOk()
-            ->assertJsonCount(1, 'datasets')
+            ->assertJsonCount(2, 'datasets')
             ->assertJsonPath('datasets.0.key', 'expense_summary')
             ->assertJsonPath('datasets.0.title', 'Expenses Summary');
 
@@ -91,10 +112,12 @@ class CentralizedReportsTest extends TestCase
 
         $this->actingAs($this->user('admin'))->getJson('/api/reports/catalog')
             ->assertOk()
-            ->assertJsonCount(2, 'datasets')
+            ->assertJsonCount(3, 'datasets')
+            ->assertJsonPath('datasets.2.key', 'contracts')
+            ->assertJsonPath('datasets.2.filters', ['search', 'report_month', 'report_year'])
             ->assertJsonPath('datasets.0.title', 'Expenses Summary')
             ->assertJsonPath('datasets.1.key', 'inventory')
-            ->assertJsonPath('datasets.1.filters', ['search', 'category_id', 'supplier_id', 'stock_status']);
+            ->assertJsonPath('datasets.1.filters', ['search', 'category_id', 'supplier_id', 'stock_status', 'report_month', 'report_year']);
 
         $this->actingAs($this->user('operations'))->getJson('/api/reports/catalog')
             ->assertOk()
@@ -133,6 +156,13 @@ class CentralizedReportsTest extends TestCase
             ->assertJsonPath('rows.0.category_name', 'Paint')
             ->assertJsonPath('rows.0.stock_status', 'Out of Stock')
             ->assertJsonMissing(['project_name' => 'Blue Paint']);
+
+        DB::table('inventory_transaction_tbl')->insert([
+            ['inventory_transaction_id'=>1,'item_id'=>1,'transaction_date'=>'2026-09-01'],
+            ['inventory_transaction_id'=>2,'item_id'=>2,'transaction_date'=>'2025-09-01'],
+        ]);
+        $this->getJson('/api/reports/data/inventory?report_month=9&report_year=2026')
+            ->assertOk()->assertJsonPath('total_rows',2);
 
         $this->postJson('/api/reports/preview', [
             'dataset' => 'inventory', 'title' => 'Inventory Items',
@@ -262,9 +292,10 @@ class CentralizedReportsTest extends TestCase
 
         $this->actingAs($this->user('admin'))->getJson('/api/reports/catalog')
             ->assertOk()->assertJsonPath('datasets.0.filters', [
-                'search', 'report_month', 'report_day', 'report_year', 'project_status', 'expense_type',
+                'search', 'report_month', 'report_year', 'project_status', 'expense_type',
             ]);
         $base = '/api/reports/data/expense_summary?report_month=9&report_day=30&report_year=2026';
+        $this->getJson('/api/reports/data/expense_summary?report_month=9&report_year=2026&project_status=Ongoing')->assertOk()->assertJsonPath('rows.0.total',210);
         $this->getJson($base.'&project_status=Ongoing&expense_type=Overall')
             ->assertOk()->assertJsonPath('total_rows', 1)->assertJsonPath('rows.0.total', 210)
             ->assertJsonPath('totals.project_name', 'TOTAL(As of Current Month)')
@@ -431,6 +462,17 @@ class CentralizedReportsTest extends TestCase
             ->assertJsonPath('rows.0.project_expense', 150)
             ->assertJsonPath('rows.0.total_contract_price', 1100)
             ->assertJsonPath('rows.0.accounts_receivable', 650);
+        $this->getJson('/api/reports/data/contracts?search=Contract&report_year=2026')->assertOk()->assertJsonPath('total_rows',1);
+        $this->getJson('/api/reports/data/contracts?report_year=2025')->assertOk()->assertJsonPath('total_rows',0);
+        $this->getJson('/api/reports/data/contracts?report_year=2026&report_month=12')->assertOk()->assertJsonPath('total_rows',1)->assertJsonPath('as_of','December 31, 2026');
+        Storage::fake('public');
+        $this->postJson('/api/reports/preview', ['dataset'=>'contracts','title'=>'Contracts 2026','columns'=>['project_name','total_contract_price','project_expense'],'filters'=>['report_year'=>2026],'row_limit'=>1])
+            ->assertOk()->assertJsonPath('totals.project_name','TOTAL')->assertJsonPath('totals.total_contract_price',1100)->assertJsonPath('totals.project_expense',150);
+        foreach (['csv','xlsx','pdf'] as $format) {
+            $export = $this->postJson('/api/reports/export', ['dataset'=>'contracts','title'=>'Contracts 2026','format'=>$format,'columns'=>['project_name','total_contract_price'],'filters'=>['report_year'=>2026]])->assertOk();
+            if ($format === 'csv') $this->assertStringContainsString('TOTAL,1100', $export->streamedContent());
+        }
+        $this->getJson('/api/reports?dataset=contracts')->assertOk()->assertJsonCount(3,'data');
         $this->get('/finance?section=contracts')->assertRedirect('/finance?section=budgets&subtab=contracts');
         $this->actingAs($this->user('operations'))->getJson('/api/reports/data/contracts')->assertForbidden();
     }

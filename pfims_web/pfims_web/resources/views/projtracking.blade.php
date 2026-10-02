@@ -395,14 +395,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Project manager <span class="required">*</span></label>
-                        <select id="editProjectManager" required>
-                            <option value="">Select Project Manager</option>
-                            <option value="A. Santos">A. Santos</option>
-                            <option value="B. Reyes">B. Reyes</option>
-                            <option value="C. Mendoza">C. Mendoza</option>
-                            <option value="D. Cruz">D. Cruz</option>
-                            <option value="E. Villanueva">E. Villanueva</option>
-                        </select>
+                        <input type="text" id="editProjectManager" maxlength="150" placeholder="Enter project manager name" autocomplete="name" required>
                         <span id="editProjectManagerError" class="field-error"></span>
                     </div>
                 </div>
@@ -471,6 +464,10 @@
                 var suppressErrorAutoClose = false;
 
         function showError(message) {
+            if (typeof window.showPfimsAlert === 'function') {
+                closeError();
+                return window.showPfimsAlert(message || 'An error occurred. Please try again.', 'error');
+            }
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
             if (msgSpan) {
@@ -1258,10 +1255,9 @@ if (currentStep === 2) {
                     '</div>' +
                 '</td>' +
                 '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'Ongoing' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>' +
-                '<td class="action-cell"><button type="button" class="pfims-row-action" title="View project" aria-label="View project"><img src="' + escapeHtml(document.body.dataset.projectViewIcon) + '" alt=""></button><button type="button" class="pfims-row-action" title="Edit project" aria-label="Edit project"><img src="' + escapeHtml(document.body.dataset.projectEditIcon) + '" alt=""></button></td>';
+                '<td class="action-cell"><button type="button" class="pfims-row-action" title="View project" aria-label="View project"><img src="' + escapeHtml(document.body.dataset.projectViewIcon) + '" alt=""></button></td>';
             var actionButtons = row.querySelectorAll('.pfims-row-action');
             actionButtons[0].onclick = function(event) { event.stopPropagation(); openProjectFromAction(false); };
-            actionButtons[1].onclick = function(event) { event.stopPropagation(); openProjectFromAction(true); };
         }
 
         function createProjectRow(project) {
@@ -1472,6 +1468,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': getCsrfToken(),
+                        'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
@@ -1517,20 +1514,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             document.getElementById('editProjectOriginalName').value = currentEditData.name;
             document.getElementById('editProjectName').value = currentEditData.name || '';
             document.getElementById('editClientName').value = currentEditData.client || '';
-            var managerSelect = document.getElementById('editProjectManager');
-            var existingManager = currentEditData.manager || '';
-            var previousCurrentManagerOption = managerSelect.querySelector('[data-current-manager]');
-            if (previousCurrentManagerOption) {
-                previousCurrentManagerOption.remove();
-            }
-            if (existingManager && !Array.from(managerSelect.options).some(function(option) {
-                return option.value === existingManager;
-            })) {
-                var currentManagerOption = new Option(existingManager, existingManager);
-                currentManagerOption.dataset.currentManager = 'true';
-                managerSelect.add(currentManagerOption);
-            }
-            managerSelect.value = existingManager;
+            document.getElementById('editProjectManager').value = currentEditData.manager || '';
             document.getElementById('editPhase').value = currentEditData.phase || 'Planning';
             document.getElementById('editStatus').value = currentEditData.status || 'Ongoing';
             document.getElementById('editStartDate').value = currentEditData.startDate || '';
@@ -1576,7 +1560,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                 return;
             }
             if (!manager) {
-                showFieldError('editProjectManager', 'editProjectManagerError', 'Please select a project manager.');
+                showFieldError('editProjectManager', 'editProjectManagerError', 'Please enter a project manager name.');
                 return;
             }
 

@@ -821,7 +821,7 @@
             <h1>FINANCE</h1>
             <div id="financeHeaderActions" style="display:flex;gap:10px;flex-wrap:wrap;"{{ in_array($financeTab, ['expenses', 'budgets', 'receivables', 'cash', 'backhoe', 'bonds'], true) ? '' : ' hidden' }}>
                 <div class="finance-header-action-group" data-finance-tabs="expenses budgets"{{ in_array($financeTab, ['expenses', 'budgets'], true) ? '' : ' hidden' }}>
-                    <button class="btn-add-data" onclick="openPfimsImport()">Import Expenses</button>
+                    <button id="financeImportButton" class="btn-add-data" onclick="openPfimsImport(document.getElementById('contractsSubtab').getAttribute('aria-selected') === 'true' && currentReportTab === 'budgets' ? 'contracts' : 'finance-expenses')">Import Expenses</button>
                 </div>
                 <div class="finance-header-action-group" data-finance-tabs="expenses"{{ $financeTab === 'expenses' ? '' : ' hidden' }}>
                     <button class="btn-add-expense" onclick="openAddExpenseModal()">+ Add Expense</button>
@@ -929,6 +929,7 @@
                     <table id="profitTable">
                         <thead><tr><th>Project</th><th>Start Date</th><th>End Date</th><th>Contract Price</th><th>Addl. Works</th><th>Total Contract</th><th>Original Payment</th><th>Addl. Payment</th><th>Total Payment</th><th>Project Expense</th><th>Accounts Receivable</th><th>Profit/Loss (Payment)</th><th>Profit/Loss (Contract)</th></tr></thead>
                         <tbody id="profitBody"><tr><td colspan="13" style="text-align:center;padding:20px;">Loading contracts...</td></tr></tbody>
+                        <tfoot id="profitTotals"><tr class="total-row"><td><strong>TOTAL</strong></td>@for($column = 1; $column < 13; $column++)<td></td>@endfor</tr></tfoot>
                     </table>
                 </div>
             </div>
@@ -1031,12 +1032,17 @@
         <div id="tabReceivables" class="report-section {{ $financeTab === 'receivables' ? 'active' : '' }}">
             <div class="filter-row">
                 <input type="search" id="receivableSearch" class="project-filter" maxlength="150" placeholder="Search counterparty or project..." aria-label="Search accounts receivable and payable" oninput="filterFinanceRows('receivableSearch', 'receivableBody')">
-                <select id="receivableType" aria-label="Accounts receivable and payable type" onchange="loadReceivables()">
+                <label class="pfims-filter-field"><span>Type</span>
+                <select id="receivableType" aria-label="Type" onchange="loadReceivables()">
                     <option value="accounts_receivable">Accounts Receivable</option>
                     <option value="accounts_payable">Accounts Payable</option>
                     <option value="cash_advance_site">Cash Advance (Site)</option>
                     <option value="advance_employee">Advances to Employees</option>
                 </select>
+                </label>
+                <label class="pfims-filter-field"><span>Month</span>
+                    <input type="month" id="receivableMonth" aria-label="Month" onchange="loadReceivables()">
+                </label>
                 <button type="button" class="btn-clear-search" onclick="clearReceivableSearch()">✕ Clear Filters</button>
             </div>
             <div class="report-table-wrapper">
@@ -1049,10 +1055,12 @@
 
         <!-- ─── TAB 10: CASH ASSET ─── -->
         <div id="tabCash" class="report-section {{ $financeTab === 'cash' ? 'active' : '' }}">
-            <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
-                <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
-                    <input type="month" id="cashMonth" value="{{ date('Y-m') }}" onchange="loadCashAsset()" style="padding:6px 12px;border:1px solid #ddd;border-radius:6px;">
+            <div class="filter-row">
+                <input type="search" id="cashSearch" placeholder="Search account..." aria-label="Search accounts" oninput="filterFinanceRows('cashSearch', 'cashBody')">
+                <label class="pfims-filter-field"><span>Month</span>
+                    <input type="month" id="cashMonth" aria-label="Month" onchange="loadCashAsset()">
                 </label>
+                <button type="button" class="btn-clear-search" onclick="document.getElementById('cashSearch').value = ''; document.getElementById('cashMonth').value = ''; loadCashAsset();">✕ Clear Filters</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="cashTable">
@@ -1090,11 +1098,12 @@
                     <option value="released">Released</option>
                     <option value="forfeited">Forfeited</option>
                 </select>
+                <label class="pfims-filter-field"><span>Month</span><input type="month" id="bondMonth" aria-label="Month" onchange="loadBonds()"></label>
                 <button type="button" class="btn-clear-search" onclick="clearBondSearch()">✕ Clear Filters</button>
             </div>
             <div class="report-table-wrapper">
                 <table id="bondTable">
-                    <thead><tr><th>Date</th><th>Project</th><th>Provider</th><th>Amount</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Project</th><th>Date</th><th>Provider</th><th>Amount</th><th>Status</th></tr></thead>
                     <tbody id="bondBody"><tr><td colspan="6" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
                 </table>
             </div>
@@ -1194,7 +1203,7 @@
             <div class="modal-header"><h2 id="contractModalTitle">Add Contract</h2><button class="modal-close" onclick="closeAddContractModal()">×</button></div>
             <div class="modal-body">
                 <div class="form-group"><label>Project <span class="required">*</span></label><select id="contractProject" onchange="updateContractBudgetDisplay()"><option value="">Select Project...</option></select><span id="contractProjectDisplay" style="display:none;"></span></div>
-                <div class="form-group"><label>Contract Price from Budget</label><strong id="contractBudgetDisplay">₱0.00</strong></div>
+                <div class="form-group"><label>Contract Price</label><strong id="contractBudgetDisplay">₱0.00</strong></div>
                 <div class="form-group"><label>Additional Works Contract</label><input id="contractAddlWorks" type="number" min="0" step="0.01" value="0"></div>
                 <div class="form-group"><label>Original Payment Received</label><input id="contractPayment" type="number" min="0" step="0.01" value="0"></div>
                 <div class="form-group"><label>Additional Works Payment</label><input id="contractAddlPayment" type="number" min="0" step="0.01" value="0"></div>
@@ -1203,7 +1212,7 @@
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeAddContractModal()">Cancel</button>
                 <button id="contractDeleteBtn" class="btn-delete" style="display:none;" onclick="deleteContract()">Delete</button>
-                <button id="contractEditBtn" class="btn-edit" style="display:none;" onclick="enableContractEdit()">Edit</button>
+                <button id="contractEditBtn" class="btn-edit-project" style="display:none;" onclick="enableContractEdit()">Edit</button>
                 <button id="contractSaveBtn" class="btn-save" onclick="saveContract()">Save Contract</button>
             </div>
         </div>
@@ -1376,12 +1385,16 @@
             <div class="modal-body">
                 <div id="equipmentDetailSummary" class="detail-grid"></div>
                 <h3 style="margin:18px 0 10px;">Underlying records</h3>
-                <div class="report-table-wrapper"><table data-pfims-standard-actions="off"><thead><tr><th>Type</th><th>Date/Period</th><th>Project</th><th>Amount</th><th>Remarks</th><th>Actions</th></tr></thead><tbody id="equipmentDetailBody"></tbody></table></div>
+                <div class="report-table-wrapper"><table data-pfims-standard-actions="off"><thead><tr><th>Type</th><th>Expense Date / Rental Period</th><th>Project</th><th>Amount</th><th>Remarks</th><th>Actions</th></tr></thead><tbody id="equipmentDetailBody"></tbody></table></div>
             </div>
-            <div class="modal-footer"><button class="btn-cancel" onclick="closeEquipmentDetailModal()">Close</button></div>
+            <div class="modal-footer"><button class="btn-cancel" onclick="closeEquipmentDetailModal()">Cancel</button><button class="btn-edit-project" onclick="openEquipmentPeriodEdit()">Edit</button><button class="btn-delete" onclick="deleteEquipmentPeriod()">Delete</button></div>
         </div>
     </div>
 
+    <div id="equipmentPeriodEditModal" class="modal-overlay finance-edit-modal"><div class="modal-container">
+    <div class="modal-header"><h2>Edit Equipment Asset and Period</h2><button class="modal-close" onclick="closeEquipmentPeriodEdit()">×</button></div>
+    <div class="modal-body"><div class="form-group"><label>Asset *</label><select id="equipmentPeriodAsset"></select></div><div class="form-group"><label>Period *</label><input type="month" id="equipmentPeriodMonth" max="{{ today()->format('Y-m') }}"></div></div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="closeEquipmentPeriodEdit()">Cancel</button><button class="btn-save" onclick="saveEquipmentPeriod()">Save Changes</button></div></div></div>
     <!-- ─── ADD BOND MODAL ─── -->
     <div id="addBondModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
@@ -1450,7 +1463,7 @@
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="budgetDetailModalTitle">Budget Details</h2></div><button class="modal-close" onclick="closeBudgetDetailModal()">×</button></div>
             <div class="budget-detail-grid">
-                <div class="budget-detail-item"><label>Project</label><span id="budgetDetailProjectDisplay" class="budget-detail-value">—</span></div>
+                <div class="budget-detail-item"><label for="budgetDetailProjectEdit">Project</label><span id="budgetDetailProjectDisplay" class="budget-detail-value">—</span><select id="budgetDetailProjectEdit" class="budget-detail-edit" style="display:none;" required><option value="">Select Project...</option></select></div>
                 <div class="budget-detail-item"><label>Budget Amount</label><span id="budgetDetailAmountDisplay" class="budget-detail-value">—</span><input type="number" step="0.01" id="budgetDetailAmountEdit" class="budget-detail-edit" style="display:none;"></div>
                 <div class="budget-detail-item"><label>Actual Spend</label><span id="budgetDetailActualDisplay" class="budget-detail-value">—</span></div>
                 <div class="budget-detail-item"><label>Remaining</label><span id="budgetDetailRemainingDisplay" class="budget-detail-value">—</span></div>
@@ -1677,6 +1690,7 @@
         var equipmentExpenseRecords = [];
         var equipmentRentalRecords = [];
         var equipmentRecordsByPeriod = {};
+        var currentEquipmentPeriodKey = null;
         var equipmentEditState = { type: null, id: null };
 
         // ─── ADMIN CATEGORY CODES ──────────────────────────────────────
@@ -1704,6 +1718,10 @@
         function hideBadge(event) { var badge = document.getElementById('notifBadge'); if (badge) badge.style.display = 'none'; }
 
         function showError(message) {
+            if (typeof window.showPfimsAlert === 'function') {
+                closeError();
+                return window.showPfimsAlert(message || 'An error occurred. Please try again.', 'error');
+            }
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
             if (msgSpan) msgSpan.textContent = message || 'An error occurred. Please try again.';
@@ -2043,6 +2061,7 @@
             });
             document.getElementById('addBudgetHeaderButton').hidden = contracts;
             document.getElementById('addContractHeaderButton').hidden = !contracts;
+            updateFinanceImportAction(contracts ? 'contracts' : 'budgets');
             if (updateUrl !== false) {
                 var url = new URL(window.location.href);
                 if (contracts) url.searchParams.set('subtab', 'contracts');
@@ -2051,6 +2070,17 @@
             }
             if (contracts) loadProfit();
             else filterBudgetTable();
+        }
+
+        function updateFinanceImportAction(section) {
+            var button = document.getElementById('financeImportButton');
+            button.closest('.finance-header-action-group').hidden = section === 'budgets';
+            var label = section === 'contracts' ? 'Import Contracts' : 'Import Expenses';
+            var text = button.querySelector('.button-label');
+            if (text) text.textContent = label;
+            else button.textContent = label;
+            button.setAttribute('aria-label', label);
+            button.title = label;
         }
 
         function switchReportTab(tab) {
@@ -2071,6 +2101,7 @@
 
             switch(tab) {
                 case 'expenses': 
+                    updateFinanceImportAction('expenses');
                     applyFilters(); 
                     break;
                 case 'budgets': 
@@ -2111,7 +2142,12 @@
         });
 
         // ─── DELETE MODALS ─────────────────────────────────────────────
-        function openDeleteModal(message, callback) {
+        function openDeleteModal(message, callback, editing) {
+            document.querySelector('#deleteConfirmModal h2').textContent = editing ? 'Confirm Update' : 'Confirm Deletion';
+            var confirmButton = document.getElementById('confirmDeleteBtn');
+            confirmButton.textContent = editing ? 'Update' : 'Delete';
+            confirmButton.className = editing ? 'btn-save' : 'btn-delete';
+            document.querySelector('#deleteConfirmModal .modal-body p:last-child').textContent = editing ? 'This updates all records in the selected asset and period.' : 'This action cannot be undone.';
             document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this item?';
             deleteCallback = callback;
             document.getElementById('deleteConfirmModal').style.display = 'flex';
@@ -2189,6 +2225,7 @@
                 if (row.classList.contains('total-row')) return;
                 row.style.display = !term || row.textContent.toLowerCase().includes(term) ? '' : 'none';
             });
+            body.closest('table').pfimsRefreshPagination?.();
         }
 
         function clearProfitSearch() {
@@ -2200,6 +2237,7 @@
         function clearReceivableSearch() {
             document.getElementById('receivableSearch').value = '';
             document.getElementById('receivableType').value = 'accounts_receivable';
+            document.getElementById('receivableMonth').value = '';
             loadReceivables();
         }
 
@@ -2207,6 +2245,7 @@
             document.getElementById('bondSearch').value = '';
             document.getElementById('bondProjectFilter').value = 'all';
             document.getElementById('bondStatusFilter').value = 'all';
+            document.getElementById('bondMonth').value = '';
             loadBonds();
         }
 
@@ -2587,7 +2626,7 @@
 
         // ─── POPULATE DROPDOWNS ───────────────────────────────────────
         function populateProjectDropdowns() {
-            var selects = ['budgetProject', 'detailProjectEdit', 'bondProject', 'bondDetailProjectEdit', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
+            var selects = ['budgetProject', 'budgetDetailProjectEdit', 'detailProjectEdit', 'bondProject', 'bondDetailProjectEdit', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
             selects.forEach(function(id) {
                 var select = document.getElementById(id);
                 if (!select) return;
@@ -3117,6 +3156,7 @@
             document.getElementById('budgetDetailActualDisplay').textContent = formatCurrency(row.dataset.actualAmount);
             document.getElementById('budgetDetailRemainingDisplay').textContent = formatCurrency(row.dataset.remaining);
             document.getElementById('budgetDetailProjectDisplay').setAttribute('data-project-id', row.dataset.projectId);
+            document.getElementById('budgetDetailProjectEdit').value = row.dataset.projectId;
             document.getElementById('budgetDetailAmountEdit').value = row.dataset.budgetAmount;
 
             selectedBudgetDetailFile = null;
@@ -3202,14 +3242,15 @@
 
         function saveBudgetDetailChanges() {
             if (!currentBudgetRow) return;
-            var projectId = document.getElementById('budgetDetailProjectDisplay').getAttribute('data-project-id');
+            var originalProjectId = document.getElementById('budgetDetailProjectDisplay').getAttribute('data-project-id');
+            var projectId = document.getElementById('budgetDetailProjectEdit').value;
             var budgetAmount = parseFloat(document.getElementById('budgetDetailAmountEdit').value) || 0;
 
             if (!projectId) { showError('Project information is missing.'); return; }
             if (budgetAmount <= 0) { showError('Budget amount must be greater than 0.'); return; }
 
             var budget = budgetData.find(function(b) {
-                return String(b.project_id) === String(projectId);
+                return String(b.project_id) === String(originalProjectId);
             });
 
             var budgetDetailFormData = new FormData();
@@ -3672,7 +3713,12 @@
 
         // ─── ADD CONTRACT ─────────────────────────────────────────────
         function openAddContractModal(row) {
+            document.getElementById('addContractModal').classList.remove('is-viewing');
+            document.querySelectorAll('#addContractModal .contract-detail-value').forEach(function(el) { el.remove(); });
+            document.querySelectorAll('#addContractModal input, #addContractModal select').forEach(function(el) { el.disabled = false; });
             document.getElementById('addContractModal').classList.add('active');
+            document.getElementById('addContractModal').scrollTop = 0;
+            document.querySelector('#addContractModal .modal-container').scrollTop = 0;
             document.body.style.overflow = 'hidden';
             document.getElementById('addContractModal').classList.remove('is-editing');
             // Populate project dropdown
@@ -3724,6 +3770,13 @@
 
         function openContractViewModal(row) {
             openAddContractModal(row);
+            document.getElementById('addContractModal').classList.add('is-viewing');
+            document.querySelectorAll('#addContractModal input').forEach(function(control) {
+                var value = document.createElement('span');
+                value.className = 'contract-detail-value detail-value';
+                value.textContent = control.type === 'number' ? formatCurrency(control.value || 0) : (control.value || '—');
+                control.closest('.form-group').appendChild(value);
+            });
             document.getElementById('addContractModal').classList.remove('is-editing');
             document.getElementById('contractModalTitle').textContent = 'Contract Details';
             document.querySelectorAll('#addContractModal input, #addContractModal select, #addContractModal textarea').forEach(function(control) {
@@ -3735,6 +3788,8 @@
         }
 
         function enableContractEdit() {
+            document.getElementById('addContractModal').classList.remove('is-viewing');
+            document.querySelectorAll('#addContractModal .contract-detail-value').forEach(function(el) { el.remove(); });
             document.getElementById('addContractModal').classList.add('is-editing');
             document.getElementById('contractModalTitle').textContent = 'Edit Contract';
             document.querySelectorAll('#addContractModal input, #addContractModal select, #addContractModal textarea').forEach(function(control) {
@@ -3751,12 +3806,9 @@
             var select = document.getElementById('contractProject');
             var currentValue = select.value;
             select.innerHTML = '<option value="">Loading projects...</option>';
-            return apiFetch('/project-contracts').then(function(choices) {
-                var existing = new Set(choices.filter(function(item) { return Number(item.contract_id) > 0; })
-                    .map(function(item) { return String(item.project_id); }));
+            return fetchProjects().then(function() {
                 select.innerHTML = '<option value="">Select Project...</option>';
                 financeProjects.forEach(function(project) {
-                    if (existing.has(String(project.project_id)) && String(project.project_id) !== String(currentValue)) return;
                     var option = document.createElement('option');
                     option.value = project.project_id;
                     option.textContent = project.project_name;
@@ -3773,6 +3825,7 @@
             var selectedOption = select.options[select.selectedIndex];
             var budget = selectedOption ? parseFloat(selectedOption.getAttribute('data-budget')) || 0 : 0;
             document.getElementById('contractBudgetDisplay').textContent = formatCurrency(budget);
+            if (select.value && budget <= 0) showError('Add a budget for this project before recording a contract.');
         }
 
         function updateContractBudgetDisplayForProject(projectId) {
@@ -3851,7 +3904,8 @@
                 .then(function() {
                     closeAddContractModal();
                     showSuccess('Contract ' + (editId ? 'updated' : 'added') + ' successfully!');
-                    if (currentReportTab === 'budgets') loadProfit();
+                    document.getElementById('profitYear').value = '';
+                    loadProfit();
                 })
                 .catch(function(error) { showError(error.message); });
         }
@@ -4217,6 +4271,8 @@
 
         // ─── ADD BACKHOE EXPENSE ──────────────────────────────────────
         function openAddBackhoeExpenseModal() {
+            document.getElementById('backhoeExpenseProject').required = false;
+            document.querySelector('#backhoeExpenseProject').closest('.form-group').querySelector('label').textContent = 'Project Site';
             equipmentEditState = { type: null, id: null };
             document.getElementById('backhoeExpenseModalTitle').textContent = 'Add Backhoe Expense';
             document.getElementById('backhoeExpenseSaveBtn').textContent = 'Add Backhoe Expense';
@@ -4259,6 +4315,8 @@
             };
 
             var editId = equipmentEditState.type === 'expense' ? equipmentEditState.id : null;
+            if (editId && !projectId) { showError('Project site is required when editing.'); return; }
+            if (editId && date.substring(0, 7) !== currentEquipmentPeriodKey.split('|')[1]) { showError('The expense date does not match the rental period.'); return; }
             apiFetch(editId ? '/equipment-expenses/' + editId : '/equipment-expenses', { method: editId ? 'PUT' : 'POST', body: JSON.stringify(payload) })
                 .then(function() {
                     closeAddBackhoeExpenseModal();
@@ -4271,6 +4329,8 @@
 
         // ─── ADD BACKHOE RENTAL ──────────────────────────────────────
         function openAddBackhoeRentalModal() {
+            document.getElementById('backhoeRentalProject').required = false;
+            document.querySelector('#backhoeRentalProject').closest('.form-group').querySelector('label').textContent = 'Project Site';
             equipmentEditState = { type: null, id: null };
             document.getElementById('backhoeRentalModalTitle').textContent = 'Add Backhoe Rental Income';
             document.getElementById('backhoeRentalSaveBtn').textContent = 'Add Rental Income';
@@ -4309,6 +4369,7 @@
             };
 
             var editId = equipmentEditState.type === 'rental' ? equipmentEditState.id : null;
+            if (editId && !projectId) { showError('Project site is required when editing.'); return; }
             apiFetch(editId ? '/equipment-rental-income/' + editId : '/equipment-rental-income', { method: editId ? 'PUT' : 'POST', body: JSON.stringify(payload) })
                 .then(function() {
                     closeAddBackhoeRentalModal();
@@ -4971,6 +5032,20 @@
 
         // PROFIT/LOSS
         var profitRequest = 0;
+        function updateContractTotals() {
+            var table = document.getElementById('profitTable');
+            var totalRow = document.querySelector('#profitTotals tr');
+            var sums = Array(10).fill(0);
+            document.querySelectorAll('#profitBody tr[data-price-totals]').forEach(function(row) {
+                if (row.hidden || row.style.display === 'none') return;
+                JSON.parse(row.dataset.priceTotals).forEach(function(value, index) { sums[index] += Math.round(value * 100); });
+            });
+            var columns = table.tHead.rows[0].cells.length;
+            while (totalRow.cells.length < columns) totalRow.insertCell();
+            sums.forEach(function(value, index) { totalRow.cells[index + 3].textContent = formatCurrency(value / 100); });
+        }
+        document.getElementById('profitTable').addEventListener('pfims:page-rendered', updateContractTotals);
+
         function loadProfit() {
             var request = ++profitRequest;
             var year = document.getElementById('profitYear').value;
@@ -4991,6 +5066,7 @@
             loadPage(1, [])
                 .then(function(data) {
                     if (request !== profitRequest) return;
+                    data.sort(function(a, b) { return Number(b.contract_id) - Number(a.contract_id); });
                     var tbody = document.getElementById('profitBody');
                     tbody.innerHTML = '';
 
@@ -5011,6 +5087,7 @@
                         var profitContract = parseFloat(row.profit_loss_contract_basis) || 0;
                         tr.setAttribute('data-project-id', row.project_id);
                         tr.setAttribute('data-contract-id', row.contract_id || '');
+                        tr.dataset.priceTotals = JSON.stringify([contractPrice, row.additional_works_contract, row.total_contract_price, row.original_payment_received, row.additional_works_payment, row.total_payment, row.project_expense, row.accounts_receivable, profitPayment, profitContract].map(function(value) { return Number(value) || 0; }));
                         tr.setAttribute('data-contract-price', contractPrice);
                         tr.setAttribute('data-addl-works', row.additional_works_contract || 0);
                         tr.setAttribute('data-payment', row.original_payment_received || 0);
@@ -5038,6 +5115,7 @@
                         tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:20px;">No projects with budgets found. Please add budgets to projects.</td></tr>';
                     }
                     filterFinanceRows('profitSearch', 'profitBody');
+                    updateContractTotals();
                 })
                 .catch(function(error) {
                     if (request !== profitRequest) return;
@@ -5049,7 +5127,10 @@
         function loadReceivables() {
             var type = document.getElementById('receivableType').value;
 
-            apiFetch('/reports/receivable-payable?entry_type=' + type)
+            var params = new URLSearchParams({ entry_type: type });
+            var month = document.getElementById('receivableMonth').value;
+            if (month) params.set('month', month);
+            apiFetch('/reports/receivable-payable?' + params.toString())
                 .then(function(data) {
                     var tbody = document.getElementById('receivableBody');
                     tbody.innerHTML = '';
@@ -5110,10 +5191,8 @@
         // CASH ASSET
         function loadCashAsset() {
             var month = document.getElementById('cashMonth').value;
-            if (!month) return;
-            var period = month + '-01';
-
-            apiFetch('/reports/cash-asset?period=' + period)
+            var query = month ? '?period=' + month + '-01' : '';
+            apiFetch('/reports/cash-asset' + query)
                 .then(function(data) {
                     var tbody = document.getElementById('cashBody');
                     tbody.innerHTML = '';
@@ -5145,6 +5224,7 @@
                     tr.className = 'total-row';
                     tr.innerHTML = '<td><strong>TOTAL CASH ASSET</strong></td><td><strong>' + formatCurrency(total) + '</strong></td>';
                     tbody.appendChild(tr);
+                    filterFinanceRows('cashSearch', 'cashBody');
                 })
                 .catch(function(error) {
                     showError('Error loading Cash Asset: ' + error.message);
@@ -5363,12 +5443,12 @@
                     equipmentRentalRecords = results[2] || [];
                     equipmentRecordsByPeriod = {};
                     equipmentExpenseRecords.forEach(function(record) {
-                        var key = record.asset_id + '|' + String(record.expense_date || '').substring(0, 7);
+                        var key = record.asset_id + '|' + equipmentDate(record.expense_date || '').substring(0, 7);
                         if (!equipmentRecordsByPeriod[key]) equipmentRecordsByPeriod[key] = { expenses: [], rentals: [] };
                         equipmentRecordsByPeriod[key].expenses.push(record);
                     });
                     equipmentRentalRecords.forEach(function(record) {
-                        var key = record.asset_id + '|' + String(record.period_month || '').substring(0, 7);
+                        var key = record.asset_id + '|' + equipmentDate(record.period_month || '').substring(0, 7);
                         if (!equipmentRecordsByPeriod[key]) equipmentRecordsByPeriod[key] = { expenses: [], rentals: [] };
                         equipmentRecordsByPeriod[key].rentals.push(record);
                     });
@@ -5385,10 +5465,10 @@
                     // editable through the rental-income API.
                     var reportPeriodKeys = {};
                     reportRows.forEach(function(row) {
-                        reportPeriodKeys[row.asset_id + '|' + String(row.period_month || '').substring(0, 7)] = true;
+                        reportPeriodKeys[row.asset_id + '|' + equipmentDate(row.period_month || '').substring(0, 7)] = true;
                     });
                     equipmentRentalRecords.forEach(function(record) {
-                        var rentalPeriod = String(record.period_month || '').substring(0, 7);
+                        var rentalPeriod = equipmentDate(record.period_month || '').substring(0, 7);
                         var rentalAsset = assets.find(function(item) { return String(item.asset_id) === String(record.asset_id); });
                         var rentalKey = record.asset_id + '|' + rentalPeriod;
                         if (!rentalPeriod || reportPeriodKeys[rentalKey] || (month && rentalPeriod !== month)) return;
@@ -5463,7 +5543,7 @@
                         
                         var periodKey = a.asset_id + '|' + String(a.period_month || '').substring(0, 7);
                         tr.innerHTML = '<td><strong>' + a.asset_name + '</strong></td>' +
-                            '<td>' + (a.period_month || '') + '</td>' +
+                            '<td>' + String(a.period_month || '').substring(0, 7) + '</td>' +
                             '<td>' + formatCurrency(a.gas_diesel) + '</td>' +
                             '<td>' + formatCurrency(a.payroll_operator) + '</td>' +
                             '<td>' + formatCurrency(a.repair) + '</td>' +
@@ -5473,7 +5553,7 @@
                             '<td><strong>' + formatCurrency(a.total_expense) + '</strong></td>' +
                             '<td>' + formatCurrency(a.rental_income) + '</td>' +
                             '<td class="' + (net < 0 ? 'amount-negative' : 'amount-positive') + '">' + formatCurrency(net) + '</td>' +
-                            '<td class="action-cell"><button type="button" class="pfims-row-action" onclick="openEquipmentDetailModal(\'' + periodKey.replace(/'/g, "\\'") + '\')" title="View equipment details" aria-label="View equipment details"><img src="/images/view.jpg" alt=""></button><button type="button" class="pfims-row-action" onclick="openEquipmentEditForPeriod(\'' + periodKey.replace(/'/g, "\\'") + '\')" title="Edit equipment details" aria-label="Edit equipment details"><img src="/images/edit.jpg" alt=""></button><button type="button" class="pfims-row-action" onclick="openEquipmentDeleteForPeriod(\'' + periodKey.replace(/'/g, "\\'") + '\')" title="Delete equipment record" aria-label="Delete equipment record"><img src="/images/delete.jpg" alt=""></button></td>';
+                            '<td class="action-cell"><button type="button" class="pfims-row-action" onclick="openEquipmentDetailModal(\'' + periodKey.replace(/'/g, "\\'") + '\')" title="View equipment details" aria-label="View equipment details"><img src="/images/view.jpg" alt=""></button></td>';
                         tbody.appendChild(tr);
                         grandExpense += a.total_expense;
                         grandIncome += a.rental_income;
@@ -5482,7 +5562,7 @@
 
                     var tr = document.createElement('tr');
                     tr.className = 'total-row';
-                    tr.innerHTML = '<td colspan="8"><strong>GRAND TOTAL</strong></td>' +
+                    tr.innerHTML = '<td><strong>GRAND TOTAL</strong></td>' + '<td></td>'.repeat(7) +
                         '<td><strong>' + formatCurrency(grandExpense) + '</strong></td>' +
                         '<td><strong>' + formatCurrency(grandIncome) + '</strong></td>' +
                         '<td class="' + (grandNet < 0 ? 'amount-negative' : 'amount-positive') + '"><strong>' + formatCurrency(grandNet) + '</strong></td><td>—</td>';
@@ -5500,6 +5580,7 @@
         }
 
         function openEquipmentDetailModal(key) {
+            currentEquipmentPeriodKey = key;
             var records = equipmentRecordsByPeriod[key] || { expenses: [], rentals: [] };
             var parts = key.split('|');
             var asset = assets.find(function(item) { return String(item.asset_id) === String(parts[0]); });
@@ -5513,14 +5594,42 @@
             var body = document.getElementById('equipmentDetailBody');
             var rows = [];
             records.expenses.forEach(function(row) {
-                rows.push('<tr><td>Expense (' + escapeFinanceHtml(String(row.expense_type || '').replace('_', ' ')) + ')</td><td>' + escapeFinanceHtml(row.expense_date || '—') + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Delete</button></td></tr>');
+                rows.push('<tr><td>Expense (' + escapeFinanceHtml(String(row.expense_type || '').replace('_', ' ')) + ')</td><td>' + escapeFinanceHtml(equipmentDate(row.expense_date)) + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Delete</button></td></tr>');
             });
             records.rentals.forEach(function(row) {
-                rows.push('<tr><td>Rental income</td><td>' + escapeFinanceHtml(row.period_month || '—') + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Delete</button></td></tr>');
+                rows.push('<tr><td>Rental income</td><td>' + escapeFinanceHtml(equipmentDate(row.period_month || '').substring(0, 7)) + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Delete</button></td></tr>');
             });
             body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;">No underlying records.</td></tr>';
             document.getElementById('equipmentDetailModal').classList.add('active');
             document.body.style.overflow = 'hidden';
+        }
+
+        function equipmentDate(value) {
+            if (!value) return '—';
+            var date = new Date(value);
+            return isNaN(date.getTime()) ? String(value).substring(0,10) : new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
+        }
+        function openEquipmentPeriodEdit() {
+            var parts = currentEquipmentPeriodKey.split('|');
+            document.getElementById('equipmentPeriodAsset').innerHTML = assets.filter(function(a) { return a.asset_type === 'heavy_equipment'; }).map(function(a) { return '<option value="' + a.asset_id + '">' + escapeFinanceHtml(a.asset_name) + '</option>'; }).join('');
+            document.getElementById('equipmentPeriodAsset').value = parts[0];
+            document.getElementById('equipmentPeriodMonth').value = parts[1];
+            closeEquipmentDetailModal(); document.getElementById('equipmentPeriodEditModal').classList.add('active'); document.body.style.overflow='hidden';
+        }
+        function closeEquipmentPeriodEdit() { document.getElementById('equipmentPeriodEditModal').classList.remove('active'); document.body.style.overflow=''; }
+        function equipmentPeriodPayload() { var parts=currentEquipmentPeriodKey.split('|'); return {asset_id:Number(parts[0]),period:parts[1]}; }
+        function saveEquipmentPeriod() {
+            var payload=equipmentPeriodPayload(); payload.target_asset_id=Number(document.getElementById('equipmentPeriodAsset').value); payload.target_period=document.getElementById('equipmentPeriodMonth').value;
+            if (!payload.target_asset_id || !payload.target_period) { showError('Please select an asset and period.'); return; }
+            openDeleteModal('Update this asset and period? All underlying expenses and rental income will move with it. Expense dates will move to the selected month, retaining their day where possible.', function() {
+                apiFetch('/equipment-period',{method:'PUT',body:JSON.stringify(payload)}).then(function() { closeEquipmentPeriodEdit(); document.getElementById('backhoeMonth').value=payload.target_period; showSuccess('Equipment asset and period updated.'); loadBackhoe(); }).catch(function(error) { showError(error.message); });
+            }, true);
+        }
+        function deleteEquipmentPeriod() {
+            var payload=equipmentPeriodPayload();
+            openDeleteModal('Delete this asset and period? All underlying expenses and rental income for this period will be permanently deleted.',function() {
+                apiFetch('/equipment-period',{method:'DELETE',body:JSON.stringify(payload)}).then(function() { closeEquipmentDetailModal(); showSuccess('Equipment period and underlying records deleted.'); loadBackhoe(); }).catch(function(error) { showError(error.message); });
+            });
         }
 
         function escapeFinanceHtml(value) {
@@ -5539,9 +5648,11 @@
                 equipmentEditState = { type: type, id: id };
                 document.getElementById('backhoeExpenseAsset').value = row.asset_id;
                 document.getElementById('backhoeExpenseProject').value = row.project_id || '';
+                document.getElementById('backhoeExpenseProject').required = true;
+                document.querySelector('#backhoeExpenseProject').closest('.form-group').querySelector('label').textContent = 'Project Site *';
                 document.getElementById('backhoeExpenseType').value = row.expense_type;
                 document.getElementById('backhoeExpenseAmount').value = row.amount;
-                document.getElementById('backhoeExpenseDate').value = row.expense_date;
+                document.getElementById('backhoeExpenseDate').value = equipmentDate(row.expense_date);
                 document.getElementById('backhoeExpenseRemarks').value = row.remarks || '';
                 document.getElementById('backhoeExpenseModalTitle').textContent = 'Edit Equipment Expense';
                 document.getElementById('backhoeExpenseSaveBtn').textContent = 'Save Changes';
@@ -5550,7 +5661,9 @@
                 equipmentEditState = { type: type, id: id };
                 document.getElementById('backhoeRentalAsset').value = row.asset_id;
                 document.getElementById('backhoeRentalProject').value = row.project_id || '';
-                document.getElementById('backhoeRentalPeriod').value = String(row.period_month || '').substring(0, 7);
+                document.getElementById('backhoeRentalProject').required = true;
+                document.querySelector('#backhoeRentalProject').closest('.form-group').querySelector('label').textContent = 'Project Site *';
+                document.getElementById('backhoeRentalPeriod').value = equipmentDate(row.period_month || '').substring(0, 7);
                 document.getElementById('backhoeRentalAmount').value = row.amount;
                 document.getElementById('backhoeRentalRemarks').value = row.remarks || '';
                 document.getElementById('backhoeRentalModalTitle').textContent = 'Edit Rental Income';
@@ -5604,6 +5717,8 @@
 
             var endpoint = '/construction-bonds';
             var params = [];
+            var month = document.getElementById('bondMonth').value;
+            if (month) params.push('month=' + encodeURIComponent(month));
 
             if (projectFilter && projectFilter !== 'all') {
                 params.push('project_id=' + projectFilter);
@@ -5649,8 +5764,8 @@
                         tr.style.cursor = 'pointer';
                         tr.onclick = function() { openBondModal(this); };
 
-                        tr.innerHTML = '<td>' + dateFormatted + '</td>' +
-                            '<td>' + projectName + '</td>' +
+                        tr.innerHTML = '<td>' + projectName + '</td>' +
+                            '<td>' + dateFormatted + '</td>' +
                             '<td>' + (row.bond_provider || '—') + '</td>' +
                             '<td>' + formatCurrency(row.amount || 0) + '</td>' +
                             '<td><span class="' + statusClass + '">' + (row.status || 'active') + '</span></td>';
@@ -5660,7 +5775,7 @@
 
                     var tr = document.createElement('tr');
                     tr.className = 'total-row';
-                    tr.innerHTML = '<td colspan="3"><strong>GRAND TOTAL</strong></td>' +
+                    tr.innerHTML = '<td><strong>GRAND TOTAL</strong></td><td></td><td></td>' +
                         '<td><strong>' + formatCurrency(total) + '</strong></td>' +
                         '<td></td>';
                     tbody.appendChild(tr);

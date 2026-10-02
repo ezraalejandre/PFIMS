@@ -109,9 +109,14 @@
         var form = document.getElementById('pfimsImportForm');
         var errors = document.getElementById('pfimsImportErrors');
         var submit = document.getElementById('pfimsImportSubmit');
+        var financeImportType = 'finance-expenses';
 
         window.openPfimsImport = function (type) {
             form.reset();
+            if (moduleName === 'finance') {
+                financeImportType = type === 'contracts' ? 'contracts' : 'finance-expenses';
+                document.getElementById('pfimsImportTitle').textContent = financeImportType === 'contracts' ? 'Import Contracts' : 'Import Expenses';
+            }
             if (moduleName === 'inventory') {
                 var selectedType = type === 'transactions' ? 'transactions' : 'items';
                 document.getElementById('pfimsImportType').value = selectedType;
@@ -128,8 +133,9 @@
             document.body.style.overflow = '';
         };
         window.updatePfimsImportGuidance = function () {
-            var type = moduleName === 'inventory' ? document.getElementById('pfimsImportType').value : (moduleName === 'projects' ? 'projects' : 'finance-expenses');
+            var type = moduleName === 'inventory' ? document.getElementById('pfimsImportType').value : (moduleName === 'projects' ? 'projects' : financeImportType);
             var contracts = {
+                'contracts': 'Required columns: project_name, additional_works_contract, original_payment_received, additional_works_payment, remarks. Project must have a positive budget and no existing contract. Contract Price uses its budget. Amounts must be zero or greater; remarks may be blank.',
                 'projects': 'Required: project_name, client_name, project_manager, start_date, estimated_end_date, actual_end_date, worker_count, phase, status, budget. Only actual_end_date may be blank. Phase must already exist in Settings; completion is calculated automatically.',
                 'finance-expenses': 'Required with no blank cells: project_name, category_code, project_cost_component, expense_description, amount, expense_date, remarks. Project cost component must be material, labor, equipment, or other.',
                 'items': 'Required with no blank cells: item_name, category, supplier, unit, unit_price, current_stock, reorder_level, opening_balance_date. Category, supplier, and unit names must already exist in Settings.',
@@ -162,7 +168,7 @@
             }
 
             var payload = new FormData(form);
-            var endpoint = moduleName === 'inventory' ? '/api/imports/inventory' : (moduleName === 'projects' ? '/api/imports/projects' : '/api/imports/finance-expenses');
+            var endpoint = moduleName === 'inventory' ? '/api/imports/inventory' : (moduleName === 'projects' ? '/api/imports/projects' : '/api/imports/' + financeImportType);
             submit.disabled = true;
             submit.textContent = 'Validating...';
             errors.hidden = true;
@@ -191,7 +197,8 @@
                 if (moduleName === 'inventory') {
                     if (typeof loadInventoryItems === 'function') loadInventoryItems();
                 }
-                if (moduleName === 'finance' && typeof fetchExpenses === 'function') fetchExpenses();
+                if (moduleName === 'finance' && financeImportType === 'contracts' && typeof loadProfit === 'function') loadProfit();
+                else if (moduleName === 'finance' && typeof fetchExpenses === 'function') fetchExpenses();
                 if (moduleName === 'projects' && typeof fetchProjects === 'function') fetchProjects();
             }).catch(function () {
                 renderPfimsImportErrors('The import request could not be completed.', []);

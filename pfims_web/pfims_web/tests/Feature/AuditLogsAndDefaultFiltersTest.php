@@ -146,7 +146,7 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
             ->assertSee('AUDIT LOGS')
             ->assertSee('Activity history')
             ->assertSee('Date &amp; Time', false)
-            ->assertSee('panel filters audit-log-filter-panel', false)
+            ->assertSee('panel filters filters-grid audit-log-filter-panel', false)
             ->assertSee('id="auditLogFilters"', false)
             ->assertSee('<th>Actions</th>', false)
             ->assertDontSee('Apply filters')

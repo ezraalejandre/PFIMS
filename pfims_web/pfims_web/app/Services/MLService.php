@@ -2091,7 +2091,7 @@ class MLService
             return $query
                 ->select(
                     'budgets_tbl.budget_id', 'budgets_tbl.project_id',
-                    'project_tbl.project_name', 'budgets_tbl.budget_amount as budget', 'project_tbl.status',
+                    'project_tbl.project_name', 'project_tbl.start_date', 'budgets_tbl.budget_amount as budget', 'project_tbl.status',
                     DB::raw("{$actual} as actual_cost"),
                     DB::raw("budgets_tbl.budget_amount - {$actual} as variance"),
                     DB::raw("CASE WHEN budgets_tbl.budget_amount > 0 THEN (budgets_tbl.budget_amount - {$actual}) / budgets_tbl.budget_amount * 100 ELSE 0 END as variance_percentage"),

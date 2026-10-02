@@ -15,6 +15,7 @@ class FinConstructionBondController extends Controller
         $filters = $request->validate([
             'project_id' => ['nullable', 'integer', 'exists:project_tbl,project_id'],
             'status' => ['nullable', 'in:active,released,forfeited'],
+            'month' => ['nullable', 'date_format:Y-m'],
         ]);
         $query = FinConstructionBond::with('project:project_id,project_name');
 
@@ -28,6 +29,11 @@ class FinConstructionBondController extends Controller
             $query->where('status', $filters['status']);
         }
 
+        if (!empty($filters['month'])) {
+            $start = \Carbon\Carbon::createFromFormat('!Y-m', $filters['month']);
+            $query->where('bond_date', '>=', $start->toDateString())
+                ->where('bond_date', '<', $start->copy()->addMonth()->toDateString());
+        }
         return response()->json($query->get());
     }
 

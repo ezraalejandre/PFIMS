@@ -11,6 +11,8 @@ use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -209,7 +211,7 @@ class ProjectController extends Controller
 
         $hasBudget = DB::table('budgets_tbl')->where('project_id', $id)->where('budget_amount', '>', 0)->exists();
         $hasFinanceExpenses = DB::table('fin_expense_tbl')
-            ->where('project_id', $id)->where('amount', '>', 0)->exists();
+            ->where('project_id', $id)->exists();
 
         if ($hasBudget || $hasFinanceExpenses) {
             return response()->json([
@@ -217,13 +219,41 @@ class ProjectController extends Controller
             ], 409);
         }
 
-        DB::transaction(function () use ($id) {
-            DB::table('budgets_tbl')->where('project_id', $id)->delete();
-            DB::table('project_tbl')->where('project_id', $id)->delete();
-        });
-        $deleted = new Project();
-        $deleted->setRawAttributes((array) $existing, true);
-        $this->audit->record($deleted, 'DELETE', (array) $existing, []);
+        $linkedTables = [
+            'inventory_transaction_tbl' => 'inventory transactions',
+            'inventory_cost_allocation_tbl' => 'inventory cost allocations',
+            'fin_project_contract_tbl' => 'contracts',
+            'fin_construction_bond_tbl' => 'construction bonds',
+            'fin_receivable_payable_tbl' => 'receivable/payable records',
+            'fin_equipment_expense_tbl' => 'equipment expenses',
+            'fin_equipment_rental_income_tbl' => 'equipment rental income',
+            'expense_tbl' => 'legacy expense records',
+        ];
+        foreach ($linkedTables as $table => $label) {
+            if (Schema::hasColumn($table, 'project_id') && DB::table($table)->where('project_id', $id)->exists()) {
+                return response()->json([
+                    'message' => "Project cannot be deleted while it has {$label}. Remove those records first.",
+                ], 409);
+            }
+        }
+
+        try {
+            DB::transaction(function () use ($id, $existing) {
+                DB::table('budgets_tbl')->where('project_id', $id)->delete();
+                DB::table('project_tbl')->where('project_id', $id)->delete();
+                $deleted = new Project();
+                $deleted->setRawAttributes((array) $existing, true);
+                $this->audit->record($deleted, 'DELETE', (array) $existing, []);
+            });
+        } catch (QueryException $exception) {
+            // A linked record may be added after the checks, or exist in a legacy table.
+            if (in_array((int) ($exception->errorInfo[1] ?? 0), [1451, 787], true)) {
+                return response()->json([
+                    'message' => 'Project cannot be deleted while it has linked records. Remove those records first.',
+                ], 409);
+            }
+            throw $exception;
+        }
 
         return response()->json(['message' => 'Project deleted']);
     }

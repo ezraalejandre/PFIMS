@@ -103,6 +103,55 @@ a[data-icon-label]:hover .button-label, a[data-icon-label]:focus-visible .button
     outline-offset: 1px;
 }
 
+/* Expense details show values until Edit is selected. Hide the enhanced
+   dropdown wrapper as well as its hidden native control in view mode. */
+:is(#expenseDetailModal, #receivableDetailModal, #cashDetailModal, #bondDetailModal):not(.is-editing) .pfims-select:has(> select.detail-edit) {
+    display: none !important;
+}
+
+#budgetDetailModal:not(.is-editing) .pfims-select:has(> select.budget-detail-edit) {
+    display: none !important;
+}
+
+#profitTable { table-layout: auto !important; min-width: 2200px !important; }
+#receivableTable { table-layout: auto !important; min-width: 1250px !important; }
+#receivableTable :is(th, td) { min-width: 110px; white-space: nowrap; }
+#receivableTable :is(th, td):nth-child(2),
+#receivableTable :is(th, td):nth-child(3) { min-width: 180px; }
+:is(#contractsSubpanel, #tabReceivables, #tabBackhoe, #equipmentDetailModal, #tabBonds) .report-table-wrapper {
+    padding-inline: 0;
+    isolation: isolate;
+}
+:is(#contractsSubpanel, #tabReceivables, #tabBackhoe, #equipmentDetailModal, #tabBonds) .report-table-wrapper::before {
+    left: var(--pfims-docked-column-width, 0px);
+}
+#backhoeTable { table-layout: auto !important; min-width: 1600px !important; }
+#backhoeTable :is(th, td) { min-width: 125px; white-space: nowrap; }
+#backhoeTable :is(th, td):first-child { min-width: 190px; }
+#backhoeTable :is(th, td):nth-child(4) { min-width: 170px; }
+#backhoeTable :is(th, td):last-child { min-width: 80px; }
+:is(#profitTable, #receivableTable, #backhoeTable, #bondTable) { border-collapse: separate; border-spacing: 0; }
+:is(#profitTable, #receivableTable, #backhoeTable, #bondTable) tbody td:first-child {
+    background: var(--ui-surface-solid) !important;
+}
+:is(#profitTable, #receivableTable, #backhoeTable, #bondTable) thead th:first-child {
+    background: var(--ui-bg) !important;
+}
+#profitTable :is(th, td) { min-width: 150px; white-space: nowrap; }
+#profitTable :is(th, td):first-child { min-width: 300px; max-width: 360px; }
+#profitTable :is(th, td):nth-child(4) { border-left: 2px solid var(--ui-border-strong) !important; }
+#profitTable :is(th, td):nth-child(6),
+#profitTable :is(th, td):nth-child(9) { border-right: 2px solid var(--ui-border-strong) !important; }
+#addContractModal.is-viewing .modal-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; padding: 20px; border-radius: 12px; background: var(--ui-bg); }
+#addContractModal.is-viewing .form-group { margin: 0; }
+#addContractModal.is-viewing .form-group label { font-size: .75rem; font-weight: 700; text-transform: uppercase; color: var(--ui-muted); }
+#addContractModal.is-viewing input,
+#addContractModal.is-viewing .required,
+#addContractModal.is-viewing .pfims-select,
+#addContractModal .pfims-select:has(> #contractProject[style*="display: none"]) { display: none !important; }
+#addContractModal.is-viewing :is(#contractProjectDisplay, #contractBudgetDisplay, .contract-detail-value) { display: block; padding: 6px 0; color: var(--ui-text); font-weight: 500; }
+@media (max-width: 600px) { #addContractModal.is-viewing .modal-body { grid-template-columns: 1fr; } }
+
 .pfims-select-options {
     position: fixed;
     z-index: 10050;
@@ -220,9 +269,9 @@ table thead th {
     overflow-wrap: break-word;
 }
 table td[title] { cursor: help; }
-.sidebar .nav-dropdown { display: none; padding: 0 0 4px 44px; }
+.sidebar .nav-dropdown { display: none; padding: 0 0 4px 14px; }
 .sidebar li.nav-parent.is-open > .nav-dropdown { display: block; }
-.sidebar .nav-dropdown a { min-height: 32px !important; padding: 7px 10px !important; font-size: .76rem; font-weight: 600; }
+.sidebar .nav-dropdown a { min-height: 42px !important; padding: 10px 12px !important; font-size: .92rem; font-weight: 600; }
 
 /* One navigation contract for server-rendered and generated module menus. */
 .sidebar nav ul li > a,
@@ -1236,25 +1285,25 @@ html[data-theme="dark"] :where(
     color: #ffffff !important;
 }
 
-.inventory-page .btn-edit-project {
+:is(.inventory-page, #receivableDetailModal, #cashDetailModal, #equipmentDetailModal, #bondDetailModal) .btn-edit-project {
     background: #e19a45 !important;
     box-shadow: none !important;
 }
 
-.inventory-page .btn-edit-project:hover {
+:is(.inventory-page, #receivableDetailModal, #cashDetailModal, #equipmentDetailModal, #bondDetailModal) .btn-edit-project:hover {
     background: #cf8735 !important;
     box-shadow: none !important;
     transform: none !important;
 }
 
-html[data-theme="dark"] .inventory-page .btn-edit-project {
+html[data-theme="dark"] :is(.inventory-page, #receivableDetailModal, #cashDetailModal, #equipmentDetailModal, #bondDetailModal) .btn-edit-project {
     background: #e19a45 !important;
     color: #ffffff !important;
     border-color: transparent !important;
     box-shadow: none !important;
 }
 
-html[data-theme="dark"] .inventory-page .btn-edit-project:hover {
+html[data-theme="dark"] :is(.inventory-page, #receivableDetailModal, #cashDetailModal, #equipmentDetailModal, #bondDetailModal) .btn-edit-project:hover {
     background: #cf8735 !important;
     box-shadow: none !important;
     transform: none !important;
@@ -3879,8 +3928,8 @@ html[data-theme="dark"] .audit-action-export { background: #1e3a8a; color: #dbea
     white-space: nowrap !important;
     border: 0 !important;
 }
-.top-header a[href*="notification"] span,
-header a[href*="notification"] span {
+.top-header a[href*="notification"] span:not(.pfims-notification-count),
+header a[href*="notification"] span:not(.pfims-notification-count) {
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
@@ -3911,6 +3960,10 @@ header a[href*="notification"] span {
     color: #4b5563 !important;
     font-size: .78rem !important;
     font-weight: 700 !important;
+}
+
+#tabCash .pfims-filter-panel {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
 }
 
 .pfims-filter-panel .pfims-filter-search {
@@ -4509,18 +4562,18 @@ body:not(.landing-page) :where(button, input, select, textarea, [role="button"])
         display: flex !important;
         width: 100% !important;
         min-width: 0 !important;
-        min-height: 30px !important;
+        min-height: 40px !important;
         align-items: center !important;
         justify-content: flex-start !important;
         gap: 6px !important;
         padding: 6px 8px !important;
         overflow: hidden;
         color: rgba(255, 255, 255, .86) !important;
-        font-size: .76rem !important;
-        line-height: 1.15 !important;
+        font-size: .9rem !important;
+        line-height: 1.25 !important;
         text-align: left;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        text-overflow: clip;
+        white-space: normal;
     }
 
     body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown a.active {
@@ -4817,8 +4870,8 @@ body:not(.landing-page) :where(button, input, select, textarea, [role="button"])
         padding: 6px !important;
     }
 
-    .top-header .right > a:first-child > span:not(.notif-badge),
-    .top-header .right > a:last-child > span:not(.notif-badge) {
+    .top-header .right > a:first-child > span:not(.notif-badge):not(.pfims-notification-count),
+    .top-header .right > a:last-child > span:not(.notif-badge):not(.pfims-notification-count) {
         display: none !important;
     }
 
@@ -5511,7 +5564,7 @@ html[data-theme="dark"] :where(
     }
 
     body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown {
-        padding-inline: 0 !important;
+        padding-inline: 12px 0 !important;
     }
 
     body:not(.landing-page) .sidebar li.nav-parent.is-open > .nav-dropdown a {
@@ -5679,3 +5732,65 @@ html[data-theme="dark"] :where(
         transition: none !important;
     }
 }
+
+#equipmentDetailModal table { border-collapse: separate; border-spacing: 0; min-width: 1000px; table-layout: auto !important; }
+#equipmentDetailModal th, #equipmentDetailModal td { min-width: 130px; }
+#equipmentDetailModal :is(th,td):first-child { min-width: 180px; background: var(--ui-surface-solid) !important; }
+#equipmentDetailModal th:first-child { background: var(--ui-bg) !important; }
+#equipmentDetailModal :is(th, td):last-child { min-width: 170px; width: 170px; white-space: nowrap; }
+#equipmentDetailBody :is(.btn-edit-project, .btn-delete) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 68px;
+    height: 34px;
+    padding: 6px 12px !important;
+    border-radius: 10px !important;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+}
+
+#bondTable { table-layout: auto !important; min-width: 950px !important; }
+#bondTable :is(th, td) { min-width: 120px; }
+#bondTable :is(th, td):first-child, #bondTable :is(th, td):nth-child(3) { min-width: 220px; }
+
+.reports-page .filter-panel { padding: 16px !important; height: auto !important; min-height: 0; }
+.reports-page #reportFiltersGrid.pfims-filter-panel { padding: 16px !important; margin: 0 !important; gap: 16px !important; }
+#viewSupplierModal .modal-footer { display: flex; gap: 8px; }
+#viewSupplierModal .modal-footer .btn-cancel { margin-right: auto; }
+#viewSupplierModal .modal-footer :is(.btn-edit-project, .btn-delete) { margin: 0 !important; }
+.pfims-notification-count { position: absolute; top: -7px; right: -9px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 10px; background: var(--ui-danger); color: white !important; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.pfims-notification-count[hidden] { display: none !important; }
+.top-header a:has(.pfims-notification-count) { position: relative; }
+
+#viewSupplierModal .btn-edit-project { background: #e19a45 !important; color: white; border: 0; border-radius: 12px; padding: 10px 20px; }
+
+.top-header a .pfims-notification-count {
+    position: absolute !important; top: -7px !important; right: -9px !important; left: auto !important; bottom: auto !important;
+    width: auto !important; min-width: 18px !important; height: 18px !important; padding: 0 4px !important;
+    margin: 0 !important; clip: auto !important; clip-path: none !important; overflow: visible !important;
+    font-size: 11px !important; line-height: 18px !important; z-index: 2;
+}
+
+#editSupplierModal .modal-body { display: grid; gap: 16px; }
+#editSupplierModal .edit-section { display: block; margin: 0; padding: 0; }
+#editSupplierModal .right-col { width: 100%; min-width: 0; }
+#editSupplierModal .right-col input { width: 100%; box-sizing: border-box; }
+#editSupplierModal .modal-divider { display: none; }
+#editSupplierModal .supplier-section-title { margin: 0; }
+
+#profitTable tfoot td { font-weight: 800; background: var(--ui-bg); border-top: 2px solid var(--ui-border-strong); }
+#profitTable tfoot td:first-child { position: sticky; left: 0; z-index: 3; background: var(--ui-surface-solid) !important; }
+
+.reports-page[data-report-dataset="contracts"] .live-data-panel .table-wrap { padding-inline: 0 !important; isolation: isolate; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel table { min-width: 2200px !important; border-collapse: separate !important; border-spacing: 0; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel :is(th,td) { min-width: 150px; white-space: nowrap; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel :is(th,td):first-child { min-width: 300px; background: var(--ui-surface-solid) !important; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel th:first-child { background: var(--ui-bg) !important; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel tfoot td:first-child { position: sticky; left: 0; z-index: 3; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel :is(th,td):nth-child(4) { border-left: 2px solid var(--ui-border-strong) !important; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel :is(th,td):nth-child(6),
+.reports-page[data-report-dataset="contracts"] .live-data-panel :is(th,td):nth-child(9) { border-right: 2px solid var(--ui-border-strong) !important; }
+.reports-page[data-report-dataset="contracts"] .live-data-panel .table-wrap::before { left: var(--pfims-docked-column-width, 0px); }

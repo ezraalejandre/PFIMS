@@ -48,7 +48,7 @@ class FinEquipmentExpenseController extends Controller
 
         $validator = Validator::make($request->all(), [
             'asset_id' => 'sometimes|required|exists:company_asset_tbl,asset_id',
-            'project_id' => 'nullable|exists:project_tbl,project_id',
+            'project_id' => 'required|exists:project_tbl,project_id',
             'expense_type' => 'sometimes|required|in:gas_diesel,payroll_operator,repair,delivery,transportation,other',
             'amount' => 'sometimes|required|numeric|gt:0|max:999999999999.99',
             'expense_date' => 'sometimes|required|date|before_or_equal:today',
@@ -56,6 +56,9 @@ class FinEquipmentExpenseController extends Controller
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
+        }
+        if ($request->filled('expense_date') && \Carbon\Carbon::parse($request->expense_date)->format('Y-m') !== $expense->expense_date->format('Y-m')) {
+            return response()->json(['message' => 'The expense date does not match the rental period.'], 422);
         }
         $data = $this->normalize($validator->validated());
         $candidate = array_merge($expense->only($expense->getFillable()), $data);

@@ -99,7 +99,7 @@ class SettingsRolePresentationTest extends TestCase
             ->assertSee('Configurations')
             ->assertSee('User Management');
 
-        $response->assertSee("if (currentConfigType === 'project_phases')", false);
+        $response->assertDontSee('actionCell.append(edit, remove)', false);
         $this->assertStringContainsString('padding: 10px 20px;', file_get_contents(public_path('css/settings.css')));
         $this->assertStringContainsString('transform: translateY(-2px);', file_get_contents(public_path('css/settings.css')));
     }

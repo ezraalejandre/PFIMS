@@ -53,7 +53,7 @@ class FinEquipmentRentalIncomeController extends Controller
 
         $validator = Validator::make($request->all(), [
             'asset_id' => 'sometimes|required|exists:company_asset_tbl,asset_id',
-            'project_id' => 'nullable|exists:project_tbl,project_id',
+            'project_id' => 'required|exists:project_tbl,project_id',
             'period_month' => ['sometimes', 'required', 'date_format:Y-m-d', 'before_or_equal:today', 'regex:/^\d{4}-\d{2}-01$/'],
             'amount' => 'sometimes|required|numeric|gt:0|max:999999999999.99',
             'remarks' => 'nullable|string|max:255',

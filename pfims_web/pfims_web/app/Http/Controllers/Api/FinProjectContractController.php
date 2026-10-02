@@ -59,6 +59,9 @@ class FinProjectContractController extends Controller
 
             // Check if contract already exists for this project
             $validated = $validator->validated();
+            if (! DB::table('budgets_tbl')->where('project_id', $validated['project_id'])->where('budget_amount', '>', 0)->exists()) {
+                return response()->json(['message' => 'Add a budget for this project before recording a contract.', 'errors' => ['project_id' => ['Add a budget for this project before recording a contract.']]], 422);
+            }
             $existing = DB::table('fin_project_contract_tbl')
                 ->where('project_id', $validated['project_id'])
                 ->first();

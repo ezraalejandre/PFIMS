@@ -178,6 +178,9 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::put('/cash-positions/{id}', [FinCashPositionController::class, 'update']);
     Route::delete('/cash-positions/{id}', [FinCashPositionController::class, 'destroy']);
 
+    Route::put('/equipment-period', [\App\Http\Controllers\Api\EquipmentPeriodController::class, 'update']);
+    Route::delete('/equipment-period', [\App\Http\Controllers\Api\EquipmentPeriodController::class, 'destroy']);
+
     // 7. Equipment Expenses & Rental Income
     Route::get('/equipment-expenses', [FinEquipmentExpenseController::class, 'index']);
     Route::post('/equipment-expenses', [FinEquipmentExpenseController::class, 'store']);

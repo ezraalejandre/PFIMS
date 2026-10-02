@@ -179,6 +179,7 @@
             <div class="panel-heading">
                 <div>
                     <h2 id="recordsTitle">Expenses Summary</h2>
+                    <p id="reportAsOf"></p>
                     <p id="rowSummary">Loading records…</p>
                 </div>
             </div>
@@ -431,10 +432,10 @@
                     : 'Filters update the summary table.';
                 document.getElementById('recordsTitle').textContent = key === 'expense_summary'
                     ? 'SUMMARY OF EXPENSES (PROJECT SITE-OVERALL EXPENSES)'
-                    : (key === 'inventory' ? 'Inventory Items Summary' : state.definition.title);
+                    : (key === 'inventory' ? 'Inventory Items Summary' : (key === 'contracts' ? 'ESTIMATED PROFIT & LOSS' : state.definition.title));
                 document.getElementById('reportScopeNote').textContent = key === 'expense_summary'
-                    ? 'Project-linked expenses only. Office expenses without a project link are excluded.' : '';
-                document.getElementById('reportScopeNote').hidden = key === 'inventory';
+                    ? 'Project-linked expenses through the selected month. Office expenses without a project link are excluded.' : (key === 'contracts' ? 'Contract records filtered by project start month and year.' : 'Month and year filter each item’s latest stock movement.');
+                document.getElementById('reportScopeNote').hidden = false;
                 document.getElementById('kpiGrid').hidden = key !== 'inventory';
                 const filterGrid = document.getElementById('reportFiltersGrid');
                 const clearFilters = document.getElementById('clearFilters');
@@ -540,7 +541,14 @@
                         .map((totalRow, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">` + columns.map(([key]) => `<td${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(displayValue(key, totalRow[key]))}</td>`).join('') + '</tr>').join('')
                     : '';
 
+                if (state.dataset === 'contracts') {
+                    const pageTotals = {};
+                    columns.forEach(([key]) => { if (moneyColumns.has(key)) pageTotals[key] = state.payload.rows.reduce((sum, row) => sum + Math.round(Number(row[key] || 0) * 100), 0) / 100; });
+                    document.getElementById('dataFoot').innerHTML = '<tr class="report-total-row">' + columns.map(([key], index) => '<td>' + (index === 0 ? 'TOTAL' : (moneyColumns.has(key) ? escapeHtml(displayValue(key, pageTotals[key])) : '')) + '</td>').join('') + '</tr>';
+                }
                 const pagination = state.payload.pagination;
+                document.getElementById('rowSummary').hidden = state.dataset === 'contracts';
+                document.getElementById('reportAsOf').textContent = `As of ${state.payload.as_of}`;
                 document.getElementById('rowSummary').textContent = state.dataset === 'expense_summary'
                     ? (filterInputs.project_status.value === 'Completed' ? 'COMPLETED PROJECTS' : 'ONGOING PROJECTS')
                     : pagination.total

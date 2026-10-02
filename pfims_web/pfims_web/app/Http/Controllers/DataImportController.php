@@ -15,6 +15,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DataImportController extends Controller
 {
+    public function contracts(Request $request, \App\Services\ContractImportService $service): JsonResponse
+    {
+        $this->authorizeRole($request, ['admin', 'accounting']);
+        $validated = $request->validate(['file' => ['required', 'file', 'max:5120']]);
+        return $this->runImport(fn () => $service->import($validated['file']), 'Project Contracts', 'fin_project_contract_tbl');
+    }
     public function __construct(private AutomaticModelRetraining $modelRetraining, private AuditLogService $audit) {}
 
     public function finance(Request $request, FinanceImportService $service): JsonResponse
@@ -54,10 +60,14 @@ class DataImportController extends Controller
 
     public function template(Request $request, string $type): StreamedResponse
     {
-        abort_unless(in_array($type, ['projects', 'finance-expenses', 'inventory-items', 'inventory-transactions'], true), 404);
-        $this->authorizeRole($request, $type === 'finance-expenses' ? ['admin', 'accounting'] : ['admin', 'operations']);
+        abort_unless(in_array($type, ['projects', 'finance-expenses', 'contracts', 'inventory-items', 'inventory-transactions'], true), 404);
+        $this->authorizeRole($request, in_array($type, ['finance-expenses', 'contracts'], true) ? ['admin', 'accounting'] : ['admin', 'operations']);
 
         $rows = match ($type) {
+            'contracts' => [
+                ['project_name', 'additional_works_contract', 'original_payment_received', 'additional_works_payment', 'remarks'],
+                ['Replace with an existing project with a budget', '0', '0', '0', ''],
+            ],
             'projects' => [
                 ['project_name', 'client_name', 'project_manager', 'start_date', 'estimated_end_date', 'actual_end_date', 'worker_count', 'phase', 'status', 'budget'],
                 [

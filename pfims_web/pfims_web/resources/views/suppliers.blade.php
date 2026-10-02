@@ -283,8 +283,8 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" onclick="closeViewModal()">Close</button>
-                <button class="btn-delete-supplier" type="button" onclick="openDeleteModal(currentSupplierId)">Delete</button>
-                <button class="btn-save" type="button" onclick="openEditFromView()">Edit</button>
+                <button class="btn-edit-project" type="button" onclick="openEditFromView()">Edit</button>
+                <button class="btn-delete btn-delete-supplier" type="button" onclick="openDeleteModal(currentSupplierId)">Delete</button>
             </div>
         </div>
     </div>
@@ -301,13 +301,9 @@
                 <h3 class="supplier-section-title">Supplier Information</h3>
                 <!-- Section 1: Supplier Name -->
                 <div class="edit-section">
-                    <div class="left-col">
-                        <div class="current-label">Current Supplier Name</div>
-                        <div class="current-value" id="currentSupplierName">—</div>
-                    </div>
-                    <div class="right-col">
-                        <label>Supplier Name</label>
-                        <input type="text" placeholder="Item Name" id="editSupplierName">
+<div class="right-col">
+                        <label for="editSupplierName">Supplier Name</label>
+                        <input type="text" placeholder="Supplier name" id="editSupplierName">
                     </div>
                 </div>
 
@@ -315,13 +311,9 @@
 
                 <!-- Section 2: Address -->
                 <div class="edit-section">
-                    <div class="left-col">
-                        <div class="current-label">Current Supplier Address</div>
-                        <div class="current-value" id="currentSupplierAddress">—</div>
-                    </div>
-                    <div class="right-col">
-                        <label>Address</label>
-                        <input type="text" placeholder="Item Name" id="editSupplierAddress">
+<div class="right-col">
+                        <label for="editSupplierAddress">Address</label>
+                        <input type="text" placeholder="Supplier address" id="editSupplierAddress">
                     </div>
                 </div>
 
@@ -329,12 +321,8 @@
 
                 <!-- Section 3: Contact no. -->
                 <div class="edit-section">
-                    <div class="left-col">
-                        <div class="current-label">Current Supplier Contact no.</div>
-                        <div class="current-value" id="currentSupplierContact">—</div>
-                    </div>
-                    <div class="right-col">
-                        <label>Contact no.</label>
+<div class="right-col">
+                        <label for="editSupplierContact">Contact no.</label>
                         <input type="tel" placeholder="e.g. +63 (912) 345-6789" id="editSupplierContact" inputmode="tel" maxlength="20" oninput="this.value = this.value.replace(/[^0-9+().\s-]/g, '')">
                     </div>
                 </div>
@@ -695,9 +683,6 @@
                         document.getElementById('editSupplierName').value = supplier.supplier_name;
                         document.getElementById('editSupplierAddress').value = supplier.address;
                         document.getElementById('editSupplierContact').value = supplier.contact_number;
-                        document.getElementById('currentSupplierName').textContent = supplier.supplier_name || '—';
-                        document.getElementById('currentSupplierAddress').textContent = supplier.address || '—';
-                        document.getElementById('currentSupplierContact').textContent = supplier.contact_number || '—';
                     }
                 })
                 .catch(error => console.error('Error loading supplier:', error));

@@ -28,6 +28,32 @@ class FinanceInventoryFiltersTest extends TestCase
         ]));
     }
 
+    public function test_equipment_period_changes_are_atomic_and_individual_edits_keep_the_period(): void
+    {
+        Schema::create('company_asset_tbl', function (Blueprint $t) { $t->increments('asset_id'); $t->string('asset_type'); $t->string('asset_name'); });
+        Schema::create('fin_equipment_expense_tbl', function (Blueprint $t) {
+            $t->increments('equip_expense_id'); $t->integer('asset_id'); $t->integer('project_id')->nullable(); $t->string('expense_type'); $t->decimal('amount',14,2); $t->date('expense_date'); $t->string('remarks')->nullable();
+        });
+        Schema::create('fin_equipment_rental_income_tbl', function (Blueprint $t) {
+            $t->increments('rental_income_id'); $t->integer('asset_id'); $t->integer('project_id')->nullable(); $t->decimal('amount',14,2); $t->date('period_month'); $t->string('remarks')->nullable();
+        });
+        DB::table('company_asset_tbl')->insert([['asset_id'=>1,'asset_type'=>'heavy_equipment','asset_name'=>'Excavator'],['asset_id'=>2,'asset_type'=>'heavy_equipment','asset_name'=>'Loader']]);
+        DB::table('fin_equipment_expense_tbl')->insert(['asset_id'=>1,'project_id'=>1,'expense_type'=>'repair','amount'=>200,'expense_date'=>'2026-01-31']);
+        DB::table('fin_equipment_rental_income_tbl')->insert(['asset_id'=>1,'project_id'=>1,'amount'=>500,'period_month'=>'2026-01-01']);
+        $this->putJson('/api/equipment-expenses/1',['project_id'=>1,'expense_date'=>'2026-02-01'])->assertUnprocessable()->assertJsonPath('message','The expense date does not match the rental period.');
+        $this->putJson('/api/equipment-expenses/1',['project_id'=>null])->assertUnprocessable();
+        $this->putJson('/api/equipment-rental-income/1',['project_id'=>null])->assertUnprocessable();
+        $this->putJson('/api/equipment-period',['asset_id'=>1,'period'=>'2026-01','target_asset_id'=>2,'target_period'=>'2026-02'])->assertOk();
+        $this->assertDatabaseHas('fin_equipment_expense_tbl',['asset_id'=>2,'expense_date'=>'2026-02-28','amount'=>200]);
+        $this->assertDatabaseHas('fin_equipment_rental_income_tbl',['asset_id'=>2,'period_month'=>'2026-02-01','amount'=>500]);
+        DB::table('fin_equipment_expense_tbl')->insert(['asset_id'=>1,'project_id'=>1,'expense_type'=>'repair','amount'=>10,'expense_date'=>'2026-03-01']);
+        $this->putJson('/api/equipment-period',['asset_id'=>2,'period'=>'2026-02','target_asset_id'=>1,'target_period'=>'2026-03'])->assertUnprocessable();
+        $this->assertDatabaseHas('fin_equipment_expense_tbl',['asset_id'=>2,'expense_date'=>'2026-02-28']);
+        $this->deleteJson('/api/equipment-period',['asset_id'=>2,'period'=>'2026-02'])->assertOk()->assertJsonPath('expenses',1)->assertJsonPath('rentals',1);
+        $this->assertDatabaseCount('fin_equipment_expense_tbl',1);
+        $this->assertDatabaseCount('fin_equipment_rental_income_tbl',0);
+    }
+
     public function test_finance_expense_filters_return_only_matching_rows(): void
     {
         $this->getJson('/api/finance-expenses?project_id=1&category_id=1&start_date=2026-01-01&end_date=2026-01-31&include_pending=0')
@@ -109,10 +135,29 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->postJson('/api/receivables-payables', $receivable)->assertCreated();
         $this->postJson('/api/receivables-payables', [...$receivable, 'entry_date' => $future])->assertCreated();
         $this->putJson('/api/receivables-payables/1', ['entry_date' => today()->addDays(2)->toDateString()])->assertOk();
+        foreach (['2025-12-31', '2026-01-01', '2026-01-31', '2027-01-01'] as $date) {
+            $this->postJson('/api/receivables-payables', [...$receivable, 'entry_date' => $date])->assertCreated();
+        }
+        $this->postJson('/api/receivables-payables', [...$receivable, 'entry_type' => 'accounts_payable', 'entry_date' => '2026-01-15'])->assertCreated();
+        $this->getJson('/api/reports/receivable-payable?entry_type=accounts_receivable&month=2026-01')
+            ->assertOk()->assertJsonCount(2)
+            ->assertJsonPath('0.entry_date', fn ($date) => str_starts_with($date, '2026-01-31'))
+            ->assertJsonPath('1.entry_date', fn ($date) => str_starts_with($date, '2026-01-01'));
+        $this->getJson('/api/reports/receivable-payable?entry_type=accounts_payable&month=2026-01')
+            ->assertOk()->assertJsonCount(1);
+        $this->getJson('/api/reports/receivable-payable?month=2026-13')->assertUnprocessable();
         $bond = ['project_id' => 1, 'bond_date' => $past, 'amount' => 100];
         $this->postJson('/api/construction-bonds', $bond)->assertCreated();
         $this->postJson('/api/construction-bonds', [...$bond, 'bond_date' => $future])->assertUnprocessable();
         $this->putJson('/api/construction-bonds/1', ['bond_date' => $future])->assertUnprocessable();
+        DB::table('fin_construction_bond_tbl')->insert([
+            ['project_id'=>1,'bond_date'=>'2026-01-31','amount'=>20,'status'=>'active'],
+            ['project_id'=>1,'bond_date'=>'2025-01-15','amount'=>30,'status'=>'active'],
+            ['project_id'=>2,'bond_date'=>'2026-01-15','amount'=>40,'status'=>'released'],
+        ]);
+        $this->getJson('/api/construction-bonds?month=2026-01&project_id=1&status=active')
+            ->assertOk()->assertJsonCount(1)->assertJsonPath('0.amount', '20.00');
+        $this->getJson('/api/construction-bonds?month=2026-13')->assertUnprocessable();
     }
 
     public function test_cash_asset_hides_site_revolving_fund_without_deleting_its_history_and_accepts_title_only_accounts(): void
@@ -139,7 +184,12 @@ class FinanceInventoryFiltersTest extends TestCase
             ->assertJsonPath('0.account_name', 'Company treasury');
         $this->getJson('/api/reports/cash-asset?period=2026-01-01')
             ->assertOk()->assertJsonCount(1)->assertJsonPath('0.account_name', 'Company treasury');
-        $this->getJson('/api/cash-positions')->assertOk()->assertJsonCount(1);
+        DB::table('fin_cash_position_tbl')->insert([
+            'account_id' => 1, 'period_month' => '2025-12-01', 'balance_amount' => 50,
+        ]);
+        $this->getJson('/api/reports/cash-asset')->assertOk()->assertJsonCount(2);
+        $this->getJson('/api/reports/cash-asset?period=2026-01-01')->assertOk()->assertJsonCount(1);
+        $this->getJson('/api/cash-positions')->assertOk()->assertJsonCount(2);
         $this->postJson('/api/cash-positions', [
             'account_id' => 2, 'period_month' => '2026-01-01', 'balance_amount' => 1,
         ])->assertUnprocessable();

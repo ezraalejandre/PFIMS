@@ -70,11 +70,10 @@
             <div class="dashboard-title-block"><h1>AUDIT LOGS</h1><p>Review security, data changes, imports, and exports across PFIMS.</p></div>
         </section>
 
-        <form id="auditLogFilters" class="panel filters audit-log-filter-panel" method="GET" action="{{ route('audit-logs.index') }}" aria-label="Audit log filters">
+        <form id="auditLogFilters" class="panel filters filters-grid audit-log-filter-panel" method="GET" action="{{ route('audit-logs.index') }}" aria-label="Audit log filters">
             <label>Search<input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="User, record, or details"></label>
             <label>From<input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></label>
             <label>To<input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></label>
-            <label>User<select name="user_id"><option value="">All users</option>@foreach($users as $user)<option value="{{ $user->id }}" @selected(($filters['user_id'] ?? '') == $user->id)>{{ $user->name }} — {{ $user->email }}</option>@endforeach</select></label>
             <label>Role<select name="role"><option value="">All roles</option>@foreach(['ADMIN','ACCOUNTING','OPERATIONS'] as $role)<option value="{{ $role }}" @selected(($filters['role'] ?? '') === $role)>{{ ucfirst(strtolower($role)) }}</option>@endforeach</select></label>
             <label>Action<select name="action"><option value="">All actions</option>@foreach(['CREATE','UPDATE','DELETE','IMPORT','EXPORT'] as $action)<option value="{{ $action }}" @selected(($filters['action'] ?? '') === $action)>{{ $action }}</option>@endforeach</select></label>
             <label>Module<select name="module"><option value="">All modules</option>@foreach($modules as $module)<option value="{{ $module }}" @selected(($filters['module'] ?? '') === $module)>{{ $module }}</option>@endforeach</select></label>

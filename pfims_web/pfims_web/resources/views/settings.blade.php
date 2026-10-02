@@ -909,9 +909,7 @@
                 remove.setAttribute('aria-label', 'Delete ' + item[fields.name]);
                 remove.onclick = function() { openConfigDeleteModal(item[fields.id]); };
                 actionCell.appendChild(view);
-                if (currentConfigType === 'project_phases') {
-                    actionCell.append(edit, remove);
-                }
+
                 tr.appendChild(nameCell);
                 if (showsExpenseType) {
                     var typeCell = document.createElement('td');

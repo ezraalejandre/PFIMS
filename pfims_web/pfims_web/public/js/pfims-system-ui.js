@@ -383,7 +383,8 @@
             }
 
             Array.from(panel.children).forEach(function (child) {
-                if (child.matches('button')) {
+                if (child.matches('input[type="hidden"]')) return;
+                if (child.matches('button, a.pfims-clear-filters')) {
                     if (/clear|^x$|^✕$/i.test(((child.textContent || '') + ' ' + (child.className || '')).trim())) {
                         child.classList.add('pfims-clear-filters');
                         child.textContent = 'Clear filters';
@@ -486,6 +487,13 @@
     function installTableScrollFades() {
         var selector = '.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .forecast-table-wrapper, .report-table-wrapper, .analytics-table-wrapper';
         function update(wrapper) {
+            if (wrapper.closest('#contractsSubpanel, #tabReceivables, #tabBackhoe, #equipmentDetailModal, #tabBonds, .reports-page[data-report-dataset="contracts"] .live-data-panel')) {
+                var firstCell = wrapper.querySelector('table th:first-child');
+                var dockedWidth = (firstCell ? firstCell.offsetWidth : 0) + 'px';
+                if (wrapper.style.getPropertyValue('--pfims-docked-column-width') !== dockedWidth) {
+                    wrapper.style.setProperty('--pfims-docked-column-width', dockedWidth);
+                }
+            }
             var max = Math.max(0, wrapper.scrollWidth - wrapper.clientWidth);
             var scrollable = max > 1;
             wrapper.classList.toggle('is-at-start', !scrollable || wrapper.scrollLeft <= 1);
@@ -536,7 +544,7 @@
             || directLabelText(enclosingLabel) || directLabelText(siblingLabel) || 'Choose an option';
         trigger.setAttribute('aria-label', label);
         wrapper.appendChild(trigger);
-        document.documentElement.appendChild(menu);
+        (select.closest('dialog') || document.documentElement).appendChild(menu);
         var activeIndex = -1;
         var isStatusSelect = /status|state/i.test(select.id + ' ' + label);
         function statusTone(value) {
@@ -610,6 +618,15 @@
             menu.style.width = Math.min(rect.width, window.innerWidth - 16) + 'px';
             menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
             menu.style.top = (openAbove ? Math.max(8, rect.top - Math.min(menu.scrollHeight, height) - 4) : rect.bottom + 4) + 'px';
+            var dialogHost = select.closest('dialog');
+            if (dialogHost) {
+                var origin = dialogHost.getBoundingClientRect();
+                menu.style.fontSize = (parseFloat(bodyStyle.fontSize) || 16) + 'px';
+                menu.style.width = rect.width / scale + 'px';
+                menu.style.maxHeight = height / scale + 'px';
+                menu.style.left = (rect.left - origin.left) / scale + 'px';
+                menu.style.top = ((openAbove ? rect.top - height - 4 : rect.bottom + 4) - origin.top) / scale + 'px';
+            }
         }
 
         function activate(index) {
@@ -948,7 +965,7 @@
     }
 
     function installTablePagination(table) {
-        if (table.dataset.pfimsPagination === 'ready' || table.closest('.modal-overlay, dialog')) return;
+        if (table.dataset.pfimsPagination === 'ready' || table.dataset.pfimsPagination === 'off' || table.closest('.modal-overlay, dialog')) return;
         var host = table.closest('.table-wrapper, .table-wrap, .report-table-wrapper, .items-table-wrapper, .budget-table-wrapper') || table;
         var existing = host.nextElementSibling;
         if (existing?.matches('.pagination-wrapper')) {
@@ -971,10 +988,11 @@
 
         function dataRows() {
             return Array.from(body.rows).filter(function (row) {
-                return row.dataset.pfimsEmpty !== 'true' && !(row.cells.length === 1
+                return row.style.display !== 'none' && row.dataset.pfimsEmpty !== 'true' && !(row.cells.length === 1
                     && /loading|no\s+records|no\s+data|no\s+.*\s+found|empty|fetching|please wait/i.test(row.textContent || ''));
             });
         }
+        table.pfimsRefreshPagination = function () { page = 1; render(); };
         function render() {
             var rows = dataRows();
             if (rows.length) {
@@ -1014,6 +1032,7 @@
                 } else button(String(item), item, item === page, false);
             });
             button('Next', page + 1, false, page === totalPages);
+            table.dispatchEvent(new Event('pfims:page-rendered'));
         }
         select.addEventListener('change', function () { perPage = Number(select.value) || 5; page = 1; render(); });
         links.addEventListener('click', function (event) {
@@ -1506,11 +1525,31 @@
         });
     }
 
+    function installNotificationCount() {
+        if (document.body.dataset.pfimsNotificationCount) return;
+        document.body.dataset.pfimsNotificationCount = 'ready';
+        function refresh() {
+            fetch('/api/notifications/unread-count', {headers: {'Accept':'application/json'}, credentials:'same-origin'})
+                .then(function(response) { if (!response.ok) throw new Error(); return response.json(); })
+                .then(function(data) {
+                    document.querySelectorAll('.top-header a[href*="notification"], header a[href*="notification"]').forEach(function(link) {
+                        var badge = link.querySelector('.pfims-notification-count');
+                        if (!badge) { badge=document.createElement('span'); badge.className='pfims-notification-count'; link.appendChild(badge); }
+                        var count=Number(data.unread_count || 0); badge.textContent=String(count); badge.hidden=!count;
+                        link.setAttribute('aria-label', count + ' unopened notifications');
+                    });
+                }).catch(function() {});
+        }
+        refresh(); window.setInterval(refresh, 60000); window.addEventListener('focus', refresh);
+        document.addEventListener('click', function(event) { if (event.target.closest('[onclick*="mark"], [id*="mark"], [class*="mark-read"]')) window.setTimeout(refresh, 1000); });
+    }
+
     function initializeSystemUi() {
-        document.querySelectorAll('header a[href*="notification"] span, .top-header a[href*="notification"] span').forEach(function (label) {
+        document.querySelectorAll('header a[href*="notification"] span:not(.pfims-notification-count), .top-header a[href*="notification"] span:not(.pfims-notification-count)').forEach(function (label) {
             label.classList.add('sr-only');
             label.textContent = 'Open alerts';
         });
+        installNotificationCount();
         installAutomaticRefresh();
         installHeaderClock();
         installRoleNavigation();

@@ -170,7 +170,7 @@ class FinReportController extends Controller
             'period' => ['nullable', 'date_format:Y-m-d', 'regex:/^\d{4}-\d{2}-01$/', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'account_id' => ['nullable', 'integer', 'exists:company_bank_account_tbl,account_id'],
         ]);
-        $period = $filters['period'] ?? date('Y-m-01');
+        $period = $filters['period'] ?? null;
         $accountId = $filters['account_id'] ?? null;
 
         $query = DB::table('fin_cash_position_tbl')
@@ -262,6 +262,7 @@ class FinReportController extends Controller
     {
         $filters = $request->validate([
             'entry_type' => ['nullable', 'in:accounts_receivable,accounts_payable,cash_advance_site,advance_employee'],
+            'month' => ['nullable', 'date_format:Y-m'],
         ]);
         $entryType = $filters['entry_type'] ?? null;
 
@@ -286,6 +287,11 @@ class FinReportController extends Controller
 
         if ($entryType) {
             $query->where('rp.entry_type', $entryType);
+        }
+        if (!empty($filters['month'])) {
+            $start = \Carbon\Carbon::createFromFormat('!Y-m', $filters['month']);
+            $query->where('rp.entry_date', '>=', $start->toDateString())
+                ->where('rp.entry_date', '<', $start->copy()->addMonth()->toDateString());
         }
 
         return response()->json($query->get());
