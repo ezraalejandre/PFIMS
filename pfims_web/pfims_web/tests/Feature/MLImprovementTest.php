@@ -22,6 +22,47 @@ class MLImprovementTest extends TestCase
 {
     protected string $modelPath;
 
+    public function test_remaining_cost_serving_and_evaluation_share_the_spend_floor(): void
+    {
+        foreach ([0.0, -300.0, 500.0] as $remaining) {
+            $service = new MLService($this->modelPath, false);
+            $model = new \Phpml\Regression\LeastSquares;
+            $model->train([[0.0], [1.0], [2.0]], [$remaining, $remaining, $remaining]);
+            $transformer = ['feature_names' => ['budget'], 'selected_feature_indexes' => [0],
+                'ranges' => [['min' => 1000, 'max' => 2000]]];
+            (new \ReflectionProperty($service, 'model'))->setValue($service, $model);
+            (new \ReflectionProperty($service, 'metadata'))->setValue($service, [
+                'model_source' => 'real_trained_model', 'prediction_strategy' => 'progress_snapshot_model',
+                'prediction_target' => 'remaining_cost_then_add_recorded_spend', 'transformer' => $transformer]);
+            $served = $service->predict([1000, 1, 1, 50, 0, 0, 1200], ['cost_coverage_complete' => true]);
+            $expected = max(1200, 1200 + $remaining);
+            $this->assertEqualsWithDelta($expected, $served, 0.000001);
+            $this->assertSame('real_trained_model', $service->getLastPredictionSource());
+            $this->assertSame($remaining < 0, $service->getLastForecastCalculation()['spend_floor_applied']);
+            $metrics = $this->invokeProtected($service, 'evaluateModel', $model, $transformer, collect([
+                (object) ['snapshot_id' => 1, 'budget' => 1000, 'fin_total_expense' => 1200, 'actual_cost' => 500],
+            ]));
+            $this->assertEqualsWithDelta(abs(1700 - $served), $metrics['mean_absolute_error'], 0.000001);
+            $this->assertSame((int) ($remaining < 0), $metrics['spend_floor_count']);
+        }
+    }
+
+    public function test_failed_model_fallback_cannot_inherit_validated_support(): void
+    {
+        $service = new MLService($this->modelPath, false);
+        (new \ReflectionProperty($service, 'model'))->setValue($service, new \Phpml\Regression\LeastSquares);
+        (new \ReflectionProperty($service, 'metadata'))->setValue($service, [
+            'model_source' => 'real_trained_model', 'prediction_strategy' => 'planning_only_baseline',
+            'budget_baseline_comparison' => ['model_outperforms_budget_baseline' => true],
+            'model_comparison' => ['production_model_is_best_option' => true],
+        ]);
+        $service->predict([1000, 1, 1, 0, 0, 0]);
+        $this->assertSame('rule_based_fallback', $service->getLastPredictionSource());
+        $support = $this->invokeProtected($service, 'predictionSupport', [1000, 1, 1, 0, 0, 0, 0]);
+        $this->assertFalse($support['prediction_usable']);
+        $this->assertSame('fallback_only', $support['support_level']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

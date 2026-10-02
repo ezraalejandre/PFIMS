@@ -17,6 +17,14 @@ class ProjectCostFeatureBuilderTest extends TestCase
             'direct_expense_count_7d' => 2, 'stock_out_count_7d' => 3, 'valued_stock_out_cost' => 300];
     }
 
+    public function test_completed_work_does_not_forecast_additional_spending_before_the_planned_end(): void
+    {
+        $inputs = array_replace($this->inputs(), ['completion_percentage' => 100]);
+        $indicators = (new ProjectCostFeatureBuilder)->build($inputs)['indicators'];
+        $this->assertSame(600.0, $indicators['progress_based_final_cost']);
+        $this->assertSame(600.0, $indicators['time_based_final_cost']);
+    }
+
     public function test_progress_and_time_indicators_can_exceed_budget_without_using_the_final_outcome(): void
     {
         $builder = new ProjectCostFeatureBuilder;

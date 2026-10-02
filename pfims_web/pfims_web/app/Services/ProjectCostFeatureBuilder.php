@@ -63,7 +63,7 @@ class ProjectCostFeatureBuilder
         $progressAvailable = $complete && $budget > 0 && $progress >= 0.1 && $spent > 0;
         $progressEac = $progressAvailable ? $spent / $progress : null;
         $timeAvailable = $progressAvailable && $timing && $elapsed >= 7 && $rate30 !== null && $rate30 > 0;
-        $remainingDays = $timeAvailable ? max(max(0, $planned - $elapsed), $elapsed * (1 - $progress) / $progress) : null;
+        $remainingDays = $timeAvailable ? ($progress >= 1 ? 0 : max(max(0, $planned - $elapsed), $elapsed * (1 - $progress) / $progress)) : null;
         $timeEac = $timeAvailable ? $spent + $rate30 * $remainingDays : null;
         $elapsedFraction = $timing ? $elapsed / $planned : null;
         $values = [

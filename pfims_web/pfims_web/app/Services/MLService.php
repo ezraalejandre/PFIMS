@@ -94,6 +94,8 @@ class MLService
 
     protected bool $lastPredictionWasConstrained = false;
 
+    protected array $lastForecastCalculation = [];
+
     protected array $lastPredictionSupport = [
         'prediction_usable' => false,
         'support_level' => 'unavailable',
@@ -1360,6 +1362,7 @@ class MLService
     protected function evaluateModel(Regression $model, array $transformer, Collection $testData): array
     {
         $predictions = $actuals = $budgets = [];
+        $constrainedCount = 0;
         $featureNames = $transformer['feature_names'] ?? self::BASE_FEATURE_NAMES;
         foreach ($testData as $row) {
             $transformed = $this->transformFeatureVector(
@@ -1372,12 +1375,17 @@ class MLService
                 throw new RuntimeException('Holdout evaluation produced a non-finite prediction.');
             }
             $recordedSpend = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
-            $predictions[] = $prediction + $recordedSpend;
+            $calculation = app(ProjectCostForecastCalculator::class)->calculate($prediction, $recordedSpend, isset($row->snapshot_id));
+            $predictions[] = $calculation['final_cost'];
+            $constrainedCount += (int) $calculation['spend_floor_applied'];
             $actuals[] = (float) $row->actual_cost + $recordedSpend;
             $budgets[] = (float) $row->budget;
         }
 
-        return $this->calculateMetrics($predictions, $actuals, $budgets, $testData);
+        return $this->calculateMetrics($predictions, $actuals, $budgets, $testData) + [
+            'spend_floor_count' => $constrainedCount,
+            'evaluation_forecast_policy' => 'final_cost_with_recorded_spend_floor',
+        ];
     }
 
     protected function calculateMetrics(array $predictions, array $actuals, array $budgets, ?Collection $rows = null): array
@@ -1508,6 +1516,7 @@ class MLService
             ['fin_total_expense' => $this->recordedSpend($features)]));
         $this->lastPredictionWarnings = $this->predictionWarnings($features);
         $this->lastPredictionWasConstrained = false;
+        $this->lastForecastCalculation = [];
         if (! $this->model) {
             throw new RuntimeException('Model not trained. Please train the model first.');
         }
@@ -1523,19 +1532,20 @@ class MLService
                 $transformer['ranges']
             );
             $prediction = (float) $this->model->predict($transformed);
-            if (! is_finite($prediction) || $prediction <= 0) {
+            $remainingCost = ($this->metadata['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend';
+            if (! is_finite($prediction)) {
                 throw new RuntimeException('Model returned an invalid project cost.');
             }
             $this->lastPredictionSource = $this->metadata['model_source'] ?? 'trained_model';
-            if (($this->metadata['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend') {
-                $prediction += $this->recordedSpend($features);
-            }
+            $this->lastForecastCalculation = app(ProjectCostForecastCalculator::class)->calculate($prediction, $this->recordedSpend($features), $remainingCost);
+            $prediction = $this->lastForecastCalculation['raw_final_cost'];
         } catch (Throwable $exception) {
             Log::error('Trained-model prediction failed; applying the rule-based estimate.', ['message' => $exception->getMessage()]);
             $this->lastPredictionSource = 'rule_based_fallback';
             $this->lastPredictionWarnings[] = 'The trained estimator failed, so this result uses the rule-based fallback formula.';
 
             $prediction = $this->fallbackPrediction($features);
+            $this->lastForecastCalculation = app(ProjectCostForecastCalculator::class)->calculate($prediction, $this->recordedSpend($features), false);
         }
 
         $recordedSpend = $this->recordedSpend($features);
@@ -1544,7 +1554,12 @@ class MLService
             $this->lastPredictionWasConstrained = true;
             $this->lastPredictionWarnings[] = 'The raw estimate was below recorded spending. The displayed value was raised to the recorded-spend floor and must not be treated as an on-track forecast.';
         }
+        if ($prediction <= 0) {
+            $this->lastPredictionWasConstrained = true;
+            $this->lastPredictionWarnings[] = 'There is no positive final-cost estimate. This result cannot support a project budget decision.';
+        }
         $this->lastPredictionSupport = $this->predictionSupport($features);
+        $this->lastForecastCalculation['estimate_source'] = $this->lastPredictionSource;
 
         return $prediction;
     }
@@ -1645,6 +1660,11 @@ class MLService
         return $this->lastEngineeredFeatures['indicators'] ?? [];
     }
 
+    public function getLastForecastCalculation(): array
+    {
+        return $this->lastForecastCalculation;
+    }
+
     public function getLastPredictionSource(): string
     {
         return $this->lastPredictionSource;
@@ -1672,6 +1692,10 @@ class MLService
         $completion = (float) $features[3];
         $recordedSpend = max((float) $features[6], (float) $features[4] + (float) $features[5]);
         $context = $completion <= 0 && $recordedSpend <= 0 ? 'pre_start_planning' : 'ongoing_progress';
+        if ($this->lastPredictionSource === 'rule_based_fallback') {
+            return ['prediction_usable' => false, 'support_level' => 'fallback_only',
+                'forecast_context' => $context, 'status_reason' => 'The trained estimator failed. This rule-based estimate has no validated model performance.'];
+        }
         $baselineSupported = (bool) ($this->metadata['budget_baseline_comparison']['model_outperforms_budget_baseline'] ?? false);
         $productionModelIsBest = (bool) ($this->metadata['model_comparison']['production_model_is_best_option'] ?? false);
         $snapshotReady = (bool) ($this->metadata['snapshot_readiness']['eligible'] ?? false);
