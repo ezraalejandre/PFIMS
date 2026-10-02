@@ -3,6 +3,15 @@
     if (!root) { window.pfimsPerformance = { update() {} }; return; }
     let active = {}, reports = {}, busy = false;
     const element = id => document.getElementById(id);
+    const preferencesKey = 'pfims-model-performance-selection';
+    const allowed = {performanceSource: ['active', 'presentation_progress', 'planning'], performanceWeighting: ['all', 'latest'], performanceThreshold: ['material_overrun', 'any_overrun']};
+    try {
+        const saved = JSON.parse(sessionStorage.getItem(preferencesKey) || '{}');
+        Object.entries(allowed).forEach(([id, values]) => { if (values.includes(saved[id])) element(id).value = saved[id]; });
+    } catch (_) { /* Storage restrictions must not prevent performance rendering. */ }
+    function rememberSelection() {
+        try { sessionStorage.setItem(preferencesKey, JSON.stringify(Object.fromEntries(Object.keys(allowed).map(id => [id, element(id).value])))); } catch (_) {}
+    }
     const put = (id, value) => { element(id).textContent = value; };
     const number = value => value !== null && value !== undefined && Number.isFinite(Number(value));
     const percent = value => number(value) ? `${Number(value).toFixed(2)}%` : 'Unavailable';
@@ -63,6 +72,7 @@
     window.pfimsPerformance = { update(metrics) { active = metrics || {}; reports = active.candidate_evaluations?.reports || {}; render(); } };
     ['performanceSource', 'performanceWeighting', 'performanceThreshold'].forEach(id => element(id).addEventListener('change', () => {
         if (id === 'performanceSource') element('performanceWeighting').value = 'all';
+        rememberSelection();
         render();
     }));
     element('refreshPerformance')?.addEventListener('click', async () => {

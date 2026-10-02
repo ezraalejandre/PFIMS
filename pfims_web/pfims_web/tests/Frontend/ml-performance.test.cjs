@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 
-function page(fetch = () => { throw new Error('Unexpected evaluation request'); }) {
+function page(fetch = () => { throw new Error('Unexpected evaluation request'); }, storage = new Map()) {
     const elements = new Map();
     const get = id => {
         if (!elements.has(id)) elements.set(id, {value: '', textContent: '', disabled: false, listeners: {}, addEventListener(event, callback) {this.listeners[event] = callback;}});
@@ -14,7 +14,7 @@ function page(fetch = () => { throw new Error('Unexpected evaluation request'); 
     get('performanceWeighting').value = 'all';
     get('performanceThreshold').value = 'material_overrun';
     get('predictiveAnalyticsRoot').dataset = {apiBase: '/api/ml'};
-    const context = {document: {getElementById: get, querySelector: () => ({content: 'csrf'})}, window: {}, fetch};
+    const context = {document: {getElementById: get, querySelector: () => ({content: 'csrf'})}, window: {}, fetch, sessionStorage: {getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value)}};
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../public/js/ml-performance.js'), 'utf8'), context);
     return {get, update: context.window.pfimsPerformance.update, change(id, value) {get(id).value = value; get(id).listeners.change();}};
 }
@@ -75,4 +75,14 @@ test('failed refresh retains saved scores and re-enables controls', async () => 
     assert.match(p.get('performanceStatus').textContent, /could not be refreshed/);
     assert.equal(p.get('performanceSource').disabled, false);
     assert.equal(p.get('refreshPerformance').disabled, false);
+});
+test('reloading retains the selected evaluation, threshold and observation scope', () => {
+    const storage = new Map();
+    const first = page(undefined, storage); first.update(active);
+    first.change('performanceSource', 'presentation_progress');
+    first.change('performanceThreshold', 'any_overrun');
+    const reloaded = page(undefined, storage); reloaded.update(active);
+    assert.equal(reloaded.get('performanceSource').value, 'presentation_progress');
+    assert.equal(reloaded.get('metricPrecision').textContent, '72.73%');
+    assert.equal(reloaded.get('metricOverrunAccuracy').textContent, '60.00%');
 });
