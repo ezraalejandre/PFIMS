@@ -75,7 +75,8 @@ class ProjectCostSnapshotService
                 && Carbon::parse($project->actual_end_date)->startOfDay()->betweenIncluded($start, $capturedAt->copy()->startOfDay());
             // An unvalued withdrawal is missing cost, not a zero-cost material.
             $reconciled = $finance['unvalued_count'] === 0
-                && abs((float) $budget->actual_amount - (float) $finance['total']) <= 0.01;
+                && abs((float) $budget->actual_amount - (float) $finance['total']) <= 0.01
+                && (! $isCompleted || app(ProjectCostDataQualityService::class)->inspect($projectId)['eligible']);
             $finalCost = $isCompleted && (! Schema::hasTable('inventory_cost_allocation_tbl') || $reconciled)
                 ? ($finance['has_ledger_rows'] || Schema::hasTable('inventory_cost_allocation_tbl')
                     ? (float) $finance['total'] : (float) ($budget->actual_amount ?? 0))

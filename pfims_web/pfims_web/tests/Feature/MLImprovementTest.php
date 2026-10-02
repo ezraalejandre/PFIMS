@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\AutomaticModelRetraining;
 use App\Services\MLService;
+use App\Services\ProjectCostDataQualityService;
 use App\Services\ProjectCostSnapshotService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
@@ -1098,6 +1099,118 @@ class MLImprovementTest extends TestCase
             'role' => $role,
             'status' => 'Active',
         ]);
+    }
+
+    public function test_cost_quality_blocks_partial_allocations_and_invalidates_final_labels_without_changing_costs(): void
+    {
+        Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
+            $table->bigIncrements('allocation_id');
+            $table->integer('project_id');
+            $table->integer('in_transaction_id');
+            $table->integer('out_transaction_id');
+            $table->decimal('quantity', 10, 2);
+            $table->decimal('unit_cost', 18, 6);
+            $table->decimal('allocated_amount', 14, 2);
+            $table->string('valuation_status');
+        });
+        $id = $this->insertProject([
+            'project_name' => 'Cost quality site', 'status' => 'Completed', 'completion_percentage' => 100,
+            'start_date' => '2024-01-01', 'estimated_end_date' => '2024-05-01',
+            'actual_end_date' => '2024-05-01', 'worker_count' => 8,
+        ], 500, 600);
+        DB::table('fin_expense_tbl')->insert(['project_id' => $id, 'fin_category_id' => 2, 'amount' => 100, 'expense_date' => '2024-04-01']);
+        $receipt = DB::table('inventory_transaction_tbl')->insertGetId([
+            'item_id' => 1, 'transaction_type' => 'IN', 'quantity' => 10, 'transaction_date' => '2024-02-01',
+        ]);
+        $out = DB::table('inventory_transaction_tbl')->insertGetId([
+            'item_id' => 1, 'project_id' => $id, 'transaction_type' => 'OUT', 'quantity' => 10, 'transaction_date' => '2024-03-01',
+        ]);
+        $allocation = DB::table('inventory_cost_allocation_tbl')->insertGetId([
+            'project_id' => $id, 'in_transaction_id' => $receipt, 'out_transaction_id' => $out,
+            'quantity' => 10, 'unit_cost' => 50, 'allocated_amount' => 500, 'valuation_status' => 'valued',
+        ]);
+        $quality = app(ProjectCostDataQualityService::class);
+        $this->assertTrue($quality->inspect($id)['eligible']);
+        $this->assertTrue($quality->inspect($id)['overrun_outcomes']['current_budget']['material_overrun']);
+        Schema::table('fin_expense_tbl', function (Blueprint $table) {
+            $table->integer('inventory_transaction_id')->nullable();
+            $table->string('entry_kind')->nullable();
+        });
+        // Shared stock may have been purchased for a different project.
+        DB::table('inventory_transaction_tbl')->where('inventory_transaction_id', $receipt)->update(['project_id' => 77]);
+        $purchase = DB::table('fin_expense_tbl')->insertGetId([
+            'project_id' => 77, 'fin_category_id' => 1, 'amount' => 500, 'expense_date' => '2024-02-01',
+            'inventory_transaction_id' => $receipt, 'entry_kind' => 'inventory_purchase',
+        ]);
+        $this->assertTrue($quality->inspect($id)['eligible']);
+        DB::table('fin_expense_tbl')->where('fin_expense_id', $purchase)->update(['amount' => 400]);
+        $this->assertContains('allocation_price_does_not_match_purchase', $quality->inspect($id)['errors']);
+        DB::table('fin_expense_tbl')->where('fin_expense_id', $purchase)->update(['amount' => 500]);
+        $ml = (new \ReflectionClass(MLService::class))->newInstanceWithoutConstructor();
+        $this->assertCount(1, $this->trainingData($ml));
+        $snapshots = app(ProjectCostSnapshotService::class);
+        $this->assertTrue($snapshots->capture($id));
+        $this->assertSame(600.0, (float) DB::table('ml_project_cost_snapshots')->value('final_actual_cost'));
+
+        // The old sum-only reconciliation would accept this incomplete allocation.
+        DB::table('inventory_cost_allocation_tbl')->where('allocation_id', $allocation)->update(['quantity' => 5, 'unit_cost' => 100]);
+        $beforeBudget = DB::table('budgets_tbl')->first();
+        $report = $quality->report();
+        $this->assertTrue($report['read_only']);
+        $this->assertContains('inventory_quantity_not_fully_allocated', $report['projects'][0]['errors']);
+        $this->assertEquals($beforeBudget, DB::table('budgets_tbl')->first());
+        $this->assertCount(0, $this->trainingData($ml));
+        $snapshots->capture($id);
+        $this->assertSame(0, DB::table('ml_project_cost_snapshots')->whereNotNull('final_actual_cost')->count());
+
+        DB::table('inventory_cost_allocation_tbl')->where('allocation_id', $allocation)->update(['quantity' => 10, 'unit_cost' => 50]);
+        DB::table('inventory_transaction_tbl')->where('inventory_transaction_id', $receipt)->update(['transaction_date' => '2024-04-01']);
+        $this->assertContains('inventory_used_before_receipt_or_missing_date', $quality->inspect($id)['errors']);
+        DB::table('inventory_transaction_tbl')->where('inventory_transaction_id', $receipt)->update(['transaction_date' => '2024-02-01', 'quantity' => 5]);
+        $this->assertContains('receipt_quantity_overallocated', $quality->inspect($id)['errors']);
+        DB::table('inventory_transaction_tbl')->where('inventory_transaction_id', $receipt)->update(['quantity' => 10]);
+        DB::table('inventory_cost_allocation_tbl')->where('allocation_id', $allocation)->update(['allocated_amount' => 400]);
+        $errors = $quality->inspect($id)['errors'];
+        $this->assertContains('invalid_inventory_allocation_value', $errors);
+        $this->assertContains('budget_actual_does_not_match_ledger', $errors);
+    }
+
+    public function test_cost_quality_reports_future_completion_duplicate_budgets_and_late_invoice_warnings(): void
+    {
+        Carbon::setTestNow('2025-06-01');
+        $id = $this->insertProject([
+            'project_name' => 'Closeout site', 'status' => 'Completed', 'completion_percentage' => 100,
+            'start_date' => '2025-01-01', 'estimated_end_date' => '2025-04-01',
+            'actual_end_date' => '2025-04-01', 'worker_count' => 4,
+        ], 1000, 1050);
+        Schema::table('fin_expense_tbl', function (Blueprint $table) {
+            $table->string('remarks')->nullable();
+            $table->integer('inventory_transaction_id')->nullable();
+        });
+        DB::table('fin_expense_tbl')->insert([
+            'project_id' => $id, 'fin_category_id' => 1, 'amount' => 1050, 'expense_date' => '2025-04-15',
+            'remarks' => 'Historical item-price estimate: existing estimate.',
+        ]);
+        $quality = app(ProjectCostDataQualityService::class);
+        $result = $quality->inspect($id);
+        $this->assertTrue($result['eligible']);
+        $this->assertContains('estimated_historical_prices', $result['warnings']);
+        $this->assertContains('costs_recorded_after_completion', $result['warnings']);
+        $this->assertFalse($result['overrun_outcomes']['current_budget']['material_overrun']);
+        $this->assertTrue($result['overrun_outcomes']['current_budget']['any_overrun']);
+        DB::table('project_tbl')->where('project_id', $id)->update(['actual_end_date' => '2025-07-01']);
+        DB::table('budgets_tbl')->insert(['project_id' => $id, 'budget_amount' => 1000, 'actual_amount' => 1050]);
+        $errors = $quality->inspect($id)['errors'];
+        $this->assertContains('future_completion', $errors);
+        $this->assertContains('duplicate_active_budgets', $errors);
+        DB::table('fin_expense_tbl')->insert([
+            ['project_id' => $id, 'fin_category_id' => 1, 'amount' => 10, 'expense_date' => '2025-01-01', 'inventory_transaction_id' => 999],
+            ['project_id' => $id, 'fin_category_id' => 1, 'amount' => 10, 'expense_date' => '2025-01-01', 'inventory_transaction_id' => 999],
+        ]);
+        $errors = $quality->inspect($id)['errors'];
+        $this->assertContains('multiple_purchase_expenses_per_receipt', $errors);
+        $this->assertContains('invalid_project_purchase_link', $errors);
+        $this->artisan('ml:audit-data')->assertExitCode(0);
     }
 
     protected function createSchema(): void

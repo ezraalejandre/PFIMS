@@ -401,7 +401,8 @@ class MLService
 
                         return $cost['unvalued_count'] === 0
                             && abs((float) $row->actual_cost - $cost['total']) <= 0.01
-                            && abs((float) $row->budget_actual - $cost['total']) <= 0.01;
+                            && abs((float) $row->budget_actual - $cost['total']) <= 0.01
+                            && app(ProjectCostDataQualityService::class)->inspect((int) $row->project_id)['eligible'];
                     } catch (Throwable) {
                         return false;
                     }
@@ -521,6 +522,8 @@ class MLService
                 ->whereNotNull('snapshot.stock_out_count_30d');
         }
 
+        $qualityByProject = [];
+
         return $query->get()
             ->map(function ($row) {
                 $row->actual_cost = max(0.0, (float) $row->actual_cost - (float) $row->fin_total_expense);
@@ -535,8 +538,8 @@ class MLService
 
                 return $row;
             })
-            ->filter(function ($row) use ($hasActivity, &$ledgerByProject) {
-                if (! $hasActivity || ! Schema::hasTable('inventory_cost_allocation_tbl')) {
+            ->filter(function ($row) use (&$ledgerByProject, &$qualityByProject) {
+                if (! Schema::hasTable('inventory_cost_allocation_tbl')) {
                     return true;
                 }
                 $ledgerByProject ??= [];
@@ -544,10 +547,12 @@ class MLService
 
                 $budgetActual = DB::table('budgets_tbl')->where('project_id', $row->project_id)
                     ->orderByDesc('budget_id')->value('actual_amount');
+                $qualityByProject[$row->project_id] ??= app(ProjectCostDataQualityService::class)->inspect((int) $row->project_id)['eligible'];
 
                 return $cost['unvalued_count'] === 0
                     && abs((float) $row->reconciled_final_cost - $cost['total']) <= 0.01
-                    && $budgetActual !== null && abs((float) $budgetActual - $cost['total']) <= 0.01;
+                    && $budgetActual !== null && abs((float) $budgetActual - $cost['total']) <= 0.01
+                    && $qualityByProject[$row->project_id];
             })->values();
     }
 

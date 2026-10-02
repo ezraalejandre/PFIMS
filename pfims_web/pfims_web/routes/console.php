@@ -3,6 +3,7 @@
 use App\Services\InventoryHistoryReconciler;
 use App\Services\LegacyInventoryPriceBackfill;
 use App\Services\MLService;
+use App\Services\ProjectCostDataQualityService;
 use App\Services\ProjectCostSnapshotService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -13,6 +14,12 @@ use Illuminate\Support\Facades\Schema;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('ml:audit-data', function (ProjectCostDataQualityService $quality) {
+    $this->line(json_encode($quality->report(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Read-only project final-cost eligibility and exclusion audit; never retrains or changes records');
 
 Artisan::command('ml:retrain {--scheduled : Mark this run as scheduler-triggered}', function (MLService $ml) {
     $result = $ml->retrain();
