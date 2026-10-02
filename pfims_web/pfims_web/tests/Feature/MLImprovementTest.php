@@ -22,6 +22,133 @@ class MLImprovementTest extends TestCase
 {
     protected string $modelPath;
 
+    protected function presentationSchema(): void
+    {
+        Schema::table('project_tbl', function (Blueprint $table) {
+            $table->string('client_name')->nullable();
+            $table->string('project_manager')->nullable();
+        });
+        Schema::table('inventory_item_tbl', function (Blueprint $table) {
+            $table->integer('inventory_category_id')->nullable();
+            $table->integer('supplier_id')->nullable();
+            $table->integer('unit_id')->nullable();
+            $table->decimal('unit_price', 12, 2)->nullable();
+        });
+        Schema::table('fin_expense_tbl', function (Blueprint $table) {
+            $table->string('expense_description')->nullable();
+            $table->string('remarks')->nullable();
+            $table->integer('inventory_transaction_id')->nullable();
+            $table->string('entry_kind')->nullable();
+            $table->timestamps();
+        });
+        Schema::table('inventory_transaction_tbl', function (Blueprint $table) {
+            $table->string('movement_reason')->nullable();
+            $table->dateTime('recorded_at')->nullable();
+        });
+        Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
+            $table->bigIncrements('allocation_id');
+            $table->integer('in_transaction_id');
+            $table->integer('out_transaction_id');
+            $table->integer('project_id');
+            $table->decimal('quantity', 10, 2);
+            $table->decimal('unit_cost', 18, 6);
+            $table->decimal('allocated_amount', 14, 2);
+            $table->string('valuation_status');
+            $table->dateTime('allocated_at');
+        });
+        foreach (['2026_09_28_000001_add_activity_to_project_cost_snapshots.php',
+            '2026_10_02_000001_create_project_budget_history.php',
+            '2026_10_02_000002_add_capture_quality_to_project_cost_snapshots.php',
+            '2026_10_02_000003_add_recent_costs_to_project_cost_snapshots.php',
+            '2026_10_02_000004_create_ml_presentation_batches_table.php'] as $file) {
+            (require database_path('migrations/'.$file))->up();
+        }
+        DB::table('fin_expense_category_tbl')->insert(['category_code' => 'TRANSPORTATION_EXPENSES',
+            'category_name' => 'Transportation', 'classification' => 'direct']);
+        DB::table('inventory_item_tbl')->insert([
+            ['item_id' => 1, 'item_name' => 'Cement', 'current_stock' => 50],
+            ['item_id' => 2, 'item_name' => 'Steel', 'current_stock' => 30],
+        ]);
+    }
+
+    public function test_presentation_batch_is_reconciled_idempotent_and_preserves_existing_stock(): void
+    {
+        Carbon::setTestNow('2026-10-02 21:00:00');
+        $this->presentationSchema();
+        [$references, $items] = \Tests\Unit\ProjectCostPresentationPlanTest::inputs();
+        $plan = app(\App\Services\ProjectCostPresentationPlan::class)->build($references, $items, 6);
+        $stock = DB::table('inventory_item_tbl')->whereIn('item_id', [1, 2])->get()->toJson();
+        $service = app(\App\Services\ProjectCostPresentationService::class);
+        $manifest = $service->apply($plan);
+        $this->assertSame(['within_budget' => 2, 'small_overrun' => 1, 'material_overrun' => 3], $manifest['outcome_counts']);
+        $this->assertSame(18, $manifest['snapshot_count']);
+        $this->assertFalse($manifest['already_applied']);
+        $this->assertTrue($service->apply($plan)['already_applied']);
+        $this->assertSame(6, DB::table('project_tbl')->count());
+        $this->assertSame($stock, DB::table('inventory_item_tbl')->whereIn('item_id', [1, 2])->get()->toJson());
+        $this->assertSame(0.0, (float) DB::table('inventory_item_tbl')->whereNotIn('item_id', [1, 2])->sum('current_stock'));
+        foreach ($manifest['records']['project_tbl']['ids'] as $id) {
+            $this->assertTrue(app(ProjectCostDataQualityService::class)->inspect($id)['eligible']);
+        }
+        $model = new MLService($this->modelPath, false);
+        $rows = $this->invokeProtected($model, 'getSnapshotTrainingData');
+        $this->assertCount(18, $rows);
+        $this->assertSame(['company_inspired_sample'], $rows->pluck('data_source')->unique()->values()->all());
+        $this->assertSame(0, $model->getSnapshotReadiness()['finalized_projects']);
+        $migration = require database_path('migrations/2026_10_02_000004_create_ml_presentation_batches_table.php');
+        try {
+            $migration->down();
+            $this->fail('Non-empty tracking must be retained.');
+        } catch (\RuntimeException) {
+            $this->assertTrue(Schema::hasTable('ml_presentation_batches'));
+        }
+        DB::table('budgets_tbl')->where('project_id', $manifest['records']['project_tbl']['ids'][0])->update(['budget_amount' => 1]);
+        $this->expectException(\RuntimeException::class);
+        $service->apply($plan);
+    }
+
+    public function test_invalid_presentation_project_rolls_back_the_entire_batch(): void
+    {
+        Carbon::setTestNow('2026-10-02');
+        $this->presentationSchema();
+        [$references, $items] = \Tests\Unit\ProjectCostPresentationPlanTest::inputs();
+        $plan = app(\App\Services\ProjectCostPresentationPlan::class)->build($references, $items, 6);
+        $plan['projects'][2]['waves'][0]['receipt_date'] = '2030-01-01';
+        try {
+            app(\App\Services\ProjectCostPresentationService::class)->apply($plan);
+            $this->fail('Invalid receipt must prevent all imports.');
+        } catch (\RuntimeException) {
+            foreach (['project_tbl', 'budgets_tbl', 'fin_expense_tbl', 'inventory_transaction_tbl',
+                'inventory_cost_allocation_tbl', 'ml_project_cost_snapshots', 'ml_presentation_batches'] as $table) {
+                $this->assertSame(0, DB::table($table)->count());
+            }
+        }
+    }
+
+    public function test_presentation_material_history_remains_compatible_with_future_fifo_allocations(): void
+    {
+        Carbon::setTestNow('2026-10-02');
+        $this->presentationSchema();
+        [$references, $items] = \Tests\Unit\ProjectCostPresentationPlanTest::inputs();
+        $plan = app(\App\Services\ProjectCostPresentationPlan::class)->build($references, $items, 6);
+        $manifest = app(\App\Services\ProjectCostPresentationService::class)->apply($plan);
+        $item = $manifest['records']['inventory_item_tbl']['ids'][0];
+        $project = $this->insertProject(['project_name' => 'New ongoing site', 'status' => 'Ongoing',
+            'completion_percentage' => 10, 'worker_count' => 4, 'start_date' => '2026-10-01',
+            'estimated_end_date' => '2027-02-01'], 10000, 0);
+        $receipt = DB::table('inventory_transaction_tbl')->insertGetId(['item_id' => $item, 'quantity' => 1,
+            'transaction_type' => 'IN', 'movement_reason' => 'purchase', 'transaction_date' => '2026-10-02']);
+        DB::table('fin_expense_tbl')->insert(['fin_category_id' => 1, 'amount' => 285, 'expense_date' => '2026-10-02',
+            'entry_kind' => 'inventory_purchase', 'inventory_transaction_id' => $receipt]);
+        $withdrawal = DB::table('inventory_transaction_tbl')->insertGetId(['item_id' => $item, 'quantity' => 1,
+            'project_id' => $project, 'transaction_type' => 'OUT', 'transaction_date' => '2026-10-02']);
+        app(\App\Services\InventoryCostAllocator::class)->allocate($withdrawal);
+        $this->assertSame(285.0, (float) DB::table('budgets_tbl')->where('project_id', $project)->value('actual_amount'));
+        app(\App\Services\ProjectCostPresentationService::class)->verifyManifest($manifest);
+        $this->assertSame(50.0, (float) DB::table('inventory_item_tbl')->where('item_id', 1)->value('current_stock'));
+        $this->assertSame(30.0, (float) DB::table('inventory_item_tbl')->where('item_id', 2)->value('current_stock'));
+    }
+
     public function test_candidate_evaluation_is_read_only_and_does_not_replace_the_saved_estimator(): void
     {
         for ($index = 1; $index <= 18; $index++) {

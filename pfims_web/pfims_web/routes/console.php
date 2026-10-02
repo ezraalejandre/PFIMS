@@ -5,11 +5,25 @@ use App\Services\LegacyInventoryPriceBackfill;
 use App\Services\MLService;
 use App\Services\ProjectCostDataQualityService;
 use App\Services\ProjectCostSnapshotService;
+use App\Services\ProjectCostPresentationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Schema;
+
+Artisan::command('ml:presentation-records {--apply : Insert the verified batch atomically} {--count=48}', function (ProjectCostPresentationService $service) {
+    $plan = $service->prepare((int) $this->option('count'));
+    $report = $this->option('apply') ? $service->apply($plan) : [
+        'mode' => 'preview_only', 'project_count' => count($plan['projects']),
+        'outcome_counts' => array_count_values(array_column($plan['projects'], 'expected_outcome')),
+        'plan_sha256' => hash('sha256', json_encode($plan, JSON_THROW_ON_ERROR)),
+        'database_changed' => false,
+    ];
+    $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Preview or explicitly import an internally traceable presentation batch without retraining');
 
 Artisan::command('ml:evaluate', function () {
     $report = (new MLService(null, false))->evaluateCandidate();
