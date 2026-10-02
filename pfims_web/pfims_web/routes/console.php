@@ -4,8 +4,8 @@ use App\Services\InventoryHistoryReconciler;
 use App\Services\LegacyInventoryPriceBackfill;
 use App\Services\MLService;
 use App\Services\ProjectCostDataQualityService;
-use App\Services\ProjectCostSnapshotService;
 use App\Services\ProjectCostPresentationService;
+use App\Services\ProjectCostSnapshotService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +25,12 @@ Artisan::command('ml:presentation-records {--apply : Insert the verified batch a
     return 0;
 })->purpose('Preview or explicitly import an internally traceable presentation batch without retraining');
 
-Artisan::command('ml:evaluate', function () {
-    $report = (new MLService(null, false))->evaluateCandidate();
+Artisan::command('ml:evaluate {--cohort=auto : auto, planning, or presentation_progress} {--save-report : Save evidence separately without activating a model}', function () {
+    $service = new MLService(null, false);
+    $report = $service->evaluateCandidate((string) $this->option('cohort'));
+    if ($this->option('save-report')) {
+        $service->saveCandidateEvaluationReport($report);
+    }
     $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
     return 0;
@@ -49,8 +53,8 @@ Artisan::command('ml:audit-snapshots', function () {
     return 0;
 })->purpose('Report progress-stage coverage and the completed-project observations still needed');
 
-Artisan::command('ml:retrain {--scheduled : Mark this run as scheduler-triggered}', function (MLService $ml) {
-    $result = $ml->retrain();
+Artisan::command('ml:retrain {--scheduled : Mark this run as scheduler-triggered} {--cohort= : Explicit training cohort policy}', function (MLService $ml) {
+    $result = $ml->retrain($this->option('cohort') ?: null);
     $this->info($result['message']);
     $this->line('Model source: '.$result['model_source']);
     $this->line('Evaluation method: '.($result['metrics']['evaluation_method'] ?? 'unavailable'));

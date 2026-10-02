@@ -2,10 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\Budget;
 use App\Models\User;
 use App\Services\AutomaticModelRetraining;
+use App\Services\BudgetHistoryService;
+use App\Services\InventoryCostAllocator;
 use App\Services\MLService;
 use App\Services\ProjectCostDataQualityService;
+use App\Services\ProjectCostFeatureBuilder;
+use App\Services\ProjectCostPresentationPlan;
+use App\Services\ProjectCostPresentationService;
 use App\Services\ProjectCostSnapshotService;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
@@ -15,8 +21,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Phpml\Regression\LeastSquares;
 use ReflectionMethod;
 use Tests\TestCase;
+use Tests\Unit\ProjectCostPresentationPlanTest;
 
 class MLImprovementTest extends TestCase
 {
@@ -75,10 +83,10 @@ class MLImprovementTest extends TestCase
     {
         Carbon::setTestNow('2026-10-02 21:00:00');
         $this->presentationSchema();
-        [$references, $items] = \Tests\Unit\ProjectCostPresentationPlanTest::inputs();
-        $plan = app(\App\Services\ProjectCostPresentationPlan::class)->build($references, $items, 6);
+        [$references, $items] = ProjectCostPresentationPlanTest::inputs();
+        $plan = app(ProjectCostPresentationPlan::class)->build($references, $items, 6);
         $stock = DB::table('inventory_item_tbl')->whereIn('item_id', [1, 2])->get()->toJson();
-        $service = app(\App\Services\ProjectCostPresentationService::class);
+        $service = app(ProjectCostPresentationService::class);
         $manifest = $service->apply($plan);
         $this->assertSame(['within_budget' => 2, 'small_overrun' => 1, 'material_overrun' => 3], $manifest['outcome_counts']);
         $this->assertSame(18, $manifest['snapshot_count']);
@@ -111,11 +119,11 @@ class MLImprovementTest extends TestCase
     {
         Carbon::setTestNow('2026-10-02');
         $this->presentationSchema();
-        [$references, $items] = \Tests\Unit\ProjectCostPresentationPlanTest::inputs();
-        $plan = app(\App\Services\ProjectCostPresentationPlan::class)->build($references, $items, 6);
+        [$references, $items] = ProjectCostPresentationPlanTest::inputs();
+        $plan = app(ProjectCostPresentationPlan::class)->build($references, $items, 6);
         $plan['projects'][2]['waves'][0]['receipt_date'] = '2030-01-01';
         try {
-            app(\App\Services\ProjectCostPresentationService::class)->apply($plan);
+            app(ProjectCostPresentationService::class)->apply($plan);
             $this->fail('Invalid receipt must prevent all imports.');
         } catch (\RuntimeException) {
             foreach (['project_tbl', 'budgets_tbl', 'fin_expense_tbl', 'inventory_transaction_tbl',
@@ -129,9 +137,9 @@ class MLImprovementTest extends TestCase
     {
         Carbon::setTestNow('2026-10-02');
         $this->presentationSchema();
-        [$references, $items] = \Tests\Unit\ProjectCostPresentationPlanTest::inputs();
-        $plan = app(\App\Services\ProjectCostPresentationPlan::class)->build($references, $items, 6);
-        $manifest = app(\App\Services\ProjectCostPresentationService::class)->apply($plan);
+        [$references, $items] = ProjectCostPresentationPlanTest::inputs();
+        $plan = app(ProjectCostPresentationPlan::class)->build($references, $items, 6);
+        $manifest = app(ProjectCostPresentationService::class)->apply($plan);
         $item = $manifest['records']['inventory_item_tbl']['ids'][0];
         $project = $this->insertProject(['project_name' => 'New ongoing site', 'status' => 'Ongoing',
             'completion_percentage' => 10, 'worker_count' => 4, 'start_date' => '2026-10-01',
@@ -142,9 +150,9 @@ class MLImprovementTest extends TestCase
             'entry_kind' => 'inventory_purchase', 'inventory_transaction_id' => $receipt]);
         $withdrawal = DB::table('inventory_transaction_tbl')->insertGetId(['item_id' => $item, 'quantity' => 1,
             'project_id' => $project, 'transaction_type' => 'OUT', 'transaction_date' => '2026-10-02']);
-        app(\App\Services\InventoryCostAllocator::class)->allocate($withdrawal);
+        app(InventoryCostAllocator::class)->allocate($withdrawal);
         $this->assertSame(285.0, (float) DB::table('budgets_tbl')->where('project_id', $project)->value('actual_amount'));
-        app(\App\Services\ProjectCostPresentationService::class)->verifyManifest($manifest);
+        app(ProjectCostPresentationService::class)->verifyManifest($manifest);
         $this->assertSame(50.0, (float) DB::table('inventory_item_tbl')->where('item_id', 1)->value('current_stock'));
         $this->assertSame(30.0, (float) DB::table('inventory_item_tbl')->where('item_id', 2)->value('current_stock'));
     }
@@ -175,6 +183,114 @@ class MLImprovementTest extends TestCase
         $this->assertSame($beforeModel, hash_file('sha256', $this->modelPath));
     }
 
+    public function test_presentation_progress_is_explicit_and_evaluation_reports_do_not_activate_it(): void
+    {
+        Carbon::setTestNow('2026-10-02 23:00:00');
+        $this->presentationSchema();
+        [$references, $items] = ProjectCostPresentationPlanTest::inputs();
+        $manifest = app(ProjectCostPresentationService::class)->apply(
+            app(ProjectCostPresentationPlan::class)->build($references, $items, 24)
+        );
+        $service = new MLService($this->modelPath);
+        $modelHash = hash_file('sha256', $this->modelPath);
+        $metadataHash = hash_file('sha256', $this->modelPath.'.meta.json');
+        $automatic = $this->invokeProtected($service, 'selectTrainingCohort');
+        $this->assertSame('planning_only_baseline', $automatic['strategy']);
+        $this->assertFalse($automatic['snapshot_readiness']['eligible']);
+        $presentation = $this->invokeProtected($service, 'selectTrainingCohort', 'presentation_progress');
+        $this->assertCount(72, $presentation['records']);
+        $this->assertSame(0, $presentation['snapshot_readiness']['operational_finalized_projects']);
+        $report = $service->evaluateCandidate('presentation_progress');
+        $this->assertSame(5, $report['evaluation']['evaluation_projects']);
+        $this->assertSame(15, $report['evaluation']['evaluation_observations']);
+        $this->assertSame(5, $report['evaluation']['latest_observation_per_project']['evaluation_observations']);
+        foreach ($report['feature_selection']['options'] as $option) {
+            foreach ($option['cross_validation']['folds'] ?? [] as $fold) {
+                $this->assertSame([], array_values(array_intersect($report['holdout_project_ids'], array_merge($fold['training_project_ids'], $fold['test_project_ids']))));
+            }
+        }
+        $service->saveCandidateEvaluationReport($report);
+        $this->assertSame('presentation_progress', $service->getCandidateEvaluationReports()['reports']['presentation_progress']['cohort_policy']);
+        $this->assertSame($modelHash, hash_file('sha256', $this->modelPath));
+        $this->assertSame($metadataHash, hash_file('sha256', $this->modelPath.'.meta.json'));
+        app(ProjectCostPresentationService::class)->verifyManifest($manifest);
+        File::delete($this->modelPath.'.evaluation.json');
+    }
+
+    public function test_rejected_presentation_training_preserves_the_saved_model_bytes(): void
+    {
+        Carbon::setTestNow('2026-10-02 23:00:00');
+        $this->presentationSchema();
+        [$references, $items] = ProjectCostPresentationPlanTest::inputs();
+        app(ProjectCostPresentationService::class)->apply(
+            app(ProjectCostPresentationPlan::class)->build($references, $items, 24)
+        );
+        $service = new class($this->modelPath) extends MLService
+        {
+            protected function budgetBaselineComparison(Collection $rows, array $evaluation): array
+            {
+                return ['model_outperforms_budget_baseline' => false];
+            }
+        };
+        $beforeModel = hash_file('sha256', $this->modelPath);
+        $beforeMetadata = hash_file('sha256', $this->modelPath.'.meta.json');
+        $this->assertFalse($service->train('presentation_progress'));
+        $this->assertSame($beforeModel, hash_file('sha256', $this->modelPath));
+        $this->assertSame($beforeMetadata, hash_file('sha256', $this->modelPath.'.meta.json'));
+    }
+
+    public function test_budget_normalized_remaining_target_has_identical_currency_outputs_in_serving_and_evaluation(): void
+    {
+        $service = new MLService($this->modelPath, false);
+        $records = collect(range(1, 6))->map(fn ($index) => (object) [
+            'snapshot_id' => $index, 'project_id' => $index, 'budget' => $index * 1000,
+            'actual_cost' => $index * 250, 'fin_total_expense' => $index * 100,
+        ]);
+        [$model, $transformer] = $this->invokeProtected($service, 'buildLeastSquaresModel', $records, ['budget']);
+        $this->assertSame('remaining_cost_fraction_of_budget', $transformer['target_scaling']);
+        (new \ReflectionProperty($service, 'model'))->setValue($service, $model);
+        (new \ReflectionProperty($service, 'metadata'))->setValue($service, [
+            'model_source' => 'sample_trained_model', 'prediction_strategy' => 'progress_snapshot_model',
+            'prediction_target' => 'remaining_cost_then_add_recorded_spend', 'transformer' => $transformer,
+        ]);
+        $served = $service->predict([7000, 6, 5, 10, 700, 0, 700], ['cost_coverage_complete' => true]);
+        $this->assertEqualsWithDelta(2450, $served, 0.001);
+        $evaluation = $this->invokeProtected($service, 'evaluateModel', $model, $transformer, collect([
+            (object) ['snapshot_id' => 7, 'project_id' => 7, 'budget' => 7000, 'actual_cost' => 1750, 'fin_total_expense' => 700],
+        ]));
+        $this->assertSame(0.0, $evaluation['mean_absolute_error']);
+        $this->assertSame('demo_only', $service->getLastPredictionSupport()['support_level']);
+        $this->assertFalse($service->getLastPredictionSupport()['prediction_usable']);
+    }
+
+    public function test_malformed_candidate_evidence_cannot_break_metrics_or_select_an_unknown_cohort(): void
+    {
+        $service = new MLService($this->modelPath, false);
+        File::put($this->modelPath.'.evaluation.json', '{invalid');
+        $this->assertNull($service->getCandidateEvaluationReports());
+        File::delete($this->modelPath.'.evaluation.json');
+        $this->expectException(\InvalidArgumentException::class);
+        $service->evaluateCandidate('unknown_policy');
+    }
+
+    public function test_evaluation_endpoint_is_admin_only_and_never_creates_an_active_estimator(): void
+    {
+        $this->postJson('/api/ml/evaluate', ['cohort' => 'planning'])->assertUnauthorized();
+        $this->actingAs($this->user('operations'))->postJson('/api/ml/evaluate', ['cohort' => 'planning'])->assertForbidden();
+        $this->actingAs($this->user('admin'))->postJson('/api/ml/evaluate', ['cohort' => 'unknown'])->assertUnprocessable();
+        $service = new MLService(loadModel: false);
+        $path = (new \ReflectionProperty($service, 'modelPath'))->getValue($service);
+        $modelHash = File::exists($path) ? hash_file('sha256', $path) : null;
+        $metaHash = File::exists($path.'.meta.json') ? hash_file('sha256', $path.'.meta.json') : null;
+        $this->postJson('/api/ml/evaluate', ['cohort' => 'planning'])->assertOk()
+            ->assertJsonPath('active_model_changed', false)
+            ->assertJsonPath('report.status', 'insufficient_projects');
+        $this->assertSame($modelHash, File::exists($path) ? hash_file('sha256', $path) : null);
+        $this->assertSame($metaHash, File::exists($path.'.meta.json') ? hash_file('sha256', $path.'.meta.json') : null);
+        $this->assertSame('planning', $service->getCandidateEvaluationReports()['reports']['planning']['cohort_policy']);
+        File::delete($path.'.evaluation.json');
+    }
+
     public function test_temporal_cross_validation_keeps_all_observations_for_a_project_together(): void
     {
         $records = collect();
@@ -203,7 +319,7 @@ class MLImprovementTest extends TestCase
     {
         foreach ([0.0, -300.0, 500.0] as $remaining) {
             $service = new MLService($this->modelPath, false);
-            $model = new \Phpml\Regression\LeastSquares;
+            $model = new LeastSquares;
             $model->train([[0.0], [1.0], [2.0]], [$remaining, $remaining, $remaining]);
             $transformer = ['feature_names' => ['budget'], 'selected_feature_indexes' => [0],
                 'ranges' => [['min' => 1000, 'max' => 2000]]];
@@ -227,7 +343,7 @@ class MLImprovementTest extends TestCase
     public function test_failed_model_fallback_cannot_inherit_validated_support(): void
     {
         $service = new MLService($this->modelPath, false);
-        (new \ReflectionProperty($service, 'model'))->setValue($service, new \Phpml\Regression\LeastSquares);
+        (new \ReflectionProperty($service, 'model'))->setValue($service, new LeastSquares);
         (new \ReflectionProperty($service, 'metadata'))->setValue($service, [
             'model_source' => 'real_trained_model', 'prediction_strategy' => 'planning_only_baseline',
             'budget_baseline_comparison' => ['model_outperforms_budget_baseline' => true],
@@ -500,8 +616,8 @@ class MLImprovementTest extends TestCase
         $this->assertNull($first->original_budget_amount);
 
         Carbon::setTestNow('2025-04-11 09:30:00');
-        $budget = \App\Models\Budget::where('project_id', $projectId)->firstOrFail();
-        app(\App\Services\BudgetHistoryService::class)->revise($budget, ['budget_amount' => 1200000], 'Scope revision');
+        $budget = Budget::where('project_id', $projectId)->firstOrFail();
+        app(BudgetHistoryService::class)->revise($budget, ['budget_amount' => 1200000], 'Scope revision');
         $this->assertTrue($snapshots->capture($projectId, 'after_revision'));
         $second = DB::table('ml_project_cost_snapshots')->where('capture_reason', 'after_revision')->first();
         $this->assertNotSame($first->budget_history_id, $second->budget_history_id);
@@ -1622,7 +1738,7 @@ class MLImprovementTest extends TestCase
         $this->assertSame(100.0, (float) $snapshot->direct_expense_amount_7d);
         $this->assertSame(300.0, (float) $snapshot->valued_stock_out_cost_7d);
         $this->assertSame(300.0, (float) $snapshot->valued_stock_out_cost_30d);
-        $expected = app(\App\Services\ProjectCostFeatureBuilder::class)->build($live['forecast_feature_context'] + [
+        $expected = app(ProjectCostFeatureBuilder::class)->build($live['forecast_feature_context'] + [
             'budget' => 500, 'completion_percentage' => 50,
         ])['values'];
         Carbon::setTestNow('2025-06-10 12:00:00');
@@ -1632,9 +1748,9 @@ class MLImprovementTest extends TestCase
         $snapshots->capture($id, 'project_completed');
         $training = $this->invokeProtected($ml, 'getSnapshotTrainingData')->firstWhere('snapshot_id', $snapshot->snapshot_id);
         $this->assertNotNull($training);
-        $trainVector = $this->invokeProtected($ml, 'rowToFeatures', $training, \App\Services\ProjectCostFeatureBuilder::FEATURE_NAMES);
+        $trainVector = $this->invokeProtected($ml, 'rowToFeatures', $training, ProjectCostFeatureBuilder::FEATURE_NAMES);
         $predictVector = $this->invokeProtected($ml, 'predictionFeatureVector', array_fill(0, 15, 0),
-            \App\Services\ProjectCostFeatureBuilder::FEATURE_NAMES, $expected);
+            ProjectCostFeatureBuilder::FEATURE_NAMES, $expected);
         $this->assertEquals($trainVector, $predictVector);
         $this->assertContains(1.6, $trainVector); // Progress estimate is above budget, without using the final label.
         $recentMigration->down();
@@ -1658,7 +1774,7 @@ class MLImprovementTest extends TestCase
         $this->assertSame(200.0, $input['direct_expense_amount_7d']);
         $this->assertSame(200.0, $input['direct_expense_amount_30d']);
         $this->assertSame(1, $input['direct_expense_count_30d']);
-        $values = app(\App\Services\ProjectCostFeatureBuilder::class)->build($input + ['budget' => 1000, 'completion_percentage' => 30])['values'];
+        $values = app(ProjectCostFeatureBuilder::class)->build($input + ['budget' => 1000, 'completion_percentage' => 30])['values'];
         $this->assertEqualsWithDelta(200 / 3, $values['cost_burn_rate_30d'], 0.000001);
         $this->assertSame(0, $values['time_forecast_available']);
     }

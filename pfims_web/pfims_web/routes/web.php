@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DataImportController;
+use App\Http\Controllers\MLCandidateEvaluationController;
 use App\Http\Controllers\MLController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AuditLogController;
@@ -581,6 +582,9 @@ Route::middleware('auth')->group(function () {
             ->middleware('role.portal:admin');
         Route::get('/analytics/budget-variance', [MLController::class, 'budgetVariance'])
             ->middleware('role.portal:admin,accounting');
+
+        Route::post('/evaluate', [MLCandidateEvaluationController::class, 'store'])
+            ->middleware(['role.portal:admin', 'throttle:3,1']);
 
         // The controller also enforces the administrator role. Retraining is POST-only.
         Route::post('/retrain', [MLController::class, 'retrain'])

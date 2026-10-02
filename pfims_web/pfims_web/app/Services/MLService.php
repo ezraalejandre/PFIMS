@@ -148,16 +148,17 @@ class MLService
         $this->train();
     }
 
-    public function evaluateCandidate(): array
+    public function evaluateCandidate(string $cohortMode = 'auto'): array
     {
-        $cohort = $this->selectTrainingCohort();
+        $cohort = $this->selectTrainingCohort($cohortMode);
         $records = $cohort['records'];
         $report = [
             'generated_at' => now()->toIso8601String(),
             'mode' => 'read_only_candidate_evaluation',
-            'evaluation_protocol_version' => 2,
+            'evaluation_protocol_version' => 3,
             'active_model_changed' => false,
             'prediction_strategy' => $cohort['strategy'],
+            'cohort_policy' => $cohortMode,
             'candidate_feature_names' => $cohort['feature_names'],
             'eligible_projects' => $records->pluck('project_id')->unique()->count(),
             'eligible_observations' => $records->count(),
@@ -170,6 +171,7 @@ class MLService
             return $report + ['status' => 'insufficient_projects', 'evaluation' => null];
         }
         $split = $this->selectChronologicalSplit($records, $cohort['feature_names']);
+
         return $report + [
             'status' => 'evaluated',
             'evaluation' => $split['selected']['evaluation'],
@@ -177,14 +179,58 @@ class MLService
             'training_project_ids' => $split['training_data']->pluck('project_id')->unique()->values()->all(),
             'holdout_project_ids' => $split['test_data']->pluck('project_id')->unique()->values()->all(),
             'cross_validation_scope' => 'training_partition_only_final_holdout_excluded',
-            'cross_validation' => $this->kFoldCrossValidation($split['training_data'], $cohort['feature_names']),
+            'cross_validation' => $this->kFoldCrossValidation($split['training_data'], $split['selected']['feature_names']),
             'budget_baseline_comparison' => $this->budgetBaselineComparison($split['test_data'], $split['selected']['evaluation']),
+            'feature_selection' => $split['selected']['feature_selection'] ?? null,
+            'evaluated_feature_names' => $split['selected']['feature_names'],
+            'model_comparison' => $this->compareRegressionModels($split['training_data'], $split['test_data'], $split['selected']['feature_names']),
+            'stage_baselines' => $this->stageBaselines($split['test_data']),
         ];
     }
 
-    /** Training metadata retains the provenance of presentation examples. */
-    public function train(): bool
+    /** Persist evaluation evidence independently of the active estimator. */
+    public function saveCandidateEvaluationReport(array $report): void
     {
+        if (($report['mode'] ?? null) !== 'read_only_candidate_evaluation'
+            || ! in_array($report['cohort_policy'] ?? null, ['auto', 'planning', 'presentation_progress'], true)) {
+            throw new InvalidArgumentException('A validated candidate evaluation report is required.');
+        }
+        $path = $this->modelPath.'.evaluation.json';
+        $existing = $this->getCandidateEvaluationReports() ?? ['schema_version' => 1, 'reports' => []];
+        $existing['generated_at'] = now()->toIso8601String();
+        $existing['active_model_sha256'] = File::exists($this->modelPath) ? hash_file('sha256', $this->modelPath) : null;
+        $existing['reports'][$report['cohort_policy']] = $report;
+        File::ensureDirectoryExists(dirname($path));
+        $temporary = $path.'.candidate.'.bin2hex(random_bytes(8));
+        try {
+            if (file_put_contents($temporary, json_encode($existing, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), LOCK_EX) === false
+                || ! rename($temporary, $path)) {
+                throw new RuntimeException('Candidate evaluation evidence could not be saved.');
+            }
+        } finally {
+            File::delete($temporary);
+        }
+    }
+
+    public function getCandidateEvaluationReports(): ?array
+    {
+        try {
+            $path = $this->modelPath.'.evaluation.json';
+            if (! File::exists($path)) {
+                return null;
+            }
+            $report = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
+
+            return ($report['schema_version'] ?? null) === 1 && is_array($report['reports'] ?? null) ? $report : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /** Training metadata retains the provenance of presentation examples. */
+    public function train(?string $cohortMode = null): bool
+    {
+        $cohortMode ??= $this->metadata['cohort_policy'] ?? 'auto';
         File::ensureDirectoryExists(dirname($this->modelPath));
         $lockHandle = fopen($this->modelPath.'.lock', 'c');
         if ($lockHandle === false) {
@@ -195,7 +241,7 @@ class MLService
             if (! flock($lockHandle, LOCK_EX)) {
                 throw new RuntimeException('Unable to acquire the model training lock.');
             }
-            $cohortSelection = $this->selectTrainingCohort();
+            $cohortSelection = $this->selectTrainingCohort($cohortMode);
             $trainingCohort = $cohortSelection['records'];
             $featureNames = $cohortSelection['feature_names'];
             $strategy = $cohortSelection['strategy'];
@@ -204,6 +250,9 @@ class MLService
             $usesSampleData = $sampleCount > 0;
 
             if ($trainingCohort->pluck('project_id')->unique()->count() < self::MINIMUM_REAL_SAMPLES) {
+                if ($cohortMode === 'presentation_progress') {
+                    return false;
+                }
                 $this->createFallbackModel(
                     $realSampleCount,
                     'At least '.self::MINIMUM_REAL_SAMPLES.' eligible completed projects are required; '
@@ -214,6 +263,7 @@ class MLService
             }
 
             $splitSelection = $this->selectChronologicalSplit($trainingCohort, $featureNames);
+            $featureNames = $splitSelection['selected']['feature_names'];
             $trainingData = $splitSelection['training_data'];
             $testData = $splitSelection['test_data'];
             $featureSelection = $this->trainingFeatureSetMetadata($trainingData, $featureNames, $strategy);
@@ -226,6 +276,11 @@ class MLService
             if ($strategy === 'progress_snapshot_model'
                 && (! ($baselineComparison['model_outperforms_budget_baseline'] ?? false)
                     || ! ($comparison['production_model_is_best_option'] ?? false))) {
+                if ($cohortMode === 'presentation_progress') {
+                    Log::info('Presentation progress candidate rejected; saved estimator retained.', ['baseline' => $baselineComparison]);
+
+                    return false;
+                }
                 $cohortSelection['snapshot_readiness']['note'] = 'Snapshot candidate did not pass independent holdout comparison; planning model retained.';
                 $trainingCohort = $this->getTrainingData()
                     ->unique(fn ($row) => (string) $row->project_id)
@@ -234,6 +289,7 @@ class MLService
                 $strategy = 'planning_only_baseline';
                 if ($trainingCohort->count() < self::MINIMUM_REAL_SAMPLES) {
                     $this->createFallbackModel($trainingCohort->count(), 'Snapshot candidate failed holdout comparison and planning data are insufficient.');
+
                     return false;
                 }
                 $sampleCount = $trainingCohort->where('data_source', 'company_inspired_sample')->count();
@@ -261,6 +317,12 @@ class MLService
                 'model_type' => 'least_squares_linear_regression',
                 'model_source' => $usesSampleData ? 'sample_trained_model' : 'real_trained_model',
                 'prediction_strategy' => $strategy,
+                'cohort_policy' => $cohortMode,
+                'evaluation_scope_label' => $usesSampleData ? 'Presentation dataset performance' : 'Recorded project performance',
+                'training_projects' => $trainingCohort->pluck('project_id')->unique()->count(),
+                'evaluation_training_project_ids' => $trainingData->pluck('project_id')->unique()->values()->all(),
+                'evaluation_holdout_project_ids' => $testData->pluck('project_id')->unique()->values()->all(),
+                'progress_feature_selection' => $splitSelection['selected']['feature_selection'] ?? null,
                 'prediction_target' => $strategy === 'progress_snapshot_model'
                     ? 'remaining_cost_then_add_recorded_spend'
                     : 'final_cost',
@@ -272,7 +334,7 @@ class MLService
                 'training_samples_evaluated' => $trainingData->count(),
                 'test_samples' => $testData->count(),
                 'evaluation_method' => $splitSelection['selected']['method'],
-                'evaluation_protocol_version' => 2,
+                'evaluation_protocol_version' => 3,
                 'evaluation' => $evaluation,
                 'split_selection' => $splitSelection['summary'],
                 'cross_validation' => $featureSelection['cross_validation'],
@@ -280,6 +342,7 @@ class MLService
                 'feature_engineering_version' => ProjectCostFeatureBuilder::catalog()['formula_version'],
                 'model_comparison' => $comparison,
                 'budget_baseline_comparison' => $baselineComparison,
+                'stage_baselines' => $this->stageBaselines($testData),
                 'snapshot_readiness' => $cohortSelection['snapshot_readiness'],
                 'data_capture_policy' => $this->dataCapturePolicy(),
                 'retraining_policy' => $this->retrainingPolicy(),
@@ -289,7 +352,9 @@ class MLService
                 'sample_sufficiency' => $this->sampleSufficiency($trainingCohort->count(), $usesSampleData),
                 'training_criteria' => [
                     'fixed_newest_20_percent_project_holdout', 'all_snapshots_for_a_project_stay_in_one_partition',
-                    $strategy === 'progress_snapshot_model' ? 'genuine_timestamped_progress_snapshots' : 'planning_inputs_only',
+                    $strategy === 'progress_snapshot_model'
+                        ? ($cohortMode === 'presentation_progress' ? 'internally_traceable_presentation_stage_scenarios' : 'genuine_timestamped_progress_snapshots')
+                        : 'planning_inputs_only',
                     'status_is_completed', 'completion_is_100_percent',
                     'actual_end_date_is_present', 'start_date_is_not_after_actual_end_date',
                     'persisted_budget_and_final_actual_amount_are_positive',
@@ -311,6 +376,11 @@ class MLService
         } catch (Throwable $exception) {
             Log::error('ML training candidate failed validation.', ['message' => $exception->getMessage()]);
             $realSampleCount = isset($realSampleCount) ? $realSampleCount : 0;
+            if ($cohortMode === 'presentation_progress') {
+                $this->restoreStoredModel();
+
+                return false;
+            }
             if (! $this->restoreStoredModel()) {
                 $this->createFallbackModel($realSampleCount, 'Real-data training failed: '.$exception->getMessage());
             }
@@ -476,33 +546,47 @@ class MLService
      * enough finalized projects. Until then, train on the planning fields that
      * are represented consistently at prediction time.
      */
-    protected function selectTrainingCohort(): array
+    protected function selectTrainingCohort(string $cohortMode = 'auto'): array
     {
+        if (! in_array($cohortMode, ['auto', 'planning', 'presentation_progress'], true)) {
+            throw new InvalidArgumentException('Unknown training cohort policy.');
+        }
         $snapshots = $this->getSnapshotTrainingData();
-        $operationalSnapshots = $snapshots->where('data_source', 'operational')->values();
+        $operationalSnapshots = $snapshots->where('data_source', 'operational')
+            ->reject(fn ($row) => ($row->capture_reason ?? null) === 'presentation_scenario')->values();
+        $selectedSnapshots = $cohortMode === 'presentation_progress'
+            ? $snapshots->where('data_source', 'company_inspired_sample')
+                ->where('capture_reason', 'presentation_scenario')->where('capture_schema_version', 3)->values()
+            : $operationalSnapshots;
         $stageProjectCounts = [];
         foreach (['early', 'middle', 'late'] as $stage) {
-            $stageProjectCounts[$stage] = $operationalSnapshots
+            $stageProjectCounts[$stage] = $selectedSnapshots
                 ->filter(fn ($row) => $this->progressStage((float) $row->completion_percentage) === $stage)
                 ->pluck('project_id')->unique()->count();
         }
-        $snapshotProjects = $operationalSnapshots->pluck('project_id')->unique()->count();
+        $snapshotProjects = $selectedSnapshots->pluck('project_id')->unique()->count();
         $ready = $snapshotProjects >= self::MINIMUM_REAL_SAMPLES
             && collect($stageProjectCounts)->every(fn ($count) => $count >= self::SNAPSHOT_MINIMUM_PROJECTS_PER_STAGE);
         $readiness = [
             'eligible' => $ready,
+            'cohort_policy' => $cohortMode,
+            'operational_finalized_projects' => $operationalSnapshots->pluck('project_id')->unique()->count(),
+            'company_performance_validated' => false,
             'finalized_snapshot_rows' => $snapshots->count(),
             'finalized_projects' => $snapshotProjects,
             'minimum_projects_per_stage' => self::SNAPSHOT_MINIMUM_PROJECTS_PER_STAGE,
             'projects_by_stage' => $stageProjectCounts,
             'activation_rule' => 'At least 10 finalized projects represented in each early, middle, and late progress stage.',
-            'note' => 'Only snapshots captured by the application at the time of a real data change are eligible; no history is reconstructed.',
+            'note' => $cohortMode === 'presentation_progress'
+                ? 'Explicit presentation-stage cohort; evaluation demonstrates the model and does not validate historical company forecasting.'
+                : 'Only snapshots captured by the application at the time of a real data change are eligible; no history is reconstructed.',
         ];
 
-        if ($ready) {
+        if (($ready && $cohortMode !== 'planning') || $cohortMode === 'presentation_progress') {
             $hasActivity = Schema::hasColumn('ml_project_cost_snapshots', 'direct_expense_count_30d');
+
             return [
-                'records' => $operationalSnapshots,
+                'records' => $ready ? $selectedSnapshots : collect(),
                 'feature_names' => $hasActivity
                     ? [...self::SNAPSHOT_ACTIVITY_FEATURE_NAMES, ...ProjectCostFeatureBuilder::FEATURE_NAMES]
                     : self::SNAPSHOT_FEATURE_NAMES,
@@ -576,7 +660,8 @@ class MLService
             });
         }
         foreach (['direct_expense_count_7d', 'stock_out_count_7d', 'valued_stock_out_cost',
-            'direct_expense_amount_7d', 'valued_stock_out_cost_7d', 'valued_stock_out_cost_30d'] as $column) {
+            'direct_expense_amount_7d', 'valued_stock_out_cost_7d', 'valued_stock_out_cost_30d',
+            'capture_reason', 'capture_schema_version'] as $column) {
             if (Schema::hasColumn('ml_project_cost_snapshots', $column)) {
                 $query->addSelect('snapshot.'.$column);
             }
@@ -911,12 +996,12 @@ class MLService
             'candidate_fin_feature_names' => self::FIN_FEATURE_NAMES,
             'included_fin_features' => array_values(array_intersect($featureNames, self::FIN_FEATURE_NAMES)),
             'decision' => $strategy === 'progress_snapshot_model'
-                ? 'genuine_progress_snapshot_features_selected'
+                ? 'progress_features_selected_with_training_only_temporal_validation'
                 : 'planning_only_features_selected_until_snapshot_stage_coverage_is_sufficient',
             'cross_validation' => $crossValidation,
             'cross_validation_scope' => 'training_partition_only_final_holdout_excluded',
             'leakage_controls' => [
-                'No reconstructed historical progress is used.',
+                'Operational captures and explicitly requested presentation scenarios retain their source and capture policy.',
                 'Planning duration uses start_date to estimated_end_date, never actual duration.',
                 'Completion and cumulative expense fields are used only from timestamped snapshots.',
                 'Every snapshot for one project remains in the same evaluation partition.',
@@ -1000,6 +1085,11 @@ class MLService
         if ($trainingData->count() < 2 || $testData->isEmpty()) {
             throw new RuntimeException('The grouped chronological holdout does not contain enough training and test records.');
         }
+        $featureSelection = null;
+        if ($trainingData->contains(fn ($row) => isset($row->snapshot_id))) {
+            $featureSelection = $this->selectProgressFeatures($trainingData, $featureNames);
+            $featureNames = $featureSelection['selected_feature_names'];
+        }
         [$model, $transformer] = $this->buildLeastSquaresModel($trainingData, $featureNames);
         $evaluation = $this->evaluateModel($model, $transformer, $testData);
 
@@ -1011,6 +1101,7 @@ class MLService
             'training_projects' => $trainingData->pluck('project_id')->unique()->count(),
             'test_projects' => $testData->pluck('project_id')->unique()->count(),
             'feature_names' => array_values($featureNames),
+            'feature_selection' => $featureSelection,
             'evaluation' => $evaluation,
             'training_data' => $trainingData,
             'test_data' => $testData,
@@ -1101,6 +1192,40 @@ class MLService
         ];
     }
 
+    /** Choose complexity before inspecting the reserved holdout. */
+    protected function selectProgressFeatures(Collection $trainingData, array $fullFeatures): array
+    {
+        $compact = array_values(array_intersect($fullFeatures, [
+            'budget', 'duration_months', 'completion_percentage', 'fin_total_expense',
+            'progress_eac_to_budget', 'budget_used_fraction', 'cost_performance_index',
+            'material_cost_share', 'labor_cost_share', 'equipment_cost_share',
+            'cost_burn_rate_30d', 'burn_rate_acceleration', 'inventory_cost_burn_rate_30d',
+            'expense_frequency_7d', 'stock_out_frequency_7d', 'elapsed_time_fraction',
+            'schedule_progress_gap', 'time_eac_to_budget',
+        ]));
+        $options = [];
+        foreach (['compact_progress' => $compact, 'full_engineered_progress' => $fullFeatures] as $name => $features) {
+            try {
+                $cv = $this->kFoldCrossValidation($trainingData, $features);
+                $options[$name] = ['status' => 'evaluated', 'feature_names' => $features, 'cross_validation' => $cv];
+            } catch (Throwable $exception) {
+                $options[$name] = ['status' => 'unavailable', 'feature_names' => $features, 'reason' => $exception->getMessage()];
+            }
+        }
+        $compactMape = $options['compact_progress']['cross_validation']['average_mean_absolute_percentage_error'] ?? null;
+        $fullMape = $options['full_engineered_progress']['cross_validation']['average_mean_absolute_percentage_error'] ?? null;
+        $selected = is_numeric($fullMape) && (! is_numeric($compactMape) || $fullMape < $compactMape * 0.95)
+            ? 'full_engineered_progress' : 'compact_progress';
+        if (! is_numeric($options[$selected]['cross_validation']['average_mean_absolute_percentage_error'] ?? null)) {
+            throw new RuntimeException('No progress feature candidate passed training-only validation.');
+        }
+
+        return ['selected_candidate' => $selected, 'selected_feature_names' => $options[$selected]['feature_names'],
+            'scope' => 'training_partition_only_final_holdout_excluded',
+            'selection_rule' => 'Prefer compact features unless the full catalog reduces training-only temporal CV MAPE by more than 5%.',
+            'options' => $options];
+    }
+
     protected function compareRegressionModels(Collection $trainingData, Collection $testData, array $featureNames): array
     {
         [$linearModel, $linearTransformer] = $this->buildLeastSquaresModel($trainingData, $featureNames);
@@ -1156,7 +1281,9 @@ class MLService
         $actuals = $testData->map(fn ($row) => (float) $row->actual_cost
             + ($isRemainingCostTarget ? (float) ($row->fin_total_expense ?? 0) : 0.0))->values()->all();
         $budgets = $testData->map(fn ($row) => (float) $row->budget)->values()->all();
-        $baseline = $this->calculateMetrics($budgets, $actuals, $budgets, $testData);
+        $baselinePredictions = $testData->map(fn ($row) => max((float) $row->budget,
+            $isRemainingCostTarget ? (float) ($row->fin_total_expense ?? 0) : 0))->values()->all();
+        $baseline = $this->calculateMetrics($baselinePredictions, $actuals, $budgets, $testData);
         $modelMape = $modelEvaluation['mean_absolute_percentage_error'] ?? null;
         $baselineMape = $baseline['mean_absolute_percentage_error'] ?? null;
         $improvementPoints = is_numeric($modelMape) && is_numeric($baselineMape)
@@ -1167,6 +1294,7 @@ class MLService
 
         return [
             'baseline' => 'recorded_budget_as_final_cost_estimate',
+            'forecast_policy' => 'recorded_budget_with_recorded_spend_floor',
             'untouched_holdout' => true,
             'baseline_evaluation' => $baseline,
             'model_evaluation' => $modelEvaluation,
@@ -1175,6 +1303,26 @@ class MLService
             'model_outperforms_budget_baseline' => $outperforms,
             'serving_support' => $outperforms ? 'supported_by_holdout_comparison' : 'insufficient_evidence_over_budget_baseline',
         ];
+    }
+
+    protected function stageBaselines(Collection $rows): ?array
+    {
+        if (! $rows->contains(fn ($row) => isset($row->snapshot_id))) {
+            return null;
+        }
+        $result = [];
+        $actuals = $rows->map(fn ($row) => (float) $row->actual_cost + (float) ($row->fin_total_expense ?? 0))->all();
+        $budgets = $rows->pluck('budget')->map(fn ($value) => (float) $value)->all();
+        foreach (['progress_extrapolation' => 'progress_eac_to_budget', 'recent_cost_burn' => 'time_eac_to_budget'] as $name => $feature) {
+            $available = $rows->filter(fn ($row) => (float) ($row->{$feature} ?? 0) > 0)->count();
+            $predictions = $rows->map(fn ($row) => max((float) ($row->fin_total_expense ?? 0),
+                ((float) ($row->{$feature} ?? 0) > 0 ? (float) $row->{$feature} : 1) * (float) $row->budget))->all();
+            $result[$name] = ['available_observations' => $available,
+                'missing_input_policy' => 'Use recorded budget with the recorded-spend floor when the formula is unavailable.',
+                'evaluation' => $this->calculateMetrics($predictions, $actuals, $budgets, $rows)];
+        }
+
+        return $result;
     }
 
     protected function dataCapturePolicy(): array
@@ -1269,7 +1417,8 @@ class MLService
             throw new RuntimeException('At least two records are required to build a regression model.');
         }
         $rawSamples = $records->map(fn ($row) => $this->rowToFeatures($row, $featureNames))->values()->all();
-        $labels = $records->map(fn ($row) => (float) $row->actual_cost)->values()->all();
+        $remainingFraction = $records->every(fn ($row) => isset($row->snapshot_id) && (float) $row->budget > 0);
+        $labels = $records->map(fn ($row) => (float) $row->actual_cost / ($remainingFraction ? (float) $row->budget : 1))->values()->all();
         $ranges = $this->rangesFromSamples($rawSamples, $featureNames);
         $selectedIndexes = $this->selectIndependentFeatures($rawSamples, $ranges, $featureNames);
         if ($selectedIndexes === []) {
@@ -1290,6 +1439,7 @@ class MLService
             'feature_names' => array_values($featureNames),
             'ranges' => $ranges,
             'scaling' => 'min_max',
+            'target_scaling' => $remainingFraction ? 'remaining_cost_fraction_of_budget' : 'currency',
             'excluded_features_note' => 'Constant or linearly dependent columns are excluded deterministically; accepted API fields remain unchanged.',
         ]];
     }
@@ -1425,6 +1575,9 @@ class MLService
                 $transformer['ranges']
             );
             $prediction = (float) $model->predict($transformed);
+            if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
+                $prediction *= (float) $row->budget;
+            }
             if (! is_finite($prediction)) {
                 throw new RuntimeException('Holdout evaluation produced a non-finite prediction.');
             }
@@ -1436,9 +1589,25 @@ class MLService
             $budgets[] = (float) $row->budget;
         }
 
+        $latestIndexes = [];
+        foreach ($testData->values() as $index => $row) {
+            $key = (string) ($row->project_id ?? 'observation-'.$index);
+            $previous = $latestIndexes[$key] ?? null;
+            if ($previous === null || strcmp((string) ($row->captured_at ?? ''), (string) ($testData->values()[$previous]->captured_at ?? '')) > 0) {
+                $latestIndexes[$key] = $index;
+            }
+        }
+        $latest = array_values($latestIndexes);
+
         return $this->calculateMetrics($predictions, $actuals, $budgets, $testData) + [
             'spend_floor_count' => $constrainedCount,
             'evaluation_forecast_policy' => 'final_cost_with_recorded_spend_floor',
+            'latest_observation_per_project' => $this->calculateMetrics(
+                array_map(fn ($index) => $predictions[$index], $latest),
+                array_map(fn ($index) => $actuals[$index], $latest),
+                array_map(fn ($index) => $budgets[$index], $latest),
+                collect($latest)->map(fn ($index) => $testData->values()[$index])->values()
+            ),
         ];
     }
 
@@ -1524,6 +1693,7 @@ class MLService
             $groups[$segment]['predictions'][] = $predictions[$index];
             $groups[$segment]['actuals'][] = $actuals[$index];
             $groups[$segment]['budgets'][] = $budgets[$index];
+            $groups[$segment]['projects'][(string) ($row->project_id ?? $index)] = true;
         }
 
         return collect($groups)->map(function (array $group) {
@@ -1531,6 +1701,7 @@ class MLService
 
             return [
                 'samples' => count($group['predictions']),
+                'projects' => count($group['projects']),
                 'mean_absolute_error' => $metrics['mean_absolute_error'],
                 'mean_absolute_percentage_error' => $metrics['mean_absolute_percentage_error'],
                 'precision' => $metrics['precision'],
@@ -1576,6 +1747,9 @@ class MLService
                 $transformer['ranges']
             );
             $prediction = (float) $this->model->predict($transformed);
+            if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
+                $prediction *= (float) $features[0];
+            }
             $remainingCost = ($this->metadata['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend';
             if (! is_finite($prediction)) {
                 throw new RuntimeException('Model returned an invalid project cost.');
@@ -2016,6 +2190,12 @@ class MLService
             'f1_score' => $metrics['f1_score'] ?? null,
             'overrun_detection' => $metrics['overrun_detection'] ?? null,
             'evaluation_observations' => $metrics['evaluation_observations'] ?? null,
+            'latest_observation_per_project' => $metrics['latest_observation_per_project'] ?? null,
+            'evaluation_scope_label' => $this->metadata['evaluation_scope_label'] ?? null,
+            'cohort_policy' => $this->metadata['cohort_policy'] ?? 'auto',
+            'candidate_evaluations' => $this->getCandidateEvaluationReports(),
+            'training_projects' => $this->metadata['training_projects'] ?? null,
+            'progress_feature_selection' => $this->metadata['progress_feature_selection'] ?? null,
             'evaluation_projects' => $metrics['evaluation_projects'] ?? null,
             'observation_weighting' => $metrics['observation_weighting'] ?? null,
             'overrun_classification_accuracy' => $metrics['overrun_classification_accuracy'] ?? null,
@@ -2131,9 +2311,9 @@ class MLService
         );
     }
 
-    public function retrain(): array
+    public function retrain(?string $cohortMode = null): array
     {
-        $realModelTrained = $this->train();
+        $realModelTrained = $this->train($cohortMode);
         $metrics = $this->getModelMetrics();
 
         return [
@@ -2143,7 +2323,8 @@ class MLService
                     : (($metrics['estimated_historical_purchase_count'] ?? 0) > 0
                         ? 'Model retrained on completed projects; historical inventory costs use current-price estimates, not original invoices.'
                         : 'Model retrained on verified completed projects.'))
-                : 'Retraining completed, but the transparent synthetic fallback remains active.',
+                : 'Candidate did not pass training gates; the previously saved estimator or fallback is retained.',
+            'candidate_activated' => $realModelTrained,
             'model_source' => $metrics['model_source'], 'metrics' => $metrics,
         ];
     }
