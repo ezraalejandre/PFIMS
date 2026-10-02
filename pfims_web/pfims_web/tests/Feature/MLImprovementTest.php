@@ -22,6 +22,56 @@ class MLImprovementTest extends TestCase
 {
     protected string $modelPath;
 
+    public function test_candidate_evaluation_is_read_only_and_does_not_replace_the_saved_estimator(): void
+    {
+        for ($index = 1; $index <= 18; $index++) {
+            $this->insertCompletedProject($index);
+        }
+        $service = new MLService($this->modelPath);
+        $beforeModel = hash_file('sha256', $this->modelPath);
+        $beforeMetadata = hash_file('sha256', $this->modelPath.'.meta.json');
+        $beforeRows = DB::table('budgets_tbl')->orderBy('budget_id')->get()->toJson();
+        $beforeSnapshots = DB::table('ml_project_cost_snapshots')->count();
+        $report = (new MLService($this->modelPath, false))->evaluateCandidate();
+        $this->assertSame('evaluated', $report['status']);
+        $this->assertFalse($report['active_model_changed']);
+        $this->assertArrayHasKey('any_overrun', $report['evaluation']['overrun_detection']);
+        $this->assertArrayHasKey('material_overrun', $report['evaluation']['overrun_detection']);
+        foreach ($report['cross_validation']['folds'] as $fold) {
+            $this->assertSame([], array_values(array_intersect($report['holdout_project_ids'], array_merge($fold['training_project_ids'], $fold['test_project_ids']))));
+        }
+        $this->assertSame($beforeModel, hash_file('sha256', $this->modelPath));
+        $this->assertSame($beforeMetadata, hash_file('sha256', $this->modelPath.'.meta.json'));
+        $this->assertSame($beforeRows, DB::table('budgets_tbl')->orderBy('budget_id')->get()->toJson());
+        $this->assertSame($beforeSnapshots, DB::table('ml_project_cost_snapshots')->count());
+        $this->artisan('ml:evaluate')->assertExitCode(0);
+        $this->assertSame($beforeModel, hash_file('sha256', $this->modelPath));
+    }
+
+    public function test_temporal_cross_validation_keeps_all_observations_for_a_project_together(): void
+    {
+        $records = collect();
+        for ($project = 1; $project <= 12; $project++) {
+            foreach ([10, 50, 90] as $completion) {
+                $records->push((object) ['project_id' => $project, 'budget' => 1000 + $project * 100,
+                    'actual_cost' => 500 + $project * 100, 'duration_months' => 6,
+                    'completion_percentage' => $completion,
+                    'completed_at' => Carbon::create(2024, 1, 1)->addDays($project)->toDateString()]);
+            }
+        }
+        $service = new MLService($this->modelPath, false);
+        $cv = $this->invokeProtected($service, 'kFoldCrossValidation', $records, ['budget', 'duration_months']);
+        $seen = [];
+        foreach ($cv['folds'] as $fold) {
+            $this->assertSame(count($fold['training_project_ids']) * 3, $fold['training_samples']);
+            $this->assertSame(count($fold['test_project_ids']) * 3, $fold['test_samples']);
+            $this->assertSame([], array_values(array_intersect($fold['test_project_ids'], $seen)));
+            $this->assertTrue(strcmp($fold['latest_training_completion'], $fold['earliest_test_completion']) < 0);
+            $seen = array_merge($seen, $fold['test_project_ids']);
+        }
+        $this->assertCount(5, $cv['folds']);
+    }
+
     public function test_remaining_cost_serving_and_evaluation_share_the_spend_floor(): void
     {
         foreach ([0.0, -300.0, 500.0] as $remaining) {
@@ -619,9 +669,18 @@ class MLImprovementTest extends TestCase
             array_column($metrics['split_selection']['options'], 'method')
         );
 
-        $this->assertSame('5-fold_cross_validation', $metrics['cross_validation']['method']);
+        $this->assertSame('expanding_window_grouped_temporal_cross_validation', $metrics['cross_validation']['method']);
         $this->assertSame(5, $metrics['cross_validation']['folds_run']);
         $this->assertIsNumeric($metrics['cross_validation']['average_mean_absolute_error']);
+        $this->assertSame('training_partition_only_final_holdout_excluded', $metrics['feature_set']['cross_validation_scope']);
+        $cohort = $this->invokeProtected($service, 'selectTrainingCohort');
+        $split = $this->invokeProtected($service, 'selectChronologicalSplit', $cohort['records'], $cohort['feature_names']);
+        $holdoutIds = $split['test_data']->pluck('project_id')->unique()->all();
+        foreach ($metrics['cross_validation']['folds'] as $fold) {
+            $this->assertSame([], array_values(array_intersect($fold['training_project_ids'], $fold['test_project_ids'])));
+            $this->assertSame([], array_values(array_intersect($holdoutIds, array_merge($fold['training_project_ids'], $fold['test_project_ids']))));
+            $this->assertTrue(strcmp($fold['latest_training_completion'], $fold['earliest_test_completion']) < 0);
+        }
 
         $this->assertSame(['budget', 'duration_months'], $metrics['feature_set']['selected_feature_names']);
         $this->assertSame([], $metrics['feature_set']['included_fin_features']);

@@ -148,7 +148,41 @@ class MLService
         $this->train();
     }
 
-    /** Synthetic examples are never mixed into real training or evaluation. */
+    public function evaluateCandidate(): array
+    {
+        $cohort = $this->selectTrainingCohort();
+        $records = $cohort['records'];
+        $report = [
+            'generated_at' => now()->toIso8601String(),
+            'mode' => 'read_only_candidate_evaluation',
+            'evaluation_protocol_version' => 2,
+            'active_model_changed' => false,
+            'prediction_strategy' => $cohort['strategy'],
+            'candidate_feature_names' => $cohort['feature_names'],
+            'eligible_projects' => $records->pluck('project_id')->unique()->count(),
+            'eligible_observations' => $records->count(),
+            'snapshot_readiness' => $cohort['snapshot_readiness'],
+            'data_sources' => $records->pluck('data_source')->unique()->values()->all(),
+            'scope_note' => 'Candidate evaluation only. It does not replace the saved estimator or its performance. Completed-project temporal validation does not establish real-time forecasting accuracy.',
+            'cost_label_note' => 'Eligibility and reconciliation do not turn current-price historical inventory estimates into verified original invoices. Results remain conditional on the recorded cost labels.',
+        ];
+        if ($report['eligible_projects'] < self::MINIMUM_REAL_SAMPLES) {
+            return $report + ['status' => 'insufficient_projects', 'evaluation' => null];
+        }
+        $split = $this->selectChronologicalSplit($records, $cohort['feature_names']);
+        return $report + [
+            'status' => 'evaluated',
+            'evaluation' => $split['selected']['evaluation'],
+            'split' => $split['summary'],
+            'training_project_ids' => $split['training_data']->pluck('project_id')->unique()->values()->all(),
+            'holdout_project_ids' => $split['test_data']->pluck('project_id')->unique()->values()->all(),
+            'cross_validation_scope' => 'training_partition_only_final_holdout_excluded',
+            'cross_validation' => $this->kFoldCrossValidation($split['training_data'], $cohort['feature_names']),
+            'budget_baseline_comparison' => $this->budgetBaselineComparison($split['test_data'], $split['selected']['evaluation']),
+        ];
+    }
+
+    /** Training metadata retains the provenance of presentation examples. */
     public function train(): bool
     {
         File::ensureDirectoryExists(dirname($this->modelPath));
@@ -179,10 +213,10 @@ class MLService
                 return false;
             }
 
-            $featureSelection = $this->trainingFeatureSetMetadata($trainingCohort, $featureNames, $strategy);
             $splitSelection = $this->selectChronologicalSplit($trainingCohort, $featureNames);
             $trainingData = $splitSelection['training_data'];
             $testData = $splitSelection['test_data'];
+            $featureSelection = $this->trainingFeatureSetMetadata($trainingData, $featureNames, $strategy);
             $evaluation = $splitSelection['selected']['evaluation'];
             $comparison = $this->compareRegressionModels($trainingData, $testData, $featureNames);
             $baselineComparison = $this->budgetBaselineComparison($testData, $evaluation);
@@ -205,10 +239,10 @@ class MLService
                 $sampleCount = $trainingCohort->where('data_source', 'company_inspired_sample')->count();
                 $realSampleCount = $trainingCohort->count() - $sampleCount;
                 $usesSampleData = $sampleCount > 0;
-                $featureSelection = $this->trainingFeatureSetMetadata($trainingCohort, $featureNames, $strategy);
                 $splitSelection = $this->selectChronologicalSplit($trainingCohort, $featureNames);
                 $trainingData = $splitSelection['training_data'];
                 $testData = $splitSelection['test_data'];
+                $featureSelection = $this->trainingFeatureSetMetadata($trainingData, $featureNames, $strategy);
                 $evaluation = $splitSelection['selected']['evaluation'];
                 $comparison = $this->compareRegressionModels($trainingData, $testData, $featureNames);
                 $baselineComparison = $this->budgetBaselineComparison($testData, $evaluation);
@@ -238,6 +272,7 @@ class MLService
                 'training_samples_evaluated' => $trainingData->count(),
                 'test_samples' => $testData->count(),
                 'evaluation_method' => $splitSelection['selected']['method'],
+                'evaluation_protocol_version' => 2,
                 'evaluation' => $evaluation,
                 'split_selection' => $splitSelection['summary'],
                 'cross_validation' => $featureSelection['cross_validation'],
@@ -879,6 +914,7 @@ class MLService
                 ? 'genuine_progress_snapshot_features_selected'
                 : 'planning_only_features_selected_until_snapshot_stage_coverage_is_sufficient',
             'cross_validation' => $crossValidation,
+            'cross_validation_scope' => 'training_partition_only_final_holdout_excluded',
             'leakage_controls' => [
                 'No reconstructed historical progress is used.',
                 'Planning duration uses start_date to estimated_end_date, never actual duration.',
@@ -1010,12 +1046,22 @@ class MLService
     {
         $projectIds = $records->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])
             ->pluck('project_id')->map(fn ($id) => (string) $id)->unique()->values();
-        $foldCount = min(self::K_FOLD_COUNT, $projectIds->count());
+        $warmupCount = max(2, (int) ceil($projectIds->count() * 0.4));
+        $foldCount = min(self::K_FOLD_COUNT, max(0, $projectIds->count() - $warmupCount));
         $folds = [];
         for ($fold = 0; $fold < $foldCount; $fold++) {
-            $testIds = $projectIds->filter(fn ($id, $index) => $index % $foldCount === $fold)->flip()->all();
+            $remaining = $projectIds->count() - $warmupCount;
+            $offset = $warmupCount + (int) floor($fold * $remaining / $foldCount);
+            $end = $warmupCount + (int) floor(($fold + 1) * $remaining / $foldCount);
+            $testIds = $projectIds->slice($offset, $end - $offset)->flip()->all();
+            $trainIds = $projectIds->slice(0, $offset)->flip()->all();
             $testData = $records->filter(fn ($row) => isset($testIds[(string) $row->project_id]))->values();
-            $trainingData = $records->filter(fn ($row) => ! isset($testIds[(string) $row->project_id]))->values();
+            $trainingData = $records->filter(fn ($row) => isset($trainIds[(string) $row->project_id]))->values();
+            // Projects completed on the test boundary are not earlier training evidence.
+            $cutoff = $testData->min('completed_at');
+            $trainingData = $trainingData->groupBy('project_id')
+                ->filter(fn (Collection $rows) => strcmp((string) $rows->max('completed_at'), (string) $cutoff) < 0)
+                ->flatten(1)->values();
             if ($trainingData->count() < 2 || $testData->isEmpty()) {
                 continue;
             }
@@ -1026,6 +1072,10 @@ class MLService
                 'fold' => $fold + 1,
                 'training_samples' => $trainingData->count(),
                 'test_samples' => $testData->count(),
+                'training_project_ids' => $trainingData->pluck('project_id')->unique()->values()->all(),
+                'test_project_ids' => $testData->pluck('project_id')->unique()->values()->all(),
+                'latest_training_completion' => $trainingData->max('completed_at'),
+                'earliest_test_completion' => $cutoff,
                 'evaluation' => $evaluation,
             ];
         }
@@ -1035,14 +1085,18 @@ class MLService
         $f1s = array_values(array_filter(array_map(fn ($fold) => $fold['evaluation']['f1_score'] ?? null, $folds), 'is_numeric'));
 
         return [
-            'method' => $foldCount.'-fold_cross_validation',
+            'method' => 'expanding_window_grouped_temporal_cross_validation',
             'folds_requested' => self::K_FOLD_COUNT,
             'folds_run' => count($folds),
-            'folding' => 'deterministic_grouped_by_project_chronological_round_robin',
+            'folding' => 'earlier_completed_projects_train_later_completed_projects_test',
+            'warmup_projects' => min($warmupCount, $projectIds->count()),
+            'evaluation_scope' => 'Retrospective completed-project validation, not a simulation of labels available at each historical project start or snapshot.',
             'feature_names' => array_values($featureNames),
             'average_mean_absolute_error' => $maes === [] ? null : round(array_sum($maes) / count($maes), 2),
             'average_mean_absolute_percentage_error' => $mapes === [] ? null : round(array_sum($mapes) / count($mapes), 4),
             'average_f1_score' => $f1s === [] ? null : round(array_sum($f1s) / count($f1s), 2),
+            'f1_averaging' => 'Mean across folds containing actual material overruns; not an overall detection score.',
+            'folds_with_actual_material_overruns' => count($f1s),
             'folds' => $folds,
         ];
     }
@@ -1413,37 +1467,26 @@ class MLService
         }
         $rSquared = $totalSumSquares > 0 ? 1 - ($residualSumSquares / $totalSumSquares) : null;
 
-        $tp = $fp = $tn = $fn = 0;
-        foreach ($predictions as $index => $prediction) {
-            $actualRisk = app(ProjectOverrunPolicy::class)->classify($actuals[$index], $budgets[$index])['material_overrun'] === true;
-            $predictedRisk = app(ProjectOverrunPolicy::class)->classify($prediction, $budgets[$index])['material_overrun'] === true;
-            if ($actualRisk && $predictedRisk) {
-                $tp++;
-            } elseif (! $actualRisk && $predictedRisk) {
-                $fp++;
-            } elseif ($actualRisk) {
-                $fn++;
-            } else {
-                $tn++;
-            }
+        $detection = [];
+        foreach (['any_overrun', 'material_overrun'] as $definition) {
+            $detection[$definition] = app(ProjectOverrunEvaluation::class)->evaluate($predictions, $actuals, $budgets, $definition);
         }
-        $precision = ($tp + $fp) > 0 ? $tp / ($tp + $fp) : null;
-        $recall = ($tp + $fn) > 0 ? $tp / ($tp + $fn) : null;
-        $f1 = null;
-        if ($precision !== null && $recall !== null) {
-            $f1 = ($precision + $recall) > 0 ? 2 * (($precision * $recall) / ($precision + $recall)) : 0.0;
-        }
+        $material = $detection['material_overrun'];
 
         $metrics = [
             'accuracy' => $accuracy === null ? null : round($accuracy, 2),
             'mean_absolute_error' => round($mae, 2),
             'mean_absolute_percentage_error' => $mape === null ? null : round($mape, 2),
             'r_squared' => $rSquared === null ? null : round($rSquared, 4),
-            'precision' => $precision === null ? null : round($precision * 100, 2),
-            'recall' => $recall === null ? null : round($recall * 100, 2),
-            'f1_score' => $f1 === null ? null : round($f1 * 100, 2),
-            'overrun_classification_accuracy' => round((($tp + $tn) / $count) * 100, 2),
-            'classification_counts' => compact('tp', 'fp', 'tn', 'fn'),
+            'precision' => $material['precision'],
+            'recall' => $material['recall'],
+            'f1_score' => $material['f1_score'],
+            'overrun_classification_accuracy' => $material['classification_accuracy'],
+            'classification_counts' => $material['classification_counts'],
+            'overrun_detection' => $detection,
+            'evaluation_observations' => $count,
+            'evaluation_projects' => $rows?->pluck('project_id')->filter()->unique()->count(),
+            'observation_weighting' => 'Each held-out observation has equal weight; multiple progress snapshots from one project are correlated.',
         ];
 
         if ($rows !== null) {
@@ -1494,6 +1537,7 @@ class MLService
                 'recall' => $metrics['recall'],
                 'f1_score' => $metrics['f1_score'],
                 'classification_counts' => $metrics['classification_counts'],
+                'overrun_detection' => $metrics['overrun_detection'],
             ];
         })->all();
     }
@@ -1962,6 +2006,7 @@ class MLService
             'training_samples' => (int) ($this->metadata['training_samples_evaluated'] ?? 0),
             'test_samples' => (int) ($this->metadata['test_samples'] ?? 0),
             'evaluation_method' => $this->metadata['evaluation_method'] ?? 'unavailable',
+            'evaluation_protocol_version' => $this->metadata['evaluation_protocol_version'] ?? 1,
             'accuracy' => $metrics['accuracy'] ?? null,
             'mean_absolute_error' => $mae,
             'mean_absolute_percentage_error' => $metrics['mean_absolute_percentage_error'] ?? null,
@@ -1969,6 +2014,10 @@ class MLService
             'precision' => $metrics['precision'] ?? null,
             'recall' => $metrics['recall'] ?? null,
             'f1_score' => $metrics['f1_score'] ?? null,
+            'overrun_detection' => $metrics['overrun_detection'] ?? null,
+            'evaluation_observations' => $metrics['evaluation_observations'] ?? null,
+            'evaluation_projects' => $metrics['evaluation_projects'] ?? null,
+            'observation_weighting' => $metrics['observation_weighting'] ?? null,
             'overrun_classification_accuracy' => $metrics['overrun_classification_accuracy'] ?? null,
             'mae_formatted' => $mae === null ? 'Unavailable' : '₱'.number_format((float) $mae, 2),
             'metric_scope' => match ($source) {
