@@ -1097,13 +1097,6 @@
                     <span class="badge badge-info" id="samplesCount">0 samples</span>
                 </div>
                 <div id="modelMetrics">
-                    <div class="performance-controls">
-                        <label class="filter-control">Performance shown<select id="performanceSource"><option value="active">Active forecasting model</option><option value="presentation_progress">Progress model evaluation</option><option value="planning">Planning model evaluation</option></select></label>
-                        <label class="filter-control">Evaluation observations<select id="performanceWeighting"><option value="all">All project stages</option><option value="latest">Latest stage per project</option></select></label>
-                        @if($portal === 'admin')
-                        <button type="button" id="refreshPerformance" class="analytics-button">Refresh evaluation</button>
-                        @endif
-                    </div>
                     <p id="performanceStatus" role="status" aria-live="polite">Loading performance…</p>
                     <p id="performanceScope" class="analytics-panel-description"></p>
                     <section class="metric-section" aria-labelledby="modelQualityTitle">
@@ -1117,7 +1110,7 @@
                     </section>
                     <section class="metric-section" aria-labelledby="overrunDetectionTitle">
                         <h3 class="metric-section-title" id="overrunDetectionTitle">Budget overrun detection</h3>
-                        <label class="filter-control">Overrun definition<select id="performanceThreshold"><option value="material_overrun">More than 5% above budget</option><option value="any_overrun">Any amount above budget</option></select></label>
+                        <p class="analytics-panel-description">An overrun means final cost is more than 5% above the recorded budget.</p>
                         <div class="model-status-grid">
                             <div class="metric-item"><span class="metric-label">Precision · alerts that were correct</span><span class="metric-value" id="metricPrecision">—</span></div>
                             <div class="metric-item"><span class="metric-label">Recall · actual overruns detected</span><span class="metric-value" id="metricRecall">—</span></div>
@@ -1127,10 +1120,10 @@
                         <p id="performanceCounts"></p>
                         <p class="analytics-panel-description">Accuracy is the percentage of overrun and within-budget outcomes classified correctly. Read it alongside recall: high accuracy can still hide missed overruns when most outcomes are within budget. Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Exactly 5% is excluded from the “more than 5%” definition. Budget means the recorded budget used for evaluation.</p>
                     </section>
-                    <details class="metric-section"><summary>Evaluation details and prediction inputs</summary>
+                    <section class="metric-section"><h3 class="metric-section-title">Evaluation details and prediction inputs</h3>
                         <p id="performanceValidation"></p><p id="performanceComparison"></p><p id="performanceFeatures"></p><p id="performanceUpdated"></p>
                         <p class="analytics-panel-description">Projects are kept together in training and testing. The newest 20% are reserved for testing; feature selection and temporal cross-validation use only earlier training projects. Repeated stages from one project are related observations. Completed-project evaluation does not establish accuracy for every ongoing project.</p>
-                    </details>
+                    </section>
                 </div>
             </section>
         </div>
