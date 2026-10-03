@@ -30,6 +30,45 @@ class MLImprovementTest extends TestCase
 {
     protected string $modelPath;
 
+    public function test_model_tuning_uses_only_training_projects_and_reverses_svr_target_scaling(): void
+    {
+        $service = new MLService($this->modelPath, loadModel: false);
+        $records = collect(range(1, 15))->map(fn ($id) => (object) [
+            'project_id' => $id, 'completed_at' => sprintf('2025-%02d-%02d', (int) ceil($id / 3), $id),
+            'budget' => 700000 + $id * 310000, 'duration_months' => 2 + ($id % 5),
+            'actual_cost' => (700000 + $id * 310000) * (0.95 + ($id % 3) * 0.05),
+        ]);
+        $training = $records->take(12);
+        $test = $records->slice(12)->values();
+        file_put_contents($this->modelPath, 'active estimator must stay unchanged');
+        $before = hash_file('sha256', $this->modelPath);
+        $first = $this->invokeProtected($service, 'compareTunedRegressionModels', $training, $test, ['budget', 'duration_months']);
+        $changedTest = $test->map(function ($row) {
+            $copy = clone $row;
+            $copy->actual_cost *= 2;
+
+            return $copy;
+        });
+        $second = $this->invokeProtected($service, 'compareTunedRegressionModels', $training, $changedTest, ['budget', 'duration_months']);
+        foreach (['ridge_linear_regression', 'support_vector_regression_rbf'] as $algorithm) {
+            $model = $first['models'][$algorithm];
+            $this->assertSame('evaluated', $model['status']);
+            $this->assertSame($model['selected_parameters'], $second['models'][$algorithm]['selected_parameters']);
+            $this->assertSame($model['tuning'], $second['models'][$algorithm]['tuning']);
+            foreach ($model['cross_validation']['folds'] as $fold) {
+                $this->assertSame([], array_values(array_intersect([13, 14, 15], [...$fold['training_project_ids'], ...$fold['test_project_ids']])));
+                $this->assertTrue(strcmp($fold['latest_training_completion'], $fold['earliest_test_completion']) < 0);
+            }
+            $this->assertSame(3, $model['evaluation']['evaluation_observations']);
+        }
+        $svr = $first['models']['support_vector_regression_rbf'];
+        $this->assertEqualsWithDelta($training->avg('actual_cost'), $svr['transformer']['target_normalization']['mean'], 0.00001);
+        $this->assertLessThan(1000000, $svr['evaluation']['mean_absolute_error']);
+        $this->assertNotSame($svr['evaluation'], $second['models']['support_vector_regression_rbf']['evaluation']);
+        $this->assertSame($before, hash_file('sha256', $this->modelPath));
+        $this->assertFalse($first['recommendation_is_activation']);
+    }
+
     public function test_training_readiness_audit_does_not_create_training_evidence_or_change_records(): void
     {
         $before = DB::table('project_tbl')->get()->toJson();

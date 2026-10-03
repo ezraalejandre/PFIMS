@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\ML\RidgeRegression;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -155,7 +156,7 @@ class MLService
         $report = [
             'generated_at' => now()->toIso8601String(),
             'mode' => 'read_only_candidate_evaluation',
-            'evaluation_protocol_version' => 3,
+            'evaluation_protocol_version' => 4,
             'active_model_changed' => false,
             'prediction_strategy' => $cohort['strategy'],
             'cohort_policy' => $cohortMode,
@@ -172,6 +173,8 @@ class MLService
         }
         $split = $this->selectChronologicalSplit($records, $cohort['feature_names']);
 
+        $comparison = $this->compareTunedRegressionModels($split['training_data'], $split['test_data'], $split['selected']['feature_names']);
+
         return $report + [
             'status' => 'evaluated',
             'evaluation' => $split['selected']['evaluation'],
@@ -179,20 +182,20 @@ class MLService
             'training_project_ids' => $split['training_data']->pluck('project_id')->unique()->values()->all(),
             'holdout_project_ids' => $split['test_data']->pluck('project_id')->unique()->values()->all(),
             'cross_validation_scope' => 'training_partition_only_final_holdout_excluded',
-            'cross_validation' => $this->kFoldCrossValidation($split['training_data'], $split['selected']['feature_names']),
+            'cross_validation' => $comparison['models']['least_squares_linear_regression']['cross_validation'],
             'budget_baseline_comparison' => $this->budgetBaselineComparison($split['test_data'], $split['selected']['evaluation']),
             'feature_selection' => $split['selected']['feature_selection'] ?? null,
             'evaluated_feature_names' => $split['selected']['feature_names'],
-            'model_comparison' => $this->compareRegressionModels($split['training_data'], $split['test_data'], $split['selected']['feature_names']),
+            'model_comparison' => $comparison,
             'stage_baselines' => $this->stageBaselines($split['test_data']),
-            'fair_comparison' => $this->fairComparison($split['training_data'], $split['test_data'], $split['selected']['feature_names']),
+            'fair_comparison' => $this->fairComparison($split['training_data'], $split['test_data'], $split['selected']['feature_names'], $comparison),
         ];
     }
 
     /** Identical held-out observations and spend floors for every approach. */
-    protected function fairComparison(Collection $training, Collection $test, array $features): array
+    protected function fairComparison(Collection $training, Collection $test, array $features, ?array $comparison = null): array
     {
-        $comparison = $this->compareRegressionModels($training, $test, $features);
+        $comparison ??= $this->compareTunedRegressionModels($training, $test, $features);
         $models = $comparison['models'];
         $planningTraining = $training->map(function ($row) {
             $copy = clone $row;
@@ -1187,7 +1190,7 @@ class MLService
         ];
     }
 
-    protected function kFoldCrossValidation(Collection $records, array $featureNames): array
+    protected function kFoldCrossValidation(Collection $records, array $featureNames, string $algorithm = 'least_squares_linear_regression', array $parameters = []): array
     {
         $projectIds = $records->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])
             ->pluck('project_id')->map(fn ($id) => (string) $id)->unique()->values();
@@ -1211,7 +1214,7 @@ class MLService
                 continue;
             }
 
-            [$model, $transformer] = $this->buildLeastSquaresModel($trainingData, $featureNames);
+            [$model, $transformer] = $this->buildComparisonModel($algorithm, $parameters, $trainingData, $featureNames);
             $evaluation = $this->evaluateModel($model, $transformer, $testData);
             $folds[] = [
                 'fold' => $fold + 1,
@@ -1231,6 +1234,8 @@ class MLService
 
         return [
             'method' => 'expanding_window_grouped_temporal_cross_validation',
+            'algorithm' => $algorithm,
+            'parameters' => $parameters,
             'folds_requested' => self::K_FOLD_COUNT,
             'folds_run' => count($folds),
             'folding' => 'earlier_completed_projects_train_later_completed_projects_test',
@@ -1327,6 +1332,108 @@ class MLService
             : 'linear_regression_was_equal_or_better_by_holdout_mae_or_comparison_unavailable';
 
         return $comparison;
+    }
+
+    /** Diagnostic comparison only; the existing training/activation path stays unchanged until Step 5. */
+    protected function compareTunedRegressionModels(Collection $trainingData, Collection $testData, array $featureNames): array
+    {
+        [$linearModel, $linearTransformer] = $this->buildLeastSquaresModel($trainingData, $featureNames);
+        $linearEvaluation = $this->evaluateModel($linearModel, $linearTransformer, $testData);
+
+        $comparison = [
+            'production_model' => 'least_squares_linear_regression',
+            'comparison_model' => 'support_vector_regression_rbf',
+            'protocol_version' => 4,
+            'selection_policy' => 'Tune ridge and SVR using training-only grouped temporal validation. Score the selected settings once on the same final holdout; do not activate any model.',
+            'primary_tuning_metric' => 'mean_absolute_percentage_error',
+            'tie_break_metric' => 'mean_absolute_error',
+            'active_model_changed' => false,
+            'models' => [
+                'least_squares_linear_regression' => [
+                    'status' => 'evaluated',
+                    'is_production' => true,
+                    'evaluation' => $linearEvaluation,
+                    'persistence' => 'serialized_as_the_only_production_model',
+                ],
+            ],
+        ];
+
+        $linearCv = $this->kFoldCrossValidation($trainingData, $featureNames);
+        $comparison['models']['least_squares_linear_regression']['cross_validation'] = $linearCv;
+        $grids = ['ridge_linear_regression' => array_map(fn ($alpha) => ['alpha' => $alpha], [0.01, 0.1, 1.0, 10.0]),
+            'support_vector_regression_rbf' => []];
+        foreach ([1.0, 10.0] as $cost) {
+            foreach ([0.1, 1.0] as $gamma) {
+                foreach ([0.01, 0.1] as $epsilon) {
+                    $grids['support_vector_regression_rbf'][] = compact('cost', 'gamma', 'epsilon');
+                }
+            }
+        }
+        foreach ($grids as $algorithm => $grid) {
+            $trials = [];
+            $selected = null;
+            foreach ($grid as $parameters) {
+                try {
+                    $cv = $this->kFoldCrossValidation($trainingData, $featureNames, $algorithm, $parameters);
+                    $mape = $cv['average_mean_absolute_percentage_error'];
+                    $mae = $cv['average_mean_absolute_error'];
+                    if ($cv['folds_run'] === 0 || ! is_numeric($mape) || ! is_numeric($mae)) {
+                        throw new RuntimeException('No usable training-only temporal folds.');
+                    }
+                    $trials[] = ['status' => 'evaluated', 'parameters' => $parameters,
+                        'training_cv_mape' => $mape, 'training_cv_mae' => $mae, 'folds_run' => $cv['folds_run']];
+                    if ($selected === null || [$mape, $mae] < [$selected['mape'], $selected['mae']]) {
+                        $selected = ['parameters' => $parameters, 'mape' => $mape, 'mae' => $mae, 'cv' => $cv];
+                    }
+                } catch (Throwable $exception) {
+                    $trials[] = ['status' => 'unavailable', 'parameters' => $parameters, 'message' => $exception->getMessage()];
+                }
+            }
+            try {
+                if ($selected === null) {
+                    throw new RuntimeException('No settings passed training-only validation.');
+                }
+                [$model, $transformer] = $this->buildComparisonModel($algorithm, $selected['parameters'], $trainingData, $featureNames);
+                $comparison['models'][$algorithm] = ['status' => 'evaluated', 'is_production' => false,
+                    'evaluation' => $this->evaluateModel($model, $transformer, $testData),
+                    'selected_parameters' => $selected['parameters'], 'cross_validation' => $selected['cv'],
+                    'transformer' => $transformer,
+                    'tuning' => ['scope' => 'training_partition_only_final_holdout_excluded', 'trials' => $trials],
+                    'persistence' => 'evaluated_in_memory_only_not_serialized_or_deployed'];
+            } catch (Throwable $exception) {
+                $comparison['models'][$algorithm] = ['status' => 'unavailable', 'is_production' => false,
+                    'evaluation' => null, 'message' => $exception->getMessage(),
+                    'tuning' => ['scope' => 'training_partition_only_final_holdout_excluded', 'trials' => $trials],
+                    'persistence' => 'not_serialized_or_deployed'];
+            }
+        }
+        $linearMae = $comparison['models']['least_squares_linear_regression']['evaluation']['mean_absolute_error'] ?? null;
+        $svrMae = $comparison['models']['support_vector_regression_rbf']['evaluation']['mean_absolute_error'] ?? null;
+        $svrOutperformed = is_numeric($linearMae) && is_numeric($svrMae) && (float) $svrMae < (float) $linearMae;
+        $ranked = collect($comparison['models'])->filter(fn ($model) => $model['status'] === 'evaluated')
+            ->sortBy(fn ($model) => $model['evaluation']['mean_absolute_error']);
+        $comparison['lowest_holdout_mae_model'] = $ranked->keys()->first();
+        $cvRanked = collect($comparison['models'])->filter(fn ($model) => is_numeric($model['cross_validation']['average_mean_absolute_percentage_error'] ?? null))
+            ->sortBy(fn ($model) => $model['cross_validation']['average_mean_absolute_percentage_error']);
+        $comparison['training_cv_recommended_model'] = $cvRanked->keys()->first();
+        $comparison['recommendation_is_activation'] = false;
+        $comparison['production_model_is_best_option'] = $comparison['lowest_holdout_mae_model'] === 'least_squares_linear_regression';
+        $comparison['comparison_model_outperformed_linear'] = $svrOutperformed;
+        $comparison['comparison_result'] = $comparison['production_model_is_best_option']
+            ? 'linear_regression_was_equal_or_better_by_holdout_mae_or_comparison_unavailable'
+            : 'comparison_model_had_lower_holdout_mae_but_was_not_deployed';
+
+        return $comparison;
+    }
+
+    protected function buildComparisonModel(string $algorithm, array $parameters, Collection $records, array $features): array
+    {
+        return match ($algorithm) {
+            'least_squares_linear_regression' => $this->buildLeastSquaresModel($records, $features),
+            'ridge_linear_regression' => $this->buildRegressionModel(new RidgeRegression($parameters['alpha']), $records, $features),
+            'support_vector_regression_rbf' => $this->buildSvrModel($records, $features, $parameters),
+            default => throw new InvalidArgumentException('Unknown comparison algorithm.'),
+        };
     }
 
     protected function budgetBaselineComparison(Collection $testData, array $modelEvaluation): array
@@ -1460,12 +1567,13 @@ class MLService
         return $this->buildRegressionModel(new LeastSquares, $records, $featureNames);
     }
 
-    protected function buildSvrModel(Collection $records, array $featureNames): array
+    protected function buildSvrModel(Collection $records, array $featureNames, array $parameters = []): array
     {
-        return $this->buildRegressionModel(new SVR(Kernel::RBF), $records, $featureNames);
+        return $this->buildRegressionModel(new SVR(Kernel::RBF, epsilon: $parameters['epsilon'] ?? 0.1,
+            cost: $parameters['cost'] ?? 1.0, gamma: $parameters['gamma'] ?? null), $records, $featureNames, normalizeTargets: $parameters !== []);
     }
 
-    protected function buildRegressionModel(Regression $model, Collection $records, array $featureNames): array
+    protected function buildRegressionModel(Regression $model, Collection $records, array $featureNames, bool $normalizeTargets = false): array
     {
         if ($records->count() < 2) {
             throw new RuntimeException('At least two records are required to build a regression model.');
@@ -1473,6 +1581,14 @@ class MLService
         $rawSamples = $records->map(fn ($row) => $this->rowToFeatures($row, $featureNames))->values()->all();
         $remainingFraction = $records->every(fn ($row) => isset($row->snapshot_id) && (float) $row->budget > 0);
         $labels = $records->map(fn ($row) => (float) $row->actual_cost / ($remainingFraction ? (float) $row->budget : 1))->values()->all();
+        $targetNormalization = null;
+        if ($normalizeTargets) {
+            $mean = array_sum($labels) / count($labels);
+            $variance = array_sum(array_map(fn ($value) => ($value - $mean) ** 2, $labels)) / count($labels);
+            $scale = max(sqrt($variance), 0.000000001);
+            $labels = array_map(fn ($value) => ($value - $mean) / $scale, $labels);
+            $targetNormalization = ['method' => 'training_only_standardization', 'mean' => $mean, 'scale' => $scale];
+        }
         $ranges = $this->rangesFromSamples($rawSamples, $featureNames);
         $selectedIndexes = $this->selectIndependentFeatures($rawSamples, $ranges, $featureNames);
         if ($selectedIndexes === []) {
@@ -1494,6 +1610,7 @@ class MLService
             'ranges' => $ranges,
             'scaling' => 'min_max',
             'target_scaling' => $remainingFraction ? 'remaining_cost_fraction_of_budget' : 'currency',
+            'target_normalization' => $targetNormalization,
             'excluded_features_note' => 'Constant or linearly dependent columns are excluded deterministically; accepted API fields remain unchanged.',
         ]];
     }
@@ -1629,6 +1746,9 @@ class MLService
                 $transformer['ranges']
             );
             $prediction = (float) $model->predict($transformed);
+            if (isset($transformer['target_normalization'])) {
+                $prediction = $prediction * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
+            }
             if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
                 $prediction *= (float) $row->budget;
             }
