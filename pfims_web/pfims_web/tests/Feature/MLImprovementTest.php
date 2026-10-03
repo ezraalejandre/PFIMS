@@ -30,6 +30,37 @@ class MLImprovementTest extends TestCase
 {
     protected string $modelPath;
 
+    public function test_independent_classifier_includes_small_overruns_excludes_equal_budget_and_cannot_learn_test_outcomes(): void
+    {
+        $service = new MLService($this->modelPath, loadModel: false);
+        $training = collect(range(1, 8))->map(fn ($i) => (object) [
+            'project_id' => $i, 'budget' => 1000000, 'duration_months' => $i,
+            'actual_cost' => $i % 2 === 0 ? 1020000 : 950000,
+        ]);
+        $test = collect([950000, 1000000.01, 1000000, 1020000])->map(fn ($cost, $i) => (object) [
+            'project_id' => 9 + $i, 'budget' => 1000000, 'duration_months' => 9 + $i, 'actual_cost' => $cost,
+        ]);
+        File::put($this->modelPath, 'unchanged active cost estimator');
+        $before = hash_file('sha256', $this->modelPath);
+        $first = $this->invokeProtected($service, 'evaluateOverrunClassifier', $training, $test, ['budget', 'duration_months']);
+        $changedTest = $test->map(function ($row) {
+            $copy = clone $row;
+            $copy->actual_cost = 1100000;
+
+            return $copy;
+        });
+        $second = $this->invokeProtected($service, 'evaluateOverrunClassifier', $training, $changedTest, ['budget', 'duration_months']);
+        $this->assertSame('evaluated', $first['status']);
+        $this->assertSame(2, $first['evaluation']['actual_overruns']);
+        $this->assertSame(2, $first['evaluation']['actual_non_overruns']);
+        $this->assertSame(4, $first['evaluation']['evaluated_observations']);
+        $this->assertSame($first['candidate_model'], $second['candidate_model']);
+        $this->assertSame(4, $second['evaluation']['actual_overruns']);
+        $this->assertFalse($first['active']);
+        $this->assertFalse($first['activation_evidence']);
+        $this->assertSame($before, hash_file('sha256', $this->modelPath));
+    }
+
     public function test_model_tuning_uses_only_training_projects_and_reverses_svr_target_scaling(): void
     {
         $service = new MLService($this->modelPath, loadModel: false);

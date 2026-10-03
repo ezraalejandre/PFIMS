@@ -32,6 +32,41 @@ class ProjectOverrunEvaluation
             }
         }
         $count = $tp + $fp + $tn + $fn;
+
+        return $this->fromCounts($tp, $fp, $tn, $fn, $excluded, $definition);
+    }
+
+    public function evaluateClasses(array $predictions, array $actuals): array
+    {
+        if (count($predictions) !== count($actuals)) {
+            throw new InvalidArgumentException('Classifier evaluation requires aligned outcomes.');
+        }
+        $tp = $fp = $tn = $fn = $excluded = 0;
+        $actuals = array_values($actuals);
+        foreach (array_values($predictions) as $i => $prediction) {
+            $actual = $actuals[$i];
+            if (($prediction !== null && ! is_bool($prediction)) || ($actual !== null && ! is_bool($actual))) {
+                throw new InvalidArgumentException('Classifier outcomes must be Boolean or unavailable.');
+            }
+            if ($prediction === null || $actual === null) {
+                $excluded++;
+            } elseif ($prediction && $actual) {
+                $tp++;
+            } elseif ($prediction) {
+                $fp++;
+            } elseif ($actual) {
+                $fn++;
+            } else {
+                $tn++;
+            }
+        }
+
+        return $this->fromCounts($tp, $fp, $tn, $fn, $excluded, 'any_overrun');
+    }
+
+    private function fromCounts(int $tp, int $fp, int $tn, int $fn, int $excluded, string $definition): array
+    {
+        $count = $tp + $fp + $tn + $fn;
         $positives = $tp + $fn;
         $negatives = $tn + $fp;
         $percent = fn (int $numerator, int $denominator) => $denominator > 0 ? round(100 * $numerator / $denominator, 2) : null;

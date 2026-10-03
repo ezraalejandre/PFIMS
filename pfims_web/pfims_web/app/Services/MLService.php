@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\ML\BudgetOverrunClassifier;
 use App\Services\ML\CostModelStore;
 use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\RidgeRegression;
@@ -143,7 +144,7 @@ class MLService
         $report = [
             'generated_at' => now()->toIso8601String(),
             'mode' => 'read_only_candidate_evaluation',
-            'evaluation_protocol_version' => 4,
+            'evaluation_protocol_version' => 5,
             'active_model_changed' => false,
             'prediction_strategy' => $cohort['strategy'],
             'cohort_policy' => $cohortMode,
@@ -174,6 +175,8 @@ class MLService
             'feature_selection' => $split['selected']['feature_selection'] ?? null,
             'evaluated_feature_names' => $split['selected']['feature_names'],
             'model_comparison' => $comparison,
+            'overrun_classifier' => $this->evaluateOverrunClassifier($split['training_data'], $split['test_data'],
+                $split['selected']['feature_names'], $comparison['models']['least_squares_linear_regression']['cross_validation']['folds']),
             'stage_baselines' => $this->stageBaselines($split['test_data']),
             'fair_comparison' => $this->fairComparison($split['training_data'], $split['test_data'], $split['selected']['feature_names'], $comparison),
         ];
@@ -230,6 +233,88 @@ class MLService
             'holdout_status' => $seen === [] ? 'not_found_in_saved_reports' : 'previously_evaluated',
             'activation_evidence' => false,
             'note' => 'Diagnostic comparison only. A new independent holdout is required after development; absence from saved reports does not prove a project was never inspected.'];
+    }
+
+    /** Independent detector evaluation; no active classifier or cost artifact is written. */
+    protected function evaluateOverrunClassifier(Collection $training, Collection $test, array $features, array $folds = []): array
+    {
+        $report = ['algorithm' => 'project_balanced_logistic_regression', 'definition' => 'any_overrun',
+            'label_rule' => 'Final cost rounded to cents strictly exceeds the budget recorded for the observation.',
+            'active' => false, 'activation_evidence' => false, 'threshold' => 0.5,
+            'threshold_policy' => 'Fixed before evaluation; not selected from holdout results.',
+            'feature_names' => $features, 'training_project_ids' => $training->pluck('project_id')->unique()->values()->all(),
+            'holdout_project_ids' => $test->pluck('project_id')->unique()->values()->all(),
+            'training_weighting' => 'Each project has equal total weight before balancing the two outcome classes.',
+            'decision_rule' => 'Recorded spending already above budget is a confirmed overrun; otherwise model score >= 0.5.',
+            'score_note' => 'Class-balanced score, not a calibrated probability.',
+            'scope_note' => 'Separate diagnostic classifier; these results do not replace the active cost model or displayed detection metrics.'];
+        try {
+            $model = $this->fitOverrunClassifier($training, $features);
+            $outcomes = $this->classifierOutcomes($model, $test, $features);
+            $metrics = app(ProjectOverrunEvaluation::class)->evaluateClasses($outcomes['predictions'], $outcomes['actuals']);
+            $latest = [];
+            foreach ($test->values() as $i => $row) {
+                $key = (string) $row->project_id;
+                if (! isset($latest[$key]) || strcmp((string) ($row->captured_at ?? ''), (string) ($test->values()[$latest[$key]]->captured_at ?? '')) > 0) {
+                    $latest[$key] = $i;
+                }
+            }
+            $metrics['latest_observation_per_project'] = app(ProjectOverrunEvaluation::class)->evaluateClasses(
+                array_map(fn ($i) => $outcomes['predictions'][$i], array_values($latest)),
+                array_map(fn ($i) => $outcomes['actuals'][$i], array_values($latest)));
+            $cv = [];
+            foreach ($folds as $fold) {
+                $foldTraining = $training->whereIn('project_id', $fold['training_project_ids'])->values();
+                $foldTest = $training->whereIn('project_id', $fold['test_project_ids'])->values();
+                try {
+                    $foldModel = $this->fitOverrunClassifier($foldTraining, $features);
+                    $foldOutcomes = $this->classifierOutcomes($foldModel, $foldTest, $features);
+                    $cv[] = ['status' => 'evaluated', 'fold' => $fold['fold'],
+                        'training_project_ids' => $fold['training_project_ids'], 'test_project_ids' => $fold['test_project_ids'],
+                        'latest_training_completion' => $fold['latest_training_completion'], 'earliest_test_completion' => $fold['earliest_test_completion'],
+                        'evaluation' => app(ProjectOverrunEvaluation::class)->evaluateClasses($foldOutcomes['predictions'], $foldOutcomes['actuals'])];
+                } catch (Throwable $exception) {
+                    $cv[] = ['status' => 'unavailable', 'fold' => $fold['fold'], 'message' => $exception->getMessage()];
+                }
+            }
+
+            return $report + ['status' => 'evaluated', 'evaluation' => $metrics,
+                'confirmed_spend_overruns' => $outcomes['confirmed_spend_overruns'], 'candidate_model' => $model->modelData(),
+                'cross_validation' => ['scope' => 'training_partition_only_final_holdout_excluded',
+                    'method' => 'expanding_window_grouped_temporal_cross_validation', 'folds' => $cv],
+                'observation_weighting' => 'Held-out observations have equal weight; use latest-observation-per-project metrics to avoid repeated-stage counting.'];
+        } catch (Throwable $exception) {
+            return $report + ['status' => 'unavailable', 'message' => $exception->getMessage(), 'evaluation' => null];
+        }
+    }
+
+    protected function fitOverrunClassifier(Collection $records, array $features): BudgetOverrunClassifier
+    {
+        $labels = $records->map(function ($row) {
+            $finalCost = (float) $row->actual_cost + (isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0);
+
+            return app(ProjectOverrunPolicy::class)->classify($finalCost, (float) $row->budget)['any_overrun'];
+        })->values()->all();
+        $model = new BudgetOverrunClassifier;
+        $model->train($records->map(fn ($row) => $this->rowToFeatures($row, $features))->values()->all(),
+            $labels, $records->pluck('project_id')->values()->all());
+
+        return $model;
+    }
+
+    protected function classifierOutcomes(BudgetOverrunClassifier $model, Collection $records, array $features): array
+    {
+        $predictions = $actuals = [];
+        $confirmed = 0;
+        foreach ($records as $row) {
+            $spent = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
+            $known = app(ProjectOverrunPolicy::class)->classify($spent, (float) $row->budget)['any_overrun'] === true;
+            $actuals[] = app(ProjectOverrunPolicy::class)->classify((float) $row->actual_cost + $spent, (float) $row->budget)['any_overrun'];
+            $predictions[] = $known || $model->score($this->rowToFeatures($row, $features)) >= 0.5;
+            $confirmed += (int) $known;
+        }
+
+        return ['predictions' => $predictions, 'actuals' => $actuals, 'confirmed_spend_overruns' => $confirmed];
     }
 
     /** Persist evaluation evidence independently of the active estimator. */
