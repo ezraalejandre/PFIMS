@@ -15,6 +15,15 @@
         const metrics = active;
         const detection = metrics.overrun_detection?.any_overrun;
         const scores = detection || {};
+        const algorithmNames = {
+            least_squares_linear_regression: 'Linear regression',
+            ridge_linear_regression: 'Regularized linear regression',
+            support_vector_regression_rbf: 'Support vector regression (SVR)',
+        };
+        const algorithm = algorithmNames[active.model_type];
+        put('performanceAlgorithm', algorithm
+            ? `Active cost model: ${algorithm}.${active.model_recovery_source === 'previous' ? ' The previous verified model is being used for recovery.' : ''}`
+            : 'Active cost model identity is unavailable.');
         put('metricMAPE', percent(metrics?.mean_absolute_percentage_error));
         put('metricMAE', currency(metrics?.mean_absolute_error));
         put('metricRSquared', number(metrics?.r_squared) ? Number(metrics.r_squared).toFixed(4) : 'Unavailable');

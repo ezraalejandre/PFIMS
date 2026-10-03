@@ -1098,6 +1098,7 @@
                 </div>
                 <div id="modelMetrics">
                     <p id="performanceStatus" role="status" aria-live="polite">Loading performance…</p>
+                    <p id="performanceAlgorithm" class="analytics-panel-description"></p>
                     <p id="performanceScope" class="analytics-panel-description"></p>
                     <section class="metric-section" aria-labelledby="modelQualityTitle">
                         <h3 class="metric-section-title" id="modelQualityTitle">Final cost prediction error</h3>

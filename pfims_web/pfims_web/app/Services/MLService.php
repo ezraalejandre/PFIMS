@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Services\ML\CostModelStore;
+use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\RidgeRegression;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -10,7 +12,6 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
-use Phpml\ModelManager;
 use Phpml\Regression\LeastSquares;
 use Phpml\Regression\Regression;
 use Phpml\Regression\SVR;
@@ -79,7 +80,9 @@ class MLService
         'expense_amount_per_day_30d', 'has_unvalued_stock_out',
     ];
 
-    protected ?LeastSquares $model = null;
+    protected ?Regression $model = null;
+
+    protected string $modelRecoverySource = 'active';
 
     protected string $modelPath;
 
@@ -127,24 +130,8 @@ class MLService
 
     protected function loadOrTrainModel(): void
     {
-        if (File::exists($this->modelPath) && File::exists($this->metadataPath)) {
-            try {
-                $metadata = json_decode((string) File::get($this->metadataPath), true, 512, JSON_THROW_ON_ERROR);
-                if (($metadata['schema_version'] ?? null) !== self::MODEL_SCHEMA_VERSION) {
-                    throw new RuntimeException('Stored model metadata is outdated.');
-                }
-                $restored = (new ModelManager)->restoreFromFile($this->modelPath);
-                if (! $restored instanceof LeastSquares) {
-                    throw new RuntimeException('Stored estimator is not a LeastSquares model.');
-                }
-                $this->model = $restored;
-                $this->metadata = $metadata;
-                Log::info('ML model and metadata loaded successfully.');
-
-                return;
-            } catch (Throwable $exception) {
-                Log::warning('Failed to load the stored ML model; retraining.', ['message' => $exception->getMessage()]);
-            }
+        if ($this->restoreStoredModel()) {
+            return;
         }
         $this->train();
     }
@@ -1436,6 +1423,17 @@ class MLService
         };
     }
 
+    /** Build one portable candidate; this helper never saves or activates it. */
+    protected function buildServableRegressionModel(string $algorithm, array $parameters, Collection $records, array $features): array
+    {
+        [$model, $transformer] = $this->buildComparisonModel($algorithm, $parameters, $records, $features);
+        if ($model instanceof SVR) {
+            $model = PortableRbfSvr::fromLibsvm($model->getModel(), count($transformer['selected_feature_indexes']));
+        }
+
+        return [$model, $transformer];
+    }
+
     protected function budgetBaselineComparison(Collection $testData, array $modelEvaluation): array
     {
         $isRemainingCostTarget = $testData->contains(fn ($row) => isset($row->snapshot_id));
@@ -1921,6 +1919,9 @@ class MLService
                 $transformer['ranges']
             );
             $prediction = (float) $this->model->predict($transformed);
+            if (isset($transformer['target_normalization'])) {
+                $prediction = $prediction * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
+            }
             if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
                 $prediction *= (float) $features[0];
             }
@@ -2346,6 +2347,8 @@ class MLService
                 default => 'Synthetic fallback model is active',
             },
             'model_source' => $source,
+            'model_type' => $this->model ? CostModelStore::algorithm($this->model) : null,
+            'model_recovery_source' => $this->modelRecoverySource,
             'uses_synthetic_data' => (bool) ($this->metadata['uses_synthetic_data'] ?? false),
             'estimated_historical_purchase_count' => $estimatedHistoricalPurchases,
             'samples_trained' => (int) ($this->metadata['samples_trained'] ?? 0),
@@ -2510,21 +2513,17 @@ class MLService
 
     protected function restoreStoredModel(): bool
     {
-        if (! File::exists($this->modelPath) || ! File::exists($this->metadataPath)) {
-            return false;
-        }
-
         try {
-            $metadata = json_decode((string) File::get($this->metadataPath), true, 512, JSON_THROW_ON_ERROR);
-            if (($metadata['schema_version'] ?? null) !== self::MODEL_SCHEMA_VERSION) {
+            $pair = (new CostModelStore($this->modelPath, self::MODEL_SCHEMA_VERSION))->load();
+            if ($pair === null) {
                 return false;
             }
-            $model = (new ModelManager)->restoreFromFile($this->modelPath);
-            if (! $model instanceof LeastSquares) {
-                return false;
+            $this->model = $pair['model'];
+            $this->metadata = $pair['metadata'];
+            $this->modelRecoverySource = $pair['recovery_source'];
+            if ($this->modelRecoverySource === 'previous') {
+                Log::warning('The active cost model pair is unavailable; serving the verified previous model.');
             }
-            $this->model = $model;
-            $this->metadata = $metadata;
 
             return true;
         } catch (Throwable $exception) {
@@ -2539,54 +2538,9 @@ class MLService
         if (! $this->model) {
             throw new RuntimeException('Cannot save an empty model.');
         }
-
-        File::ensureDirectoryExists(dirname($this->modelPath));
-        $suffix = '.candidate.'.bin2hex(random_bytes(8));
-        $candidateModelPath = $this->modelPath.$suffix;
-        $candidateMetadataPath = $this->metadataPath.$suffix;
-        $backupModelPath = $this->modelPath.'.backup.'.bin2hex(random_bytes(8));
-        $backupMetadataPath = $this->metadataPath.'.backup.'.bin2hex(random_bytes(8));
-        $json = json_encode($this->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-
-        try {
-            (new ModelManager)->saveToFile($this->model, $candidateModelPath);
-            if (file_put_contents($candidateMetadataPath, $json, LOCK_EX) === false) {
-                throw new RuntimeException('Unable to save candidate model metadata.');
-            }
-            $candidate = (new ModelManager)->restoreFromFile($candidateModelPath);
-            if (! $candidate instanceof LeastSquares) {
-                throw new RuntimeException('Candidate model validation failed.');
-            }
-            json_decode((string) File::get($candidateMetadataPath), true, 512, JSON_THROW_ON_ERROR);
-
-            $hadModel = File::exists($this->modelPath);
-            $hadMetadata = File::exists($this->metadataPath);
-            if ($hadModel && ! @rename($this->modelPath, $backupModelPath)) {
-                throw new RuntimeException('Unable to back up the active model.');
-            }
-            if ($hadMetadata && ! @rename($this->metadataPath, $backupMetadataPath)) {
-                if ($hadModel) {
-                    @rename($backupModelPath, $this->modelPath);
-                }
-                throw new RuntimeException('Unable to back up active model metadata.');
-            }
-
-            if (! @rename($candidateModelPath, $this->modelPath)
-                || ! @rename($candidateMetadataPath, $this->metadataPath)) {
-                File::delete([$this->modelPath, $this->metadataPath]);
-                if ($hadModel) {
-                    @rename($backupModelPath, $this->modelPath);
-                }
-                if ($hadMetadata) {
-                    @rename($backupMetadataPath, $this->metadataPath);
-                }
-                throw new RuntimeException('Unable to atomically activate the candidate model and metadata.');
-            }
-
-            File::delete([$backupModelPath, $backupMetadataPath]);
-        } finally {
-            File::delete([$candidateModelPath, $candidateMetadataPath]);
-        }
+        $this->metadata = (new CostModelStore($this->modelPath, self::MODEL_SCHEMA_VERSION))
+            ->save($this->model, $this->metadata);
+        $this->modelRecoverySource = 'active';
     }
 
     public function analyzeBudgetVariance(): Collection
