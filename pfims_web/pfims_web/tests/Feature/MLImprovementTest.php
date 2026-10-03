@@ -42,14 +42,26 @@ class MLImprovementTest extends TestCase
         ]);
         File::put($this->modelPath, 'unchanged active cost estimator');
         $before = hash_file('sha256', $this->modelPath);
-        $first = $this->invokeProtected($service, 'evaluateOverrunClassifier', $training, $test, ['budget', 'duration_months']);
+        $folds = [];
+        foreach ([4, 6] as $cutoff) {
+            $folds[] = ['fold' => count($folds) + 1, 'training_project_ids' => range(1, $cutoff),
+                'test_project_ids' => [$cutoff + 1, $cutoff + 2],
+                'latest_training_completion' => '2025-01-01', 'earliest_test_completion' => '2025-02-01'];
+        }
+        $first = $this->invokeProtected($service, 'evaluateOverrunClassifier', $training, $test, ['budget', 'duration_months'], $folds);
         $changedTest = $test->map(function ($row) {
             $copy = clone $row;
             $copy->actual_cost = 1100000;
 
             return $copy;
         });
-        $second = $this->invokeProtected($service, 'evaluateOverrunClassifier', $training, $changedTest, ['budget', 'duration_months']);
+        $second = $this->invokeProtected($service, 'evaluateOverrunClassifier', $training, $changedTest, ['budget', 'duration_months'], $folds);
+        $this->assertSame('tuned', $first['tuning']['status']);
+        $this->assertCount(5, $first['tuning']['trials']);
+        $this->assertSame($first['tuning'], $second['tuning']);
+        $default = $this->invokeProtected($service, 'tuneOverrunClassifier', $training, ['budget', 'duration_months'], []);
+        $this->assertSame('insufficient_validation_default_retained', $default['status']);
+        $this->assertSame(0.5, $default['threshold']);
         $this->assertSame('evaluated', $first['status']);
         $this->assertSame(2, $first['evaluation']['actual_overruns']);
         $this->assertSame(2, $first['evaluation']['actual_non_overruns']);

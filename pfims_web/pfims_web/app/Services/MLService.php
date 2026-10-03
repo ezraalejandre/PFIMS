@@ -250,8 +250,15 @@ class MLService
             'score_note' => 'Class-balanced score, not a calibrated probability.',
             'scope_note' => 'Separate diagnostic classifier; these results do not replace the active cost model or displayed detection metrics.'];
         try {
+            $tuning = $this->tuneOverrunClassifier($training, $features, $folds);
+            $features = $tuning['feature_names'];
+            $threshold = $tuning['threshold'];
+            $report['feature_names'] = $features;
+            $report['threshold'] = $threshold;
+            $report['threshold_policy'] = 'Selected using training-only temporal validation; final holdout excluded.';
+            $report['decision_rule'] = 'Recorded spending above budget is confirmed; otherwise model score meets the selected threshold.';
             $model = $this->fitOverrunClassifier($training, $features);
-            $outcomes = $this->classifierOutcomes($model, $test, $features);
+            $outcomes = $this->classifierOutcomes($model, $test, $features, $threshold);
             $metrics = app(ProjectOverrunEvaluation::class)->evaluateClasses($outcomes['predictions'], $outcomes['actuals']);
             $latest = [];
             foreach ($test->values() as $i => $row) {
@@ -269,7 +276,7 @@ class MLService
                 $foldTest = $training->whereIn('project_id', $fold['test_project_ids'])->values();
                 try {
                     $foldModel = $this->fitOverrunClassifier($foldTraining, $features);
-                    $foldOutcomes = $this->classifierOutcomes($foldModel, $foldTest, $features);
+                    $foldOutcomes = $this->classifierOutcomes($foldModel, $foldTest, $features, $threshold);
                     $cv[] = ['status' => 'evaluated', 'fold' => $fold['fold'],
                         'training_project_ids' => $fold['training_project_ids'], 'test_project_ids' => $fold['test_project_ids'],
                         'latest_training_completion' => $fold['latest_training_completion'], 'earliest_test_completion' => $fold['earliest_test_completion'],
@@ -280,13 +287,77 @@ class MLService
             }
 
             return $report + ['status' => 'evaluated', 'evaluation' => $metrics,
-                'confirmed_spend_overruns' => $outcomes['confirmed_spend_overruns'], 'candidate_model' => $model->modelData(),
+                'confirmed_spend_overruns' => $outcomes['confirmed_spend_overruns'],
+                'candidate_model' => array_replace($model->modelData(), ['threshold' => $threshold]),
+                'tuning' => $tuning,
                 'cross_validation' => ['scope' => 'training_partition_only_final_holdout_excluded',
                     'method' => 'expanding_window_grouped_temporal_cross_validation', 'folds' => $cv],
                 'observation_weighting' => 'Held-out observations have equal weight; use latest-observation-per-project metrics to avoid repeated-stage counting.'];
         } catch (Throwable $exception) {
             return $report + ['status' => 'unavailable', 'message' => $exception->getMessage(), 'evaluation' => null];
         }
+    }
+
+    /** Freeze features and threshold before final evaluation; each project contributes once per validation fold. */
+    protected function tuneOverrunClassifier(Collection $training, array $features, array $folds): array
+    {
+        $candidates = ['current_features' => $features];
+        if ($training->contains(fn ($row) => isset($row->snapshot_id))) {
+            $expanded = array_values(array_unique([...$features, 'remaining_work_fraction', 'remaining_budget_fraction',
+                'required_cost_performance_index', 'required_cost_performance_available',
+                'recent_burn_remaining_budget_days', 'budget_runway_available']));
+            if ($expanded !== $features) {
+                $candidates['remaining_work_features'] = $expanded;
+            }
+        }
+        $trials = [];
+        foreach ($candidates as $name => $names) {
+            $scores = $labels = [];
+            $successfulFolds = 0;
+            foreach ($folds as $fold) {
+                $fit = $training->whereIn('project_id', $fold['training_project_ids'])->values();
+                $validation = $training->whereIn('project_id', $fold['test_project_ids'])->sortBy('captured_at')
+                    ->groupBy('project_id')->map(fn ($rows) => $rows->last())->values();
+                try {
+                    $model = $this->fitOverrunClassifier($fit, $names);
+                    $outcomes = $this->classifierOutcomes($model, $validation, $names);
+                    $scores = [...$scores, ...$outcomes['scores']];
+                    $labels = [...$labels, ...$outcomes['actuals']];
+                    $successfulFolds++;
+                } catch (Throwable $exception) {
+                    // One-class early windows cannot fit a binary detector.
+                }
+            }
+            if ($successfulFolds < 2 || ! in_array(true, $labels, true) || ! in_array(false, $labels, true)) {
+                continue;
+            }
+            foreach ([0.3, 0.4, 0.5, 0.6, 0.7] as $threshold) {
+                $metrics = app(ProjectOverrunEvaluation::class)->evaluateClasses(
+                    array_map(fn ($score) => $score >= $threshold, $scores), $labels);
+                $trials[] = ['candidate' => $name, 'feature_names' => $names, 'threshold' => $threshold,
+                    'successful_folds' => $successfulFolds, 'evaluation' => $metrics];
+            }
+        }
+        usort($trials, function ($a, $b) {
+            foreach (['f1_score', 'balanced_accuracy', 'recall'] as $metric) {
+                $order = ($b['evaluation'][$metric] ?? 0) <=> ($a['evaluation'][$metric] ?? 0);
+                if ($order !== 0) {
+                    return $order;
+                }
+            }
+
+            return count($a['feature_names']) <=> count($b['feature_names'])
+                ?: abs($a['threshold'] - 0.5) <=> abs($b['threshold'] - 0.5);
+        });
+
+        return ['status' => $trials === [] ? 'insufficient_validation_default_retained' : 'tuned',
+            'feature_names' => $trials[0]['feature_names'] ?? $features,
+            'threshold' => $trials[0]['threshold'] ?? 0.5,
+            'scope' => 'training_partition_only_final_holdout_excluded',
+            'selection_rule' => 'Highest validation F1, then balanced accuracy, then recall; ties prefer fewer features and threshold nearest 0.5.',
+            'observation_policy' => 'Latest observation per project per validation fold.',
+            'validation_note' => 'Selection scores are tuning evidence, not independent test performance.',
+            'trials' => $trials];
     }
 
     protected function fitOverrunClassifier(Collection $records, array $features): BudgetOverrunClassifier
@@ -303,19 +374,20 @@ class MLService
         return $model;
     }
 
-    protected function classifierOutcomes(BudgetOverrunClassifier $model, Collection $records, array $features): array
+    protected function classifierOutcomes(BudgetOverrunClassifier $model, Collection $records, array $features, float $threshold = 0.5): array
     {
-        $predictions = $actuals = [];
+        $predictions = $actuals = $scores = [];
         $confirmed = 0;
         foreach ($records as $row) {
             $spent = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
             $known = app(ProjectOverrunPolicy::class)->classify($spent, (float) $row->budget)['any_overrun'] === true;
             $actuals[] = app(ProjectOverrunPolicy::class)->classify((float) $row->actual_cost + $spent, (float) $row->budget)['any_overrun'];
-            $predictions[] = $known || $model->score($this->rowToFeatures($row, $features)) >= 0.5;
+            $scores[] = $known ? 1.0 : $model->score($this->rowToFeatures($row, $features));
+            $predictions[] = end($scores) >= $threshold;
             $confirmed += (int) $known;
         }
 
-        return ['predictions' => $predictions, 'actuals' => $actuals, 'confirmed_spend_overruns' => $confirmed];
+        return ['predictions' => $predictions, 'actuals' => $actuals, 'scores' => $scores, 'confirmed_spend_overruns' => $confirmed];
     }
 
     /** Persist evaluation evidence independently of the active estimator. */
