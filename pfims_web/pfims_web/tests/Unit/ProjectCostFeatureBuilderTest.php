@@ -7,6 +7,27 @@ use PHPUnit\Framework\TestCase;
 
 class ProjectCostFeatureBuilderTest extends TestCase
 {
+    public function test_remaining_work_features_preserve_overspending_and_gate_missing_costs(): void
+    {
+        $builder = new ProjectCostFeatureBuilder;
+        $result = $builder->build($this->inputs());
+        $this->assertSame(0.5, $result['values']['remaining_work_fraction']);
+        $this->assertSame(0.4, $result['values']['remaining_budget_fraction']);
+        $this->assertSame(1.25, $result['values']['required_cost_performance_index']);
+        $this->assertSame(20.0, $result['indicators']['recent_burn_remaining_budget_days']);
+        foreach ([1000, 1000.01] as $spent) {
+            $over = $builder->build(array_replace($this->inputs(), ['fin_total_expense' => $spent]));
+            $this->assertNull($over['indicators']['required_cost_performance_index']);
+            $this->assertSame(0, $over['values']['required_cost_performance_available']);
+            $this->assertSame(0.0, $over['indicators']['recent_burn_remaining_budget_days']);
+            $this->assertLessThanOrEqual(0, $over['values']['remaining_budget_fraction']);
+        }
+        $missing = $builder->build(array_replace($this->inputs(), ['cost_coverage_complete' => false]));
+        $this->assertNull($missing['indicators']['required_cost_performance_index']);
+        $this->assertNull($missing['indicators']['recent_burn_remaining_budget_days']);
+        $this->assertSame($result, $builder->build($this->inputs() + ['final_actual_cost' => 999999]));
+    }
+
     private function inputs(): array
     {
         return ['budget' => 1000, 'fin_total_expense' => 600, 'completion_percentage' => 50,

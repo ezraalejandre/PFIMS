@@ -15,12 +15,15 @@ class ProjectCostFeatureBuilder
         'elapsed_time_fraction', 'schedule_progress_gap', 'days_past_planned_end',
         'time_eac_to_budget', 'progress_forecast_available', 'time_forecast_available',
         'recent_cost_available', 'snapshot_cost_coverage_complete',
+        'remaining_work_fraction', 'remaining_budget_fraction',
+        'required_cost_performance_index', 'required_cost_performance_available',
+        'recent_burn_remaining_budget_days', 'budget_runway_available',
     ];
 
     public static function catalog(): array
     {
         return [
-            'formula_version' => 1, 'candidate_feature_names' => self::FEATURE_NAMES,
+            'formula_version' => 2, 'candidate_feature_names' => self::FEATURE_NAMES,
             'minimum_progress_for_extrapolation_percent' => 10,
             'minimum_elapsed_days_for_time_forecast' => 7,
             'groups' => [
@@ -34,6 +37,15 @@ class ProjectCostFeatureBuilder
                     'days_past_planned_end', 'time_eac_to_budget'],
                 'Input availability' => ['progress_forecast_available', 'time_forecast_available',
                     'recent_cost_available', 'snapshot_cost_coverage_complete'],
+                'Remaining work and budget' => ['remaining_work_fraction', 'remaining_budget_fraction',
+                    'required_cost_performance_index', 'required_cost_performance_available',
+                    'recent_burn_remaining_budget_days', 'budget_runway_available'],
+            ],
+            'additional_source_requirements' => [
+                'unpaid_commitments' => 'Dated purchase orders or contracts, remaining unpaid amounts, cancellation status, and links preventing double counting with recorded expenses.',
+                'approved_variations' => 'Approval dates, approved scope and cost changes, and the budget version effective at each observation.',
+                'worker_productivity' => 'Dated completed work quantities and labor hours for matching work types; worker count alone is insufficient.',
+                'material_price_changes' => 'Historical invoice unit prices for matching item and unit, dated before the observation; current catalog prices alone are insufficient.',
             ],
             'missing_input_policy' => 'Unavailable model features use zero with explicit availability flags. Forecast indicators remain null when their required inputs are unavailable.',
             'inventory_units_policy' => 'Consumption uses valued withdrawal cost; quantities from different item units are never added as a model consumption measure.',
@@ -66,6 +78,9 @@ class ProjectCostFeatureBuilder
         $remainingDays = $timeAvailable ? ($progress >= 1 ? 0 : max(max(0, $planned - $elapsed), $elapsed * (1 - $progress) / $progress)) : null;
         $timeEac = $timeAvailable ? $spent + $rate30 * $remainingDays : null;
         $elapsedFraction = $timing ? $elapsed / $planned : null;
+        $remainingBudget = $budget - $spent;
+        $requiredPerformanceAvailable = $complete && $budget > 0 && $remainingBudget > 0;
+        $runwayAvailable = $complete && $budget > 0 && $rate30 !== null && $rate30 > 0;
         $values = [
             'progress_fraction' => $progress,
             'budget_used_fraction' => $budget > 0 ? $spent / $budget : 0,
@@ -90,6 +105,13 @@ class ProjectCostFeatureBuilder
             'time_forecast_available' => (int) $timeAvailable,
             'recent_cost_available' => (int) $recent,
             'snapshot_cost_coverage_complete' => (int) $complete,
+            'remaining_work_fraction' => 1 - $progress,
+            // Preserve negative headroom: overspending is useful evidence, not zero remaining budget.
+            'remaining_budget_fraction' => $budget > 0 ? $remainingBudget / $budget : 0,
+            'required_cost_performance_index' => $requiredPerformanceAvailable ? $budget * (1 - $progress) / $remainingBudget : 0,
+            'required_cost_performance_available' => (int) $requiredPerformanceAvailable,
+            'recent_burn_remaining_budget_days' => $runwayAvailable ? max(0, $remainingBudget) / $rate30 : 0,
+            'budget_runway_available' => (int) $runwayAvailable,
         ];
 
         return [
@@ -101,6 +123,9 @@ class ProjectCostFeatureBuilder
                 'cost_burn_rate_7d' => $rate7 === null ? null : round($rate7, 2),
                 'cost_coverage_complete' => $complete,
                 'timing_available' => $timing,
+                'required_cost_performance_index' => $requiredPerformanceAvailable ? $budget * (1 - $progress) / $remainingBudget : null,
+                'remaining_budget' => $budget > 0 ? round($remainingBudget, 2) : null,
+                'recent_burn_remaining_budget_days' => $runwayAvailable ? round(max(0, $remainingBudget) / $rate30, 2) : null,
                 'note' => 'Formula indicators are candidate inputs, not a newly validated model prediction. Earned value assumes recorded completion represents the share of budgeted work achieved.',
             ],
         ];

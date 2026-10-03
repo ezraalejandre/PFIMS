@@ -155,6 +155,7 @@ class MLService
             'data_sources' => $records->pluck('data_source')->unique()->values()->all(),
             'scope_note' => 'Candidate evaluation only. It does not replace the saved estimator or its performance. Completed-project temporal validation does not establish real-time forecasting accuracy.',
             'cost_label_note' => 'Eligibility and reconciliation do not turn current-price historical inventory estimates into verified original invoices. Results remain conditional on the recorded cost labels.',
+            'feature_catalog' => ProjectCostFeatureBuilder::catalog(),
         ];
         if ($report['eligible_projects'] < self::MINIMUM_REAL_SAMPLES) {
             return $report + ['status' => 'insufficient_projects', 'evaluation' => null];
