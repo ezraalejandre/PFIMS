@@ -201,6 +201,96 @@ class MLService
         return $result;
     }
 
+    /** Explicit publication for a portfolio consisting entirely of presentation records. */
+    public function publishPresentationCandidate(array $report, string $algorithm): array
+    {
+        if (($report['status'] ?? null) !== 'evaluated'
+            || ($report['cohort_policy'] ?? null) !== 'presentation_progress'
+            || ($report['data_sources'] ?? []) !== ['company_inspired_sample']
+            || DB::table('project_tbl')->where('data_source', '<>', 'company_inspired_sample')->exists()) {
+            throw new RuntimeException('Demonstration publication requires an exclusively presentation portfolio.');
+        }
+        $candidate = $report['model_comparison']['models'][$algorithm] ?? [];
+        if (($candidate['status'] ?? null) !== 'evaluated'
+            || ! in_array($algorithm, ['least_squares_linear_regression', 'ridge_linear_regression', 'support_vector_regression_rbf'], true)) {
+            throw new RuntimeException('An evaluated supported demonstration candidate is required.');
+        }
+        $cohort = $this->selectTrainingCohort('presentation_progress');
+        $records = $cohort['records'];
+        $trainingIds = $report['training_project_ids'] ?? [];
+        $testIds = $report['holdout_project_ids'] ?? [];
+        if ($trainingIds === [] || $testIds === [] || array_intersect($trainingIds, $testIds) !== []
+            || $records->pluck('project_id')->unique()->count() !== count($trainingIds) + count($testIds)) {
+            throw new RuntimeException('The evaluation partitions no longer match the current portfolio.');
+        }
+        $training = $records->whereIn('project_id', $trainingIds)->values();
+        $test = $records->whereIn('project_id', $testIds)->values();
+        $features = $report['evaluated_feature_names'];
+        if ($training->pluck('project_id')->unique()->count() !== count($trainingIds)
+            || $test->pluck('project_id')->unique()->count() !== count($testIds)
+            || array_diff($features, $cohort['feature_names']) !== []) {
+            throw new RuntimeException('Demonstration project identifiers or prediction inputs are invalid.');
+        }
+        [$model, $transformer] = $this->buildServableRegressionModel($algorithm,
+            $candidate['selected_parameters'] ?? [], $training, $features);
+        $evaluation = $this->evaluateModel($model, $transformer, $test);
+        foreach (['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared'] as $metric) {
+            // Portable libsvm text can lose a few centavos after currency scaling.
+            $tolerance = $metric === 'mean_absolute_error' ? 0.50 : 0.01;
+            if (! isset($candidate['evaluation'][$metric])
+                || abs($evaluation[$metric] - $candidate['evaluation'][$metric]) > $tolerance) {
+                throw new RuntimeException('Published estimator does not reproduce its saved evaluation: '.$metric
+                    .' (published '.$evaluation[$metric].', evaluated '.($candidate['evaluation'][$metric] ?? 'unavailable').')');
+            }
+        }
+        $detection = $evaluation['latest_observation_per_project']['overrun_detection']['any_overrun'] ?? [];
+        if (($detection['classification_counts'] ?? null) !== ($candidate['evaluation']['latest_observation_per_project']['overrun_detection']['any_overrun']['classification_counts'] ?? null)) {
+            throw new RuntimeException('Portable estimator changed the evaluated project-level overrun decisions.');
+        }
+        $costPasses = $evaluation['mean_absolute_error'] <= 100000
+            && $evaluation['mean_absolute_percentage_error'] <= 5 && $evaluation['r_squared'] >= 0.9;
+        foreach (['classification_accuracy' => 90, 'precision' => 85, 'recall' => 90, 'f1_score' => 85, 'balanced_accuracy' => 85] as $metric => $minimum) {
+            if (! is_numeric($detection[$metric] ?? null) || $detection[$metric] < $minimum) {
+                throw new RuntimeException('Demonstration overrun target not met: '.$metric);
+            }
+        }
+        if (! $costPasses || ($detection['actual_overruns'] ?? 0) === 0 || ($detection['actual_non_overruns'] ?? 0) === 0) {
+            throw new RuntimeException('Demonstration cost targets and both outcome classes are required.');
+        }
+        $metadata = [
+            'schema_version' => self::MODEL_SCHEMA_VERSION, 'trained_at' => now()->toIso8601String(),
+            'model_type' => $algorithm, 'model_source' => 'sample_trained_model', 'uses_synthetic_data' => true,
+            'prediction_strategy' => 'progress_snapshot_model', 'prediction_target' => 'remaining_cost_then_add_recorded_spend',
+            'cohort_policy' => 'presentation_progress', 'evaluation_scope_label' => 'Demonstration evaluation',
+            'real_samples_available' => 0, 'sample_samples_available' => $records->count(),
+            'samples_trained' => $training->count(), 'training_samples_evaluated' => $training->count(),
+            'training_projects' => count($trainingIds), 'test_samples' => $test->count(),
+            'evaluation_training_project_ids' => $trainingIds, 'evaluation_holdout_project_ids' => $testIds,
+            'evaluation_method' => 'fixed_newest_20_percent_grouped_chronological_holdout',
+            'evaluation_protocol_version' => 5, 'evaluation' => $evaluation, 'transformer' => $transformer,
+            'feature_set' => ['selected_feature_names' => $features],
+            'feature_ranges' => $this->featureRanges($training, $features),
+            'sample_sufficiency' => $this->sampleSufficiency(count($trainingIds), true),
+            'feature_engineering_version' => ProjectCostFeatureBuilder::catalog()['formula_version'],
+            'cross_validation' => $candidate['cross_validation'] ?? null,
+            'budget_baseline_comparison' => $this->budgetBaselineComparison($test, $evaluation),
+            'model_comparison' => $report['model_comparison'], 'split_selection' => $report['split'],
+            'snapshot_readiness' => $cohort['snapshot_readiness'],
+            'presentation_publication' => [
+                'source_policy' => 'exclusively_simulated_presentation_portfolio',
+                'selection_policy' => 'Explicit demonstration candidate; parameters selected using training-only temporal validation.',
+                'company_validation' => false, 'test_projects_in_training' => false,
+                'evaluation_generated_at' => $report['generated_at'],
+            ],
+        ];
+        $stored = (new CostModelStore($this->modelPath, self::MODEL_SCHEMA_VERSION))->save($model, $metadata);
+        $this->model = $model;
+        $this->metadata = $stored;
+        $this->modelRecoverySource = 'active';
+
+        return ['published' => true, 'scope' => 'demonstration_only', 'metadata' => $stored];
+    }
+
     /** Identical held-out observations and spend floors for every approach. */
     protected function fairComparison(Collection $training, Collection $test, array $features, ?array $comparison = null): array
     {
@@ -2575,8 +2665,11 @@ class MLService
         $mae = $metrics['mean_absolute_error'] ?? null;
         $sufficiency = $this->metadata['sample_sufficiency'] ?? $this->sampleSufficiency(0);
 
+        $presentation = isset($this->metadata['presentation_publication']);
         $provenanceWarnings = match ($source) {
-            'sample_trained_model' => ['Company-inspired sample data is active. Reported metrics are sample evaluation only and are not validated company-performance accuracy.'],
+            'sample_trained_model' => $presentation
+                ? ['Demonstration evaluation; these results do not establish company operational accuracy.']
+                : ['Company-inspired sample data is active. Reported metrics are sample evaluation only and are not validated company-performance accuracy.'],
             'synthetic_fallback_model' => ['Synthetic fallback examples are active. No unseen-project evaluation metrics are reported.'],
             default => [],
         };
@@ -2590,7 +2683,7 @@ class MLService
                 'real_trained_model' => $estimatedHistoricalPurchases > 0
                     ? 'Model is trained on completed projects with estimated historical inventory costs'
                     : 'Model is trained on verified completed projects',
-                'sample_trained_model' => 'Model is trained on a company-inspired sample dataset',
+                'sample_trained_model' => $presentation ? 'Demonstration cost model is active' : 'Model is trained on a company-inspired sample dataset',
                 default => 'Synthetic fallback model is active',
             },
             'model_source' => $source,

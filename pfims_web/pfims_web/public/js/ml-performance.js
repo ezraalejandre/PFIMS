@@ -13,7 +13,9 @@
         const report = null;
         const evaluated = active;
         const metrics = active;
-        const detection = metrics.overrun_detection?.any_overrun;
+        const projectDetection = metrics.latest_observation_per_project?.overrun_detection?.any_overrun;
+        const useProjectDetection = metrics.overrun_detector_source !== 'independent_classifier' && !!projectDetection;
+        const detection = useProjectDetection ? projectDetection : metrics.overrun_detection?.any_overrun;
         const scores = detection || {};
         const algorithmNames = {
             least_squares_linear_regression: 'Linear regression',
@@ -34,11 +36,13 @@
         const observations = metrics?.evaluation_observations ?? (candidate ? null : active.test_samples);
         const projects = metrics?.evaluation_projects ?? (candidate ? report?.holdout_project_ids?.length : null);
         put('samplesCount', `${projects ?? 'Unknown'} test projects · ${observations ?? 'Unknown'} observations`);
-        put('performanceScope', candidate
+        put('performanceScope', active.evaluation_scope_label === 'Demonstration evaluation'
+            ? 'Demonstration evaluation. These results describe the presentation portfolio and do not establish company operational accuracy.'
+            : candidate
             ? 'Presentation dataset performance. Candidate evaluation only; these scores do not describe the active forecasting model.'
             : 'Saved evaluation of the active forecasting model. Current evaluation results may use a different set of completed projects and cannot be compared directly.');
-        const baseline = report?.budget_baseline_comparison;
-        const comparison = report?.model_comparison;
+        const baseline = active.budget_baseline_comparison;
+        const comparison = active.model_comparison;
         const passes = baseline?.model_outperforms_budget_baseline === true && comparison?.production_model_is_best_option === true;
         put('performanceStatus', candidate
             ? !report ? 'No saved evaluation. Use Refresh evaluation to evaluate current completed projects.'
@@ -48,12 +52,12 @@
             : `Active forecast approach: ${active.prediction_strategy === 'progress_snapshot_model' ? 'progress-based remaining cost' : active.prediction_strategy === 'planning_only_baseline' ? 'planning estimate from budget and duration' : 'unavailable'}.`);
         const counts = detection?.classification_counts;
         put('performanceCounts', counts
-            ? `${counts.tp} overruns detected · ${counts.fn} overruns missed · ${counts.fp} false alerts · ${counts.tn} within-budget outcomes correctly identified. ${detection.actual_overruns} actual overruns across ${detection.evaluated_observations} observations.`
+            ? `${counts.tp} overruns detected · ${counts.fn} overruns missed · ${counts.fp} false alerts · ${counts.tn} within-budget outcomes correctly identified. ${detection.actual_overruns} actual overruns across ${detection.evaluated_observations} ${useProjectDetection ? 'test projects, using the latest observation from each project' : 'observations'}.${useProjectDetection ? ` Across all progress stages, accuracy was ${percent(metrics.overrun_detection?.any_overrun?.classification_accuracy)}.` : ''}`
             : 'Detailed detection counts are unavailable for this saved evaluation. A zero recall means no actual overruns were detected; an unavailable score cannot be treated as zero.');
         const cv = candidate ? report?.cross_validation : active.cross_validation;
-        put('performanceValidation', cv ? `Training-only temporal cross-validation: average percentage error ${percent(cv.average_mean_absolute_percentage_error)}. Test results above use reserved projects.` : 'Training cross-validation is unavailable for this saved model.');
+        put('performanceValidation', cv ? `${active.training_projects ?? 'Unknown'} training projects · ${projects ?? 'Unknown'} reserved test projects. Training-only temporal cross-validation: average percentage error ${percent(cv.average_mean_absolute_percentage_error)}. Cost errors use ${observations ?? 'Unknown'} stage observations; overrun detection uses ${useProjectDetection ? 'one latest observation per test project' : 'the stated evaluation observations'}.` : 'Training cross-validation is unavailable for this saved model.');
         put('performanceComparison', baseline
-            ? `Active model cost error ${percent(evaluated?.mean_absolute_percentage_error)}; budget baseline error ${percent(baseline.baseline_evaluation?.mean_absolute_percentage_error)}. Activation requires at least a 2 percentage-point improvement and no lower-error comparison model. Activation comparison uses all held-out stage observations, using all held-out observations.`
+            ? `Active model cost error ${percent(evaluated?.mean_absolute_percentage_error)}; recorded-budget baseline error ${percent(baseline.baseline_evaluation?.mean_absolute_percentage_error)} on the same test observations.`
             : 'Baseline comparison is unavailable for this saved evaluation.');
         const features = candidate ? report?.evaluated_feature_names : active.feature_set?.selected_feature_names || active.feature_set?.feature_names;
         put('performanceFeatures', features?.length ? `Inputs evaluated (${features.length}): ${names(features)}.` : active.prediction_strategy === 'planning_only_baseline' && !candidate ? 'Active inputs: recorded budget and planned duration. Progress, burn rate, inventory usage, schedule, and transaction frequency are evaluated in the progress candidate.' : 'Evaluated input details are unavailable.');
