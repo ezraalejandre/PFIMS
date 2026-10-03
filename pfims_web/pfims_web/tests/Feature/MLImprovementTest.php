@@ -955,7 +955,7 @@ class MLImprovementTest extends TestCase
         $this->assertArrayHasKey('precision', $metrics);
         $this->assertArrayHasKey('recall', $metrics);
         $this->assertArrayHasKey('f1_score', $metrics);
-        $this->assertStringContainsString('5%', $metrics['classification_definition']);
+        $this->assertStringContainsString('any final cost above', $metrics['classification_definition']);
         $this->assertSame('experimental', $metrics['sample_sufficiency']['level']);
         $comparison = $service->analyzeBudgetVariance();
         // Budget-spending comparison mirrors every recorded Budgets row,

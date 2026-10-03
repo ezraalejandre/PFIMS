@@ -208,6 +208,7 @@ class MLController extends Controller
                 'budget_context' => $budgetContext,
                 'overrun_outcomes' => app(ProjectOverrunPolicy::class)->outcomes($prediction, $budgetContext),
                 'feature_indicators' => $this->ml->getLastFeatureIndicators(),
+                'budget_overrun_detector' => $this->ml->getLastDetectorPrediction(),
                 'forecast_calculation' => $this->ml->getLastForecastCalculation(),
                 'status' => $status,
                 'risk_level' => $riskLevel,

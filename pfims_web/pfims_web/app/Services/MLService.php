@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Services\ML\BudgetOverrunClassifier;
 use App\Services\ML\CostModelStore;
 use App\Services\ML\ModelActivationPolicy;
+use App\Services\ML\ModelPromotionService;
 use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\RidgeRegression;
 use Carbon\Carbon;
@@ -97,6 +98,8 @@ class MLService
     protected array $lastPredictionWarnings = [];
 
     protected array $lastEngineeredFeatures = [];
+
+    protected array $lastDetectorInputs = [];
 
     protected bool $lastPredictionWasConstrained = false;
 
@@ -447,6 +450,11 @@ class MLService
     /** Training metadata retains the provenance of presentation examples. */
     public function train(?string $cohortMode = null): bool
     {
+        // Routine retraining must not replace a served pair through the legacy path.
+        // Qualified replacements use ModelPromotionService's separate policy checks.
+        if ($this->restoreStoredModel()) {
+            return false;
+        }
         $cohortMode ??= $this->metadata['cohort_policy'] ?? 'auto';
         File::ensureDirectoryExists(dirname($this->modelPath));
         $lockHandle = fopen($this->modelPath.'.lock', 'c');
@@ -2074,6 +2082,8 @@ class MLService
         $this->lastEngineeredFeatures = app(ProjectCostFeatureBuilder::class)->build(array_replace($context,
             array_combine(self::FEATURE_NAMES, array_map('floatval', $features)),
             ['fin_total_expense' => $this->recordedSpend($features)]));
+        $this->lastDetectorInputs = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)),
+            $this->lastEngineeredFeatures['values']);
         $this->lastPredictionWarnings = $this->predictionWarnings($features);
         $this->lastPredictionWasConstrained = false;
         $this->lastForecastCalculation = [];
@@ -2224,6 +2234,27 @@ class MLService
     public function getLastFeatureIndicators(): array
     {
         return $this->lastEngineeredFeatures['indicators'] ?? [];
+    }
+
+    public function getLastDetectorPrediction(): ?array
+    {
+        $stored = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json');
+        if ($stored === null || $this->lastDetectorInputs === []) {
+            return null;
+        }
+        $metadata = $stored['metadata'];
+        foreach ($metadata['feature_names'] as $name) {
+            if (! array_key_exists($name, $this->lastDetectorInputs)) {
+                return null;
+            }
+        }
+        $known = app(ProjectOverrunPolicy::class)->classify($this->lastDetectorInputs['fin_total_expense'],
+            $this->lastDetectorInputs['budget'])['any_overrun'] === true;
+        $score = $stored['model']->score(array_map(fn ($name) => $this->lastDetectorInputs[$name], $metadata['feature_names']));
+
+        return ['any_overrun' => $known || $score >= $metadata['threshold'], 'confirmed_spend_overrun' => $known,
+            'score' => $score, 'threshold' => $metadata['threshold'],
+            'score_note' => 'Model score, not a calibrated probability.', 'recovery_source' => $stored['recovery_source']];
     }
 
     public function getLastForecastCalculation(): array
@@ -2498,6 +2529,10 @@ class MLService
         $evaluation = $this->metadata['evaluation'] ?? null;
         $source = $this->metadata['model_source'] ?? 'unknown';
         $metrics = is_array($evaluation) ? $evaluation : [];
+        $detector = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json');
+        if ($detector !== null) {
+            $metrics['overrun_detection']['any_overrun'] = $detector['metadata']['evaluation'];
+        }
         $mae = $metrics['mean_absolute_error'] ?? null;
         $sufficiency = $this->metadata['sample_sufficiency'] ?? $this->sampleSufficiency(0);
 
@@ -2539,6 +2574,7 @@ class MLService
             'recall' => $metrics['recall'] ?? null,
             'f1_score' => $metrics['f1_score'] ?? null,
             'overrun_detection' => $metrics['overrun_detection'] ?? null,
+            'overrun_detector_source' => $detector === null ? 'cost_estimate' : 'independent_classifier',
             'evaluation_observations' => $metrics['evaluation_observations'] ?? null,
             'latest_observation_per_project' => $metrics['latest_observation_per_project'] ?? null,
             'evaluation_scope_label' => $this->metadata['evaluation_scope_label'] ?? null,
@@ -2556,7 +2592,7 @@ class MLService
                 default => 'unavailable for synthetic fallback data',
             },
             'warnings' => $provenanceWarnings,
-            'classification_definition' => 'Precision, recall and F1 classify project-overrun risk when cost exceeds budget by more than 5%. Values are percentages and are unavailable when the holdout has no applicable positive cases.',
+            'classification_definition' => 'Budget-overrun detection evaluates any final cost above the recorded budget. Values are percentages; precision, recall and F1 require applicable positive cases.',
             'overrun_definitions' => [
                 'budget_basis' => ($this->metadata['prediction_strategy'] ?? null) === 'progress_snapshot_model' ? 'budget_recorded_at_snapshot' : 'latest_recorded_budget',
                 'any_overrun' => 'Final cost exceeds the recorded budget used for evaluation.',

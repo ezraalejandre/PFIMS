@@ -8,6 +8,26 @@ use RuntimeException;
 /** Deterministic L2 logistic classifier, balanced by project and outcome class. */
 class BudgetOverrunClassifier
 {
+    public static function fromModelData(array $data): self
+    {
+        if (($data['algorithm'] ?? null) !== 'project_balanced_logistic_regression'
+            || empty($data['ranges']) || count($data['coefficients'] ?? []) !== count($data['ranges']) + 1) {
+            throw new InvalidArgumentException('Invalid stored detector dimensions or algorithm.');
+        }
+        $model = new self;
+        $model->validateFeatures($data['coefficients']);
+        foreach ($data['ranges'] as $range) {
+            $model->validateFeatures([$range['min'] ?? null, $range['max'] ?? null]);
+            if ($range['min'] > $range['max']) {
+                throw new InvalidArgumentException('Invalid detector feature range.');
+            }
+        }
+        $model->ranges = $data['ranges'];
+        $model->coefficients = $data['coefficients'];
+
+        return $model;
+    }
+
     private array $ranges = [];
 
     private array $coefficients = [];
