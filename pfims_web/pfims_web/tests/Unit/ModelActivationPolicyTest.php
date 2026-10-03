@@ -7,6 +7,16 @@ use PHPUnit\Framework\TestCase;
 
 class ModelActivationPolicyTest extends TestCase
 {
+    public function test_agreed_mae_ceiling_cannot_be_relaxed_by_candidate_evidence(): void
+    {
+        $policy = new ModelActivationPolicy;
+        $metrics = ['mean_absolute_percentage_error' => 5, 'r_squared' => 0.9, 'mean_absolute_error' => 100000];
+        $evidence = $this->evidence() + ['budget_baseline_mape' => 10, 'active_model_evaluation' => $metrics];
+        $this->assertTrue($policy->assessCost($metrics, $evidence)['eligible']);
+        $this->assertFalse($policy->assessCost(array_replace($metrics, ['mean_absolute_error' => 100000.01]),
+            $evidence + ['mae_tolerance' => 1000000])['checks']['agreed_mae_tolerance']);
+    }
+
     private function evidence(): array
     {
         return ['verified_genuine_source_records' => true, 'fresh_independent_holdout' => true,

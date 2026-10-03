@@ -15,6 +15,28 @@ use Tests\TestCase;
 
 class CostModelStoreTest extends TestCase
 {
+    public function test_saved_final_cost_comparison_does_not_add_spending_twice_for_snapshot_observations(): void
+    {
+        $model = new LeastSquares;
+        $model->train([[0], [1], [2]], [200, 200, 200]);
+        $metadata = ['prediction_target' => 'final_cost', 'evaluation_training_project_ids' => [7],
+            'transformer' => ['feature_names' => ['budget'], 'selected_feature_indexes' => [0],
+                'ranges' => [['min' => 0, 'max' => 1000]]]];
+        $store = new CostModelStore($this->path, 10);
+        $store->save($model, $metadata);
+        $service = new MLService($this->path, loadModel: false);
+        $test = collect([(object) ['project_id' => 7, 'snapshot_id' => 1, 'budget' => 300,
+            'actual_cost' => 100, 'fin_total_expense' => 50, 'captured_at' => '2025-01-01']]);
+        $method = new ReflectionMethod($service, 'evaluateSavedActiveEstimator');
+        $first = $method->invoke($service, $test);
+        $this->assertSame('evaluated', $first['status']);
+        $this->assertSame(50.0, $first['evaluation']['mean_absolute_error']);
+        $this->assertSame([7], $first['known_previously_used_project_ids']);
+        $store->save($model, array_replace($metadata, ['prediction_target' => 'remaining_cost_then_add_recorded_spend']));
+        $second = $method->invoke($service, $test);
+        $this->assertSame(100.0, $second['evaluation']['mean_absolute_error']);
+    }
+
     private string $path;
 
     protected function setUp(): void

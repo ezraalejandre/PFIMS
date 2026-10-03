@@ -5,14 +5,16 @@ namespace App\Services\ML;
 /** Separate promotion requirements; evaluating this policy never writes model artifacts. */
 class ModelActivationPolicy
 {
+    public const AGREED_MAE_MAXIMUM = 100000.0;
+
     public function assessCost(array $metrics, array $evidence = []): array
     {
         $checks = $this->evidenceChecks($evidence);
         $checks['mape_at_most_10_percent'] = $this->atMost($metrics['mean_absolute_percentage_error'] ?? null, 10);
         $checks['r_squared_at_least_0_8'] = $this->atLeast($metrics['r_squared'] ?? null, 0.8);
-        $checks['agreed_mae_tolerance'] = $this->finite($evidence['mae_tolerance'] ?? null)
-            && $evidence['mae_tolerance'] > 0
-            && $this->atMost($metrics['mean_absolute_error'] ?? null, $evidence['mae_tolerance']);
+        $tolerance = array_key_exists('mae_tolerance', $evidence) ? $evidence['mae_tolerance'] : self::AGREED_MAE_MAXIMUM;
+        $checks['agreed_mae_tolerance'] = $this->finite($tolerance) && $tolerance > 0
+            && $this->atMost($metrics['mean_absolute_error'] ?? null, min((float) $tolerance, self::AGREED_MAE_MAXIMUM));
         $baseline = $evidence['budget_baseline_mape'] ?? null;
         $checks['budget_baseline_improvement_at_least_2_points'] = $this->finite($baseline)
             && $this->finite($metrics['mean_absolute_percentage_error'] ?? null)
@@ -26,7 +28,8 @@ class ModelActivationPolicy
         return $this->result('cost_regression', $checks, [
             'minimum' => ['mape_max' => 10, 'r_squared_min' => 0.8, 'baseline_mape_improvement_points' => 2],
             'ideal' => ['mape_max' => 5, 'r_squared_min' => 0.9],
-            'mae' => 'Requires an explicitly agreed currency tolerance; no universal peso threshold is assumed.',
+            'mae_maximum_pesos' => self::AGREED_MAE_MAXIMUM,
+            'mae' => 'Project requirement: MAE at most PHP 100,000; a stricter supplied tolerance is honored.',
         ]);
     }
 

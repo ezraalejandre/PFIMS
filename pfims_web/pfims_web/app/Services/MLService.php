@@ -206,6 +206,7 @@ class MLService
     {
         $comparison ??= $this->compareTunedRegressionModels($training, $test, $features);
         $models = $comparison['models'];
+        $models['saved_active_estimator'] = $this->evaluateSavedActiveEstimator($test);
         $planningTraining = $training->map(function ($row) {
             $copy = clone $row;
             if (isset($copy->snapshot_id)) {
@@ -252,6 +253,44 @@ class MLService
             'holdout_status' => $seen === [] ? 'not_found_in_saved_reports' : 'previously_evaluated',
             'activation_evidence' => false,
             'note' => 'Diagnostic comparison only. A new independent holdout is required after development; absence from saved reports does not prove a project was never inspected.'];
+    }
+
+    /** Score the saved estimator on identical observations without refitting it. */
+    protected function evaluateSavedActiveEstimator(Collection $test): array
+    {
+        try {
+            $pair = (new CostModelStore($this->modelPath, self::MODEL_SCHEMA_VERSION))->load();
+            if ($pair === null) {
+                throw new RuntimeException('Saved active estimator is unavailable.');
+            }
+            $transformer = $pair['metadata']['transformer'];
+            $remainingTarget = ($pair['metadata']['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend';
+            $predictions = $actuals = $budgets = [];
+            foreach ($test as $row) {
+                $vector = $this->transformFeatureVector($this->rowToFeatures($row, $transformer['feature_names']),
+                    $transformer['selected_feature_indexes'], $transformer['ranges']);
+                $estimate = (float) $pair['model']->predict($vector);
+                if (isset($transformer['target_normalization'])) {
+                    $estimate = $estimate * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
+                }
+                if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
+                    $estimate *= (float) $row->budget;
+                }
+                $spent = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
+                $predictions[] = app(ProjectCostForecastCalculator::class)->calculate($estimate, $spent, $remainingTarget)['final_cost'];
+                $actuals[] = (float) $row->actual_cost + $spent;
+                $budgets[] = (float) $row->budget;
+            }
+            $seen = array_unique([...($pair['metadata']['evaluation_training_project_ids'] ?? []),
+                ...($pair['metadata']['evaluation_holdout_project_ids'] ?? [])]);
+
+            return ['status' => 'evaluated', 'model_type' => $pair['metadata']['model_type'],
+                'evaluation' => $this->calculateMetrics($predictions, $actuals, $budgets, $test),
+                'known_previously_used_project_ids' => array_values(array_intersect($test->pluck('project_id')->unique()->all(), $seen)),
+                'note' => 'Saved estimator scored without refitting. Historical exposure is disclosed; this comparison alone does not establish an independent holdout.'];
+        } catch (Throwable $exception) {
+            return ['status' => 'unavailable', 'evaluation' => null, 'message' => $exception->getMessage()];
+        }
     }
 
     /** Independent detector evaluation; no active classifier or cost artifact is written. */
