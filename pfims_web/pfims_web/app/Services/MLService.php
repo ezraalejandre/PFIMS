@@ -185,7 +185,61 @@ class MLService
             'evaluated_feature_names' => $split['selected']['feature_names'],
             'model_comparison' => $this->compareRegressionModels($split['training_data'], $split['test_data'], $split['selected']['feature_names']),
             'stage_baselines' => $this->stageBaselines($split['test_data']),
+            'fair_comparison' => $this->fairComparison($split['training_data'], $split['test_data'], $split['selected']['feature_names']),
         ];
+    }
+
+    /** Identical held-out observations and spend floors for every approach. */
+    protected function fairComparison(Collection $training, Collection $test, array $features): array
+    {
+        $comparison = $this->compareRegressionModels($training, $test, $features);
+        $models = $comparison['models'];
+        $planningTraining = $training->map(function ($row) {
+            $copy = clone $row;
+            if (isset($copy->snapshot_id)) {
+                $copy->actual_cost += (float) ($copy->fin_total_expense ?? 0);
+                unset($copy->snapshot_id);
+            }
+
+            return $copy;
+        })->unique('project_id')->values();
+        try {
+            [$planning, $transformer] = $this->buildLeastSquaresModel($planningTraining, self::PLANNING_FEATURE_NAMES);
+            $predictions = $actuals = $budgets = [];
+            foreach ($test as $row) {
+                $estimate = (float) $planning->predict($this->transformFeatureVector(
+                    $this->rowToFeatures($row, self::PLANNING_FEATURE_NAMES),
+                    $transformer['selected_feature_indexes'], $transformer['ranges']
+                ));
+                $spent = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0;
+                $predictions[] = app(ProjectCostForecastCalculator::class)->calculate($estimate, $spent, false)['final_cost'];
+                $actuals[] = (float) $row->actual_cost + $spent;
+                $budgets[] = (float) $row->budget;
+            }
+            $models['refitted_planning'] = ['status' => 'evaluated',
+                'note' => 'Refitted only on the same training projects; not the saved active estimator.',
+                'evaluation' => $this->calculateMetrics($predictions, $actuals, $budgets, $test)];
+        } catch (Throwable $exception) {
+            $models['refitted_planning'] = ['status' => 'unavailable', 'evaluation' => null, 'message' => $exception->getMessage()];
+        }
+        $baseline = $this->budgetBaselineComparison($test, $comparison['models']['least_squares_linear_regression']['evaluation']);
+        $models['recorded_budget'] = ['status' => 'evaluated', 'evaluation' => $baseline['baseline_evaluation']];
+        foreach ($this->stageBaselines($test) ?? [] as $name => $result) {
+            $models[$name] = ['status' => 'evaluated'] + $result;
+        }
+        $ids = $test->pluck('project_id')->unique()->values()->all();
+        $previousIds = collect($this->getCandidateEvaluationReports()['reports'] ?? [])
+            ->flatMap(fn ($report) => $report['holdout_project_ids'] ?? [])->unique();
+        $seen = collect($ids)->intersect($previousIds)->values()->all();
+
+        return ['models' => $models, 'training_project_ids' => $training->pluck('project_id')->unique()->values()->all(),
+            'holdout_project_ids' => $ids, 'evaluated_observations' => $test->count(),
+            'primary_overrun_definition' => 'any_overrun',
+            'comparison_policy' => 'Same held-out projects, stage observations, actual costs, budgets, and recorded-spend floors.',
+            'previously_evaluated_holdout_project_ids' => $seen,
+            'holdout_status' => $seen === [] ? 'not_found_in_saved_reports' : 'previously_evaluated',
+            'activation_evidence' => false,
+            'note' => 'Diagnostic comparison only. A new independent holdout is required after development; absence from saved reports does not prove a project was never inspected.'];
     }
 
     /** Persist evaluation evidence independently of the active estimator. */
