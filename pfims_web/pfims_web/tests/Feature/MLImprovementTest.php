@@ -30,6 +30,18 @@ class MLImprovementTest extends TestCase
 {
     protected string $modelPath;
 
+    public function test_training_readiness_audit_does_not_create_training_evidence_or_change_records(): void
+    {
+        $before = DB::table('project_tbl')->get()->toJson();
+        $report = app(ProjectCostDataQualityService::class)->trainingReadiness();
+        $this->assertTrue($report['read_only']);
+        $this->assertFalse($report['database_changed']);
+        $this->assertFalse($report['model_changed']);
+        $this->assertFalse($report['independent_holdout_reserved']);
+        $this->assertSame(0, $report['operational_not_in_saved_evaluations']['projects']);
+        $this->assertSame($before, DB::table('project_tbl')->get()->toJson());
+    }
+
     protected function presentationSchema(): void
     {
         Schema::table('project_tbl', function (Blueprint $table) {

@@ -190,4 +190,36 @@ class ProjectCostDataQualityService
             'exclusion_reason_counts' => $reasons, 'projects' => $projects,
         ];
     }
+
+    /** Preparation evidence only; never manufactures outcomes or changes eligibility. */
+    public function trainingReadiness(): array
+    {
+        $audit = $this->report();
+        $reports = (new MLService(loadModel: false))->getCandidateEvaluationReports()['reports'] ?? [];
+        // Include both partitions: training projects are also no longer untouched evidence.
+        $seen = collect($reports)->flatMap(fn ($report) => [
+            ...($report['training_project_ids'] ?? []), ...($report['holdout_project_ids'] ?? []),
+        ])->unique()->all();
+        $eligible = collect($audit['projects'])->where('eligible', true);
+        $sources = DB::table('project_tbl')->pluck('data_source', 'project_id')->all();
+        $operational = $eligible->filter(fn ($project) => ($sources[$project['project_id']] ?? 'operational') === 'operational');
+        $unseen = $operational->reject(fn ($project) => in_array($project['project_id'], $seen));
+        $outcomes = static fn ($projects) => [
+            'projects' => $projects->count(),
+            'any_overrun' => $projects->filter(fn ($p) => $p['overrun_outcomes']['current_budget']['any_overrun'] === true)->count(),
+            'within_budget' => $projects->filter(fn ($p) => $p['overrun_outcomes']['current_budget']['any_overrun'] === false)->count(),
+        ];
+
+        return ['read_only' => true, 'database_changed' => false, 'model_changed' => false,
+            'eligible_completed' => $outcomes($eligible), 'operational_completed' => $outcomes($operational),
+            'operational_not_in_saved_evaluations' => $outcomes($unseen),
+            'candidate_project_ids_for_independent_review' => $unseen->pluck('project_id')->values()->all(),
+            'excluded_projects' => $audit['excluded_project_count'], 'exclusion_reason_counts' => $audit['exclusion_reason_counts'],
+            'snapshot_readiness' => (new MLService(loadModel: false))->getSnapshotReadiness(),
+            'independent_holdout_reserved' => false,
+            'note' => 'Absence from saved evaluations does not prove independence. Verify source records and prior use before reserving newly completed operational projects. Presentation records cannot establish operational performance.',
+            'collection_requirements' => ['Reconciled completed costs and both outcome classes.',
+                'Genuine earlier stage snapshots, with at least 10 distinct finalized projects in each stage.',
+                'New test projects excluded from all model development and tuning.']];
+    }
 }

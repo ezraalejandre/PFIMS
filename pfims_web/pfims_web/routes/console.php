@@ -53,6 +53,12 @@ Artisan::command('ml:audit-snapshots', function () {
     return 0;
 })->purpose('Report progress-stage coverage and the completed-project observations still needed');
 
+Artisan::command('ml:training-readiness', function (ProjectCostDataQualityService $quality) {
+    $this->line(json_encode($quality->trainingReadiness(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Audit genuine training outcomes and independent-test candidates without changing records or training');
+
 Artisan::command('ml:retrain {--scheduled : Mark this run as scheduler-triggered} {--cohort= : Explicit training cohort policy}', function (MLService $ml) {
     $result = $ml->retrain($this->option('cohort') ?: null);
     $this->info($result['message']);
