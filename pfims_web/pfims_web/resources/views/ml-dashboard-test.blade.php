@@ -1110,7 +1110,7 @@
                     </section>
                     <section class="metric-section" aria-labelledby="overrunDetectionTitle">
                         <h3 class="metric-section-title" id="overrunDetectionTitle">Budget overrun detection</h3>
-                        <p class="analytics-panel-description">An overrun means final cost is more than 5% above the recorded budget.</p>
+                        <p class="analytics-panel-description">An overrun means final cost exceeds the recorded budget by any amount.</p>
                         <div class="model-status-grid">
                             <div class="metric-item"><span class="metric-label">Precision · alerts that were correct</span><span class="metric-value" id="metricPrecision">—</span></div>
                             <div class="metric-item"><span class="metric-label">Recall · actual overruns detected</span><span class="metric-value" id="metricRecall">—</span></div>
@@ -1118,7 +1118,7 @@
                             <div class="metric-item"><span class="metric-label">Accuracy · all outcomes classified correctly</span><span class="metric-value" id="metricOverrunAccuracy">—</span></div>
                         </div>
                         <p id="performanceCounts"></p>
-                        <p class="analytics-panel-description">Accuracy is the percentage of overrun and within-budget outcomes classified correctly. Read it alongside recall: high accuracy can still hide missed overruns when most outcomes are within budget. Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Exactly 5% is excluded from the “more than 5%” definition. Budget means the recorded budget used for evaluation.</p>
+                        <p class="analytics-panel-description">Accuracy is the percentage of overrun and within-budget outcomes classified correctly. Read it alongside recall: high accuracy can still hide missed overruns when most outcomes are within budget. Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Costs equal to budget are not overruns. Budget means the recorded budget used for evaluation.</p>
                     </section>
                     <section class="metric-section"><h3 class="metric-section-title">Evaluation details and prediction inputs</h3>
                         <p id="performanceValidation"></p><p id="performanceComparison"></p><p id="performanceFeatures"></p><p id="performanceUpdated"></p>
