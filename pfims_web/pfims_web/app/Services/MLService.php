@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Services\ML\BudgetOverrunClassifier;
 use App\Services\ML\CostModelStore;
+use App\Services\ML\ModelActivationPolicy;
 use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\RidgeRegression;
 use Carbon\Carbon;
@@ -164,7 +165,7 @@ class MLService
 
         $comparison = $this->compareTunedRegressionModels($split['training_data'], $split['test_data'], $split['selected']['feature_names']);
 
-        return $report + [
+        $result = $report + [
             'status' => 'evaluated',
             'evaluation' => $split['selected']['evaluation'],
             'split' => $split['summary'],
@@ -181,6 +182,20 @@ class MLService
             'stage_baselines' => $this->stageBaselines($split['test_data']),
             'fair_comparison' => $this->fairComparison($split['training_data'], $split['test_data'], $split['selected']['feature_names'], $comparison),
         ];
+        $policy = app(ModelActivationPolicy::class);
+        $evidence = ['training_project_ids' => $result['training_project_ids'],
+            'holdout_project_ids' => $result['holdout_project_ids'], 'training_only_tuning' => true];
+        // Diagnostic cohorts have been inspected during development. Source labels alone
+        // cannot establish genuineness, and older active metrics are not same-holdout evidence.
+        $result['activation_checks'] = ['scope' => 'read_only_policy_assessment', 'cost_models' => []];
+        foreach ($comparison['models'] as $name => $candidate) {
+            $result['activation_checks']['cost_models'][$name] = $policy->assessCost($candidate['evaluation'] ?? [], $evidence);
+        }
+        $detectorMetrics = $result['overrun_classifier']['evaluation']['latest_observation_per_project'] ?? [];
+        $result['activation_checks']['overrun_detector'] = $policy->assessDetector($detectorMetrics,
+            $evidence + ['project_level_primary_evaluation' => true]);
+
+        return $result;
     }
 
     /** Identical held-out observations and spend floors for every approach. */
