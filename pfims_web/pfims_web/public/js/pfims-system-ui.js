@@ -550,6 +550,7 @@
         function statusTone(value) {
             if (!isStatusSelect) return '';
             var normalized = String(value || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+            if (normalized === 'pending' && select.closest('.projects-page')) return 'project-pending';
             if (['ongoing', 'on track', 'in stock', 'sufficient', 'healthy', 'active', 'released', 'settled'].includes(normalized)) return 'success';
             if (['pending', 'at risk', 'near limit', 'low stock', 'reorder needed', 'missing amount', 'no project'].includes(normalized)) return 'warning';
             if (['delayed', 'over budget', 'out of stock', 'forfeited', 'missing amount and project'].includes(normalized)) return 'danger';

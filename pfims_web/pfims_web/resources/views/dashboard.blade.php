@@ -123,7 +123,7 @@
             <ul>
                 <li>
                     <a href="{{ url($links['settings']) }}">
-                        <img src="{{ asset('images/settings.jpg') }}" alt="" class="nav-icon" aria-hidden="true">
+                        <img src="{{ asset('images/settings.png') }}" alt="" class="nav-icon" aria-hidden="true">
                         Settings
                     </a>
                 </li>
@@ -131,7 +131,7 @@
                     <form action="{{ url('/logout') }}" method="POST">
                         @csrf
                         <button type="submit">
-                            <img src="{{ asset('images/logout.jpg') }}" alt="" class="nav-icon" aria-hidden="true">
+                            <img src="{{ asset('images/logout.png') }}" alt="" class="nav-icon" aria-hidden="true">
                             Log out
                         </button>
                     </form>
@@ -354,14 +354,18 @@
                 ));
             }
 
+            const dashboardActionLinks = @json(['projects' => isset($links['projects']) ? url($links['projects']) : null, 'inventory' => isset($links['inventory']) ? url($links['inventory']) : null]);
+
             function renderDashboard() {
                 const kpis = document.getElementById('kpis');
                 if (kpis) kpis.innerHTML = state.data.stat_cards.map(card => `
-                    <article class="kpi-card">
+                    <article class="kpi-card" data-priority="${escapeHtml(card.badge_type || 'neutral')}">
                         <span>${escapeHtml(card.label)}</span>
                         <strong>${escapeHtml(card.value)}</strong>
                         <small>${escapeHtml(card.subtitle)}</small>
                         ${card.badge ? `<b class="${escapeHtml(card.badge_type)}">${escapeHtml(card.badge)}</b>` : ''}
+                        ${card.action ? `<p class="kpi-decision">${escapeHtml(card.action)}</p>` : ''}
+                        ${dashboardActionLinks[card.action_module] ? `<a class="kpi-action-link" href="${escapeHtml(dashboardActionLinks[card.action_module])}">${escapeHtml(card.action_label)} →</a>` : ''}
                     </article>
                 `).join('');
 

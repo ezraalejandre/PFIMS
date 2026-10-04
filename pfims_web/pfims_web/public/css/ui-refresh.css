@@ -209,6 +209,8 @@ a[data-icon-label]:hover .button-label, a[data-icon-label]:focus-visible .button
 .pfims-select-option[data-status-tone="success"] { color: #2e7d32 !important; }
 .pfims-select-trigger[data-status-tone="warning"],
 .pfims-select-option[data-status-tone="warning"] { color: #e65100 !important; }
+.pfims-select-trigger[data-status-tone="project-pending"],
+.pfims-select-option[data-status-tone="project-pending"] { color: #64748b !important; }
 .pfims-select-trigger[data-status-tone="danger"],
 .pfims-select-option[data-status-tone="danger"] { color: #d32f2f !important; }
 .pfims-select-trigger[data-status-tone="complete"],
@@ -218,6 +220,8 @@ html[data-theme="dark"] .pfims-select-trigger[data-status-tone="success"],
 html[data-theme="dark"] .pfims-select-option[data-status-tone="success"] { color: #8bd8a8 !important; }
 html[data-theme="dark"] .pfims-select-trigger[data-status-tone="warning"],
 html[data-theme="dark"] .pfims-select-option[data-status-tone="warning"] { color: #ffc17a !important; }
+html[data-theme="dark"] .pfims-select-trigger[data-status-tone="project-pending"],
+html[data-theme="dark"] .pfims-select-option[data-status-tone="project-pending"] { color: #b0bfd2 !important; }
 html[data-theme="dark"] .pfims-select-trigger[data-status-tone="danger"],
 html[data-theme="dark"] .pfims-select-option[data-status-tone="danger"] { color: #ff9b9b !important; }
 html[data-theme="dark"] .pfims-select-trigger[data-status-tone="complete"],
@@ -3146,7 +3150,8 @@ html[data-theme="dark"] .projects-page :where(.phase-badge, .status-badge) {
 html[data-theme="dark"] .projects-page .status-badge.on-track { color: #2e7d32 !important; }
 html[data-theme="dark"] .projects-page .status-badge.at-risk { color: #e65100 !important; }
 html[data-theme="dark"] .projects-page .status-badge.delayed { color: #d32f2f !important; }
-html[data-theme="dark"] .projects-page .status-badge.completed { color: #5c6bc0 !important; }
+html[data-theme="dark"] .projects-page .status-badge.completed { color: #b9c4ff !important; }
+html[data-theme="dark"] .projects-page .status-badge.completed .dot { background: #b9c4ff !important; }
 
 html[data-theme="dark"] .projects-page #updateModal .project-details-grid {
     background: var(--ui-surface-raised) !important;
@@ -3263,6 +3268,13 @@ html[data-theme="dark"] .projects-page .btn-clear-search:hover {
 .projects-page .status-badge.on-track .dot { background: #2e7d32 !important; }
 .projects-page .status-badge.at-risk { color: #e65100 !important; }
 .projects-page .status-badge.at-risk .dot { background: #e65100 !important; }
+.projects-page .status-badge.pending { color: #64748b !important; }
+.projects-page .status-badge.pending .dot { background: #64748b !important; }
+.projects-page .status-badge.completed { color: #3949ab !important; }
+.projects-page .status-badge.completed .dot { background: #3949ab !important; }
+html[data-theme="dark"] .projects-page .status-badge.pending { color: #b0bfd2 !important; }
+html[data-theme="dark"] .projects-page .status-badge.pending .dot { background: #b0bfd2 !important; }
+.projects-page .progress-cell .mini-bar .fill { background: var(--ui-accent) !important; }
 .projects-page .status-badge.delayed { color: #d32f2f !important; }
 .projects-page .status-badge.delayed .dot { background: #d32f2f !important; }
 
@@ -5347,6 +5359,26 @@ html[data-theme="dark"] :where(
     color: #edf2f7 !important;
 }
 
+/* Settings Add actions use the shared orange accent. */
+body .btn-add-user {
+    background: linear-gradient(135deg, var(--ui-accent), var(--ui-accent-dark)) !important;
+    color: #fff !important;
+    border-color: var(--ui-accent) !important;
+    box-shadow: 0 6px 14px rgba(240, 138, 26, 0.18) !important;
+}
+
+html[data-theme="dark"] body.inventory-page :is(.btn-add-item, .btn-add-transaction),
+html[data-theme="dark"] body.suppliers-page .btn-add-supplier {
+    background: #f8fafc !important;
+    color: #111827 !important;
+    border-color: #f8fafc !important;
+}
+
+html[data-theme="dark"] body.inventory-page :is(.btn-add-item, .btn-add-transaction):hover,
+html[data-theme="dark"] body.suppliers-page .btn-add-supplier:hover {
+    background: #e2e8f0 !important;
+}
+
 /* Final responsive drawer contract. This block intentionally comes after
    every legacy responsive rule so the mobile drawer cannot be converted back
    into the old horizontal sidebar by an earlier max-width cascade. */
@@ -5794,3 +5826,43 @@ html[data-theme="dark"] :where(
 .reports-page[data-report-dataset="contracts"] .live-data-panel :is(th,td):nth-child(6),
 .reports-page[data-report-dataset="contracts"] .live-data-panel :is(th,td):nth-child(9) { border-right: 2px solid var(--ui-border-strong) !important; }
 .reports-page[data-report-dataset="contracts"] .live-data-panel .table-wrap::before { left: var(--pfims-docked-column-width, 0px); }
+
+/* Dashboard KPIs pair measured values with an explicit next step. */
+body.dashboard-page .kpi-card { display: flex; flex-direction: column; align-items: flex-start; }
+body.dashboard-page .kpi-card .kpi-decision { margin: 12px 0; font-size: .82rem; line-height: 1.6; color: var(--ui-text); }
+body.dashboard-page .kpi-card .kpi-action-link { margin-top: auto; padding-top: 8px; color: var(--ui-accent-dark); font-size: .82rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+body.dashboard-page .kpi-card[data-priority]::before { background: linear-gradient(90deg, var(--ui-accent), #f4bd62) !important; }
+body.dashboard-page .kpi-card[data-priority] b { background: var(--ui-accent-soft) !important; color: #b45309 !important; padding: 5px 10px; border-radius: 8px; font-size: .75rem; }
+html[data-theme="dark"] body.dashboard-page .kpi-card[data-priority] b { background: #483116 !important; color: #ffc17a !important; }
+html[data-theme="dark"] body.dashboard-page .kpi-card .kpi-action-link { color: #ffc17a; }
+
+/* Phone tables keep a compact, readable identifier pinned during scrolling. */
+@media (max-width: 768px) {
+    body:is(.dashboard-page, .projects-page, .inventory-page, .reports-page, .audit-logs-page)
+    .main-content :is(.table-wrapper, .table-wrap, .items-table-wrapper, .table-container)
+    > table:not(.report-preview table) > :is(thead, tbody, tfoot) > tr > :is(th, td):first-child:not([colspan]) {
+        box-sizing: border-box;
+        width: 136px !important;
+        min-width: 136px !important;
+        max-width: 136px !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        text-overflow: clip;
+        line-height: 1.45;
+        position: sticky;
+        left: 0;
+    }
+
+    body:is(.dashboard-page, .projects-page, .inventory-page, .reports-page, .audit-logs-page)
+    .main-content :is(.table-wrapper, .table-wrap, .items-table-wrapper, .table-container)
+    > table:not(.report-preview table) > :is(thead, tbody, tfoot) > tr > :is(th, td):first-child:not([colspan]) :is(a, strong, span, small, div) {
+        max-width: 112px !important;
+        min-width: 0 !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+    }
+}

@@ -66,7 +66,7 @@
         <ul>
             <li>
                 <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                    <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                    <img src="{{ asset('images/settings.png') }}" alt="Settings" class="nav-icon">
                     Settings
                 </a>
             </li>
@@ -74,7 +74,7 @@
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
-                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            <img src="{{ asset('images/logout.png') }}" alt="Log Out" class="nav-icon">
                             Log out
                         </button>
                     </form>

@@ -2,6 +2,11 @@
     $fragment = $fragment ?? false;
     $portal = $portal ?? 'admin';
     $analyticsSection = request()->query('section', 'predictive');
+    $browserTitle = match ($analyticsSection) {
+        'material-projection' => 'Material Projection',
+        'budget-comparison' => 'Budget Comparison',
+        default => 'Project Cost Prediction',
+    };
     $parentModule = match ($analyticsSection) {
         'budget-comparison' => 'finance',
         'material-projection' => 'inventory',
@@ -25,7 +30,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>ML Dashboard - Test Preview</title>
+    <title>{{ $browserTitle }} - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/'.$moduleStylesheet) }}">
     <style>
         * {
@@ -1014,12 +1019,12 @@
         </nav>
         <div class="bottom-nav">
             <ul>
-                <li><a href="{{ url('/settings') }}"><img src="{{ asset('images/settings.jpg') }}" alt="" class="nav-icon">Settings</a></li>
+                <li><a href="{{ url('/settings') }}"><img src="{{ asset('images/settings.png') }}" alt="" class="nav-icon">Settings</a></li>
                 <li class="logout">
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
-                            <img src="{{ asset('images/logout.jpg') }}" alt="" class="nav-icon">Log out
+                            <img src="{{ asset('images/logout.png') }}" alt="" class="nav-icon">Log out
                         </button>
                     </form>
                 </li>

@@ -62,8 +62,11 @@ class DashboardController extends Controller
             ? (int) ($stockGroups[$selectedStockStatus] ?? 0)
             : (int) (($stockGroups['Low stock'] ?? 0) + ($stockGroups['Out of stock'] ?? 0));
         $averageCompletion = round((float) ($allProjects->avg('completion_percentage') ?? 0), 1);
+        $atRiskCount = $activeProjects->where('status', 'At Risk')->count();
+        $stockNeedsAction = $inventoryCount > 0 && $selectedStockStatus !== 'In stock';
+        $stockIsUrgent = $stockNeedsAction && ($stockGroups['Out of stock'] ?? 0) > 0 && $selectedStockStatus !== 'Low stock';
 
-        return [
+        $cards = [
             ['label' => 'Matching Projects', 'value' => (string) $allProjects->count(), 'subtitle' => $activeProjects->count().' active', 'badge' => $delayedCount.' delayed', 'badge_type' => $delayedCount ? 'warning' : 'positive'],
             ['label' => 'Average Completion', 'value' => $averageCompletion.'%', 'subtitle' => 'Across matching projects', 'badge' => null, 'badge_type' => 'positive'],
             [
@@ -74,6 +77,28 @@ class DashboardController extends Controller
                 'badge_type' => $inventoryCount && $selectedStockStatus !== 'In stock' ? 'warning' : 'positive',
             ],
         ];
+        $cards[0]['subtitle'] .= ' · '.$delayedCount.' delayed · '.$atRiskCount.' marked at risk';
+        $cards[0]['badge'] = $delayedCount ? 'Prioritize delays' : ($atRiskCount ? 'Review risks' : 'Monitor schedules');
+        $cards[0]['badge_type'] = $delayedCount || $atRiskCount ? 'warning' : 'positive';
+        $cards[0]['action'] = $delayedCount ? 'Review overdue work with project managers. Confirm blockers and agree on a recovery schedule.'
+            : ($atRiskCount ? 'Review at-risk projects and confirm materials, staffing, and upcoming deadlines.'
+                : ($allProjects->isEmpty() ? 'No matching projects. Clear filters to review the portfolio.' : 'No delays or at-risk statuses in this selection. Check upcoming deadlines during the next review.'));
+        $cards[0]['action_module'] = 'projects';
+        $cards[0]['action_label'] = 'Review project records';
+        $cards[1]['badge'] = $allProjects->isEmpty() ? 'No matching data' : 'Review progress';
+        $cards[1]['badge_type'] = 'neutral';
+        $cards[1]['action'] = $allProjects->isEmpty() ? 'Clear filters to see project progress.' : 'Compare active projects with planned milestones before changing staffing or deadlines. This average includes completed and pending projects; it does not measure schedule health.';
+        $cards[1]['action_module'] = 'projects';
+        $cards[1]['action_label'] = 'Check project progress';
+        $cards[2]['badge'] = $stockIsUrgent ? 'Restock first' : ($stockNeedsAction ? 'Plan replenishment' : 'Monitor stock');
+        $cards[2]['badge_type'] = $stockIsUrgent ? 'danger' : ($stockNeedsAction ? 'warning' : 'positive');
+        $cards[2]['action'] = $stockIsUrgent ? 'Prioritize out-of-stock materials. Confirm project needs and supplier lead times before ordering.'
+            : ($stockNeedsAction ? 'Review low-stock materials. Plan replenishment against upcoming usage and supplier lead times.'
+                : ($selectedStockStatus === 'In stock' ? 'These items are in stock. Check Low stock and Out of stock before deciding no purchase is needed.' : 'No low-stock or out-of-stock items recorded. Check quantities before scheduled work.'));
+        $cards[2]['action_module'] = 'inventory';
+        $cards[2]['action_label'] = 'Review inventory';
+
+        return $cards;
     }
 
     private function completionTrend(array $filters): array
