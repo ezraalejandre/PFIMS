@@ -121,7 +121,7 @@
             <ul>
                 <li>
                     <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                        <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                        <img src="{{ asset('images/settings.png') }}" alt="Settings" class="nav-icon">
                         Settings
                     </a>
                 </li>
@@ -129,7 +129,7 @@
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
-                            <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                            <img src="{{ asset('images/logout.png') }}" alt="Log Out" class="nav-icon">
                             Log out
                         </button>
                     </form>
@@ -1091,7 +1091,7 @@ if (currentStep === 2) {
             var scope = document.getElementById('projectChartScope');
             if (!chart || !scope) return;
             var statuses = [
-                { label: 'Ongoing', color: '#4f8b68' }, { label: 'Pending', color: '#9aa5b1' },
+                { label: 'Ongoing', color: '#4f8b68' }, { label: 'Pending', color: '#64748b' },
                 { label: 'At Risk', color: '#e19a45' }, { label: 'Delayed', color: '#c95c5c' }
             ];
             var active = projects.filter(function(project) { return project.status !== 'Completed'; });
@@ -1254,7 +1254,7 @@ if (currentStep === 2) {
                         '<div class="mini-bar"><div class="fill" style="width:' + progress + '%;"></div></div>' +
                     '</div>' +
                 '</td>' +
-                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'Ongoing' ? 'on-track' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>' +
+                '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'Ongoing' ? 'on-track' : project.status === 'Pending' ? 'pending' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>' +
                 '<td class="action-cell"><button type="button" class="pfims-row-action" title="View project" aria-label="View project"><img src="' + escapeHtml(document.body.dataset.projectViewIcon) + '" alt=""></button></td>';
             var actionButtons = row.querySelectorAll('.pfims-row-action');
             actionButtons[0].onclick = function(event) { event.stopPropagation(); openProjectFromAction(false); };
@@ -1425,6 +1425,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             if (status === 'Ongoing') statusEl.classList.add('on-track');
             else if (status === 'Delayed') statusEl.classList.add('delayed');
             else if (status === 'Completed') statusEl.classList.add('completed');
+            else if (status === 'Pending') statusEl.classList.add('pending');
             else statusEl.classList.add('at-risk');
 
             document.getElementById('updateModal').classList.add('active');

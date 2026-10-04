@@ -796,7 +796,7 @@
         <ul>
             <li>
                 <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; padding: 10px 16px; border-radius: 8px;">
-                    <img src="{{ asset('images/settings.jpg') }}" alt="" class="nav-icon" style="width: 20px; height: 20px; object-fit: contain;">
+                    <img src="{{ asset('images/settings.png') }}" alt="" class="nav-icon" style="width: 20px; height: 20px; object-fit: contain;">
                     Settings
                 </a>
             </li>
@@ -804,7 +804,7 @@
                 <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                     @csrf
                     <button type="submit" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px; background: none; border: none; color: rgba(255, 255, 255, 0.6); font: inherit; cursor: pointer; transition: 0.2s; border-radius: 8px;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="" class="nav-icon" style="width: 20px; height: 20px; object-fit: contain;">
+                        <img src="{{ asset('images/logout.png') }}" alt="" class="nav-icon" style="width: 20px; height: 20px; object-fit: contain;">
                         Log out
                     </button>
                 </form>

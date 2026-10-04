@@ -99,7 +99,7 @@
             <ul>
                 <li>
                     <a href="{{ url($links['settings']) }}">
-                        <img src="{{ asset('images/settings.jpg') }}" alt="" class="nav-icon" aria-hidden="true">
+                        <img src="{{ asset('images/settings.png') }}" alt="" class="nav-icon" aria-hidden="true">
                         Settings
                     </a>
                 </li>
@@ -107,7 +107,7 @@
                     <form action="{{ url('/logout') }}" method="POST">
                         @csrf
                         <button type="submit">
-                            <img src="{{ asset('images/logout.jpg') }}" alt="" class="nav-icon" aria-hidden="true">
+                            <img src="{{ asset('images/logout.png') }}" alt="" class="nav-icon" aria-hidden="true">
                             Log out
                         </button>
                     </form>

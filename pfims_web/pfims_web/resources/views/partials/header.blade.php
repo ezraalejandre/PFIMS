@@ -62,7 +62,7 @@
         <ul>
             <li class="{{ request()->is('settings') || request()->is('asettings') || request()->is('osettings') ? 'active' : '' }}">
                 <a href="{{ url('/settings') }}" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%;">
-                    <img src="{{ asset('images/settings.jpg') }}" alt="Settings" class="nav-icon">
+                    <img src="{{ asset('images/settings.png') }}" alt="Settings" class="nav-icon">
                     Settings
                 </a>
             </li>
@@ -70,7 +70,7 @@
                 <form action="{{ url('/logout') }}" method="POST" style="margin: 0;">
                     @csrf
                     <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; padding: 0; cursor: pointer;">
-                        <img src="{{ asset('images/logout.jpg') }}" alt="Log Out" class="nav-icon">
+                        <img src="{{ asset('images/logout.png') }}" alt="Log Out" class="nav-icon">
                         Log out
                     </button>
                 </form>
