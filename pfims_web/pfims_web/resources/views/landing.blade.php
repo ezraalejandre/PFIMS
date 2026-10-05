@@ -784,5 +784,20 @@
         });
     </script>
 
+    <script>
+        // Show scrollbar thumbs only while their surface is scrolling.
+        (function () {
+            var timers = new WeakMap();
+            document.addEventListener('scroll', function (event) {
+                var surface = event.target === document ? document.documentElement : event.target;
+                if (!(surface instanceof Element)) return;
+                surface.classList.add('pfims-landing-scrolling');
+                window.clearTimeout(timers.get(surface));
+                timers.set(surface, window.setTimeout(function () {
+                    surface.classList.remove('pfims-landing-scrolling');
+                }, 700));
+            }, { capture: true, passive: true });
+        })();
+    </script>
 </body>
 </html>

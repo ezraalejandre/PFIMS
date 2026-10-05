@@ -154,11 +154,11 @@
                 <label for="projectSearch">Search</label>
                 <input type="search" id="projectSearch" maxlength="150" placeholder="Project, client, manager..." oninput="filterProjects()">
             </div>
-            <div class="project-filter-field" hidden>
+            <div class="project-filter-field">
                 <label for="projectStatusFilter">Project Status</label>
                 <select id="projectStatusFilter" onchange="filterProjects()"><option value="">All statuses</option><option>Ongoing</option><option>Pending</option><option>At Risk</option><option>Delayed</option><option>Completed</option></select>
             </div>
-            <div class="project-filter-field" hidden>
+            <div class="project-filter-field">
                 <label for="projectPhaseFilter">Phase</label>
                 <select id="projectPhaseFilter" onchange="filterProjects()"><option value="">All phases</option></select>
             </div>
