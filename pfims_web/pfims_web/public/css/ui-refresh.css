@@ -6260,3 +6260,15 @@ body.landing-page *::-webkit-scrollbar-track { background: transparent !importan
 :is(.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .forecast-table-wrapper, .report-table-wrapper, .analytics-table-wrapper)::before {
     left: var(--pfims-docked-column-width, 0px) !important;
 }
+/* Budget wrappers must stay flex surfaces for sticky edge fades to span rows. */
+.budget-table-wrapper.visible { display: flex !important; }
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper)::before,
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper)::after {
+    float: none;
+    flex: 0 0 28px;
+    align-self: stretch;
+    height: auto;
+}
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper) { display: flex; }
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper) > table { flex: 0 0 auto; max-width: none; }
+.budget-table-wrapper:not(.visible) { display: none !important; }
