@@ -217,6 +217,7 @@
                 <input id="historySearch" type="search" maxlength="100" placeholder="Search report ID, title, filename, or user">
                 <input id="historyStart" type="date" aria-label="History from date">
                 <input id="historyEnd" type="date" aria-label="History to date">
+                <button id="clearHistoryFilters" type="button" class="btn-secondary pfims-clear-filters" aria-label="Clear export history filters">Clear filters</button>
             </div>
             <div class="table-wrap table-wrapper">
                 <table data-pfims-standard-actions="off">
@@ -791,6 +792,13 @@
             });
             document.getElementById('historyStart').addEventListener('change', refreshHistoryFromStart);
             document.getElementById('historyEnd').addEventListener('change', refreshHistoryFromStart);
+            document.getElementById('clearHistoryFilters').addEventListener('click', () => {
+                ['historySearch', 'historyStart', 'historyEnd'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                window.clearTimeout(state.historyTimer);
+                refreshHistoryFromStart();
+            });
             document.getElementById('historyPageSize').addEventListener('change', event => {
                 state.historyPerPage = Number(event.target.value);
                 refreshHistoryFromStart();

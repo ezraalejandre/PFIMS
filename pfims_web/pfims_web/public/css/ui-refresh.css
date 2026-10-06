@@ -1,4 +1,5 @@
 :root {
+    --pfims-add-blue: linear-gradient(135deg, #172033, #2a3f54);
     --ui-bg: #f6f8fb;
     --ui-surface: rgba(255, 255, 255, 0.92);
     --ui-surface-solid: #ffffff;
@@ -5866,3 +5867,408 @@ html[data-theme="dark"] body.dashboard-page .kpi-card .kpi-action-link { color: 
         text-overflow: clip;
     }
 }
+
+/* Requested module presentation fixes; reuse the existing reference colors. */
+.finance-page :is(.btn-add-budget, [data-finance-tabs="receivables"] .btn-add-data, [data-finance-tabs="bonds"] .btn-add-data),
+.settings-page .btn-add-user {
+    background: var(--pfims-add-blue) !important;
+    color: #fff !important;
+    box-shadow: 0 6px 14px rgba(23, 32, 51, .18) !important;
+}
+.finance-page :is([data-finance-tabs="cash"], [data-finance-tabs="backhoe"]) .btn-add-data.gold {
+    background: linear-gradient(135deg, #f08a1a, #d97508) !important;
+}
+.finance-page :is(#detailEditBtn, #budgetDetailEditBtn) {
+    background: #e19a45 !important;
+    color: #fff !important;
+}
+.finance-page :is(#detailEditBtn, #budgetDetailEditBtn):hover { background: #cf8735 !important; }
+body.settings-page .config-tabs {
+    justify-content: flex-start !important;
+    padding: 4px 6px 10px !important;
+    max-width: 100%;
+    box-sizing: border-box;
+    scroll-padding-inline: 6px;
+}
+.settings-page .config-tab { flex: 0 0 auto; white-space: nowrap; }
+body:is(.finance-page, .settings-page) .main-content :is(.table-wrapper, .budget-table-wrapper, .report-table-wrapper) {
+    max-width: 100%;
+    min-width: 0;
+    overflow: auto !important;
+    max-height: 65vh;
+}
+body:is(.finance-page, .settings-page) .main-content .pagination-wrapper {
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+}
+body:is(.finance-page, .settings-page) .main-content .pagination-links { flex-wrap: wrap; }
+body:is(.finance-page, .settings-page) .main-content :is(.table-wrapper, .budget-table-wrapper, .report-table-wrapper)
+> table > :is(thead, tbody) > tr > :is(th, td):first-child:not([colspan]) {
+    width: 160px !important;
+    min-width: 136px !important;
+    max-width: 200px !important;
+    padding-inline: 12px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+}
+.pfims-mobile-search-panel { width: min(100%, 320px); }
+.pfims-mobile-filter-toolbar { display: none; }
+.pfims-mobile-filter-dialog {
+    box-sizing: border-box;
+    width: min(440px, calc(100vw - 24px));
+    max-height: calc(100dvh - 32px);
+    padding: 20px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 16px;
+    background: var(--ui-surface-solid);
+    color: var(--ui-text);
+    overflow-y: auto;
+}
+.pfims-mobile-filter-dialog::backdrop { background: rgba(15, 23, 42, .5); }
+.pfims-mobile-filter-dialog h2 { margin: 0 40px 20px 0; font-size: 1.2rem; }
+.pfims-mobile-filter-dialog > label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.pfims-mobile-filter-dialog :is(input, select) {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-surface-solid);
+    color: var(--ui-text);
+}
+.pfims-mobile-dialog-close { position: absolute; top: 12px; right: 12px; min-width: 40px; min-height: 40px; font-size: 1.4rem; }
+.pfims-mobile-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.pfims-mobile-dialog-actions button, .pfims-mobile-filter-toolbar button { min-height: 44px; padding: 10px 16px; }
+@media (max-width: 768px) {
+    .pfims-mobile-filter-toolbar { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; }
+    .pfims-mobile-filter-toolbar button { background: var(--pfims-add-blue); color: #fff; border: 0; }
+    [data-mobile-dialogs="ready"] > :is(.pfims-filter-field, .pfims-filter-subtitle, .pfims-default-filter-note, input, select),
+    .pfims-mobile-search-panel > input { display: none !important; }
+    [data-mobile-dialogs="ready"] { position: static !important; grid-template-columns: minmax(0, 1fr) !important; }
+    [data-mobile-dialogs="ready"] > .pfims-filter-heading .pfims-filter-subtitle { display: none !important; }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page) :is(.page-header, .page-header-with-btn) {
+        display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 12px;
+    }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page) :is(.page-header, .page-header-with-btn) > div { max-width: 100%; flex-wrap: wrap; }
+    body.settings-page .config-tabs { flex-wrap: nowrap !important; overflow-x: auto !important; }
+    .settings-page #section-configurations { display: flex !important; flex-direction: column; }
+    .settings-page #section-configurations[style*="display: none"] { display: none !important; }
+    .settings-page #configCrudPanel:not([style*="display: none"]), .settings-page .config-primary-actions { display: contents !important; }
+    .settings-page .config-primary-actions > .btn-add-user { order: 1; align-self: flex-start; margin-bottom: 12px; }
+    .settings-page .pfims-mobile-search-panel { order: 2; margin-bottom: 12px; }
+    .settings-page .config-tabs { order: 3; }
+    .settings-page #configCrudPanel > .table-wrapper,
+    .settings-page #configCrudPanel > .pagination-wrapper,
+    .settings-page #configCrudPanel > .pfims-column-chooser { order: 4; }
+    .notifications-page :is(.btn-mark-read, .btn-clear-all) {
+        padding: 8px 10px !important; font-size: .75rem !important; min-height: 36px; white-space: nowrap;
+    }
+    .notifications-page .notif-actions { flex-wrap: wrap; gap: 8px; }
+}
+
+/* Screenshot follow-up: compact rows and centered, readable modal actions. */
+.pfims-mobile-filter-dialog {
+    position: fixed !important;
+    inset: 0 !important;
+    margin: auto !important;
+    height: fit-content;
+}
+body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page, .dashboard-page, .reports-page)
+.main-content :is(.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .report-table-wrapper) {
+    padding-inline: 0;
+    isolation: isolate;
+}
+body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page, .dashboard-page, .reports-page)
+.main-content :is(.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .report-table-wrapper)::before {
+    left: var(--pfims-docked-column-width, 0px);
+}
+@media (max-width: 768px) {
+    body .pfims-mobile-filter-toolbar {
+        display: flex;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+    }
+    body .pfims-mobile-filter-toolbar > :is(button, a) {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        flex: 0 1 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        min-height: 36px !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 8px 11px !important;
+        font-size: .75rem !important;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+    body .pfims-mobile-filter-toolbar > [hidden] { display: none !important; }
+    body .pfims-mobile-filter-toolbar .button-label { font-size: .75rem !important; white-space: nowrap; }
+    body .pfims-mobile-filter-toolbar .button-icon { display: none !important; }
+    body .pfims-mobile-filter-toolbar > .pfims-clear-filters {
+        transform: none !important;
+        width: auto !important;
+        min-width: 0 !important;
+        min-height: 36px !important;
+        height: 36px !important;
+        padding: 8px 11px !important;
+        font-size: .75rem !important;
+        margin: 0 !important;
+    }
+    body [data-mobile-dialogs="ready"] > :is(.pfims-filter-heading, button[type="submit"]) { display: none !important; }
+    .reports-page .filter-panel > .pfims-filter-heading .pfims-clear-filters { display: none; }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page) :is(.page-header, .page-header-with-btn) > div,
+    .finance-page #financeHeaderActions {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        flex-wrap: wrap;
+    }
+    .finance-page #financeHeaderActions[hidden],
+    .finance-page #financeHeaderActions > [hidden] { display: none !important; }
+    .finance-page .page-header .finance-header-action-group {
+        width: auto !important;
+        flex: 0 1 auto !important;
+        display: contents;
+    }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page) :is(.page-header, .page-header-with-btn) :is(button, a[data-icon-label]),
+    .settings-page .config-primary-actions > .btn-add-user {
+        flex: 0 1 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+        min-height: 36px !important;
+        padding: 8px 10px !important;
+        font-size: .74rem !important;
+        margin: 0 !important;
+    }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page) :is(.page-header, .page-header-with-btn) .button-label,
+    .settings-page .config-primary-actions .button-label { font-size: .74rem !important; }
+    .settings-page .config-primary-actions { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; order: 1; margin-bottom: 12px; }
+    .settings-page .config-primary-actions .pfims-mobile-search-panel { flex: 0 0 auto; width: auto; margin: 0; order: 0; }
+    .settings-page .config-primary-actions > .btn-add-user { order: 0; }
+    .settings-page #section-notifications .preference-item {
+        display: flex !important; flex-direction: row !important; align-items: center !important; gap: 14px;
+    }
+    .settings-page #section-notifications .preference-item > .left { flex: 1 1 auto; min-width: 0; }
+    .settings-page #section-notifications .preference-item > .toggle { flex: 0 0 44px; margin: 0; }
+    .notifications-page .notif-actions { display: flex !important; flex-direction: row !important; align-items: center !important; flex-wrap: nowrap; width: auto; gap: 8px; }
+    .notifications-page .notif-actions > :is(.btn-mark-read, .btn-clear-all) {
+        flex: 0 1 auto; width: auto !important; min-width: 0; padding: 8px 10px !important; min-height: 36px !important; font-size: .74rem !important;
+    }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer > div:not([hidden]):not([style*="display: none"]):not([style*="display:none"]) {
+        display: contents !important;
+    }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer :is(button, a) {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box;
+        margin: 0 !important;
+        padding: 10px 14px !important;
+        min-height: 42px;
+        font-size: .82rem !important;
+    }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer :is(button, a)[style*="display: none"],
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer :is(button, a)[style*="display:none"],
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer [hidden] { display: none !important; }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer .button-label { font-size: .82rem !important; text-align: center; }
+    body:is(.finance-page, .projects-page, .inventory-page, .suppliers-page, .settings-page) .modal-footer :is(.btn-delete, .btn-delete-config, .btn-delete-user) { order: 2; }
+    .settings-page .settings-action-group .btn-config-action { display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+    .settings-page :is(#configDetailsModal, #userDetailsModal) .settings-detail-row strong { font-size: .72rem; text-transform: uppercase; color: var(--ui-muted); }
+    .settings-page :is(#configDetailsModal, #userDetailsModal) .settings-modal-dialog {
+        width: min(440px, calc(100vw - 24px)) !important;
+        max-width: calc(100vw - 24px) !important;
+        box-sizing: border-box;
+    }
+    .settings-page :is(#configDetailsModal, #userDetailsModal) .settings-detail-row { flex-direction: column; align-items: flex-start; gap: 5px; padding: 10px 0; }
+    .settings-page :is(#configDetailsModal, #userDetailsModal) .settings-detail-row span { text-align: left; font-size: .9rem; line-height: 1.45; }
+}
+@media (max-width: 768px) {
+    .finance-page #financeHeaderActions [data-finance-tabs="backhoe"] {
+        display: flex !important;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: 8px;
+        width: 100% !important;
+    }
+    .finance-page #financeHeaderActions [data-finance-tabs="backhoe"] button {
+        flex: 1 1 auto !important;
+        padding-inline: 8px !important;
+        gap: 4px !important;
+    }
+    .finance-page #financeHeaderActions [data-finance-tabs="backhoe"] .button-label {
+        min-width: 0;
+        white-space: normal;
+        font-size: .7rem !important;
+    }
+    .finance-page #financeHeaderActions [data-finance-tabs="backhoe"] .button-icon {
+        width: 14px !important;
+        height: 14px !important;
+        flex: 0 0 14px !important;
+    }
+    .finance-page #financeHeaderActions [data-finance-tabs="backhoe"] .button-icon svg { width: 14px; height: 14px; }
+}
+
+/* Corrections from the latest mobile screenshots. */
+@media (max-width: 768px) {
+    body .pfims-mobile-filter-toolbar > :is(.pfims-clear-filters, #clear) {
+        flex: 0 0 30px !important;
+        width: 30px !important;
+        min-width: 30px !important;
+        max-width: 30px !important;
+        height: 30px !important;
+        min-height: 30px !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        font-size: 0 !important;
+        color: var(--ui-muted) !important;
+    }
+    body .pfims-mobile-filter-toolbar > :is(.pfims-clear-filters, #clear)::before {
+        content: "×";
+        font-size: 20px;
+        line-height: 1;
+    }
+    body .pfims-mobile-filter-toolbar > :is(.pfims-clear-filters, #clear) :is(.button-icon, .button-label) { display: none !important; }
+    .settings-page .config-primary-actions .pfims-mobile-search-panel { order: -1; }
+    .settings-page .config-primary-actions > .btn-add-user { min-height: 36px !important; height: 36px !important; padding: 8px 11px !important; }
+    .settings-page :is(#configDetailsModal, #userDetailsModal) .modal-footer > button {
+        flex: 0 0 auto !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        max-height: 42px !important;
+        padding: 10px 14px !important;
+    }
+    .settings-page #section-notifications .preference-item {
+        flex-wrap: nowrap !important;
+    }
+    .settings-page #section-notifications .preference-item > .left {
+        width: auto !important;
+        max-width: calc(100% - 58px);
+    }
+    .settings-page #section-notifications .preference-item > .toggle {
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+    }
+    .finance-page #financeHeaderActions .finance-header-action-group[hidden] { display: none !important; }
+}
+
+/* Pagination, report toolbar, Settings view dialogs, and landing spacing. */
+body .pfims-mobile-filter-toolbar > :is(.pfims-clear-filters, #clear) { text-decoration: none !important; }
+.settings-page :is(#configDetailsModal, #userDetailsModal) {
+    align-items: center !important;
+    justify-content: center !important;
+}
+.settings-page :is(#configDetailsModal, #userDetailsModal) .settings-modal-dialog {
+    margin: auto !important;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+}
+html:has(body.landing-page), body.landing-page, body.landing-page * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent !important;
+}
+html:has(body.landing-page)::-webkit-scrollbar-thumb,
+body.landing-page::-webkit-scrollbar-thumb,
+body.landing-page *::-webkit-scrollbar-thumb { background: transparent !important; border-color: transparent !important; }
+html:has(body.landing-page).pfims-landing-scrolling,
+body.landing-page.pfims-landing-scrolling,
+body.landing-page .pfims-landing-scrolling { scrollbar-color: #6b7280 transparent !important; }
+html:has(body.landing-page).pfims-landing-scrolling::-webkit-scrollbar-thumb,
+body.landing-page.pfims-landing-scrolling::-webkit-scrollbar-thumb,
+body.landing-page .pfims-landing-scrolling::-webkit-scrollbar-thumb { background: #6b7280 !important; }
+@media (max-width: 768px) {
+    body:not(.landing-page) .pagination-wrapper .pagination-links {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        justify-content: center;
+        gap: 4px !important;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    body:not(.landing-page) .pagination-wrapper .pagination-links > :is(button, a, span) {
+        flex: 0 1 auto !important;
+        width: auto !important;
+        min-width: 28px !important;
+        min-height: 34px !important;
+        padding: 5px 7px !important;
+        font-size: .75rem !important;
+        white-space: nowrap;
+    }
+    body:not(.landing-page) .pagination-wrapper .pagination-links > :is(.dots, .ellipsis) {
+        min-width: 12px !important;
+        padding-inline: 2px !important;
+    }
+    .reports-page .filter-panel > .panel-heading { display: none !important; }
+    .reports-page .filter-panel .filters-grid { margin: 0 !important; padding: 0 !important; }
+    .reports-page .filter-panel { padding: 12px !important; }
+    body.landing-page .container { padding-inline: 16px !important; box-sizing: border-box; }
+    body.landing-page .form-wrapper { min-width: 0; max-width: 100%; }
+}
+html:has(body.landing-page)::-webkit-scrollbar-track,
+body.landing-page::-webkit-scrollbar-track,
+body.landing-page *::-webkit-scrollbar-track { background: transparent !important; }
+@media (min-width: 769px) and (max-width: 850px) {
+    body.landing-page .container { padding-inline: 16px !important; box-sizing: border-box; }
+}
+@media (max-width: 768px) {
+    body .reports-page #reportFiltersGrid.pfims-filter-panel,
+    body.reports-page #reportFiltersGrid.pfims-filter-panel {
+        padding: 0 !important;
+        gap: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+    }
+    body.reports-page .filter-panel {
+        padding: 12px !important;
+        min-height: 0 !important;
+        height: auto !important;
+    }
+    body.reports-page .filter-panel > .panel-heading { margin: 0 !important; padding: 0 !important; }
+}
+
+/* Every existing table scroll wrapper uses the same pinned-column fade. */
+:is(.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .forecast-table-wrapper, .report-table-wrapper, .analytics-table-wrapper) {
+    isolation: isolate;
+}
+:is(.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .forecast-table-wrapper, .report-table-wrapper, .analytics-table-wrapper)::before {
+    left: var(--pfims-docked-column-width, 0px) !important;
+}
+/* Budget wrappers must stay flex surfaces for sticky edge fades to span rows. */
+.budget-table-wrapper.visible { display: flex !important; }
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper)::before,
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper)::after {
+    float: none;
+    flex: 0 0 28px;
+    align-self: stretch;
+    height: auto;
+}
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper) { display: flex; }
+:is(.table-wrap, .table-responsive, .analytics-table-wrapper) > table { flex: 0 0 auto; max-width: none; }
+.budget-table-wrapper:not(.visible) { display: none !important; }

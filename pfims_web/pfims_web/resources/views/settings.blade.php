@@ -186,12 +186,12 @@
                     </div>
 
                     <div id="configCrudPanel">
-                        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <div class="config-primary-actions" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                             <button class="btn-add-user" onclick="openConfigAddModal()">+ Add New</button>
-                            <input type="search" id="configTableSearch" oninput="renderConfigTable()" placeholder="Search configurations..." style="width:100%; max-width:320px; min-width:0; padding:9px 13px;border:1px solid #ddd;border-radius:8px;">
+                            <div class="pfims-mobile-search-panel"><input type="search" id="configTableSearch" oninput="renderConfigTable()" placeholder="Search configurations..." style="width:100%; max-width:320px; min-width:0; padding:9px 13px;border:1px solid #ddd;border-radius:8px;"></div>
                         </div>
 
-                        <div style="overflow-x: auto; margin-top: 15px;">
+                        <div class="table-wrapper" style="overflow-x: auto; margin-top: 15px;">
                             <table class="user-table" id="configTable" data-column-chooser="off">
                                 <thead><tr><th>Name</th><th id="configExpenseTypeHeader" style="display:none;">Expense Type</th><th id="configStageHeader" style="display:none;">Stage</th><th style="text-align: center;">Action</th></tr></thead>
                                 <tbody id="configTableBody"></tbody>
@@ -291,7 +291,7 @@
 
                     <button class="btn-add-user" onclick="openAddUserModal()">+ Add User</button>
 
-                    <div style="overflow-x: auto; margin-top: 15px;">
+                    <div class="table-wrapper" style="overflow-x: auto; margin-top: 15px;">
                         <table class="user-table">
                             <thead>
                                 <tr>

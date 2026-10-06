@@ -435,6 +435,174 @@
         });
     }
 
+    // Presentation adapter: draft controls never run the live filter handlers.
+    function installMobileFilterDialogs() {
+        if (!document.body.matches('.finance-page, .projects-page, .inventory-page, .suppliers-page, .reports-page, .settings-page, .dashboard-page, .audit-logs-page')) return;
+        var tabs = document.querySelector('.settings-page .config-tabs');
+        if (tabs && tabs.dataset.mobileTabScroll !== 'ready') {
+            tabs.dataset.mobileTabScroll = 'ready';
+            tabs.addEventListener('click', function (event) {
+                var tab = event.target.closest('.config-tab');
+                if (!tab || !window.matchMedia('(max-width: 768px)').matches) return;
+                var bounds = tabs.getBoundingClientRect();
+                var item = tab.getBoundingClientRect();
+                if (item.left < bounds.left + 6) tabs.scrollLeft += item.left - bounds.left - 6;
+                else if (item.right > bounds.right - 6) tabs.scrollLeft += item.right - bounds.right + 6;
+            });
+        }
+        document.querySelectorAll('main .pfims-filter-panel, main .pfims-mobile-search-panel').forEach(function (panel) {
+            if (panel.dataset.mobileDialogs === 'ready') {
+                panel.pfimsRefreshMobileButtons?.();
+                return;
+            }
+            if (panel.closest('.modal, .modal-overlay, dialog')) return;
+            panel.dataset.mobileDialogs = 'ready';
+            var toolbar = document.createElement('div');
+            toolbar.className = 'pfims-mobile-filter-toolbar';
+            panel.prepend(toolbar);
+            var component = panel.closest('.pfims-filter-component') || panel;
+            var clear = component.querySelector('.pfims-clear-filters, #clear');
+            if (clear) {
+                var clearAnchor = document.createComment('Desktop clear-filter position');
+                clear.before(clearAnchor);
+                var mobileLayout = window.matchMedia('(max-width: 768px)');
+                function placeClear() {
+                    if (mobileLayout.matches) toolbar.appendChild(clear);
+                    else clearAnchor.after(clear);
+                }
+                mobileLayout.addEventListener('change', placeClear);
+                // Search/Filters are added below; append Clear after them.
+                panel.pfimsPlaceMobileClear = placeClear;
+            }
+
+            function controlsFor(search) {
+                return Array.from(panel.querySelectorAll('input, select')).filter(function (control) {
+                    if (control.closest('.pfims-select-options, .pfims-search-suggestions')) return false;
+                    if (control.type === 'hidden' && !control.closest('.report-date-picker')) return false;
+                    var field = control.closest('.pfims-filter-field, .filter-control, .project-filter-field');
+                    if (control.hidden || field?.hidden || field?.style.display === 'none') return false;
+                    return (control.type === 'search' || /search/i.test(control.id)) === search;
+                });
+            }
+
+            var buttons = [];
+            panel.pfimsRefreshMobileButtons = function () {
+                buttons.forEach(function (item) {
+                    var hidden = !controlsFor(item.search).length;
+                    if (item.button.hidden !== hidden) item.button.hidden = hidden;
+                });
+            };
+            [true, false].forEach(function (search) {
+                var opener = document.createElement('button');
+                opener.type = 'button';
+                opener.textContent = search ? 'Search' : 'Filters';
+                opener.setAttribute('aria-haspopup', 'dialog');
+                opener.hidden = !controlsFor(search).length;
+                buttons.push({ button: opener, search: search });
+                toolbar.appendChild(opener);
+                opener.addEventListener('click', function () {
+                    var dialog = document.createElement('dialog');
+                    dialog.className = 'pfims-mobile-filter-dialog';
+                    var heading = document.createElement('h2');
+                    heading.id = 'pfims-mobile-dialog-title';
+                    heading.textContent = search ? 'Search' : 'Filters';
+                    dialog.setAttribute('aria-labelledby', heading.id);
+                    var close = document.createElement('button');
+                    close.type = 'button';
+                    close.className = 'pfims-mobile-dialog-close';
+                    close.textContent = '×';
+                    close.setAttribute('aria-label', 'Close without applying');
+                    dialog.append(heading, close);
+                    var drafts = controlsFor(search).map(function (source) {
+                        var field = document.createElement('label');
+                        var label = document.createElement('span');
+                        var originalField = source.closest('.pfims-filter-field, .filter-control, .project-filter-field');
+                        function plainLabel(element) {
+                            if (!element) return '';
+                            var text = Array.from(element.childNodes).filter(function (node) {
+                                return node.nodeType === Node.TEXT_NODE;
+                            }).map(function (node) { return node.textContent.trim(); }).filter(Boolean).join(' ');
+                            if (text) return text;
+                            var caption = element.querySelector(':scope > span:not(.pfims-select):not(.pfims-search-suggestions)');
+                            return caption ? caption.textContent.trim() : '';
+                        }
+                        label.textContent = source.getAttribute('aria-label')
+                            || plainLabel(originalField?.querySelector(':scope > label'))
+                            || plainLabel(source.labels?.[0])
+                            || plainLabel(originalField)
+                            || filterLabel(source);
+                        var draft;
+                        if (source.type === 'hidden') {
+                            draft = document.createElement('select');
+                            var part = source.id.replace('filterReport', '').toLowerCase();
+                            var start = part === 'year' ? 1900 : 1;
+                            var end = part === 'year' ? 2100 : (part === 'month' ? 12 : 31);
+                            for (var value = start; value <= end; value++) {
+                                draft.add(new Option(part === 'month' ? new Intl.DateTimeFormat('en', { month: 'long' }).format(new Date(2000, value - 1, 1)) : String(value), String(value)));
+                            }
+                            label.textContent = part.charAt(0).toUpperCase() + part.slice(1);
+                        } else draft = source.cloneNode(true);
+                        ['id', 'name', 'oninput', 'onchange', 'onclick', 'onkeydown', 'style', 'class', 'hidden', 'aria-hidden', 'tabindex'].forEach(function (attribute) { draft.removeAttribute(attribute); });
+                        // Keep the draft native and keyboard accessible; cloned enhancement
+                        // flags prevent shared observers from adding live search suggestions.
+                        draft.dataset.pfimsSelect = 'ready';
+                        draft.dataset.pfimsSuggestions = 'ready';
+                        draft.querySelectorAll('[id]').forEach(function (element) { element.removeAttribute('id'); });
+                        draft.value = source.value;
+                        if (source.multiple) Array.from(draft.options).forEach(function (option, index) { option.selected = source.options[index].selected; });
+                        field.append(label, draft);
+                        dialog.appendChild(field);
+                        return { source: source, draft: draft };
+                    });
+                    var footer = document.createElement('div');
+                    footer.className = 'pfims-mobile-dialog-actions';
+                    var cancel = document.createElement('button');
+                    cancel.type = 'button';
+                    cancel.className = 'btn-cancel';
+                    cancel.textContent = 'Cancel';
+                    var apply = document.createElement('button');
+                    apply.type = 'button';
+                    apply.className = 'btn-save';
+                    apply.textContent = search ? 'Search' : 'Apply';
+                    footer.append(cancel, apply);
+                    dialog.appendChild(footer);
+                    document.body.appendChild(dialog);
+                    function discard() { dialog.close(); }
+                    close.addEventListener('click', discard);
+                    cancel.addEventListener('click', discard);
+                    dialog.addEventListener('close', function () { dialog.remove(); opener.focus(); });
+                    apply.addEventListener('click', function () {
+                        if (!drafts.every(function (pair) { return pair.draft.reportValidity(); })) return;
+                        // Set every value before notifying the existing module handlers.
+                        var changed = drafts.filter(function (pair) {
+                            return pair.source.multiple
+                                ? JSON.stringify(Array.from(pair.source.selectedOptions, function (option) { return option.value; })) !== JSON.stringify(Array.from(pair.draft.selectedOptions, function (option) { return option.value; }))
+                                : pair.source.value !== pair.draft.value;
+                        });
+                        changed.forEach(function (pair) {
+                            if (pair.source.multiple) Array.from(pair.source.options).forEach(function (option, index) { option.selected = pair.draft.options[index].selected; });
+                            else pair.source.value = pair.draft.value;
+                            var dateTrigger = pair.source.closest('.report-date-picker')?.querySelector('.report-date-trigger');
+                            if (dateTrigger) dateTrigger.textContent = pair.draft.selectedOptions[0]?.textContent || pair.draft.value;
+                        });
+                        changed.forEach(function (pair) {
+                            pair.source.dispatchEvent(new Event('input', { bubbles: true }));
+                            pair.source.dispatchEvent(new Event('change', { bubbles: true }));
+                            pair.source.pfimsSyncTrigger?.();
+                        });
+                        dialog.close();
+                    });
+                    dialog.showModal();
+                    var mobile = window.matchMedia('(max-width: 768px)');
+                    function resize() { if (!mobile.matches) discard(); }
+                    mobile.addEventListener('change', resize);
+                    dialog.addEventListener('close', function () { mobile.removeEventListener('change', resize); }, { once: true });
+                });
+            });
+            panel.pfimsPlaceMobileClear?.();
+        });
+    }
+
     function installStickyFilterTracking() {
         if (document.body.dataset.pfimsStickyTracking === 'ready') return;
         document.body.dataset.pfimsStickyTracking = 'ready';
@@ -487,12 +655,10 @@
     function installTableScrollFades() {
         var selector = '.table-wrapper, .table-wrap, .table-container, .table-responsive, .budget-table-wrapper, .items-table-wrapper, .forecast-table-wrapper, .report-table-wrapper, .analytics-table-wrapper';
         function update(wrapper) {
-            if (wrapper.closest('#contractsSubpanel, #tabReceivables, #tabBackhoe, #equipmentDetailModal, #tabBonds, .reports-page[data-report-dataset="contracts"] .live-data-panel')) {
-                var firstCell = wrapper.querySelector('table th:first-child');
-                var dockedWidth = (firstCell ? firstCell.offsetWidth : 0) + 'px';
-                if (wrapper.style.getPropertyValue('--pfims-docked-column-width') !== dockedWidth) {
-                    wrapper.style.setProperty('--pfims-docked-column-width', dockedWidth);
-                }
+            var firstCell = wrapper.querySelector('table th:first-child');
+            var dockedWidth = (firstCell && getComputedStyle(firstCell).position === 'sticky' ? firstCell.offsetWidth : 0) + 'px';
+            if (wrapper.style.getPropertyValue('--pfims-docked-column-width') !== dockedWidth) {
+                wrapper.style.setProperty('--pfims-docked-column-width', dockedWidth);
             }
             var max = Math.max(0, wrapper.scrollWidth - wrapper.clientWidth);
             var scrollable = max > 1;
@@ -1556,6 +1722,7 @@
         installRoleNavigation();
         installAdminAuditNavigation();
         installSharedFilters();
+        installMobileFilterDialogs();
         installStickyFilterTracking();
         installDefaultFilters();
         installAuditDeepLink();
@@ -1582,6 +1749,7 @@
         document.querySelectorAll('table').forEach(installColumnChooser);
         new MutationObserver(function () {
             installSharedFilters();
+            installMobileFilterDialogs();
             document.dispatchEvent(new CustomEvent('pfims:filters-updated'));
             installAdminAuditNavigation();
             removeProjectFilterControls();
