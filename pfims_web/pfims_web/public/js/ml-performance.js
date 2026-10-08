@@ -69,7 +69,7 @@
         if (augmentation) {
             const databaseTraining = augmentation.database_training_project_ids?.length;
             const used = number(active.training_projects) && number(databaseTraining) ? Number(active.training_projects) - databaseTraining : augmentation.dummy_projects;
-            put('performanceValidation', `${databaseTraining ?? 'Unknown'} database projects + ${used ?? 'Unknown'} dummy projects used for training (${augmentation.dummy_projects ?? 'Unknown'} available) · ${augmentation.database_test_project_ids?.length ?? 'Unknown'} database projects reserved for testing. Database split: earlier 80% for training, newest 20% for testing. Training-only temporal cross-validation: average percentage error ${percent(cv?.average_mean_absolute_percentage_error)}. Each validation fold excludes dummy projects derived from its validation projects.`);
+            put('performanceValidation', `${databaseTraining ?? 'Unknown'} database projects + ${used ?? 'Unknown'} ingested projects used for training (${augmentation.dummy_projects ?? 'Unknown'} available) · ${augmentation.database_test_project_ids?.length ?? 'Unknown'} database projects reserved for testing. Database split: earlier ${Math.round((1 - (augmentation.database_test_ratio ?? .20)) * 100)}% for training, newest ${Math.round((augmentation.database_test_ratio ?? .20) * 100)}% for testing. Training-only temporal cross-validation: average percentage error ${percent(cv?.average_mean_absolute_percentage_error)}. Each validation fold excludes ingested projects derived from its validation projects.`);
         }
         put('performanceComparison', baseline
             ? `Active model cost error ${percent(evaluated?.mean_absolute_percentage_error)}; recorded-budget baseline error ${percent(baseline.baseline_evaluation?.mean_absolute_percentage_error)} on the same test observations.`
@@ -99,7 +99,9 @@
             }
             const split = improvement.training_counts || {};
             const updated = improvement.generated_at && !Number.isNaN(Date.parse(improvement.generated_at)) ? new Date(improvement.generated_at).toLocaleString('en-PH') : 'Unavailable';
-            put('performanceCandidateTraining', `Candidate training: ${split.database_projects ?? 'Unknown'} database projects + ${split.dummy_projects_used ?? 'Unknown'} dummy projects used (${split.dummy_projects_available ?? 'Unknown'} available). Testing: ${split.test_database_projects ?? 'Unknown'} database projects only. Settings selected using training-only temporal validation. Previously inspected test results are development evidence. Evaluated: ${updated}.`);
+            const eventCounts = number(split.ingested_expenses_per_project) && number(split.ingested_inventory_transactions_per_project) ? ` Each ingested project has ${split.ingested_expenses_per_project} expenses and ${split.ingested_inventory_transactions_per_project} inventory transactions.` : '';
+            const generation = split.ingested_data_method === 'rule_based_construction_ledgers_v1' ? ` Ingested data uses rule-based construction ledgers spanning ${split.ingested_data_year_range?.join('–') ?? '2019–present'}, with projects lasting at most seven months.${eventCounts}` : '';
+            put('performanceCandidateTraining', `Candidate training: ${split.database_projects ?? 'Unknown'} database projects + ${split.dummy_projects_used ?? 'Unknown'} ingested projects used (${split.dummy_projects_available ?? 'Unknown'} available). Testing: ${split.test_database_projects ?? 'Unknown'} database projects only.${split.database_test_ratio === .30 ? ' Database split: earlier 70% for training, newest 30% for testing.' : ''}${generation} Settings selected using training-only temporal validation. Previously inspected test results are development evidence. Evaluated: ${updated}.`);
         }
     }
     window.pfimsPerformance = { update(metrics) { active = metrics || {}; render(); } };

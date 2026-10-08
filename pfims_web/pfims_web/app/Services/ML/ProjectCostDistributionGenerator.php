@@ -156,7 +156,7 @@ class ProjectCostDistributionGenerator
             $handles = [];
             $manifest = ['schema_version' => 1, 'created_at' => now()->toIso8601String(), 'method' => 'conditional_joint_empirical_bootstrap_with_bounded_jitter',
                 'seed' => $seed, 'live_source' => $source['source'], 'database_fingerprint' => ProjectCostAugmentationDataset::fingerprint($records),
-                'database_training_project_ids' => $split['training'], 'database_test_project_ids' => $split['test'],
+                'database_training_project_ids' => $split['training'], 'database_test_project_ids' => $split['test'], 'database_test_ratio' => .30,
                 'dummy_projects' => $projects, 'expenses_per_project' => $expenses, 'inventory_transactions_per_project' => $transactions,
                 'item_records' => count($items), 'prediction_strategy' => $source['cohort']['strategy'],
                 'database_source_provenance' => $records->groupBy('data_source')->map(fn ($r) => $r->pluck('project_id')->unique()->count())->all(),

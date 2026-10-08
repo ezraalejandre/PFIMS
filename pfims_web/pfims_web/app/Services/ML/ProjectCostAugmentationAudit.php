@@ -2,6 +2,7 @@
 
 namespace App\Services\ML;
 
+use Carbon\CarbonImmutable;
 use RuntimeException;
 
 /** Independent streamed checks of every event, reference, cost and requested count. */
@@ -19,6 +20,19 @@ class ProjectCostAugmentationAudit
                 throw new RuntimeException('Invalid generated completed project.');
             }
             $projects[$id] = $project + ['expense_count' => 0, 'movement_count' => 0, 'direct_cents' => 0, 'material_cents' => 0];
+            if (($manifest['method'] ?? '') === 'rule_based_construction_ledgers_v1') {
+                $start = CarbonImmutable::parse($project['start_date']);
+                if ($start->year < 2019 || $project['actual_end_date'] > $start->addMonthsNoOverflow(7)->toDateString()
+                    || $project['estimated_end_date'] > $start->addMonthsNoOverflow(7)->toDateString()) {
+                    throw new RuntimeException('Rule-based project violates its calendar or duration limit.');
+                }
+                $ratio = $project['actual_cost'] / $project['budget'];
+                $overrunScenario = $project['generation_rules']['cost_scenario'] === 'delay_and_rework';
+                if (($overrunScenario && ($ratio < 1.01 - .000001 || $ratio > 1.18 + .000001))
+                    || (! $overrunScenario && ($ratio < .85 - .000001 || $ratio > .995 + .000001))) {
+                    throw new RuntimeException('Project ledger violates its declared business cost scenario.');
+                }
+            }
         }
         $items = [];
         foreach (ProjectCostAugmentationDataset::read($directory.'/items.jsonl.gz') as $item) {
@@ -55,6 +69,31 @@ class ProjectCostAugmentationAudit
                 throw new RuntimeException('Invalid inventory reference, valuation or chronological order.');
             }
             $lastDate = $event['transaction_date'];
+            if (($manifest['business_rules_version'] ?? 0) >= 2) {
+                $name = $items[$event['item_id']]['item_name'];
+                $bulk = preg_match('/sand|gravel/i', $name) === 1;
+                $step = $bulk ? .25 : 1;
+                $expectedPrice = (float) $items[$event['item_id']]['unit_price'] * $projects[$id]['generation_rules']['year_factor'];
+                if (abs($event['quantity'] / $step - round($event['quantity'] / $step)) > .000001
+                    || $event['unit_cost'] < $expectedPrice * .95 - .01 || $event['unit_cost'] > $expectedPrice * 1.05 + .01
+                    || preg_match('/hammer|mallet|pliers|tape measure|drill bit/i', $name)) {
+                    throw new RuntimeException('Inventory package, catalogue price or durable-tool rule failed.');
+                }
+                $kind = $projects[$id]['project_kind'];
+                $bounds = $kind === 'interior' ? [0, .25, .5, 1] : [0, $kind === 'warehouse' ? .65 : .55, .75, 1];
+                $phaseIndex = array_search($event['construction_phase'], ['structure', 'services', 'finishing'], true);
+                if ($phaseIndex === false) {
+                    throw new RuntimeException('Unknown construction phase.');
+                }
+                if ($event['transaction_type'] === 'OUT') {
+                    $start = CarbonImmutable::parse($projects[$id]['start_date']);
+                    $days = max(1, (int) $start->diffInDays(CarbonImmutable::parse($projects[$id]['actual_end_date'])));
+                    $elapsed = (int) $start->diffInDays(CarbonImmutable::parse($event['transaction_date']));
+                    if ($elapsed < floor($days * $bounds[$phaseIndex]) || $elapsed > ceil($days * $bounds[$phaseIndex + 1])) {
+                        throw new RuntimeException('Material consumption falls outside its construction phase.');
+                    }
+                }
+            }
             $lot = $event['lot_id'];
             if ($event['transaction_type'] === 'IN') {
                 if (isset($lots[$lot])) {

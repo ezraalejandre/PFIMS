@@ -15,7 +15,7 @@ class ProjectCostAugmentationDataset
     public function __construct(private string $directory, private ?float $dummyToRealRatio = null)
     {
         if ($dummyToRealRatio !== null && (! is_finite($dummyToRealRatio) || $dummyToRealRatio < 0)) {
-            throw new RuntimeException('Dummy influence must be a finite nonnegative ratio.');
+            throw new RuntimeException('Ingested-data influence must be a finite nonnegative ratio.');
         }
         if (! is_file($directory.'/manifest.json')) {
             throw new RuntimeException('Augmentation dataset is unavailable. Generate a verified live-source dataset first.');
@@ -33,22 +33,22 @@ class ProjectCostAugmentationDataset
         $this->rows = collect(iterator_to_array(self::read($directory.'/training-observations.jsonl.gz')))->map(fn ($row) => (object) $row);
         $allowed = array_fill_keys(array_map('strval', $this->manifest['database_training_project_ids']), true);
         foreach ($this->rows as $row) {
-            if (! isset($allowed[(string) $row->donor_project_id]) || ! str_starts_with((string) $row->project_id, 'dummy-')) {
-                throw new RuntimeException('Dummy lineage includes a non-training project.');
+            if (! isset($allowed[(string) $row->donor_project_id]) || ! str_starts_with((string) $row->project_id, $this->manifest['project_id_prefix'] ?? 'dummy-')) {
+                throw new RuntimeException('Ingested-data lineage includes a non-training project.');
             }
         }
         if ($this->rows->pluck('project_id')->unique()->count() !== $this->manifest['dummy_projects']) {
-            throw new RuntimeException('Dummy observation coverage does not match the manifest.');
+            throw new RuntimeException('Ingested-data observation coverage does not match the manifest.');
         }
     }
 
-    public static function split(Collection $records): array
+    public static function split(Collection $records, float $testRatio = .30): array
     {
         $ids = $records->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])->pluck('project_id')->unique()->values();
         if ($ids->count() < 3) {
             throw new RuntimeException('At least three eligible completed database projects are required.');
         }
-        $test = $ids->slice($ids->count() - (int) ceil($ids->count() * 0.2))->values()->all();
+        $test = $ids->slice($ids->count() - (int) ceil($ids->count() * $testRatio))->values()->all();
 
         return ['training' => $ids->reject(fn ($id) => in_array($id, $test))->values()->all(), 'test' => $test];
     }
@@ -68,7 +68,7 @@ class ProjectCostAugmentationDataset
 
     public function assertDatabaseMatches(Collection $records): void
     {
-        $split = self::split($records);
+        $split = self::split($records, (float) ($this->manifest['database_test_ratio'] ?? .20));
         if ($split['training'] !== $this->manifest['database_training_project_ids']
             || $split['test'] !== $this->manifest['database_test_project_ids']
             || ! hash_equals($this->manifest['database_fingerprint'], self::fingerprint($records))) {
