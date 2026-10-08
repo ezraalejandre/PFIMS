@@ -5,16 +5,34 @@ namespace App\Services\ML;
 /** Separate promotion requirements; evaluating this policy never writes model artifacts. */
 class ModelActivationPolicy
 {
-    public const AGREED_MAE_MAXIMUM = 100000.0;
+    public const AGREED_MAE_MAX_PERCENT = 5.0;
+
+    public const STRETCH_MAE_PERCENT = 2.0;
+
+    public function maeTarget(array $metrics): array
+    {
+        $median = $metrics['target_median'] ?? null;
+        $valid = $this->finite($median) && $median > 0;
+        $mae = $metrics['mean_absolute_error'] ?? null;
+
+        return ['basis' => 'median_actual_final_cost_of_evaluated_projects',
+            'reference_pesos' => $valid ? (float) $median : null,
+            'maximum_percent' => self::AGREED_MAE_MAX_PERCENT, 'stretch_percent' => self::STRETCH_MAE_PERCENT,
+            'maximum_pesos' => $valid ? round($median * self::AGREED_MAE_MAX_PERCENT / 100, 2) : null,
+            'stretch_pesos' => $valid ? round($median * self::STRETCH_MAE_PERCENT / 100, 2) : null,
+            'actual_percent' => $valid && $this->finite($mae) ? round($mae / $median * 100, 4) : null];
+    }
 
     public function assessCost(array $metrics, array $evidence = []): array
     {
         $checks = $this->evidenceChecks($evidence);
         $checks['mape_at_most_10_percent'] = $this->atMost($metrics['mean_absolute_percentage_error'] ?? null, 10);
         $checks['r_squared_at_least_0_8'] = $this->atLeast($metrics['r_squared'] ?? null, 0.8);
-        $tolerance = array_key_exists('mae_tolerance', $evidence) ? $evidence['mae_tolerance'] : self::AGREED_MAE_MAXIMUM;
+        $maeTarget = $this->maeTarget($metrics);
+        $tolerance = array_key_exists('mae_tolerance', $evidence) ? $evidence['mae_tolerance'] : $maeTarget['maximum_pesos'];
         $checks['agreed_mae_tolerance'] = $this->finite($tolerance) && $tolerance > 0
-            && $this->atMost($metrics['mean_absolute_error'] ?? null, min((float) $tolerance, self::AGREED_MAE_MAXIMUM));
+            && $this->finite($maeTarget['maximum_pesos'])
+            && $this->atMost($metrics['mean_absolute_error'] ?? null, min((float) $tolerance, $maeTarget['maximum_pesos']));
         $baseline = $evidence['budget_baseline_mape'] ?? null;
         $checks['budget_baseline_improvement_at_least_2_points'] = $this->finite($baseline)
             && $this->finite($metrics['mean_absolute_percentage_error'] ?? null)
@@ -28,8 +46,8 @@ class ModelActivationPolicy
         return $this->result('cost_regression', $checks, [
             'minimum' => ['mape_max' => 10, 'r_squared_min' => 0.8, 'baseline_mape_improvement_points' => 2],
             'ideal' => ['mape_max' => 5, 'r_squared_min' => 0.9],
-            'mae_maximum_pesos' => self::AGREED_MAE_MAXIMUM,
-            'mae' => 'Project requirement: MAE at most PHP 100,000; a stricter supplied tolerance is honored.',
+            'mae_target' => $maeTarget,
+            'mae' => 'MAE at most 5% of the median actual final cost in the real-only project evaluation; 2% is the stretch goal. Lower is better. A stricter supplied peso tolerance is honored.',
         ]);
     }
 

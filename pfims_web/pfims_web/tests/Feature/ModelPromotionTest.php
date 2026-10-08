@@ -57,7 +57,7 @@ class ModelPromotionTest extends TestCase
     public function test_qualified_cost_promotion_preserves_the_previous_estimator(): void
     {
         (new CostModelStore($this->path, 10))->save($this->cost(), ['version' => 'previous']);
-        $metrics = ['mean_absolute_percentage_error' => 5, 'mean_absolute_error' => 500, 'r_squared' => 0.9];
+        $metrics = ['mean_absolute_percentage_error' => 5, 'mean_absolute_error' => 500, 'r_squared' => 0.9, 'target_median' => 20000];
         $result = (new ModelPromotionService)->promoteCost($this->path, $this->cost(), ['evaluation' => $metrics],
             $this->evidence() + ['mae_tolerance' => 1000, 'budget_baseline_mape' => 10, 'active_model_evaluation' => $metrics]);
         $this->assertTrue($result['activated']);

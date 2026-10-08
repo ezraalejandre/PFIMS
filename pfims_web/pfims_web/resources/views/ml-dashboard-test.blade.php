@@ -1113,6 +1113,7 @@
                             <div class="metric-item"><span class="metric-label">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
                         </div>
                         <p class="analytics-panel-description">Lower cost error is better. A 7% MAPE means forecasts differed from actual final costs by 7% on average; it is not a guarantee for an individual project.</p>
+                        <p id="performanceMAETarget" class="analytics-panel-description"></p>
                     </section>
                     <section class="metric-section" aria-labelledby="overrunDetectionTitle">
                         <h3 class="metric-section-title" id="overrunDetectionTitle">Budget overrun detection</h3>
@@ -1124,11 +1125,19 @@
                             <div class="metric-item"><span class="metric-label">Accuracy · all outcomes classified correctly</span><span class="metric-value" id="metricOverrunAccuracy">—</span></div>
                         </div>
                         <p id="performanceCounts"></p>
+                        <p id="performanceReliability" class="analytics-panel-description"></p>
                         <p class="analytics-panel-description">Accuracy is the percentage of overrun and within-budget outcomes classified correctly. Read it alongside recall: high accuracy can still hide missed overruns when most outcomes are within budget. Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Costs equal to budget are not overruns. Budget means the recorded budget used for evaluation.</p>
                     </section>
                     <section class="metric-section"><h3 class="metric-section-title">Evaluation details and prediction inputs</h3>
                         <p id="performanceValidation"></p><p id="performanceComparison"></p><p id="performanceFeatures"></p><p id="performanceUpdated"></p>
+                        <p class="analytics-panel-description">Project targets: MAE at most 5% of the median actual final cost (2% stretch goal), MAPE at most 5%, R² at least 0.90; overrun accuracy at least 90%, precision 85%, recall 90%, and F1 85%. MAE divided by the median is different from MAPE. Lower cost error is better. These are goals, not guarantees. Activation also requires reliable independent evidence.</p>
                         <p class="analytics-panel-description">Projects are kept together in training and testing. The newest 20% are reserved for testing; feature selection and temporal cross-validation use only earlier training projects. Repeated stages from one project are related observations. Completed-project evaluation does not establish accuracy for every ongoing project.</p>
+                    </section>
+                    <section class="metric-section" aria-labelledby="latestCandidateTitle">
+                        <h3 class="metric-section-title" id="latestCandidateTitle">Latest model improvement check</h3>
+                        <p id="performanceCandidateStatus">No optimization evaluation available.</p>
+                        <p id="performanceCandidateResults" class="analytics-panel-description"></p>
+                        <p id="performanceCandidateTraining" class="analytics-panel-description"></p>
                     </section>
                 </div>
             </section>

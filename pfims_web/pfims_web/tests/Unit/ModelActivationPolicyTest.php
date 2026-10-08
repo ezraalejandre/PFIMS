@@ -7,14 +7,19 @@ use PHPUnit\Framework\TestCase;
 
 class ModelActivationPolicyTest extends TestCase
 {
-    public function test_agreed_mae_ceiling_cannot_be_relaxed_by_candidate_evidence(): void
+    public function test_mae_ceiling_is_five_percent_of_median_and_cannot_be_relaxed_by_candidate_evidence(): void
     {
         $policy = new ModelActivationPolicy;
-        $metrics = ['mean_absolute_percentage_error' => 5, 'r_squared' => 0.9, 'mean_absolute_error' => 100000];
+        $metrics = ['mean_absolute_percentage_error' => 5, 'r_squared' => 0.9, 'mean_absolute_error' => 150000, 'target_median' => 3000000];
         $evidence = $this->evidence() + ['budget_baseline_mape' => 10, 'active_model_evaluation' => $metrics];
         $this->assertTrue($policy->assessCost($metrics, $evidence)['eligible']);
-        $this->assertFalse($policy->assessCost(array_replace($metrics, ['mean_absolute_error' => 100000.01]),
+        $this->assertFalse($policy->assessCost(array_replace($metrics, ['mean_absolute_error' => 150000.01]),
             $evidence + ['mae_tolerance' => 1000000])['checks']['agreed_mae_tolerance']);
+        $target = $policy->maeTarget($metrics);
+        $this->assertSame(5.0, $target['actual_percent']);
+        $this->assertSame(60000.0, $target['stretch_pesos']);
+        $this->assertFalse($policy->assessCost(array_replace($metrics, ['target_median' => null]), $evidence)['eligible']);
+        $this->assertFalse($policy->assessCost(array_replace($metrics, ['target_median' => 0]), $evidence)['eligible']);
     }
 
     private function evidence(): array
@@ -52,7 +57,7 @@ class ModelActivationPolicyTest extends TestCase
 
     public function test_cost_requires_agreed_mae_baseline_improvement_and_current_model_comparison(): void
     {
-        $metrics = ['mean_absolute_percentage_error' => 10, 'r_squared' => 0.8, 'mean_absolute_error' => 1000];
+        $metrics = ['mean_absolute_percentage_error' => 10, 'r_squared' => 0.8, 'mean_absolute_error' => 1000, 'target_median' => 20000];
         $evidence = $this->evidence() + ['mae_tolerance' => 1000, 'budget_baseline_mape' => 12,
             'active_model_evaluation' => $metrics];
         $policy = new ModelActivationPolicy;

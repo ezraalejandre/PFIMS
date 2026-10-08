@@ -12,8 +12,11 @@ class ProjectCostAugmentationDataset
 
     private Collection $rows;
 
-    public function __construct(private string $directory)
+    public function __construct(private string $directory, private ?float $dummyToRealRatio = null)
     {
+        if ($dummyToRealRatio !== null && (! is_finite($dummyToRealRatio) || $dummyToRealRatio < 0)) {
+            throw new RuntimeException('Dummy influence must be a finite nonnegative ratio.');
+        }
         if (! is_file($directory.'/manifest.json')) {
             throw new RuntimeException('Augmentation dataset is unavailable. Generate a verified live-source dataset first.');
         }
@@ -96,12 +99,37 @@ class ProjectCostAugmentationDataset
             })->values();
         }
 
+        if ($this->dummyToRealRatio !== null) {
+            // Stable, donor-balanced project subsampling. Keep every stage of a chosen
+            // project together; no validation donor can enter this pool.
+            $groups = $dummy->groupBy('donor_project_id')->map(fn ($rows) => $rows->pluck('project_id')->unique()
+                ->sortBy(fn ($id) => hash('sha256', 'augmentation-influence-v1|'.$id))->values()->all());
+            $chosen = [];
+            $limit = (int) floor($records->pluck('project_id')->unique()->count() * $this->dummyToRealRatio);
+            $round = 0;
+            do {
+                $added = false;
+                foreach ($groups as $ids) {
+                    if (count($chosen) >= $limit) {
+                        break;
+                    }
+                    if (isset($ids[$round])) {
+                        $chosen[] = $ids[$round];
+                        $added = true;
+                    }
+                }
+                $round++;
+            } while ($added && count($chosen) < $limit);
+            $dummy = $dummy->whereIn('project_id', $chosen)->values();
+        }
+
         return $records->concat($dummy)->values();
     }
 
     public function summary(): array
     {
-        return array_diff_key($this->manifest, ['files' => true, 'database_fingerprint' => true]);
+        return array_diff_key($this->manifest, ['files' => true, 'database_fingerprint' => true])
+            + ['dummy_to_real_project_ratio' => $this->dummyToRealRatio, 'influence_method' => 'deterministic_donor_balanced_project_subsampling'];
     }
 
     public static function read(string $path): \Generator
