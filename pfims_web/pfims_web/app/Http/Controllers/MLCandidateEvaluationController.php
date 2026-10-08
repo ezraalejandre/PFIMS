@@ -13,7 +13,7 @@ class MLCandidateEvaluationController extends Controller
     public function store(Request $request)
     {
         $input = $request->validate([
-            'cohort' => ['required', Rule::in(['auto', 'planning', 'presentation_progress'])],
+            'cohort' => ['required', Rule::in(['auto', 'planning', 'presentation_progress', 'database_augmented'])],
         ]);
         try {
             // Evaluating a candidate must never trigger constructor-time training.

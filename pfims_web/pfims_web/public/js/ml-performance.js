@@ -36,7 +36,10 @@
         const observations = metrics?.evaluation_observations ?? (candidate ? null : active.test_samples);
         const projects = metrics?.evaluation_projects ?? (candidate ? report?.holdout_project_ids?.length : null);
         put('samplesCount', `${projects ?? 'Unknown'} test projects · ${observations ?? 'Unknown'} observations`);
-        put('performanceScope', active.evaluation_scope_label === 'Demonstration evaluation'
+        const augmentation = active.augmentation;
+        put('performanceScope', augmentation
+            ? 'Database-only test evaluation. Dummy projects are used for training only; none are included in these test scores.'
+            : active.evaluation_scope_label === 'Demonstration evaluation'
             ? 'Demonstration evaluation. These results describe the presentation portfolio and do not establish company operational accuracy.'
             : candidate
             ? 'Presentation dataset performance. Candidate evaluation only; these scores do not describe the active forecasting model.'
@@ -56,6 +59,9 @@
             : 'Detailed detection counts are unavailable for this saved evaluation. A zero recall means no actual overruns were detected; an unavailable score cannot be treated as zero.');
         const cv = candidate ? report?.cross_validation : active.cross_validation;
         put('performanceValidation', cv ? `${active.training_projects ?? 'Unknown'} training projects · ${projects ?? 'Unknown'} reserved test projects. Training-only temporal cross-validation: average percentage error ${percent(cv.average_mean_absolute_percentage_error)}. Cost errors use ${observations ?? 'Unknown'} stage observations; overrun detection uses ${useProjectDetection ? 'one latest observation per test project' : 'the stated evaluation observations'}.` : 'Training cross-validation is unavailable for this saved model.');
+        if (augmentation) {
+            put('performanceValidation', `${augmentation.database_training_project_ids.length} database projects + ${augmentation.dummy_projects} dummy projects for training · ${augmentation.database_test_project_ids.length} database projects reserved for testing. Training-only temporal cross-validation: average percentage error ${percent(cv?.average_mean_absolute_percentage_error)}. Each validation fold excludes dummy projects derived from its validation projects.`);
+        }
         put('performanceComparison', baseline
             ? `Active model cost error ${percent(evaluated?.mean_absolute_percentage_error)}; recorded-budget baseline error ${percent(baseline.baseline_evaluation?.mean_absolute_percentage_error)} on the same test observations.`
             : 'Baseline comparison is unavailable for this saved evaluation.');

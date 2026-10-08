@@ -12,7 +12,7 @@ class ModelPromotionService
 {
     public function promoteCost(string $path, Regression $model, array $metadata, array $evidence): array
     {
-        $checks = (new ModelActivationPolicy)->assessCost($metadata['evaluation'] ?? [], $evidence);
+        $checks = (new ModelActivationPolicy)->assessCost($metadata['activation_primary_evaluation'] ?? $metadata['evaluation'] ?? [], $evidence);
         if (! $checks['eligible']) {
             return ['activated' => false, 'policy' => $checks];
         }
