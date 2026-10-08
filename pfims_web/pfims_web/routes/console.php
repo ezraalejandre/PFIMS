@@ -2,6 +2,9 @@
 
 use App\Services\InventoryHistoryReconciler;
 use App\Services\LegacyInventoryPriceBackfill;
+use App\Services\ML\LiveProjectCostSource;
+use App\Services\ML\ProjectCostAugmentationAudit;
+use App\Services\ML\ProjectCostDistributionGenerator;
 use App\Services\MLService;
 use App\Services\ProjectCostDataQualityService;
 use App\Services\ProjectCostPresentationService;
@@ -25,7 +28,7 @@ Artisan::command('ml:presentation-records {--apply : Insert the verified batch a
     return 0;
 })->purpose('Preview or explicitly import an internally traceable presentation batch without retraining');
 
-Artisan::command('ml:evaluate {--cohort=auto : auto, planning, or presentation_progress} {--save-report : Save evidence separately without activating a model}', function () {
+Artisan::command('ml:evaluate {--cohort=auto : auto, planning, presentation_progress, or database_augmented} {--save-report : Save evidence separately without activating a model}', function () {
     $service = new MLService(null, false);
     $report = $service->evaluateCandidate((string) $this->option('cohort'));
     if ($this->option('save-report')) {
@@ -35,6 +38,37 @@ Artisan::command('ml:evaluate {--cohort=auto : auto, planning, or presentation_p
 
     return 0;
 })->purpose('Evaluate a candidate in memory without replacing the saved model or changing project records');
+
+Artisan::command('ml:export-augmentation-source {--connection= : Configured live MySQL connection} {--output= : Private new source export path}', function () {
+    $this->line(json_encode(app(LiveProjectCostSource::class)->export(
+        $this->option('connection') ?: config('database.default'),
+        $this->option('output') ?: storage_path('app/ml-datasets/source-'.now()->format('Ymd-His').'.json.gz')),
+        JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Export a consistent read-only snapshot of the verified live database for augmentation');
+
+Artisan::command('ml:generate-augmentation {--source= : Consistent live-source JSON gzip export} {--output= : New private dataset directory} {--seed=20261008}', function () {
+    $sourcePath = $this->option('source');
+    if (! $sourcePath || ! is_file($sourcePath)) {
+        $this->error('Provide a verified live source export with --source.');
+
+        return 1;
+    }
+    $source = json_decode(gzdecode(file_get_contents($sourcePath)), true, 512, JSON_THROW_ON_ERROR);
+    $manifest = app(ProjectCostDistributionGenerator::class)->generate($source,
+        $this->option('output') ?: config('ml.augmentation_directory'), seed: (int) $this->option('seed'));
+    $this->line(json_encode($manifest, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Generate 1000 dummy projects, 300 expenses and 1000 inventory movements per project from live training donors only');
+
+Artisan::command('ml:audit-augmentation {--directory= : Dataset directory}', function () {
+    $this->line(json_encode(app(ProjectCostAugmentationAudit::class)->audit(
+        $this->option('directory') ?: config('ml.augmentation_directory')), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Stream and verify every dummy expense, inventory lot, cost label, reference and per-project count');
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

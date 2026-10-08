@@ -7,6 +7,7 @@ use App\Services\ML\CostModelStore;
 use App\Services\ML\ModelActivationPolicy;
 use App\Services\ML\ModelPromotionService;
 use App\Services\ML\PortableRbfSvr;
+use App\Services\ML\ProjectCostAugmentationDataset;
 use App\Services\ML\RidgeRegression;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -143,7 +144,16 @@ class MLService
 
     public function evaluateCandidate(string $cohortMode = 'auto'): array
     {
-        $cohort = $this->selectTrainingCohort($cohortMode);
+        if ($cohortMode === 'auto' && config('ml.augmentation_enabled')) {
+            $cohortMode = 'database_augmented';
+        }
+        $this->augmentation = null;
+        if ($cohortMode === 'database_augmented') {
+            $cohort = $this->databaseTrainingCohort();
+            $this->augmentation = new ProjectCostAugmentationDataset(config('ml.augmentation_directory'));
+            $this->augmentation->assertDatabaseMatches($cohort['records']);
+        }
+        $cohort = $cohortMode === 'database_augmented' ? $cohort : $this->selectTrainingCohort($cohortMode);
         $records = $cohort['records'];
         $report = [
             'generated_at' => now()->toIso8601String(),
@@ -198,7 +208,38 @@ class MLService
         $result['activation_checks']['overrun_detector'] = $policy->assessDetector($detectorMetrics,
             $evidence + ['project_level_primary_evaluation' => true]);
 
+        if ($this->augmentation !== null) {
+            $result['augmentation'] = $this->augmentation->summary();
+            $result['scope_note'] = 'Training uses dummy projects plus the earlier 80% of eligible database projects. All final test observations come only from the newest 20% of database projects. Source provenance is retained.';
+        }
+
         return $result;
+    }
+
+    protected ?ProjectCostAugmentationDataset $augmentation = null;
+
+    /** Export the existing eligible cohort without relabelling source provenance. */
+    public function databaseTrainingCohort(): array
+    {
+        $connection = DB::connection();
+        $pdo = $connection->getPdo();
+        if ($pdo->inTransaction()) {
+            return $this->selectTrainingCohort('auto');
+        }
+        try {
+            if ($connection->getDriverName() === 'mysql') {
+                $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+                $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+            } else {
+                $pdo->beginTransaction();
+            }
+
+            return $this->selectTrainingCohort('auto');
+        } finally {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+        }
     }
 
     /** Explicit publication for a portfolio consisting entirely of presentation records. */
@@ -509,6 +550,7 @@ class MLService
 
     protected function fitOverrunClassifier(Collection $records, array $features): BudgetOverrunClassifier
     {
+        $records = $this->augmentation?->augment($records) ?? $records;
         $labels = $records->map(function ($row) {
             $finalCost = (float) $row->actual_cost + (isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0);
 
@@ -541,7 +583,7 @@ class MLService
     public function saveCandidateEvaluationReport(array $report): void
     {
         if (($report['mode'] ?? null) !== 'read_only_candidate_evaluation'
-            || ! in_array($report['cohort_policy'] ?? null, ['auto', 'planning', 'presentation_progress'], true)) {
+            || ! in_array($report['cohort_policy'] ?? null, ['auto', 'planning', 'presentation_progress', 'database_augmented'], true)) {
             throw new InvalidArgumentException('A validated candidate evaluation report is required.');
         }
         $path = $this->modelPath.'.evaluation.json';
@@ -579,6 +621,9 @@ class MLService
     /** Training metadata retains the provenance of presentation examples. */
     public function train(?string $cohortMode = null): bool
     {
+        if ($cohortMode === 'database_augmented' || (in_array($cohortMode, [null, 'auto'], true) && config('ml.augmentation_enabled'))) {
+            return $this->retrainAugmented()['candidate_activated'];
+        }
         // Routine retraining must not replace a served pair through the legacy path.
         // Qualified replacements use ModelPromotionService's separate policy checks.
         if ($this->restoreStoredModel()) {
@@ -902,6 +947,9 @@ class MLService
      */
     protected function selectTrainingCohort(string $cohortMode = 'auto'): array
     {
+        if ($cohortMode === 'database_augmented') {
+            return $this->databaseTrainingCohort();
+        }
         if (! in_array($cohortMode, ['auto', 'planning', 'presentation_progress'], true)) {
             throw new InvalidArgumentException('Unknown training cohort policy.');
         }
@@ -1516,6 +1564,7 @@ class MLService
             $folds[] = [
                 'fold' => $fold + 1,
                 'training_samples' => $trainingData->count(),
+                'dummy_training_samples' => $this->augmentation === null ? 0 : $this->augmentation->augment($trainingData)->count() - $trainingData->count(),
                 'test_samples' => $testData->count(),
                 'training_project_ids' => $trainingData->pluck('project_id')->unique()->values()->all(),
                 'test_project_ids' => $testData->pluck('project_id')->unique()->values()->all(),
@@ -1883,6 +1932,7 @@ class MLService
 
     protected function buildRegressionModel(Regression $model, Collection $records, array $featureNames, bool $normalizeTargets = false): array
     {
+        $records = $this->augmentation?->augment($records) ?? $records;
         if ($records->count() < 2) {
             throw new RuntimeException('At least two records are required to build a regression model.');
         }
@@ -2711,6 +2761,7 @@ class MLService
             'latest_observation_per_project' => $metrics['latest_observation_per_project'] ?? null,
             'evaluation_scope_label' => $this->metadata['evaluation_scope_label'] ?? null,
             'cohort_policy' => $this->metadata['cohort_policy'] ?? 'auto',
+            'augmentation' => $this->metadata['augmentation'] ?? null,
             'candidate_evaluations' => $this->getCandidateEvaluationReports(),
             'training_projects' => $this->metadata['training_projects'] ?? null,
             'progress_feature_selection' => $this->metadata['progress_feature_selection'] ?? null,
@@ -2831,6 +2882,9 @@ class MLService
 
     public function retrain(?string $cohortMode = null): array
     {
+        if ($cohortMode === 'database_augmented' || (in_array($cohortMode, [null, 'auto'], true) && config('ml.augmentation_enabled'))) {
+            return $this->retrainAugmented();
+        }
         $realModelTrained = $this->train($cohortMode);
         $metrics = $this->getModelMetrics();
 
@@ -2845,6 +2899,91 @@ class MLService
             'candidate_activated' => $realModelTrained,
             'model_source' => $metrics['model_source'], 'metrics' => $metrics,
         ];
+    }
+
+    /** Train the CV-selected model, persist its candidate, and retain existing promotion gates. */
+    protected function retrainAugmented(): array
+    {
+        File::ensureDirectoryExists(dirname($this->modelPath));
+        $lock = fopen($this->modelPath.'.training.lock', 'c');
+        if ($lock === false) {
+            throw new RuntimeException('Unable to open the augmented training lock.');
+        }
+        if (! flock($lock, LOCK_EX | LOCK_NB)) {
+            fclose($lock);
+            throw new RuntimeException('Augmented model training is already running.');
+        }
+        try {
+            return $this->performAugmentedRetraining();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    protected function performAugmentedRetraining(): array
+    {
+        $report = $this->evaluateCandidate('database_augmented');
+        if (($report['status'] ?? null) !== 'evaluated') {
+            throw new RuntimeException('Not enough eligible database projects to evaluate augmentation.');
+        }
+        $algorithm = $report['model_comparison']['training_cv_recommended_model'];
+        $candidate = $report['model_comparison']['models'][$algorithm];
+        $cohort = $this->databaseTrainingCohort();
+        $this->augmentation->assertDatabaseMatches($cohort['records']);
+        $training = $cohort['records']->whereIn('project_id', $report['training_project_ids'])->values();
+        $test = $cohort['records']->whereIn('project_id', $report['holdout_project_ids'])->values();
+        $features = $report['evaluated_feature_names'];
+        [$model, $transformer] = $this->buildServableRegressionModel($algorithm, $candidate['selected_parameters'] ?? [], $training, $features);
+        $evaluation = $this->evaluateModel($model, $transformer, $test);
+        $mixed = $this->augmentation->augment($training);
+        $primaryTest = $test->groupBy('project_id')->map(fn ($rows) => $rows->sortBy('captured_at')->last())->values();
+        $primaryEvaluation = $evaluation['latest_observation_per_project'];
+        $primaryBaseline = $this->budgetBaselineComparison($primaryTest, $primaryEvaluation);
+        $sourceCounts = $cohort['records']->groupBy('data_source')->map(fn ($rows) => $rows->pluck('project_id')->unique()->count())->all();
+        $baseline = $this->budgetBaselineComparison($test, $evaluation);
+        $active = $this->evaluateSavedActiveEstimator($primaryTest);
+        $genuine = array_diff(array_keys($sourceCounts), ['operational']) === [];
+        $metadata = [
+            'schema_version' => self::MODEL_SCHEMA_VERSION, 'trained_at' => now()->toIso8601String(),
+            'model_type' => $algorithm, 'model_source' => $genuine ? 'real_trained_model' : 'sample_trained_model',
+            'uses_synthetic_data' => true, 'cohort_policy' => 'database_augmented', 'prediction_strategy' => $cohort['strategy'],
+            'prediction_target' => $cohort['strategy'] === 'progress_snapshot_model' ? 'remaining_cost_then_add_recorded_spend' : 'final_cost',
+            'evaluation_scope_label' => 'Database-only holdout; augmented training', 'evaluation_method' => 'fixed_grouped_chronological_80_20_database_only_holdout',
+            'evaluation_protocol_version' => 6, 'evaluation' => $evaluation, 'activation_primary_evaluation' => $primaryEvaluation, 'transformer' => $transformer,
+            'samples_trained' => $mixed->count(), 'training_samples_evaluated' => $mixed->count(),
+            'training_projects' => $mixed->pluck('project_id')->unique()->count(), 'test_samples' => $test->count(),
+            'real_samples_available' => $cohort['records']->count(), 'sample_samples_available' => $mixed->count() - $training->count(),
+            'evaluation_training_project_ids' => $report['training_project_ids'], 'evaluation_holdout_project_ids' => $report['holdout_project_ids'],
+            'feature_set' => ['selected_feature_names' => $features], 'feature_ranges' => $this->featureRanges($mixed, $features),
+            'cross_validation' => $candidate['cross_validation'], 'budget_baseline_comparison' => $baseline,
+            'augmentation' => $this->augmentation->summary(), 'model_comparison' => $report['model_comparison'],
+            'snapshot_readiness' => $cohort['snapshot_readiness'], 'sample_sufficiency' => $this->sampleSufficiency($training->pluck('project_id')->unique()->count()),
+        ];
+        $metadata['model_comparison']['production_model'] = $algorithm;
+        $metadata['model_comparison']['production_model_is_best_option'] = $report['model_comparison']['training_cv_recommended_model'] === $algorithm;
+        $candidatePath = $this->modelPath.'.augmented-candidate';
+        (new CostModelStore($candidatePath, self::MODEL_SCHEMA_VERSION))->save($model, $metadata);
+        $evidence = ['verified_genuine_source_records' => $genuine,
+            // Development evaluation cannot establish an untouched release holdout.
+            // Absence from saved reports is not proof of no previous exposure.
+            'fresh_independent_holdout' => false,
+            'training_project_ids' => $mixed->pluck('project_id')->unique()->all(), 'holdout_project_ids' => $report['holdout_project_ids'],
+            'training_only_tuning' => true, 'same_holdout_active_comparison' => ($active['status'] ?? '') === 'evaluated',
+            'project_level_primary_evaluation' => $primaryTest->count() === $primaryTest->pluck('project_id')->unique()->count(),
+            'active_model_evaluation' => $active['evaluation'] ?? [], 'budget_baseline_mape' => $primaryBaseline['baseline_evaluation']['mean_absolute_percentage_error'] ?? null];
+        $promotion = app(ModelPromotionService::class)->promoteCost($this->modelPath, $model, $metadata, $evidence);
+        $report['augmented_candidate'] = ['path' => $candidatePath, 'algorithm' => $algorithm, 'evaluation' => $evaluation, 'activation' => $promotion['policy']];
+        $report['active_model_changed'] = $promotion['activated'];
+        $this->saveCandidateEvaluationReport($report);
+        if ($promotion['activated']) {
+            $this->restoreStoredModel();
+        }
+
+        return ['message' => $promotion['activated'] ? 'Model trained on dummy plus database training projects; evaluation uses database test projects only.'
+            : 'Augmented candidate trained and saved. Existing active model retained because promotion requirements were not met.',
+            'candidate_activated' => $promotion['activated'], 'candidate_path' => $candidatePath, 'activation' => $promotion['policy'],
+            'candidate_evaluation' => $evaluation, 'model_source' => $this->metadata['model_source'] ?? 'unknown', 'metrics' => $this->getModelMetrics()];
     }
 
     public function getModelMetadata(): array
