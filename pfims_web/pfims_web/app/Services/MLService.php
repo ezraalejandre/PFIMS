@@ -8,6 +8,7 @@ use App\Services\ML\ModelActivationPolicy;
 use App\Services\ML\ModelPromotionService;
 use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\ProjectCostAugmentationDataset;
+use App\Services\ML\ProjectCostOptimizationService;
 use App\Services\ML\RidgeRegression;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -218,6 +219,8 @@ class MLService
 
     protected ?ProjectCostAugmentationDataset $augmentation = null;
 
+    protected bool $useBudgetRatioTarget = false;
+
     /** Export the existing eligible cohort without relabelling source provenance. */
     public function databaseTrainingCohort(): array
     {
@@ -288,7 +291,8 @@ class MLService
         if (($detection['classification_counts'] ?? null) !== ($candidate['evaluation']['latest_observation_per_project']['overrun_detection']['any_overrun']['classification_counts'] ?? null)) {
             throw new RuntimeException('Portable estimator changed the evaluated project-level overrun decisions.');
         }
-        $costPasses = $evaluation['mean_absolute_error'] <= 100000
+        $maeTarget = app(ModelActivationPolicy::class)->maeTarget($evaluation['latest_observation_per_project']);
+        $costPasses = $maeTarget['actual_percent'] !== null && $maeTarget['actual_percent'] <= ModelActivationPolicy::AGREED_MAE_MAX_PERCENT
             && $evaluation['mean_absolute_percentage_error'] <= 5 && $evaluation['r_squared'] >= 0.9;
         foreach (['classification_accuracy' => 90, 'precision' => 85, 'recall' => 90, 'f1_score' => 85, 'balanced_accuracy' => 85] as $metric => $minimum) {
             if (! is_numeric($detection[$metric] ?? null) || $detection[$metric] < $minimum) {
@@ -404,7 +408,7 @@ class MLService
                 if (isset($transformer['target_normalization'])) {
                     $estimate = $estimate * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
                 }
-                if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
+                if (in_array($transformer['target_scaling'] ?? 'currency', ['remaining_cost_fraction_of_budget', 'final_cost_fraction_of_budget'], true)) {
                     $estimate *= (float) $row->budget;
                 }
                 $spent = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
@@ -613,6 +617,30 @@ class MLService
             $report = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
 
             return ($report['schema_version'] ?? null) === 1 && is_array($report['reports'] ?? null) ? $report : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    public function getOptimizationSummary(): ?array
+    {
+        try {
+            $path = $this->modelPath.'.optimization.json';
+            if (! File::exists($path)) {
+                return null;
+            }
+            $report = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
+            if (($report['schema_version'] ?? null) !== 1 || ($report['status'] ?? null) !== 'evaluated') {
+                return null;
+            }
+
+            return ['generated_at' => $report['generated_at'], 'algorithm' => $report['selected_candidate']['algorithm'],
+                'training_counts' => $report['training_counts'], 'evaluation' => array_intersect_key($report['evaluation'],
+                    array_flip(['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared', 'target_median', 'target_mean', 'mae_target'])),
+                'detector_evaluation' => $report['overrun_classifier']['evaluation']['latest_observation_per_project'] ?? null,
+                'cost_failed_requirements' => $report['activation_checks']['cost_model']['failed_requirements'] ?? [],
+                'detector_failed_requirements' => $report['activation_checks']['overrun_detector']['failed_requirements'] ?? [],
+                'active_model_changed' => false, 'holdout_status' => $report['holdout_status']];
         } catch (Throwable) {
             return null;
         }
@@ -1938,7 +1966,8 @@ class MLService
         }
         $rawSamples = $records->map(fn ($row) => $this->rowToFeatures($row, $featureNames))->values()->all();
         $remainingFraction = $records->every(fn ($row) => isset($row->snapshot_id) && (float) $row->budget > 0);
-        $labels = $records->map(fn ($row) => (float) $row->actual_cost / ($remainingFraction ? (float) $row->budget : 1))->values()->all();
+        $budgetRatio = $this->useBudgetRatioTarget && ! $remainingFraction && $records->every(fn ($row) => (float) $row->budget > 0);
+        $labels = $records->map(fn ($row) => (float) $row->actual_cost / ($remainingFraction || $budgetRatio ? (float) $row->budget : 1))->values()->all();
         $targetNormalization = null;
         if ($normalizeTargets) {
             $mean = array_sum($labels) / count($labels);
@@ -1967,7 +1996,7 @@ class MLService
             'feature_names' => array_values($featureNames),
             'ranges' => $ranges,
             'scaling' => 'min_max',
-            'target_scaling' => $remainingFraction ? 'remaining_cost_fraction_of_budget' : 'currency',
+            'target_scaling' => $remainingFraction ? 'remaining_cost_fraction_of_budget' : ($budgetRatio ? 'final_cost_fraction_of_budget' : 'currency'),
             'target_normalization' => $targetNormalization,
             'excluded_features_note' => 'Constant or linearly dependent columns are excluded deterministically; accepted API fields remain unchanged.',
         ]];
@@ -2052,6 +2081,9 @@ class MLService
         return match ($name) {
             'budget' => (float) $row->budget,
             'duration_months' => max(1, (float) $row->duration_months),
+            'log_budget' => log1p(max(0, (float) $row->budget)),
+            'planned_budget_per_month' => (float) $row->budget / max(1, (float) $row->duration_months),
+            'planned_duration_squared' => max(1, (float) $row->duration_months) ** 2,
             'worker_count' => max(1, (float) $row->worker_count),
             'completion_percentage' => min(100, max(0, (float) $row->completion_percentage)),
             'material_cost', 'labor_cost',
@@ -2107,7 +2139,7 @@ class MLService
             if (isset($transformer['target_normalization'])) {
                 $prediction = $prediction * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
             }
-            if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
+            if (in_array($transformer['target_scaling'] ?? 'currency', ['remaining_cost_fraction_of_budget', 'final_cost_fraction_of_budget'], true)) {
                 $prediction *= (float) $row->budget;
             }
             if (! is_finite($prediction)) {
@@ -2161,6 +2193,15 @@ class MLService
         $accuracy = $mape === null ? null : max(0, 100 - $mape);
 
         $meanActual = array_sum($actuals) / count($actuals);
+        $projectActuals = [];
+        foreach ($actuals as $index => $actual) {
+            $projectActuals[(string) ($rows?->values()[$index]->project_id ?? 'observation-'.$index)] = $actual;
+        }
+        $sortedActuals = array_values($projectActuals);
+        sort($sortedActuals, SORT_NUMERIC);
+        $targetCount = count($sortedActuals);
+        $middle = intdiv($targetCount, 2);
+        $medianActual = $targetCount % 2 ? $sortedActuals[$middle] : ($sortedActuals[$middle - 1] + $sortedActuals[$middle]) / 2;
         $totalSumSquares = $residualSumSquares = 0.0;
         foreach ($actuals as $index => $actual) {
             $totalSumSquares += ($actual - $meanActual) ** 2;
@@ -2177,6 +2218,8 @@ class MLService
         $metrics = [
             'accuracy' => $accuracy === null ? null : round($accuracy, 2),
             'mean_absolute_error' => round($mae, 2),
+            'target_median' => round($medianActual, 2),
+            'target_mean' => round(array_sum($sortedActuals) / $targetCount, 2),
             'mean_absolute_percentage_error' => $mape === null ? null : round($mape, 2),
             'r_squared' => $rSquared === null ? null : round($rSquared, 4),
             'precision' => $material['precision'],
@@ -2189,6 +2232,8 @@ class MLService
             'evaluation_projects' => $rows?->pluck('project_id')->filter()->unique()->count(),
             'observation_weighting' => 'Each held-out observation has equal weight; multiple progress snapshots from one project are correlated.',
         ];
+
+        $metrics['mae_target'] = app(ModelActivationPolicy::class)->maeTarget($metrics);
 
         if ($rows !== null) {
             $metrics['monitoring_segments'] = $this->monitoringSegmentMetrics($rows, $predictions, $actuals, $budgets);
@@ -2284,7 +2329,7 @@ class MLService
             if (isset($transformer['target_normalization'])) {
                 $prediction = $prediction * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
             }
-            if (($transformer['target_scaling'] ?? 'currency') === 'remaining_cost_fraction_of_budget') {
+            if (in_array($transformer['target_scaling'] ?? 'currency', ['remaining_cost_fraction_of_budget', 'final_cost_fraction_of_budget'], true)) {
                 $prediction *= (float) $features[0];
             }
             $remainingCost = ($this->metadata['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend';
@@ -2332,7 +2377,8 @@ class MLService
     {
         $byName = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), $engineered);
 
-        return array_map(fn (string $name) => (float) ($byName[$name] ?? 0), $featureNames);
+        return array_map(fn (string $name) => in_array($name, ['log_budget', 'planned_budget_per_month', 'planned_duration_squared'], true)
+            ? $this->featureValue((object) $byName, $name) : (float) ($byName[$name] ?? 0), $featureNames);
     }
 
     protected function normalizePredictionFeatures(array $features): array
@@ -2750,6 +2796,7 @@ class MLService
             'evaluation_protocol_version' => $this->metadata['evaluation_protocol_version'] ?? 1,
             'accuracy' => $metrics['accuracy'] ?? null,
             'mean_absolute_error' => $mae,
+            'mae_target' => app(ModelActivationPolicy::class)->maeTarget($metrics),
             'mean_absolute_percentage_error' => $metrics['mean_absolute_percentage_error'] ?? null,
             'r_squared' => $metrics['r_squared'] ?? null,
             'precision' => $metrics['precision'] ?? null,
@@ -2763,6 +2810,7 @@ class MLService
             'cohort_policy' => $this->metadata['cohort_policy'] ?? 'auto',
             'augmentation' => $this->metadata['augmentation'] ?? null,
             'candidate_evaluations' => $this->getCandidateEvaluationReports(),
+            'latest_optimization' => $this->getOptimizationSummary(),
             'training_projects' => $this->metadata['training_projects'] ?? null,
             'progress_feature_selection' => $this->metadata['progress_feature_selection'] ?? null,
             'evaluation_projects' => $metrics['evaluation_projects'] ?? null,
@@ -2923,6 +2971,14 @@ class MLService
 
     protected function performAugmentedRetraining(): array
     {
+        if (config('ml.optimization_enabled')) {
+            $report = (new ProjectCostOptimizationService($this->modelPath))->run();
+
+            return ['message' => 'Training-only optimization completed and candidate saved. Active model retained pending independent activation evidence.',
+                'candidate_activated' => false, 'candidate_path' => $report['candidate_path'],
+                'activation' => $report['activation_checks']['cost_model'], 'candidate_evaluation' => $report['evaluation'],
+                'model_source' => $this->metadata['model_source'] ?? 'unknown', 'metrics' => $this->getModelMetrics()];
+        }
         $report = $this->evaluateCandidate('database_augmented');
         if (($report['status'] ?? null) !== 'evaluated') {
             throw new RuntimeException('Not enough eligible database projects to evaluate augmentation.');

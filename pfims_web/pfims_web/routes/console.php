@@ -5,6 +5,7 @@ use App\Services\LegacyInventoryPriceBackfill;
 use App\Services\ML\LiveProjectCostSource;
 use App\Services\ML\ProjectCostAugmentationAudit;
 use App\Services\ML\ProjectCostDistributionGenerator;
+use App\Services\ML\ProjectCostOptimizationService;
 use App\Services\MLService;
 use App\Services\ProjectCostDataQualityService;
 use App\Services\ProjectCostPresentationService;
@@ -69,6 +70,16 @@ Artisan::command('ml:audit-augmentation {--directory= : Dataset directory}', fun
 
     return 0;
 })->purpose('Stream and verify every dummy expense, inventory lot, cost label, reference and per-project count');
+
+Artisan::command('ml:optimize {--source= : Verified live read-only source export for local training}', function () {
+    $report = (new ProjectCostOptimizationService)->run($this->option('source') ?: null,
+        fn ($message) => $this->info($message));
+    $this->line(json_encode(['selected_algorithm' => $report['selected_candidate']['algorithm'],
+        'training_counts' => $report['training_counts'], 'evaluation' => $report['evaluation'],
+        'activation_checks' => $report['activation_checks'], 'active_model_changed' => false], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+    return 0;
+})->purpose('Optimize augmentation, features and models using training validation; evaluate real-only test projects without altering business records');
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

@@ -3,7 +3,7 @@
     if (!root) { window.pfimsPerformance = { update() {} }; return; }
     let active = {};
     const element = id => document.getElementById(id);
-    const put = (id, value) => { element(id).textContent = value; };
+    const put = (id, value) => { const node = element(id); if (node) node.textContent = value; };
     const number = value => value !== null && value !== undefined && Number.isFinite(Number(value));
     const percent = value => number(value) ? `${Number(value).toFixed(2)}%` : 'Unavailable';
     const currency = value => number(value) ? `₱${Number(value).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Unavailable';
@@ -28,6 +28,10 @@
             : 'Active cost model identity is unavailable.');
         put('metricMAPE', percent(metrics?.mean_absolute_percentage_error));
         put('metricMAE', currency(metrics?.mean_absolute_error));
+        const maeTarget = metrics.mae_target;
+        put('performanceMAETarget', number(maeTarget?.reference_pesos) && Number(maeTarget.reference_pesos) > 0
+            ? `MAE is ${percent(maeTarget.actual_percent)} of the median actual final cost (${currency(maeTarget.reference_pesos)}). Goal: at most ${currency(maeTarget.maximum_pesos)} (5%); stretch goal: ${currency(maeTarget.stretch_pesos)} (2%). Errors below 2% are even better.`
+            : 'MAE goal: at most 5% of the median actual final cost, with 2% as the stretch goal. The median cost was not saved for this active evaluation, so its peso equivalent is unavailable.');
         put('metricRSquared', number(metrics?.r_squared) ? Number(metrics.r_squared).toFixed(4) : 'Unavailable');
         put('metricPrecision', percent(scores.precision));
         put('metricRecall', percent(scores.recall));
@@ -57,10 +61,15 @@
         put('performanceCounts', counts
             ? `${counts.tp} overruns detected · ${counts.fn} overruns missed · ${counts.fp} false alerts · ${counts.tn} within-budget outcomes correctly identified. ${detection.actual_overruns} actual overruns across ${detection.evaluated_observations} ${useProjectDetection ? 'test projects, using the latest observation from each project' : 'observations'}.${useProjectDetection ? ` Across all progress stages, accuracy was ${percent(metrics.overrun_detection?.any_overrun?.classification_accuracy)}.` : ''}`
             : 'Detailed detection counts are unavailable for this saved evaluation. A zero recall means no actual overruns were detected; an unavailable score cannot be treated as zero.');
+        put('performanceReliability', number(detection?.actual_overruns) && Number(detection.actual_overruns) < 5
+            ? `Only ${detection.actual_overruns} actual overruns were evaluated. Recall and F1 are sensitive to individual projects; more real overrun outcomes are needed for a dependable estimate.`
+            : 'Detection scores describe the evaluated projects; they do not guarantee future outcomes.');
         const cv = candidate ? report?.cross_validation : active.cross_validation;
         put('performanceValidation', cv ? `${active.training_projects ?? 'Unknown'} training projects · ${projects ?? 'Unknown'} reserved test projects. Training-only temporal cross-validation: average percentage error ${percent(cv.average_mean_absolute_percentage_error)}. Cost errors use ${observations ?? 'Unknown'} stage observations; overrun detection uses ${useProjectDetection ? 'one latest observation per test project' : 'the stated evaluation observations'}.` : 'Training cross-validation is unavailable for this saved model.');
         if (augmentation) {
-            put('performanceValidation', `${augmentation.database_training_project_ids.length} database projects + ${augmentation.dummy_projects} dummy projects for training · ${augmentation.database_test_project_ids.length} database projects reserved for testing. Training-only temporal cross-validation: average percentage error ${percent(cv?.average_mean_absolute_percentage_error)}. Each validation fold excludes dummy projects derived from its validation projects.`);
+            const databaseTraining = augmentation.database_training_project_ids?.length;
+            const used = number(active.training_projects) && number(databaseTraining) ? Number(active.training_projects) - databaseTraining : augmentation.dummy_projects;
+            put('performanceValidation', `${databaseTraining ?? 'Unknown'} database projects + ${used ?? 'Unknown'} dummy projects used for training (${augmentation.dummy_projects ?? 'Unknown'} available) · ${augmentation.database_test_project_ids?.length ?? 'Unknown'} database projects reserved for testing. Database split: earlier 80% for training, newest 20% for testing. Training-only temporal cross-validation: average percentage error ${percent(cv?.average_mean_absolute_percentage_error)}. Each validation fold excludes dummy projects derived from its validation projects.`);
         }
         put('performanceComparison', baseline
             ? `Active model cost error ${percent(evaluated?.mean_absolute_percentage_error)}; recorded-budget baseline error ${percent(baseline.baseline_evaluation?.mean_absolute_percentage_error)} on the same test observations.`
@@ -69,6 +78,29 @@
         put('performanceFeatures', features?.length ? `Inputs evaluated (${features.length}): ${names(features)}.` : active.prediction_strategy === 'planning_only_baseline' && !candidate ? 'Active inputs: recorded budget and planned duration. Progress, burn rate, inventory usage, schedule, and transaction frequency are evaluated in the progress candidate.' : 'Evaluated input details are unavailable.');
         const date = candidate ? report?.generated_at : active.trained_at;
         put('performanceUpdated', date && !Number.isNaN(Date.parse(date)) ? `${candidate ? 'Evaluated' : 'Model trained'}: ${new Date(date).toLocaleString('en-PH')}.` : 'Evaluation date unavailable.');
+        const improvement = active.latest_optimization;
+        if (!improvement) {
+            put('performanceCandidateStatus', 'No optimization evaluation available. The metrics above describe the active model.');
+            put('performanceCandidateResults', '');
+            put('performanceCandidateTraining', '');
+        } else {
+            const cost = improvement.evaluation || {};
+            const detector = improvement.detector_evaluation || {};
+            const failures = [...(improvement.cost_failed_requirements || []), ...(improvement.detector_failed_requirements || [])];
+            const reasons = [];
+            if (failures.includes('agreed_mae_tolerance')) reasons.push('cost error does not meet the 5%-of-median MAE requirement');
+            if (failures.includes('recall_minimum') || failures.includes('f1_score_minimum')) reasons.push('overrun detection is below the activation requirements');
+            if (failures.includes('fresh_independent_holdout')) reasons.push('a fresh independent real-project test is still required');
+            if (reasons.length === 0 && failures.length) reasons.push('other activation evidence or performance requirements were not met');
+            put('performanceCandidateStatus', `Latest candidate: ${algorithmNames[improvement.algorithm] || 'Unknown model'}. Not activated${reasons.length ? `: ${reasons.join('; ')}` : '; evaluation alone does not activate a model'}. The active metrics above are unchanged.`);
+            put('performanceCandidateResults', `Candidate cost evaluation: MAE ${currency(cost.mean_absolute_error)}, MAPE ${percent(cost.mean_absolute_percentage_error)}, R² ${number(cost.r_squared) ? Number(cost.r_squared).toFixed(4) : 'Unavailable'}. Separate candidate overrun detector: accuracy ${percent(detector.classification_accuracy)}, precision ${percent(detector.precision)}, recall ${percent(detector.recall)}, F1 ${percent(detector.f1_score)}. ${number(detector.actual_overruns) ? `${detector.actual_overruns} actual test overruns.` : ''}`);
+            if (number(cost.mae_target?.reference_pesos) && Number(cost.mae_target.reference_pesos) > 0) {
+                put('performanceCandidateResults', element('performanceCandidateResults').textContent + ` Candidate MAE is ${percent(cost.mae_target.actual_percent)} of its median actual final cost (${currency(cost.mae_target.reference_pesos)}); 5% ceiling ${currency(cost.mae_target.maximum_pesos)}, 2% stretch ${currency(cost.mae_target.stretch_pesos)}.`);
+            }
+            const split = improvement.training_counts || {};
+            const updated = improvement.generated_at && !Number.isNaN(Date.parse(improvement.generated_at)) ? new Date(improvement.generated_at).toLocaleString('en-PH') : 'Unavailable';
+            put('performanceCandidateTraining', `Candidate training: ${split.database_projects ?? 'Unknown'} database projects + ${split.dummy_projects_used ?? 'Unknown'} dummy projects used (${split.dummy_projects_available ?? 'Unknown'} available). Testing: ${split.test_database_projects ?? 'Unknown'} database projects only. Settings selected using training-only temporal validation. Previously inspected test results are development evidence. Evaluated: ${updated}.`);
+        }
     }
     window.pfimsPerformance = { update(metrics) { active = metrics || {}; render(); } };
 })();

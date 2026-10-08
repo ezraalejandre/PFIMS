@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Services\ML\CostModelStore;
 use App\Services\ML\LiveProjectCostSource;
 use App\Services\ML\ProjectCostAugmentationAudit;
 use App\Services\ML\ProjectCostAugmentationDataset;
 use App\Services\ML\ProjectCostDistributionGenerator;
+use App\Services\ML\ProjectCostOptimizationService;
 use App\Services\MLService;
 use App\Services\ProjectCostFeatureBuilder;
 use Carbon\CarbonImmutable;
@@ -229,5 +231,111 @@ class ProjectCostAugmentationTest extends TestCase
         $this->assertTrue($result['activation']['checks']['project_level_primary_evaluation']);
         $this->assertContains('same_holdout_active_comparison', $result['activation']['failed_requirements']);
         $this->assertContains('fresh_independent_holdout', $result['activation']['failed_requirements']);
+    }
+
+    public function test_reduced_influence_keeps_projects_together_and_excludes_validation_donors(): void
+    {
+        $source = $this->source();
+        $path = $this->directory();
+        (new ProjectCostDistributionGenerator)->generate($source, $path, 100, 3, 10, 101);
+        $training = collect($source['cohort']['records'])->map(fn ($row) => (object) $row)->whereIn('project_id', [1, 2, 3, 4]);
+        $none = new ProjectCostAugmentationDataset($path, 0);
+        $reduced = new ProjectCostAugmentationDataset($path, .5);
+        $this->assertCount(4, $none->augment($training));
+        $mixed = $reduced->augment($training);
+        $this->assertCount(6, $mixed);
+        $this->assertSame($mixed->pluck('project_id')->all(), $reduced->augment($training)->pluck('project_id')->all());
+        foreach ($mixed->filter(fn ($row) => isset($row->donor_project_id)) as $row) {
+            $this->assertContains($row->donor_project_id, [1, 2, 3, 4]);
+        }
+        $this->expectException(RuntimeException::class);
+        new ProjectCostAugmentationDataset($path, -1);
+    }
+
+    public function test_optimization_uses_training_only_selection_preserves_active_model_and_reproduces_served_formulas(): void
+    {
+        $source = $this->source();
+        $source['cohort']['feature_names'] = ['budget', 'duration_months'];
+        $source['cohort']['snapshot_readiness'] = ['eligible' => false];
+        $path = $this->directory();
+        (new ProjectCostDistributionGenerator)->generate($source, $path, 20, 3, 10, 101);
+        config(['ml.augmentation_directory' => $path]);
+        $sourcePath = $path.'/source.json.gz';
+        file_put_contents($sourcePath, gzencode(json_encode($source)));
+        $modelPath = $path.'/active.phpml';
+        $report = (new ProjectCostOptimizationService($modelPath))->run($sourcePath);
+        $this->assertFalse($report['active_model_changed']);
+        $this->assertFileDoesNotExist($modelPath);
+        $this->assertTrue($report['restored_evaluation_verified']);
+        $this->assertSame([9, 10], $report['holdout_project_ids']);
+        $this->assertSame(2, $report['training_counts']['test_database_projects']);
+        $this->assertContains('fresh_independent_holdout', $report['activation_checks']['cost_model']['failed_requirements']);
+        $this->assertFalse($report['steps']['5_validation']['test_used_for_selection']);
+        foreach ($report['selected_candidate']['cross_validation']['folds'] as $fold) {
+            $this->assertEmpty(array_intersect($fold['test_project_ids'], [9, 10]));
+            $this->assertEmpty(array_intersect($fold['test_project_ids'], $fold['training_project_ids']));
+        }
+        $pair = (new CostModelStore($report['candidate_path'], 10))->load();
+        $service = new MLService($report['candidate_path']);
+        $row = (object) $source['cohort']['records'][8];
+        $vector = (new \ReflectionMethod($service, 'rowToFeatures'))->invoke($service, $row, $pair['metadata']['transformer']['feature_names']);
+        $served = (new \ReflectionMethod($service, 'predictionFeatureVector'))->invoke($service,
+            [$row->budget, $row->duration_months, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], $pair['metadata']['transformer']['feature_names']);
+        $this->assertSame($vector, $served);
+        // A changed holdout with unchanged training/dummy inputs must select the same settings.
+        foreach ([8, 9] as $index) {
+            $source['cohort']['records'][$index]['actual_cost'] *= 2;
+        }
+        $manifest = json_decode(file_get_contents($path.'/manifest.json'), true);
+        $manifest['database_fingerprint'] = ProjectCostAugmentationDataset::fingerprint(collect($source['cohort']['records'])->map(fn ($row) => (object) $row));
+        file_put_contents($path.'/manifest.json', json_encode($manifest));
+        file_put_contents($sourcePath, gzencode(json_encode($source)));
+        $second = (new ProjectCostOptimizationService($modelPath))->run($sourcePath);
+        $this->assertSame($report['selected_candidate'], $second['selected_candidate']);
+        $this->assertSame($report['steps']['4_detection'], $second['steps']['4_detection']);
+        $this->assertNotSame($report['evaluation']['mean_absolute_error'], $second['evaluation']['mean_absolute_error']);
+        $summary = (new MLService($modelPath, false))->getOptimizationSummary();
+        $this->assertArrayNotHasKey('candidate_path', $summary);
+        $this->assertSame(2, $summary['training_counts']['test_database_projects']);
+    }
+
+    public function test_budget_ratio_target_is_converted_back_to_pesos_in_evaluation_and_serving(): void
+    {
+        $path = $this->directory().'/ratio.phpml';
+        $service = new class($path, false) extends MLService
+        {
+            public function fitRatio(): array
+            {
+                $this->useBudgetRatioTarget = true;
+
+                return $this->buildLeastSquaresModel(collect([100000, 200000, 300000, 400000])->map(fn ($budget) => (object) ['budget' => $budget, 'actual_cost' => $budget * 1.1]), ['budget']);
+            }
+        };
+        [$model, $transformer] = $service->fitRatio();
+        $this->assertSame('final_cost_fraction_of_budget', $transformer['target_scaling']);
+        (new CostModelStore($path, 10))->save($model, ['schema_version' => 10, 'model_type' => 'least_squares_linear_regression',
+            'transformer' => $transformer, 'prediction_target' => 'final_cost']);
+        $restored = new MLService($path);
+        $this->assertEqualsWithDelta(550000, $restored->predict([500000, 3, 5, 0, 0, 0]), .01);
+        $evaluation = (new \ReflectionMethod($restored, 'evaluateModel'))->invoke($restored, $model, $transformer,
+            collect([(object) ['project_id' => 1, 'budget' => 500000, 'actual_cost' => 550000]]));
+        $this->assertEqualsWithDelta(0, $evaluation['mean_absolute_error'], .01);
+        $this->assertSame(1, $evaluation['overrun_detection']['any_overrun']['classification_counts']['tp']);
+    }
+
+    public function test_mae_scale_uses_one_final_cost_per_project_and_never_selects_the_more_favorable_mean(): void
+    {
+        $service = new MLService(loadModel: false);
+        $calculate = new \ReflectionMethod($service, 'calculateMetrics');
+        $metrics = $calculate->invoke($service, [110, 110, 110, 310, 510], [100, 100, 100, 300, 500],
+            [150, 150, 150, 350, 550], collect([1, 1, 1, 2, 3])->map(fn ($id) => (object) ['project_id' => $id, 'budget' => 550]));
+        $this->assertSame(300.0, $metrics['target_median']);
+        $this->assertSame(15.0, $metrics['mae_target']['maximum_pesos']);
+        $this->assertSame(3.3333, $metrics['mae_target']['actual_percent']);
+        $outliers = $calculate->invoke($service, [110, 210, 310, 1000010], [100, 200, 300, 1000000], [100, 200, 300, 1000000]);
+        $this->assertSame(250.0, $outliers['target_median']);
+        $this->assertSame(250150.0, $outliers['target_mean']);
+        $this->assertSame(4.0, $outliers['mae_target']['actual_percent']);
+        $this->assertNotSame($outliers['mean_absolute_percentage_error'], $outliers['mae_target']['actual_percent']);
     }
 }
