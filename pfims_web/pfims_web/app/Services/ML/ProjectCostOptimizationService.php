@@ -11,6 +11,19 @@ use Throwable;
 /** Training-only model selection; real outcomes and the held-out partition are immutable. */
 class ProjectCostOptimizationService extends MLService
 {
+    /** Keep detailed tuning evidence off the prediction page's request path. */
+    public static function displayReport(array $report): array
+    {
+        $compact = array_intersect_key($report, array_flip(['schema_version', 'generated_at', 'status', 'holdout_status',
+            'training_counts', 'activation_checks', 'active_model_changed', 'source_fingerprint']));
+        $compact['selected_candidate'] = ['algorithm' => $report['selected_candidate']['algorithm']];
+        $compact['evaluation'] = array_intersect_key($report['evaluation'], array_flip(['mean_absolute_error',
+            'mean_absolute_percentage_error', 'r_squared', 'target_median', 'target_mean', 'mae_target']));
+        $compact['overrun_classifier'] = ['evaluation' => ['latest_observation_per_project' => $report['overrun_classifier']['evaluation']['latest_observation_per_project'] ?? null]];
+
+        return $compact;
+    }
+
     private array $validationCache = [];
 
     private ?float $ratio = null;
@@ -259,7 +272,10 @@ class ProjectCostOptimizationService extends MLService
             'note' => 'Previously inspected test data cannot establish fresh independent activation evidence.'];
         $report['steps']['7_display'] = ['ready' => true, 'active_metrics_preserved' => true];
         $path = $this->modelPath.'.optimization.json';
-        File::put($path.'.tmp', json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        $auditPath = $this->modelPath.'.optimization.audit.json';
+        File::put($auditPath.'.tmp', json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        File::move($auditPath.'.tmp', $auditPath);
+        File::put($path.'.tmp', json_encode(self::displayReport($report), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
         File::move($path.'.tmp', $path);
         $progress('Evaluation saved; active model and real business records are unchanged.');
 

@@ -297,6 +297,10 @@ class ProjectCostAugmentationTest extends TestCase
         $summary = (new MLService($modelPath, false))->getOptimizationSummary();
         $this->assertArrayNotHasKey('candidate_path', $summary);
         $this->assertSame(2, $summary['training_counts']['test_database_projects']);
+        $display = json_decode(file_get_contents($modelPath.'.optimization.json'), true);
+        $this->assertArrayNotHasKey('steps', $display);
+        $this->assertLessThan(20000, filesize($modelPath.'.optimization.json'));
+        $this->assertFileExists($modelPath.'.optimization.audit.json');
     }
 
     public function test_budget_ratio_target_is_converted_back_to_pesos_in_evaluation_and_serving(): void
