@@ -236,7 +236,7 @@ class ProjectCostOptimizationService extends MLService
             'test_samples' => $test->count(), 'evaluation_training_project_ids' => $split['training'],
             'evaluation_holdout_project_ids' => $split['test'], 'feature_set' => ['selected_feature_names' => $best['feature_names']],
             'cross_validation' => $best['cross_validation'], 'augmentation' => $this->augmentation->summary(),
-            'budget_baseline_comparison' => $baseline, 'evaluation_method' => 'grouped_chronological_70_30_database_only_holdout'];
+            'budget_baseline_comparison' => $baseline, 'evaluation_method' => 'grouped_chronological_80_20_database_only_holdout'];
         $candidatePath = $this->modelPath.'.optimized-candidate';
         $store = new CostModelStore($candidatePath, 10);
         $store->save($model, $metadata);
@@ -266,7 +266,7 @@ class ProjectCostOptimizationService extends MLService
             'candidate_path' => $candidatePath, 'restored_evaluation_verified' => true,
             'training_counts' => ['database_projects' => count($split['training']),
                 'ingested_data_method' => $this->augmentation->summary()['method'],
-                'database_test_ratio' => .30,
+                'database_test_ratio' => $this->augmentation->summary()['database_test_ratio'],
                 'ingested_data_year_range' => $this->augmentation->summary()['year_range'] ?? null,
                 'ingested_expenses_per_project' => $this->augmentation->summary()['expenses_per_project'],
                 'ingested_inventory_transactions_per_project' => $this->augmentation->summary()['inventory_transactions_per_project'],

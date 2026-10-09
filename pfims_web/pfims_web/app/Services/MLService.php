@@ -211,7 +211,7 @@ class MLService
 
         if ($this->augmentation !== null) {
             $result['augmentation'] = $this->augmentation->summary();
-            $result['scope_note'] = 'Training uses ingested projects plus the earlier 70% of eligible database projects. All final test observations come only from the newest 30% of database projects. Source provenance is retained.';
+            $result['scope_note'] = 'Training uses ingested projects plus the earlier 80% of eligible database projects. All final test observations come only from the newest 20% of database projects. Source provenance is retained.';
         }
 
         return $result;
@@ -1481,8 +1481,8 @@ class MLService
         $selection = $this->evaluateChronologicalSplit(
             $realData,
             $featureNames,
-            $ingested ? .30 : .20,
-            $ingested ? 'fixed_grouped_chronological_70_30_holdout' : 'fixed_grouped_chronological_80_20_holdout'
+            .20,
+            'fixed_grouped_chronological_80_20_holdout'
         );
 
         return [
@@ -1490,7 +1490,7 @@ class MLService
             'summary' => [
                 'selected_method' => $selection['method'],
                 'selection_metric' => 'predeclared_not_selected_from_test_performance',
-                'scoring_rule' => $ingested ? 'The newest 30% of database projects are reserved for testing.' : 'The newest 20% of projects are always the untouched holdout.',
+                'scoring_rule' => $ingested ? 'The newest 20% of database projects are reserved for testing.' : 'The newest 20% of projects are always the untouched holdout.',
                 'options' => [$this->splitSummary($selection)],
             ],
             'training_data' => $selection['training_data'],
@@ -3006,7 +3006,7 @@ class MLService
             'model_type' => $algorithm, 'model_source' => $genuine ? 'real_trained_model' : 'sample_trained_model',
             'uses_synthetic_data' => true, 'cohort_policy' => 'database_augmented', 'prediction_strategy' => $cohort['strategy'],
             'prediction_target' => $cohort['strategy'] === 'progress_snapshot_model' ? 'remaining_cost_then_add_recorded_spend' : 'final_cost',
-            'evaluation_scope_label' => 'Database-only holdout; augmented training', 'evaluation_method' => 'fixed_grouped_chronological_70_30_database_only_holdout',
+            'evaluation_scope_label' => 'Database-only holdout; augmented training', 'evaluation_method' => 'fixed_grouped_chronological_80_20_database_only_holdout',
             'evaluation_protocol_version' => 6, 'evaluation' => $evaluation, 'activation_primary_evaluation' => $primaryEvaluation, 'transformer' => $transformer,
             'samples_trained' => $mixed->count(), 'training_samples_evaluated' => $mixed->count(),
             'training_projects' => $mixed->pluck('project_id')->unique()->count(), 'test_samples' => $test->count(),

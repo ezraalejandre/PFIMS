@@ -42,7 +42,7 @@ class ProjectCostAugmentationDataset
         }
     }
 
-    public static function split(Collection $records, float $testRatio = .30): array
+    public static function split(Collection $records, float $testRatio = .20): array
     {
         $ids = $records->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])->pluck('project_id')->unique()->values();
         if ($ids->count() < 3) {
