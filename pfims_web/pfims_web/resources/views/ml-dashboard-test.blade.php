@@ -488,6 +488,8 @@
         .performance-detail-card { padding: 18px; border: 1px solid #dfe6ee; border-radius: 12px; background: #f8fafc; min-width: 0; }
         .performance-detail-card h3 { margin: 0 0 12px; font-size: 15px; color: #26364a; }
         .performance-detail-card h4 { margin: 18px 0 8px; font-size: 13px; color: #475569; }
+        .performance-data-card { grid-column: 1 / -1; }
+        .performance-data-card .performance-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; }
         .performance-facts { margin: 8px 0; padding-left: 20px; display: grid; gap: 9px; line-height: 1.55; }
         .performance-facts li { padding-left: 3px; overflow-wrap: anywhere; }
         .performance-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; }
@@ -502,7 +504,7 @@
         .performance-retrain-copy p { margin: 5px 0 0; }
         #retrainStatus { flex-basis: 100%; margin: 0; line-height: 1.5; }
         #manualRetrainButton:disabled { opacity: .65; cursor: wait; }
-        @media (max-width: 760px) { .performance-detail-grid { grid-template-columns: 1fr; } .performance-detail-card { padding: 14px; } }
+        @media (max-width: 760px) { .performance-detail-grid, .performance-data-card .performance-facts { grid-template-columns: 1fr; } .performance-detail-card { padding: 14px; } }
 
         .metric-section:first-child {
             margin-top: 0;
@@ -1180,7 +1182,7 @@
                             <div id="performanceCandidateStatus" class="performance-overview">No optimization evaluation available.</div>
                             <h4>Evaluation results</h4><div id="performanceCandidateResults"></div>
                         </section>
-                        <section class="performance-detail-card"><h3>Latest training data</h3><div id="performanceCandidateTraining"></div></section>
+                        <section class="performance-detail-card performance-data-card"><h3>Latest training data</h3><div id="performanceCandidateTraining"></div></section>
                     </div>
                     <div class="performance-retrain">
                         <div class="performance-retrain-copy"><strong>Manual retraining</strong><p class="analytics-panel-description">Run the existing ML pipeline for a demonstration. New evaluation results appear in “Latest training result”. Scheduled training and activation requirements stay in place.</p></div>
