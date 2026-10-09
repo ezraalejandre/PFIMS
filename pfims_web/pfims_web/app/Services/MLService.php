@@ -6,6 +6,8 @@ use App\Services\ML\BudgetOverrunClassifier;
 use App\Services\ML\CostModelStore;
 use App\Services\ML\ModelActivationPolicy;
 use App\Services\ML\ModelPromotionService;
+use App\Services\ML\PlanningSpendingCohort;
+use App\Services\ML\PlanningSpendingFeatures;
 use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\ProjectCostAugmentationDataset;
 use App\Services\ML\ProjectCostOptimizationService;
@@ -151,6 +153,9 @@ class MLService
         $this->augmentation = null;
         if ($cohortMode === 'database_augmented') {
             $cohort = $this->databaseTrainingCohort();
+            if (config('ml.planning_spending_enabled')) {
+                $cohort['feature_names'] = PlanningSpendingFeatures::validate($cohort);
+            }
             $this->augmentation = new ProjectCostAugmentationDataset(config('ml.augmentation_directory'));
             $this->augmentation->assertDatabaseMatches($cohort['records']);
         }
@@ -227,7 +232,7 @@ class MLService
         $connection = DB::connection();
         $pdo = $connection->getPdo();
         if ($pdo->inTransaction()) {
-            return $this->selectTrainingCohort('auto');
+            return config('ml.planning_spending_enabled') ? app(PlanningSpendingCohort::class)->database() : $this->selectTrainingCohort('auto');
         }
         try {
             if ($connection->getDriverName() === 'mysql') {
@@ -237,7 +242,7 @@ class MLService
                 $pdo->beginTransaction();
             }
 
-            return $this->selectTrainingCohort('auto');
+            return config('ml.planning_spending_enabled') ? app(PlanningSpendingCohort::class)->database() : $this->selectTrainingCohort('auto');
         } finally {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -399,6 +404,10 @@ class MLService
                 throw new RuntimeException('Saved active estimator is unavailable.');
             }
             $transformer = $pair['metadata']['transformer'];
+            if (($pair['metadata']['prediction_strategy'] ?? '') === 'progress_snapshot_model'
+                && $test->contains(fn ($row) => ($row->observation_basis ?? '') === 'record_dates')) {
+                throw new RuntimeException('The active model requires historical physical progress, which record-date spending observations do not supply. A reliable same-observation comparison is unavailable.');
+            }
             $remainingTarget = ($pair['metadata']['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend';
             $predictions = $actuals = $budgets = [];
             foreach ($test as $row) {
@@ -494,7 +503,7 @@ class MLService
     protected function tuneOverrunClassifier(Collection $training, array $features, array $folds): array
     {
         $candidates = ['current_features' => $features];
-        if ($training->contains(fn ($row) => isset($row->snapshot_id))) {
+        if (! config('ml.planning_spending_enabled') && $training->contains(fn ($row) => isset($row->snapshot_id))) {
             $expanded = array_values(array_unique([...$features, 'remaining_work_fraction', 'remaining_budget_fraction',
                 'required_cost_performance_index', 'required_cost_performance_available',
                 'recent_burn_remaining_budget_days', 'budget_runway_available']));
@@ -636,11 +645,12 @@ class MLService
 
             return ['generated_at' => $report['generated_at'], 'algorithm' => $report['selected_candidate']['algorithm'],
                 'training_counts' => $report['training_counts'], 'evaluation' => array_intersect_key($report['evaluation'],
-                    array_flip(['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared', 'target_median', 'target_mean', 'mae_target'])),
+                    array_flip(['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared', 'target_median', 'target_mean', 'mae_target', 'latest_observation_per_project', 'monitoring_segments', 'evaluation_projects', 'evaluation_observations'])),
                 'detector_evaluation' => $report['overrun_classifier']['evaluation']['latest_observation_per_project'] ?? null,
                 'cost_failed_requirements' => $report['activation_checks']['cost_model']['failed_requirements'] ?? [],
                 'detector_failed_requirements' => $report['activation_checks']['overrun_detector']['failed_requirements'] ?? [],
-                'active_model_changed' => false, 'holdout_status' => $report['holdout_status']];
+                'active_model_changed' => false, 'holdout_status' => $report['holdout_status'],
+                'prediction_strategy' => $report['prediction_strategy'] ?? null, 'feature_names' => $report['feature_names'] ?? [], 'data_audit' => $report['data_audit'] ?? null];
         } catch (Throwable) {
             return null;
         }
@@ -1275,7 +1285,7 @@ class MLService
             ->map(function ($project) {
                 $duration = max(1, Carbon::parse($project->start_date)->startOfDay()
                     ->diffInMonths(Carbon::parse($project->estimated_end_date)->startOfDay()));
-                $activity = app(ProjectCostSnapshotService::class)->forecastInputs((int) $project->project_id,
+                $activity = (($this->metadata['prediction_strategy'] ?? '') === PlanningSpendingFeatures::STRATEGY ? app(PlanningSpendingCohort::class) : app(ProjectCostSnapshotService::class))->forecastInputs((int) $project->project_id,
                     Carbon::parse($project->start_date)->startOfDay(), Carbon::parse($project->estimated_end_date)->startOfDay());
                 foreach (['fin_total_expense', 'fin_material_expense', 'fin_labor_expense', 'fin_equipment_expense', 'fin_other_expense', 'finance_as_of_date'] as $name) {
                     $project->{$name} = $activity[$name];
@@ -1629,6 +1639,11 @@ class MLService
     /** Choose complexity before inspecting the reserved holdout. */
     protected function selectProgressFeatures(Collection $trainingData, array $fullFeatures): array
     {
+        if (config('ml.planning_spending_enabled')) {
+            $features = PlanningSpendingFeatures::validate(['strategy' => PlanningSpendingFeatures::STRATEGY, 'feature_names' => $fullFeatures, 'records' => $trainingData]);
+
+            return ['selected_feature_names' => $features, 'selection_rule' => 'fixed_planning_spending_features_no_selection'];
+        }
         $compact = array_values(array_intersect($fullFeatures, [
             'budget', 'duration_months', 'completion_percentage', 'fin_total_expense',
             'progress_eac_to_budget', 'budget_used_fraction', 'cost_performance_index',
@@ -1978,7 +1993,8 @@ class MLService
             $targetNormalization = ['method' => 'training_only_standardization', 'mean' => $mean, 'scale' => $scale];
         }
         $ranges = $this->rangesFromSamples($rawSamples, $featureNames);
-        $selectedIndexes = $this->selectIndependentFeatures($rawSamples, $ranges, $featureNames);
+        $fixedFeatures = config('ml.planning_spending_enabled') && $featureNames === PlanningSpendingFeatures::FEATURES;
+        $selectedIndexes = $fixedFeatures ? array_keys($featureNames) : $this->selectIndependentFeatures($rawSamples, $ranges, $featureNames);
         if ($selectedIndexes === []) {
             throw new RuntimeException('Training data has no varying independent features.');
         }
@@ -1999,7 +2015,7 @@ class MLService
             'scaling' => 'min_max',
             'target_scaling' => $remainingFraction ? 'remaining_cost_fraction_of_budget' : ($budgetRatio ? 'final_cost_fraction_of_budget' : 'currency'),
             'target_normalization' => $targetNormalization,
-            'excluded_features_note' => 'Constant or linearly dependent columns are excluded deterministically; accepted API fields remain unchanged.',
+            'excluded_features_note' => $fixedFeatures ? 'All planning/spending inputs are retained; regularization handles correlated columns.' : 'Constant or linearly dependent columns are excluded deterministically; accepted API fields remain unchanged.',
         ]];
     }
 
@@ -2231,7 +2247,7 @@ class MLService
             'overrun_detection' => $detection,
             'evaluation_observations' => $count,
             'evaluation_projects' => $rows?->pluck('project_id')->filter()->unique()->count(),
-            'observation_weighting' => 'Each held-out observation has equal weight; multiple progress snapshots from one project are correlated.',
+            'observation_weighting' => 'Each held-out observation has equal weight; multiple dated observations from one project are correlated.',
         ];
 
         $metrics['mae_target'] = app(ModelActivationPolicy::class)->maeTarget($metrics);
@@ -2248,7 +2264,7 @@ class MLService
         return [
             'by_project_size' => $this->metricsBySegment($rows, $predictions, $actuals, $budgets, fn ($row) => $this->projectSizeBucket((float) $row->budget)),
             'by_project_type' => $this->metricsBySegment($rows, $predictions, $actuals, $budgets, fn ($row) => (string) ($row->project_type ?? 'General Construction')),
-            'by_progress_stage' => $this->metricsBySegment($rows, $predictions, $actuals, $budgets, fn ($row) => $this->progressStage((float) ($row->completion_percentage ?? 0))),
+            (($rows->first()->observation_basis ?? '') === 'record_dates' ? 'by_elapsed_stage' : 'by_progress_stage') => $this->metricsBySegment($rows, $predictions, $actuals, $budgets, fn ($row) => $this->progressStage(($row->observation_basis ?? '') === 'record_dates' ? (float) $row->elapsed_time_fraction * 100 : (float) ($row->completion_percentage ?? 0))),
             'project_type_source' => $rows->pluck('project_type_source')->filter()->unique()->values()->all() ?: ['not_available'],
             'note' => 'Project type uses project_tbl project_type/type/category when populated; otherwise it is a normalized project name (with a trailing " - Site N" removed) and keyword categories such as Roadwork or Building when evident.',
         ];
@@ -2307,6 +2323,10 @@ class MLService
         $this->lastEngineeredFeatures = app(ProjectCostFeatureBuilder::class)->build(array_replace($context,
             array_combine(self::FEATURE_NAMES, array_map('floatval', $features)),
             ['fin_total_expense' => $this->recordedSpend($features)]));
+        if (($this->metadata['prediction_strategy'] ?? '') === PlanningSpendingFeatures::STRATEGY) {
+            $planningInputs = PlanningSpendingFeatures::build(array_replace($context, array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), ['fin_total_expense' => $this->recordedSpend($features)]));
+            $this->lastEngineeredFeatures['values'] = $planningInputs;
+        }
         $this->lastDetectorInputs = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)),
             $this->lastEngineeredFeatures['values']);
         $this->lastPredictionWarnings = $this->predictionWarnings($features);
@@ -3005,7 +3025,7 @@ class MLService
             'schema_version' => self::MODEL_SCHEMA_VERSION, 'trained_at' => now()->toIso8601String(),
             'model_type' => $algorithm, 'model_source' => $genuine ? 'real_trained_model' : 'sample_trained_model',
             'uses_synthetic_data' => true, 'cohort_policy' => 'database_augmented', 'prediction_strategy' => $cohort['strategy'],
-            'prediction_target' => $cohort['strategy'] === 'progress_snapshot_model' ? 'remaining_cost_then_add_recorded_spend' : 'final_cost',
+            'prediction_target' => in_array($cohort['strategy'], ['progress_snapshot_model', PlanningSpendingFeatures::STRATEGY], true) ? 'remaining_cost_then_add_recorded_spend' : 'final_cost',
             'evaluation_scope_label' => 'Database-only holdout; augmented training', 'evaluation_method' => 'fixed_grouped_chronological_80_20_database_only_holdout',
             'evaluation_protocol_version' => 6, 'evaluation' => $evaluation, 'activation_primary_evaluation' => $primaryEvaluation, 'transformer' => $transformer,
             'samples_trained' => $mixed->count(), 'training_samples_evaluated' => $mixed->count(),

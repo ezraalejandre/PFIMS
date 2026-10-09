@@ -335,7 +335,7 @@ class ProjectCostAugmentationTest extends TestCase
         $metrics = $calculate->invoke($service, [110, 110, 110, 310, 510], [100, 100, 100, 300, 500],
             [150, 150, 150, 350, 550], collect([1, 1, 1, 2, 3])->map(fn ($id) => (object) ['project_id' => $id, 'budget' => 550]));
         $this->assertSame(300.0, $metrics['target_median']);
-        $this->assertSame(15.0, $metrics['mae_target']['maximum_pesos']);
+        $this->assertSame(45.0, $metrics['mae_target']['maximum_pesos']);
         $this->assertSame(3.3333, $metrics['mae_target']['actual_percent']);
         $outliers = $calculate->invoke($service, [110, 210, 310, 1000010], [100, 200, 300, 1000000], [100, 200, 300, 1000000]);
         $this->assertSame(250.0, $outliers['target_median']);

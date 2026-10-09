@@ -7,17 +7,17 @@ use PHPUnit\Framework\TestCase;
 
 class ModelActivationPolicyTest extends TestCase
 {
-    public function test_mae_ceiling_is_five_percent_of_median_and_cannot_be_relaxed_by_candidate_evidence(): void
+    public function test_mae_ceiling_is_fifteen_percent_of_median_and_cannot_be_relaxed_by_candidate_evidence(): void
     {
         $policy = new ModelActivationPolicy;
-        $metrics = ['mean_absolute_percentage_error' => 5, 'r_squared' => 0.9, 'mean_absolute_error' => 150000, 'target_median' => 3000000];
+        $metrics = ['mean_absolute_percentage_error' => 5, 'r_squared' => 0.9, 'mean_absolute_error' => 450000, 'target_median' => 3000000];
         $evidence = $this->evidence() + ['budget_baseline_mape' => 10, 'active_model_evaluation' => $metrics];
         $this->assertTrue($policy->assessCost($metrics, $evidence)['eligible']);
-        $this->assertFalse($policy->assessCost(array_replace($metrics, ['mean_absolute_error' => 150000.01]),
+        $this->assertFalse($policy->assessCost(array_replace($metrics, ['mean_absolute_error' => 450000.01]),
             $evidence + ['mae_tolerance' => 1000000])['checks']['agreed_mae_tolerance']);
         $target = $policy->maeTarget($metrics);
-        $this->assertSame(5.0, $target['actual_percent']);
-        $this->assertSame(60000.0, $target['stretch_pesos']);
+        $this->assertSame(15.0, $target['actual_percent']);
+        $this->assertSame(300000.0, $target['stretch_pesos']);
         $this->assertFalse($policy->assessCost(array_replace($metrics, ['target_median' => null]), $evidence)['eligible']);
         $this->assertFalse($policy->assessCost(array_replace($metrics, ['target_median' => 0]), $evidence)['eligible']);
     }

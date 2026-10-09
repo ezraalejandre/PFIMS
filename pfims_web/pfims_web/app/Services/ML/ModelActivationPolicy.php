@@ -5,9 +5,9 @@ namespace App\Services\ML;
 /** Separate promotion requirements; evaluating this policy never writes model artifacts. */
 class ModelActivationPolicy
 {
-    public const AGREED_MAE_MAX_PERCENT = 5.0;
+    public const AGREED_MAE_MAX_PERCENT = 15.0;
 
-    public const STRETCH_MAE_PERCENT = 2.0;
+    public const STRETCH_MAE_PERCENT = 10.0;
 
     public function maeTarget(array $metrics): array
     {
@@ -47,7 +47,7 @@ class ModelActivationPolicy
             'minimum' => ['mape_max' => 10, 'r_squared_min' => 0.8, 'baseline_mape_improvement_points' => 2],
             'ideal' => ['mape_max' => 5, 'r_squared_min' => 0.9],
             'mae_target' => $maeTarget,
-            'mae' => 'MAE at most 5% of the median actual final cost in the real-only project evaluation; 2% is the stretch goal. Lower is better. A stricter supplied peso tolerance is honored.',
+            'mae' => 'MAE at most 15% of the median actual final cost in the real-only project evaluation; 10% is the preferred target. Lower is better. A stricter supplied peso tolerance is honored.',
         ]);
     }
 

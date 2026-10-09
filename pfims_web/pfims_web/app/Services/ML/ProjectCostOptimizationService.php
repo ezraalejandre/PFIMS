@@ -15,10 +15,19 @@ class ProjectCostOptimizationService extends MLService
     public static function displayReport(array $report): array
     {
         $compact = array_intersect_key($report, array_flip(['schema_version', 'generated_at', 'status', 'holdout_status',
-            'training_counts', 'activation_checks', 'active_model_changed', 'source_fingerprint']));
+            'training_counts', 'activation_checks', 'active_model_changed', 'source_fingerprint', 'prediction_strategy', 'feature_names', 'data_audit']));
         $compact['selected_candidate'] = ['algorithm' => $report['selected_candidate']['algorithm']];
         $compact['evaluation'] = array_intersect_key($report['evaluation'], array_flip(['mean_absolute_error',
-            'mean_absolute_percentage_error', 'r_squared', 'target_median', 'target_mean', 'mae_target']));
+            'mean_absolute_percentage_error', 'r_squared', 'target_median', 'target_mean', 'mae_target', 'evaluation_projects', 'evaluation_observations']));
+        $costFields = array_flip(['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared', 'mae_target']);
+        if (isset($report['evaluation']['latest_observation_per_project'])) {
+            $compact['evaluation']['latest_observation_per_project'] = array_intersect_key($report['evaluation']['latest_observation_per_project'], $costFields);
+        }
+        if (isset($report['evaluation']['monitoring_segments']['by_elapsed_stage'])) {
+            foreach ($report['evaluation']['monitoring_segments']['by_elapsed_stage'] as $stage => $metrics) {
+                $compact['evaluation']['monitoring_segments']['by_elapsed_stage'][$stage] = array_intersect_key($metrics, $costFields);
+            }
+        }
         $compact['overrun_classifier'] = ['evaluation' => ['latest_observation_per_project' => $report['overrun_classifier']['evaluation']['latest_observation_per_project'] ?? null]];
 
         return $compact;
@@ -57,7 +66,7 @@ class ProjectCostOptimizationService extends MLService
             || ($source['source']['host'] ?? null) !== 'srv603.hstgr.io') {
             throw new RuntimeException('A verified live PFIMS source export is required.');
         }
-        $cohort = $source['cohort'];
+        $cohort = config('ml.planning_spending_enabled') ? app(PlanningSpendingCohort::class)->build($source) : $source['cohort'];
         $cohort['records'] = collect($cohort['records'])->map(fn ($row) => (object) $row);
         $cohort['source_capture'] = $source['source']['captured_at'];
         $cohort['source_sha256'] = hash_file('sha256', $path);
@@ -110,6 +119,9 @@ class ProjectCostOptimizationService extends MLService
         $this->validationCache = [];
         $this->useBudgetRatioTarget = false;
         $cohort = $this->sourceCohort($sourcePath);
+        if (config('ml.planning_spending_enabled')) {
+            $cohort['feature_names'] = PlanningSpendingFeatures::validate($cohort);
+        }
         $this->setInfluence(null);
         $this->augmentation->assertDatabaseMatches($cohort['records']);
         $split = ProjectCostAugmentationDataset::split($cohort['records']);
@@ -125,12 +137,14 @@ class ProjectCostOptimizationService extends MLService
             'selection_rule' => 'Lowest training-only temporal validation MAE, then MAPE. Final test never selects settings.',
             'training_project_ids' => $split['training'], 'holdout_project_ids' => $split['test'],
             'holdout_status' => 'Previously inspected development holdout; not fresh independent release evidence.',
-            'steps' => []];
+            'feature_names' => $features, 'data_audit' => $cohort['snapshot_readiness'], 'steps' => []];
         $progress('Step 1: compare real-only, reduced ingested-data influence, and the full ingested dataset.');
         $trials = [];
         foreach ([0.0, 0.5, 1.0, 3.0, null] as $ratio) {
             $this->setInfluence($ratio);
-            $trials[] = $this->trial($training, $features, 'least_squares_linear_regression');
+            $trials[] = config('ml.planning_spending_enabled')
+                ? $this->trial($training, $features, 'ridge_linear_regression', ['alpha' => .1])
+                : $this->trial($training, $features, 'least_squares_linear_regression');
         }
         $best = $this->best($trials);
         $report['steps']['1_augmentation'] = ['selected_ratio' => $best['dummy_to_real_ratio'], 'trials' => $trials];
@@ -153,10 +167,10 @@ class ProjectCostOptimizationService extends MLService
 
         $progress('Step 3: validate available features and currency versus budget-normalized targets.');
         $sets = ['existing' => $features];
-        if ($cohort['strategy'] === 'planning_only_baseline') {
+        if (! config('ml.planning_spending_enabled') && $cohort['strategy'] === 'planning_only_baseline') {
             $sets['budget_only'] = ['budget'];
             $sets['planning_engineered'] = ['budget', 'duration_months', 'log_budget', 'planned_budget_per_month', 'planned_duration_squared'];
-        } else {
+        } elseif (! config('ml.planning_spending_enabled')) {
             $selected = $this->selectProgressFeatures($training, $features);
             $sets['validated_progress'] = $selected['selected_feature_names'];
         }
@@ -182,7 +196,7 @@ class ProjectCostOptimizationService extends MLService
         $report['steps']['3_features'] = ['selected' => $best, 'trials' => $featureTrials,
             'availability_note' => $cohort['strategy'] === 'planning_only_baseline'
                 ? 'Budget and planned duration transformations only. Insufficient genuine historical progress coverage; no reconstructed progress is used.'
-                : 'Existing captured progress, spending, burn, valued inventory, schedule and frequency features retained.',
+                : 'Fixed planning and spending inputs; physical progress is excluded. Business record dates control historical spending inclusion.',
             'deferred' => ['commitments', 'variations', 'productivity', 'price_changes']];
 
         $progress('Step 4: tune any-overrun classifier influence and alert threshold on training validation.');
@@ -229,7 +243,7 @@ class ProjectCostOptimizationService extends MLService
         $metadata = ['schema_version' => 10, 'trained_at' => $report['generated_at'], 'model_type' => $best['algorithm'],
             'model_source' => $genuine ? 'real_trained_model' : 'sample_trained_model', 'uses_synthetic_data' => $mixed->count() > $training->count(),
             'prediction_strategy' => $cohort['strategy'], 'cohort_policy' => 'database_augmented',
-            'prediction_target' => $cohort['strategy'] === 'progress_snapshot_model' ? 'remaining_cost_then_add_recorded_spend' : 'final_cost',
+            'prediction_target' => in_array($cohort['strategy'], ['progress_snapshot_model', PlanningSpendingFeatures::STRATEGY], true) ? 'remaining_cost_then_add_recorded_spend' : 'final_cost',
             'evaluation_scope_label' => 'Database-only development evaluation', 'evaluation' => $evaluation,
             'activation_primary_evaluation' => $primary, 'transformer' => $transformer,
             'training_projects' => $mixed->pluck('project_id')->unique()->count(), 'samples_trained' => $mixed->count(),
