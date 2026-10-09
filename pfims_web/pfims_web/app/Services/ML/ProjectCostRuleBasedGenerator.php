@@ -144,13 +144,23 @@ class ProjectCostRuleBasedGenerator
                     $row = (array) $donorRow;
                     $row = array_replace($row, $newProject, ['completed_at' => $end->toDateString(), 'planned_start_date' => $start->toDateString(), 'data_source' => 'rule_based_ingested']);
                     if (isset($donorRow->snapshot_id)) {
-                        $fraction = min(.99, max(0, (float) ($donorRow->elapsed_days ?? 0) / $donorDays));
-                        $asOf = $start->addDays((int) floor($days * $fraction));
+                        $planningSpending = ($source['cohort']['strategy'] ?? '') === PlanningSpendingFeatures::STRATEGY;
+                        $fraction = min(.99, max(0, (float) ($donorRow->elapsed_days ?? 0) / ($planningSpending ? max(1, (float) $donorRow->planned_duration_days) : $donorDays)));
+                        $asOf = $start->addDays(min($days - 1, (int) floor(($planningSpending ? $plannedDays : $days) * $fraction)));
                         $row = array_replace($row, $this->snapshot($direct, $movements, $asOf, $start, $plannedDays, $budget, (float) $donorRow->completion_percentage));
                         $row['snapshot_id'] = $id.'-S'.$donorRow->snapshot_id;
                         $row['actual_cost'] = max(0, $final / 100 - $row['fin_total_expense']);
                         $row['reconciled_final_cost'] = $final / 100;
-                        $row = array_replace($row, app(ProjectCostFeatureBuilder::class)->build($row)['values']);
+                        $row = array_replace($row, $planningSpending ? PlanningSpendingFeatures::build($row) : app(ProjectCostFeatureBuilder::class)->build($row)['values']);
+                        if ($planningSpending) {
+                            $row['observation_basis'] = 'record_dates';
+                            foreach (ProjectCostFeatureBuilder::FEATURE_NAMES as $key) {
+                                if (! in_array($key, PlanningSpendingFeatures::FEATURES, true)) {
+                                    unset($row[$key]);
+                                }
+                            }
+                            unset($row['completion_percentage']);
+                        }
                     }
                     $write('training-observations', $row);
                 }

@@ -4,6 +4,7 @@ namespace App\Services\ML;
 
 use App\Services\MLService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
 /** Consistent read-only export; credentials stay in the configured connection. */
@@ -33,10 +34,10 @@ class LiveProjectCostSource
             $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
             $source = ['source' => ['host' => 'srv603.hstgr.io', 'database' => 'u822802132_pfims', 'captured_at' => now()->toIso8601String()]];
             foreach (['project_tbl', 'budgets_tbl', 'fin_expense_tbl', 'fin_expense_category_tbl', 'inventory_item_tbl',
-                'inventory_transaction_tbl', 'inventory_cost_allocation_tbl', 'ml_project_cost_snapshots'] as $table) {
-                $source[$table] = DB::table($table)->orderByRaw('1')->get()->map(fn ($row) => (array) $row)->all();
+                'inventory_transaction_tbl', 'inventory_cost_allocation_tbl', 'ml_project_cost_snapshots', 'project_budget_history'] as $table) {
+                $source[$table] = Schema::hasTable($table) ? DB::table($table)->orderByRaw('1')->get()->map(fn ($row) => (array) $row)->all() : [];
             }
-            $cohort = (new MLService(loadModel: false))->databaseTrainingCohort();
+            $cohort = config('ml.planning_spending_enabled') ? app(PlanningSpendingCohort::class)->build($source) : (new MLService(loadModel: false))->databaseTrainingCohort();
             $source['cohort'] = ['strategy' => $cohort['strategy'], 'feature_names' => $cohort['feature_names'],
                 'records' => $cohort['records']->map(fn ($row) => (array) $row)->all(), 'snapshot_readiness' => $cohort['snapshot_readiness']];
             $pdo->rollBack();

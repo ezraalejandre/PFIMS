@@ -1130,7 +1130,7 @@
                     </section>
                     <section class="metric-section"><h3 class="metric-section-title">Evaluation details and prediction inputs</h3>
                         <p id="performanceValidation"></p><p id="performanceComparison"></p><p id="performanceFeatures"></p><p id="performanceUpdated"></p>
-                        <p class="analytics-panel-description">Project targets: MAE at most 5% of the median actual final cost (2% stretch goal), MAPE at most 5%, R² at least 0.90; overrun accuracy at least 90%, precision 85%, recall 90%, and F1 85%. MAE divided by the median is different from MAPE. Lower cost error is better. These are goals, not guarantees. Activation also requires reliable independent evidence.</p>
+                        <p class="analytics-panel-description">Project targets: MAE at most 15% of the median actual final cost (10% preferred target), MAPE at most 5%, R² at least 0.90; overrun accuracy at least 90%, precision 85%, recall 90%, and F1 85%. MAE divided by the median is different from MAPE. Lower cost error is better. These are goals, not guarantees. Activation also requires reliable independent evidence.</p>
                         <p class="analytics-panel-description">Projects are kept together in training and testing. The newest 20% are reserved for testing; feature selection and temporal cross-validation use only earlier training projects. Repeated stages from one project are related observations. Completed-project evaluation does not establish accuracy for every ongoing project.</p>
                     </section>
                     <section class="metric-section" aria-labelledby="latestCandidateTitle">
