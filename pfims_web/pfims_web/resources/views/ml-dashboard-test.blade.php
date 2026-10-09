@@ -1134,7 +1134,6 @@
                             <div class="metric-item"><span class="metric-label">Average peso error (MAE)</span><span class="metric-value" id="metricMAE">—</span></div>
                             <div class="metric-item"><span class="metric-label">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
                         </div>
-                        <p class="analytics-panel-description">Lower cost error is better. A 7% MAPE means forecasts differed from actual final costs by 7% on average; it is not a guarantee for an individual project.</p>
                         <div id="performanceMAETarget" class="analytics-panel-description"></div>
                     </section>
                     <section class="metric-section" aria-labelledby="overrunDetectionTitle">
@@ -1147,11 +1146,8 @@
                             <div class="metric-item"><span class="metric-label">Accuracy · all outcomes classified correctly</span><span class="metric-value" id="metricOverrunAccuracy">—</span></div>
                         </div>
                         <div id="performanceCounts"></div>
-                        <div id="performanceReliability" class="analytics-panel-description"></div>
                         <ul class="performance-facts analytics-panel-description">
-                            <li>Higher detection scores are better. Read accuracy alongside recall: high accuracy can still hide missed overruns.</li>
                             <li>“Unavailable” means there is not enough evidence to report that score.</li>
-                            <li>Costs equal to budget are within budget. The comparison uses the recorded budget.</li>
                         </ul>
                     </section>
                     <div class="performance-detail-grid">
@@ -1175,7 +1171,6 @@
                                 <div><dt>Precision / recall</dt><dd>≥85% / ≥90%</dd></div>
                                 <div><dt>F1</dt><dd>≥85%</dd></div>
                             </dl>
-                            <ul class="performance-facts analytics-panel-description"><li>MAE relative to the median differs from MAPE. Lower cost error is better.</li><li>These are goals, not guarantees. Activation also needs reliable independent evidence.</li></ul>
                         </section>
                         <section class="performance-detail-card"><h3>What the model uses</h3><div id="performanceFeatures"></div><p id="performanceUpdated" class="analytics-panel-description"></p></section>
                         <section class="performance-detail-card" aria-labelledby="latestCandidateTitle"><h3 id="latestCandidateTitle">Latest training result</h3>
