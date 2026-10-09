@@ -15,6 +15,7 @@
         const metrics = active;
         const projectDetection = metrics.latest_observation_per_project?.overrun_detection?.any_overrun;
         const useProjectDetection = metrics.overrun_detector_source !== 'independent_classifier' && !!projectDetection;
+        const detectionUsesProjects = useProjectDetection || metrics.overrun_detector_evaluation_unit === 'latest_observation_per_project';
         const detection = useProjectDetection ? projectDetection : metrics.overrun_detection?.any_overrun;
         const scores = detection || {};
         const algorithmNames = {
@@ -42,7 +43,7 @@
         put('samplesCount', `${projects ?? 'Unknown'} test projects · ${observations ?? 'Unknown'} observations`);
         const augmentation = active.augmentation;
         put('performanceScope', augmentation
-            ? 'Database-only test evaluation. Ingested projects are used for training only; none are included in these test scores.'
+            ? `Database-only test evaluation. Ingested projects are used for training only; none are included in these test scores.${active.development_activation ? ' Activated at your request for development use; independent company validation remains pending.' : ''}`
             : active.evaluation_scope_label === 'Demonstration evaluation'
             ? 'Demonstration evaluation. These results describe the presentation portfolio and do not establish company operational accuracy.'
             : candidate
@@ -59,7 +60,7 @@
             : `Active forecast approach: ${active.prediction_strategy === 'planning_spending_model' ? 'planning and spending-based remaining cost' : active.prediction_strategy === 'progress_snapshot_model' ? 'progress-based remaining cost' : active.prediction_strategy === 'planning_only_baseline' ? 'planning estimate from budget and duration' : 'unavailable'}.`);
         const counts = detection?.classification_counts;
         put('performanceCounts', counts
-            ? `${counts.tp} overruns detected · ${counts.fn} overruns missed · ${counts.fp} false alerts · ${counts.tn} within-budget outcomes correctly identified. ${detection.actual_overruns} actual overruns across ${detection.evaluated_observations} ${useProjectDetection ? 'test projects, using the latest observation from each project' : 'observations'}.${useProjectDetection ? ` Across all progress stages, accuracy was ${percent(metrics.overrun_detection?.any_overrun?.classification_accuracy)}.` : ''}`
+            ? `${counts.tp} overruns detected · ${counts.fn} overruns missed · ${counts.fp} false alerts · ${counts.tn} within-budget outcomes correctly identified. ${detection.actual_overruns} actual overruns across ${detection.evaluated_observations} ${detectionUsesProjects ? 'test projects, using the latest observation from each project' : 'observations'}.${useProjectDetection ? ` Across all progress stages, accuracy was ${percent(metrics.overrun_detection?.any_overrun?.classification_accuracy)}.` : ''}`
             : 'Detailed detection counts are unavailable for this saved evaluation. A zero recall means no actual overruns were detected; an unavailable score cannot be treated as zero.');
         put('performanceReliability', number(detection?.actual_overruns) && Number(detection.actual_overruns) < 5
             ? `Only ${detection.actual_overruns} actual overruns were evaluated. Recall and F1 are sensitive to individual projects; more real overrun outcomes are needed for a dependable estimate.`
@@ -93,7 +94,9 @@
             if (failures.includes('fresh_independent_holdout')) reasons.push('a fresh independent real-project test is still required');
             if (failures.includes('same_holdout_active_comparison')) reasons.push('a reliable comparison with the active model on the same observations is unavailable');
             if (reasons.length === 0 && failures.length) reasons.push('other activation evidence or performance requirements were not met');
-            put('performanceCandidateStatus', `Latest candidate: ${algorithmNames[improvement.algorithm] || 'Unknown model'}. Not activated${reasons.length ? `: ${reasons.join('; ')}` : '; evaluation alone does not activate a model'}. The active metrics above are unchanged.`);
+            put('performanceCandidateStatus', improvement.active_model_changed
+                ? `Latest evaluated model is now active: ${algorithmNames[improvement.algorithm] || 'Unknown model'}. Activated at your request for development use. Independent validation and a reliable comparison with the previous model remain pending. The metrics above now describe this model.`
+                : `Latest candidate: ${algorithmNames[improvement.algorithm] || 'Unknown model'}. Not activated${reasons.length ? `: ${reasons.join('; ')}` : '; evaluation alone does not activate a model'}. The active metrics above are unchanged.`);
             put('performanceCandidateResults', `Candidate cost evaluation: MAE ${currency(cost.mean_absolute_error)}, MAPE ${percent(cost.mean_absolute_percentage_error)}, R² ${number(cost.r_squared) ? Number(cost.r_squared).toFixed(4) : 'Unavailable'}. Separate candidate overrun detector: accuracy ${percent(detector.classification_accuracy)}, precision ${percent(detector.precision)}, recall ${percent(detector.recall)}, F1 ${percent(detector.f1_score)}. ${number(detector.actual_overruns) ? `${detector.actual_overruns} actual test overruns.` : ''}`);
             if (number(cost.mae_target?.reference_pesos) && Number(cost.mae_target.reference_pesos) > 0) {
                 put('performanceCandidateResults', element('performanceCandidateResults').textContent + ` Candidate MAE is ${percent(cost.mae_target.actual_percent)} of its median actual final cost (${currency(cost.mae_target.reference_pesos)}); 15% ceiling ${currency(cost.mae_target.maximum_pesos)}, 10% preferred target ${currency(cost.mae_target.stretch_pesos)}.`);
