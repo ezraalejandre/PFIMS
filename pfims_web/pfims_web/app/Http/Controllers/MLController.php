@@ -297,6 +297,8 @@ class MLController extends Controller
                 'message' => $result['message'],
                 'model_source' => $result['model_source'],
                 'metrics' => $result['metrics'],
+                'candidate_activated' => $result['candidate_activated'] ?? false,
+                'candidate_evaluation' => $result['candidate_evaluation'] ?? null,
             ]);
         } catch (\Exception $e) {
             Log::error('Retraining failed: '.$e->getMessage());
