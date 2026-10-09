@@ -7,6 +7,17 @@
     const number = value => value !== null && value !== undefined && Number.isFinite(Number(value));
     const percent = value => number(value) ? `${Number(value).toFixed(2)}%` : 'Unavailable';
     const currency = value => number(value) ? `₱${Number(value).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Unavailable';
+    function scopeNote(titleId, noteId, text) {
+        const title = element(titleId);
+        if (!title || !document.createElement) return;
+        if (!element(noteId)) {
+            const note = document.createElement('p');
+            note.id = noteId;
+            note.className = 'analytics-panel-description';
+            title.insertAdjacentElement('afterend', note);
+        }
+        put(noteId, text);
+    }
     const featureLabels = {
         budget: 'Approved budget', duration_months: 'Planned duration (months)', worker_count: 'Number of workers',
         elapsed_days: 'Days since project start', remaining_planned_days: 'Days until planned completion',
@@ -63,6 +74,11 @@
         const observations = metrics?.evaluation_observations ?? (candidate ? null : active.test_samples);
         const projects = metrics?.evaluation_projects ?? (candidate ? report?.holdout_project_ids?.length : null);
         put('samplesCount', `${projects ?? 'Unknown'} test projects · ${observations ?? 'Unknown'} observations`);
+        scopeNote('modelQualityTitle', 'costEvaluationScope',
+            `Across all checkpoints: cost errors include every dated test observation${number(observations) && number(projects) ? ` (${observations} checkpoints across ${projects} projects)` : ''}, including earlier and later stages.`);
+        scopeNote('overrunDetectionTitle', 'detectionEvaluationScope', detectionUsesProjects
+            ? 'Latest checkpoint only: detection scores use one most recent dated test observation per project. Earlier checkpoints are excluded from these scores.'
+            : 'Across all checkpoints: detection scores include every dated test observation, including earlier and later stages.');
         const augmentation = active.augmentation;
         put('performanceScope', augmentation
             ? 'Database-only test evaluation. Ingested projects are used for training only; none are included in these test scores.'
