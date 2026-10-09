@@ -161,7 +161,7 @@ class ProjectCostRuleBasedGenerator
             $handles = [];
             $manifest = ['schema_version' => 1, 'created_at' => now()->toIso8601String(), 'method' => 'rule_based_construction_ledgers_v1',
                 'seed' => $seed, 'live_source' => $source['source'], 'database_fingerprint' => ProjectCostAugmentationDataset::fingerprint($records),
-                'database_training_project_ids' => $split['training'], 'database_test_project_ids' => $split['test'], 'database_test_ratio' => .30,
+                'database_training_project_ids' => $split['training'], 'database_test_project_ids' => $split['test'], 'database_test_ratio' => .20,
                 'dummy_projects' => $projects, 'ingested_projects' => $projects, 'project_id_prefix' => 'ingested-', 'year_range' => [2019, today()->year], 'maximum_duration_months' => 7, 'business_rules_version' => 2, 'expenses_per_project' => $expenses, 'inventory_transactions_per_project' => $transactions,
                 'item_records' => count($items), 'prediction_strategy' => $source['cohort']['strategy'],
                 'database_source_provenance' => $records->groupBy('data_source')->map(fn ($r) => $r->pluck('project_id')->unique()->count())->all(),

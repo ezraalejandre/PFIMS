@@ -67,8 +67,8 @@ class ProjectCostAugmentationTest extends TestCase
         $this->assertSame(300, $audit['expenses']);
         $this->assertSame(1000, $audit['inventory_transactions']);
         $this->assertSame(2, $audit['items']);
-        $this->assertSame([1, 2, 3, 4, 5, 6, 7], $manifest['database_training_project_ids']);
-        $this->assertSame([8, 9, 10], $manifest['database_test_project_ids']);
+        $this->assertSame([1, 2, 3, 4, 5, 6, 7, 8], $manifest['database_training_project_ids']);
+        $this->assertSame([9, 10], $manifest['database_test_project_ids']);
         $this->assertSame($source['inventory_item_tbl'], iterator_to_array(ProjectCostAugmentationDataset::read($path.'/items.jsonl.gz')));
         $database = collect($source['cohort']['records'])->map(fn ($r) => (object) $r);
         $dataset = new ProjectCostAugmentationDataset($path);
@@ -80,7 +80,7 @@ class ProjectCostAugmentationTest extends TestCase
             $this->assertContains($row->donor_project_id, [1, 2, 3]);
         }
         $this->expectException(RuntimeException::class);
-        $dataset->augment($database->whereIn('project_id', [8, 9, 10])->values());
+        $dataset->augment($database->whereIn('project_id', [9, 10])->values());
     }
 
     public function test_test_project_values_do_not_influence_any_generated_training_files(): void
@@ -224,10 +224,10 @@ class ProjectCostAugmentationTest extends TestCase
         $this->assertFalse($result['candidate_activated']);
         $this->assertFileDoesNotExist($modelPath);
         $metadata = json_decode(file_get_contents($result['candidate_path'].'.meta.json'), true);
-        $this->assertSame(47, $metadata['training_projects']);
-        $this->assertSame(3, $metadata['test_samples']);
-        $this->assertSame([8, 9, 10], $metadata['evaluation_holdout_project_ids']);
-        $this->assertSame(3, $result['candidate_evaluation']['evaluation_projects']);
+        $this->assertSame(48, $metadata['training_projects']);
+        $this->assertSame(2, $metadata['test_samples']);
+        $this->assertSame([9, 10], $metadata['evaluation_holdout_project_ids']);
+        $this->assertSame(2, $result['candidate_evaluation']['evaluation_projects']);
         $this->assertTrue($result['activation']['checks']['project_level_primary_evaluation']);
         $this->assertContains('same_holdout_active_comparison', $result['activation']['failed_requirements']);
         $this->assertContains('fresh_independent_holdout', $result['activation']['failed_requirements']);
@@ -267,12 +267,13 @@ class ProjectCostAugmentationTest extends TestCase
         $this->assertFalse($report['active_model_changed']);
         $this->assertFileDoesNotExist($modelPath);
         $this->assertTrue($report['restored_evaluation_verified']);
-        $this->assertSame([8, 9, 10], $report['holdout_project_ids']);
-        $this->assertSame(3, $report['training_counts']['test_database_projects']);
+        $this->assertSame([9, 10], $report['holdout_project_ids']);
+        $this->assertSame(2, $report['training_counts']['test_database_projects']);
+        $this->assertSame(.20, $report['training_counts']['database_test_ratio']);
         $this->assertContains('fresh_independent_holdout', $report['activation_checks']['cost_model']['failed_requirements']);
         $this->assertFalse($report['steps']['5_validation']['test_used_for_selection']);
         foreach ($report['selected_candidate']['cross_validation']['folds'] as $fold) {
-            $this->assertEmpty(array_intersect($fold['test_project_ids'], [8, 9, 10]));
+            $this->assertEmpty(array_intersect($fold['test_project_ids'], [9, 10]));
             $this->assertEmpty(array_intersect($fold['test_project_ids'], $fold['training_project_ids']));
         }
         $pair = (new CostModelStore($report['candidate_path'], 10))->load();
@@ -296,7 +297,7 @@ class ProjectCostAugmentationTest extends TestCase
         $this->assertNotSame($report['evaluation']['mean_absolute_error'], $second['evaluation']['mean_absolute_error']);
         $summary = (new MLService($modelPath, false))->getOptimizationSummary();
         $this->assertArrayNotHasKey('candidate_path', $summary);
-        $this->assertSame(3, $summary['training_counts']['test_database_projects']);
+        $this->assertSame(2, $summary['training_counts']['test_database_projects']);
         $display = json_decode(file_get_contents($modelPath.'.optimization.json'), true);
         $this->assertArrayNotHasKey('steps', $display);
         $this->assertLessThan(20000, filesize($modelPath.'.optimization.json'));

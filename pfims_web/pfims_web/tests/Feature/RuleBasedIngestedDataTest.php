@@ -25,9 +25,9 @@ class RuleBasedIngestedDataTest extends TestCase
             $manifest = (new ProjectCostRuleBasedGenerator)->generate($source, $first, 160, 30, 100, 20261009);
             $this->assertSame('rule_based_construction_ledgers_v1', $manifest['method']);
             $this->assertSame(160, $manifest['ingested_projects']);
-            $this->assertSame(.30, $manifest['database_test_ratio']);
-            $this->assertSame([1, 2, 3, 4, 5, 6, 7], $manifest['database_training_project_ids']);
-            $this->assertSame([8, 9, 10], $manifest['database_test_project_ids']);
+            $this->assertSame(.20, $manifest['database_test_ratio']);
+            $this->assertSame([1, 2, 3, 4, 5, 6, 7, 8], $manifest['database_training_project_ids']);
+            $this->assertSame([9, 10], $manifest['database_test_project_ids']);
             $this->assertTrue((new ProjectCostAugmentationAudit)->audit($first)['valid']);
             $projects = iterator_to_array(ProjectCostAugmentationDataset::read($first.'/projects.jsonl.gz'));
             $years = [];
@@ -54,7 +54,7 @@ class RuleBasedIngestedDataTest extends TestCase
                 $this->assertContains($event['construction_phase'], ['structure', 'services', 'finishing']);
             }
             // Test outcomes cannot change any generated training bytes.
-            foreach ([7, 8, 9] as $index) {
+            foreach ([8, 9] as $index) {
                 $source['cohort']['records'][$index]['budget'] = 999999999;
                 $source['cohort']['records'][$index]['actual_cost'] = 1;
                 $source['fin_expense_tbl'][$index]['amount'] = 999999999;
