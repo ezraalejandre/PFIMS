@@ -509,6 +509,8 @@ class MLImprovementTest extends TestCase
             ->assertDontSee('data-auto-refresh="false"', false)
             ->assertSee('css/centralized-predictive-analytics.css', false)
             ->assertSee('js/ml-performance.js', false)
+            ->assertSee('id="manualRetrainButton"', false)
+            ->assertSee('js/ml-retrain.js', false)
             ->assertDontSee('id="performanceSource"', false)
             ->assertDontSee('id="performanceWeighting"', false)
             ->assertDontSee('id="performanceThreshold"', false)
@@ -566,6 +568,23 @@ class MLImprovementTest extends TestCase
             ->assertDontSee('<h1>INVENTORY</h1>', false)
             ->assertDontSee('Import CSV/XLSX', false)
             ->assertDontSee('class="inventory-tabs"', false);
+    }
+
+    public function test_manual_retraining_returns_new_evaluation_without_claiming_a_candidate_was_activated(): void
+    {
+        $metrics = ['mean_absolute_error' => 101581.57, 'latest_optimization' => ['evaluation' => ['mean_absolute_error' => 140000]]];
+        $this->mock(MLService::class, function ($mock) use ($metrics) {
+            $mock->shouldReceive('retrain')->once()->withNoArgs()->andReturn([
+                'message' => 'Candidate saved; active model retained.', 'candidate_activated' => false,
+                'model_source' => 'real_trained_model', 'metrics' => $metrics,
+                'candidate_evaluation' => ['mean_absolute_error' => 140000],
+            ]);
+        });
+        $this->actingAs($this->user('admin'))->postJson('/api/ml/retrain')
+            ->assertOk()->assertJsonPath('success', true)->assertJsonPath('candidate_activated', false)
+            ->assertJsonPath('metrics.mean_absolute_error', 101581.57)
+            ->assertJsonPath('metrics.latest_optimization.evaluation.mean_absolute_error', 140000)
+            ->assertJsonPath('candidate_evaluation.mean_absolute_error', 140000);
     }
 
     public function test_cost_prediction_validates_every_input_and_keeps_compatible_response_fields(): void

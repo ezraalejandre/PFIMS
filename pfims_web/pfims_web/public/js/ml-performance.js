@@ -8,6 +8,18 @@
     const percent = value => number(value) ? `${Number(value).toFixed(2)}%` : 'Unavailable';
     const currency = value => number(value) ? `₱${Number(value).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Unavailable';
     const names = values => (values || []).map(value => value.replaceAll('_', ' ')).join(', ');
+    // Keep every saved detail, but present individual facts instead of dense paragraphs.
+    function facts(id, chips = false) {
+        const node = element(id);
+        if (!node?.replaceChildren || !document.createElement) return;
+        const text = node.textContent.trim();
+        if (!text) return;
+        const list = document.createElement('ul');
+        list.className = chips ? 'performance-chips' : 'performance-facts';
+        const values = chips ? text.replace(/^Inputs evaluated \(\d+\): /, '').replace(/\.$/, '').split(', ') : text.split(/(?<=[.!?])\s+(?=[A-Z“])| · /);
+        values.forEach(value => { const item = document.createElement('li'); item.textContent = value; list.appendChild(item); });
+        node.replaceChildren(list);
+    }
     function render() {
         const candidate = false;
         const report = null;
@@ -95,7 +107,7 @@
             if (failures.includes('same_holdout_active_comparison')) reasons.push('a reliable comparison with the active model on the same observations is unavailable');
             if (reasons.length === 0 && failures.length) reasons.push('other activation evidence or performance requirements were not met');
             put('performanceCandidateStatus', improvement.active_model_changed
-                ? `Latest evaluated model is now active: ${algorithmNames[improvement.algorithm] || 'Unknown model'}. Activated at your request for development use. Independent validation and a reliable comparison with the previous model remain pending. The metrics above now describe this model.`
+                ? `Latest evaluated model is now active: ${algorithmNames[improvement.algorithm] || 'Unknown model'}.${active.development_activation ? ' Activated at your request for development use. Independent validation and a reliable comparison with the previous model remain pending.' : ''} The metrics above now describe this model.`
                 : `Latest candidate: ${algorithmNames[improvement.algorithm] || 'Unknown model'}. Not activated${reasons.length ? `: ${reasons.join('; ')}` : '; evaluation alone does not activate a model'}. The active metrics above are unchanged.`);
             put('performanceCandidateResults', `Candidate cost evaluation: MAE ${currency(cost.mean_absolute_error)}, MAPE ${percent(cost.mean_absolute_percentage_error)}, R² ${number(cost.r_squared) ? Number(cost.r_squared).toFixed(4) : 'Unavailable'}. Separate candidate overrun detector: accuracy ${percent(detector.classification_accuracy)}, precision ${percent(detector.precision)}, recall ${percent(detector.recall)}, F1 ${percent(detector.f1_score)}. ${number(detector.actual_overruns) ? `${detector.actual_overruns} actual test overruns.` : ''}`);
             if (number(cost.mae_target?.reference_pesos) && Number(cost.mae_target.reference_pesos) > 0) {
@@ -123,6 +135,8 @@
                 }
             }
         }
+        ['performanceScope', 'performanceMAETarget', 'performanceCounts', 'performanceReliability', 'performanceValidation', 'performanceComparison', 'performanceCandidateStatus', 'performanceCandidateResults', 'performanceCandidateTraining'].forEach(id => facts(id));
+        facts('performanceFeatures', !!features?.length);
     }
     window.pfimsPerformance = { update(metrics) { active = metrics || {}; render(); } };
 })();

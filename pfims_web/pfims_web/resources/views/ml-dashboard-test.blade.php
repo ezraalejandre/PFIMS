@@ -484,6 +484,26 @@
             margin-top: 18px;
         }
 
+        .performance-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+        .performance-detail-card { padding: 18px; border: 1px solid #dfe6ee; border-radius: 12px; background: #f8fafc; min-width: 0; }
+        .performance-detail-card h3 { margin: 0 0 12px; font-size: 15px; color: #26364a; }
+        .performance-detail-card h4 { margin: 18px 0 8px; font-size: 13px; color: #475569; }
+        .performance-facts { margin: 8px 0; padding-left: 20px; display: grid; gap: 9px; line-height: 1.55; }
+        .performance-facts li { padding-left: 3px; overflow-wrap: anywhere; }
+        .performance-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; }
+        .performance-chips li { padding: 6px 10px; border-radius: 8px; background: #e8eef5; color: #334155; font-size: 12px; }
+        .performance-overview { border-left: 3px solid #c87925; padding: 4px 14px; background: #fffaf4; border-radius: 6px; }
+        .performance-goals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+        .performance-goals div { background: white; border-radius: 8px; padding: 10px; }
+        .performance-goals dt { font-size: 12px; color: #64748b; }
+        .performance-goals dd { margin: 4px 0 0; font-weight: 600; color: #334155; }
+        .performance-retrain { border-top: 1px solid #dfe6ee; margin-top: 20px; padding-top: 18px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+        .performance-retrain-copy { flex: 1 1 260px; }
+        .performance-retrain-copy p { margin: 5px 0 0; }
+        #retrainStatus { flex-basis: 100%; margin: 0; line-height: 1.5; }
+        #manualRetrainButton:disabled { opacity: .65; cursor: wait; }
+        @media (max-width: 760px) { .performance-detail-grid { grid-template-columns: 1fr; } .performance-detail-card { padding: 14px; } }
+
         .metric-section:first-child {
             margin-top: 0;
         }
@@ -1104,7 +1124,7 @@
                 <div id="modelMetrics">
                     <p id="performanceStatus" role="status" aria-live="polite">Loading performance…</p>
                     <p id="performanceAlgorithm" class="analytics-panel-description"></p>
-                    <p id="performanceScope" class="analytics-panel-description"></p>
+                    <div id="performanceScope" class="performance-overview"></div>
                     <section class="metric-section" aria-labelledby="modelQualityTitle">
                         <h3 class="metric-section-title" id="modelQualityTitle">Final cost prediction error</h3>
                         <div class="model-status-grid">
@@ -1113,7 +1133,7 @@
                             <div class="metric-item"><span class="metric-label">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
                         </div>
                         <p class="analytics-panel-description">Lower cost error is better. A 7% MAPE means forecasts differed from actual final costs by 7% on average; it is not a guarantee for an individual project.</p>
-                        <p id="performanceMAETarget" class="analytics-panel-description"></p>
+                        <div id="performanceMAETarget" class="analytics-panel-description"></div>
                     </section>
                     <section class="metric-section" aria-labelledby="overrunDetectionTitle">
                         <h3 class="metric-section-title" id="overrunDetectionTitle">Budget overrun detection</h3>
@@ -1124,21 +1144,49 @@
                             <div class="metric-item"><span class="metric-label">F1 · balance of precision and recall</span><span class="metric-value" id="metricF1">—</span></div>
                             <div class="metric-item"><span class="metric-label">Accuracy · all outcomes classified correctly</span><span class="metric-value" id="metricOverrunAccuracy">—</span></div>
                         </div>
-                        <p id="performanceCounts"></p>
-                        <p id="performanceReliability" class="analytics-panel-description"></p>
-                        <p class="analytics-panel-description">Accuracy is the percentage of overrun and within-budget outcomes classified correctly. Read it alongside recall: high accuracy can still hide missed overruns when most outcomes are within budget. Higher detection scores are better. “Unavailable” means the evaluation cannot support that score. Costs equal to budget are not overruns. Budget means the recorded budget used for evaluation.</p>
+                        <div id="performanceCounts"></div>
+                        <div id="performanceReliability" class="analytics-panel-description"></div>
+                        <ul class="performance-facts analytics-panel-description">
+                            <li>Higher detection scores are better. Read accuracy alongside recall: high accuracy can still hide missed overruns.</li>
+                            <li>“Unavailable” means there is not enough evidence to report that score.</li>
+                            <li>Costs equal to budget are within budget. The comparison uses the recorded budget.</li>
+                        </ul>
                     </section>
-                    <section class="metric-section"><h3 class="metric-section-title">Evaluation details and prediction inputs</h3>
-                        <p id="performanceValidation"></p><p id="performanceComparison"></p><p id="performanceFeatures"></p><p id="performanceUpdated"></p>
-                        <p class="analytics-panel-description">Project targets: MAE at most 15% of the median actual final cost (10% preferred target), MAPE at most 5%, R² at least 0.90; overrun accuracy at least 90%, precision 85%, recall 90%, and F1 85%. MAE divided by the median is different from MAPE. Lower cost error is better. These are goals, not guarantees. Activation also requires reliable independent evidence.</p>
-                        <p class="analytics-panel-description">Projects are kept together in training and testing. The newest 20% are reserved for testing; feature selection and temporal cross-validation use only earlier training projects. Repeated stages from one project are related observations. Completed-project evaluation does not establish accuracy for every ongoing project.</p>
-                    </section>
-                    <section class="metric-section" aria-labelledby="latestCandidateTitle">
-                        <h3 class="metric-section-title" id="latestCandidateTitle">Latest model improvement check</h3>
-                        <p id="performanceCandidateStatus">No optimization evaluation available.</p>
-                        <p id="performanceCandidateResults" class="analytics-panel-description"></p>
-                        <p id="performanceCandidateTraining" class="analytics-panel-description"></p>
-                    </section>
+                    <div class="performance-detail-grid">
+                        <section class="performance-detail-card"><h3>Training &amp; testing</h3>
+                            <div id="performanceValidation"></div>
+                            <h4>How the test stays separate</h4>
+                            <ul class="performance-facts analytics-panel-description">
+                                <li>All observations from a project stay together. The newest 20% of projects are reserved for testing.</li>
+                                <li>Input selection and validation use earlier training projects only.</li>
+                                <li>Repeated checkpoints from one project are related. Completed-project scores may differ from ongoing-project accuracy.</li>
+                            </ul>
+                        </section>
+                        <section class="performance-detail-card"><h3>Comparison &amp; goals</h3>
+                            <div id="performanceComparison"></div>
+                            <h4>Preferred performance</h4>
+                            <dl class="performance-goals">
+                                <div><dt>MAE / median final cost</dt><dd>≤15% · preferred ≤10%</dd></div>
+                                <div><dt>Percentage error (MAPE)</dt><dd>≤5%</dd></div>
+                                <div><dt>Fit (R²)</dt><dd>≥0.90</dd></div>
+                                <div><dt>Overrun accuracy</dt><dd>≥90%</dd></div>
+                                <div><dt>Precision / recall</dt><dd>≥85% / ≥90%</dd></div>
+                                <div><dt>F1</dt><dd>≥85%</dd></div>
+                            </dl>
+                            <ul class="performance-facts analytics-panel-description"><li>MAE relative to the median differs from MAPE. Lower cost error is better.</li><li>These are goals, not guarantees. Activation also needs reliable independent evidence.</li></ul>
+                        </section>
+                        <section class="performance-detail-card"><h3>What the model uses</h3><div id="performanceFeatures"></div><p id="performanceUpdated" class="analytics-panel-description"></p></section>
+                        <section class="performance-detail-card" aria-labelledby="latestCandidateTitle"><h3 id="latestCandidateTitle">Latest training result</h3>
+                            <div id="performanceCandidateStatus" class="performance-overview">No optimization evaluation available.</div>
+                            <h4>Evaluation results</h4><div id="performanceCandidateResults"></div>
+                        </section>
+                        <section class="performance-detail-card"><h3>Latest training data</h3><div id="performanceCandidateTraining"></div></section>
+                    </div>
+                    <div class="performance-retrain">
+                        <div class="performance-retrain-copy"><strong>Manual retraining</strong><p class="analytics-panel-description">Run the existing ML pipeline for a demonstration. New evaluation results appear in “Latest training result”. Scheduled training and activation requirements stay in place.</p></div>
+                        <button type="button" id="manualRetrainButton" class="btn btn-primary">Retrain model</button>
+                        <p id="retrainStatus" role="status" aria-live="polite"></p>
+                    </div>
                 </div>
             </section>
         </div>
@@ -1254,6 +1302,7 @@
 @endunless
 
     <script src="{{ asset('js/ml-performance.js') }}?v={{ filemtime(public_path('js/ml-performance.js')) }}"></script>
+    <script src="{{ asset('js/ml-retrain.js') }}?v={{ filemtime(public_path('js/ml-retrain.js')) }}"></script>
     <script>
     // ─── CONFIGURATION ─────────────────────────────────────────────
     const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
@@ -1697,49 +1746,8 @@
         links.innerHTML = html;
     }
 
-    // ─── RETRAIN MODEL ────────────────────────────────────────────
-    function openRetrainConfirmation() {
-        const modal = document.getElementById('retrainConfirmModal');
-        if (!modal) return;
-        modal.hidden = false;
-        document.getElementById('confirmRetrainButton').focus();
-    }
-
-    function closeRetrainConfirmation() {
-        const modal = document.getElementById('retrainConfirmModal');
-        if (modal) modal.hidden = true;
-    }
-
-    async function confirmRetrainModel() {
-        closeRetrainConfirmation();
-
-        showNotification('🔄 Retraining model... Please wait.', 'info', 10000);
-
-        try {
-            const response = await fetch(`${API_BASE}/retrain`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': CSRF_TOKEN
-                }
-            });
-            const data = await response.json();
-
-            if (data.success) {
-                showNotification('✅ Model retrained successfully!', 'success');
-                loadDashboard();
-            } else {
-                showNotification('❌ Retraining failed: ' + (data.message || 'Unknown error'), 'error');
-            }
-        } catch (error) {
-            showNotification('❌ Error retraining model: ' + error.message, 'error');
-        }
-    }
-
     // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeRetrainConfirmation();
-        }
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
             predictCost();
@@ -1792,9 +1800,6 @@
             document.getElementById('budgetVarianceStatus').value = ''; document.getElementById('budgetVarianceYear').value = '';
             budgetVariancePage = 1;
             updateBudgetVariance(budgetVarianceRows);
-        });
-        document.getElementById('retrainConfirmModal')?.addEventListener('click', event => {
-            if (event.target.id === 'retrainConfirmModal') closeRetrainConfirmation();
         });
         if (document.body.classList.contains('embedded-ml-dashboard')) {
             const reportHeight = () => window.parent.postMessage({
