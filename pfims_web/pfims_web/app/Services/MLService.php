@@ -649,7 +649,8 @@ class MLService
                 'detector_evaluation' => $report['overrun_classifier']['evaluation']['latest_observation_per_project'] ?? null,
                 'cost_failed_requirements' => $report['activation_checks']['cost_model']['failed_requirements'] ?? [],
                 'detector_failed_requirements' => $report['activation_checks']['overrun_detector']['failed_requirements'] ?? [],
-                'active_model_changed' => false, 'holdout_status' => $report['holdout_status'],
+                'active_model_changed' => ($report['active_model_changed'] ?? false)
+                    && ($this->metadata['optimization_source_fingerprint'] ?? null) === ($report['source_fingerprint'] ?? null), 'holdout_status' => $report['holdout_status'],
                 'prediction_strategy' => $report['prediction_strategy'] ?? null, 'feature_names' => $report['feature_names'] ?? [], 'data_audit' => $report['data_audit'] ?? null];
         } catch (Throwable) {
             return null;
@@ -2326,6 +2327,7 @@ class MLService
         if (($this->metadata['prediction_strategy'] ?? '') === PlanningSpendingFeatures::STRATEGY) {
             $planningInputs = PlanningSpendingFeatures::build(array_replace($context, array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), ['fin_total_expense' => $this->recordedSpend($features)]));
             $this->lastEngineeredFeatures['values'] = $planningInputs;
+            $this->lastEngineeredFeatures['indicators'] = ['observation_basis' => 'record_dates', 'physical_progress_used' => false];
         }
         $this->lastDetectorInputs = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)),
             $this->lastEngineeredFeatures['values']);
@@ -2484,7 +2486,7 @@ class MLService
 
     public function getLastDetectorPrediction(): ?array
     {
-        $stored = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json');
+        $stored = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json', $this->metadata['model_sha256'] ?? null);
         if ($stored === null || $this->lastDetectorInputs === []) {
             return null;
         }
@@ -2534,10 +2536,16 @@ class MLService
         $strategy = $this->metadata['prediction_strategy'] ?? 'unknown';
         $completion = (float) $features[3];
         $recordedSpend = max((float) $features[6], (float) $features[4] + (float) $features[5]);
-        $context = $completion <= 0 && $recordedSpend <= 0 ? 'pre_start_planning' : 'ongoing_progress';
+        $context = $strategy === PlanningSpendingFeatures::STRATEGY
+            ? ($recordedSpend <= 0 ? 'pre_start_planning' : 'ongoing_planning_spending')
+            : ($completion <= 0 && $recordedSpend <= 0 ? 'pre_start_planning' : 'ongoing_progress');
         if ($this->lastPredictionSource === 'rule_based_fallback') {
             return ['prediction_usable' => false, 'support_level' => 'fallback_only',
                 'forecast_context' => $context, 'status_reason' => 'The trained estimator failed. This rule-based estimate has no validated model performance.'];
+        }
+        if (isset($this->metadata['development_activation'])) {
+            return ['prediction_usable' => false, 'support_level' => 'development_evaluation',
+                'forecast_context' => $context, 'status_reason' => 'The planning and spending model is active at your request. Independent company validation remains pending.'];
         }
         $baselineSupported = (bool) ($this->metadata['budget_baseline_comparison']['model_outperforms_budget_baseline'] ?? false);
         $productionModelIsBest = (bool) ($this->metadata['model_comparison']['production_model_is_best_option'] ?? false);
@@ -2775,7 +2783,7 @@ class MLService
         $evaluation = $this->metadata['evaluation'] ?? null;
         $source = $this->metadata['model_source'] ?? 'unknown';
         $metrics = is_array($evaluation) ? $evaluation : [];
-        $detector = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json');
+        $detector = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json', $this->metadata['model_sha256'] ?? null);
         if ($detector !== null) {
             $metrics['overrun_detection']['any_overrun'] = $detector['metadata']['evaluation'];
         }
@@ -2796,7 +2804,7 @@ class MLService
         }
 
         return [
-            'status' => match ($source) {
+            'status' => isset($this->metadata['development_activation']) ? 'Planning and spending model is active for development use' : match ($source) {
                 'real_trained_model' => $estimatedHistoricalPurchases > 0
                     ? 'Model is trained on completed projects with estimated historical inventory costs'
                     : 'Model is trained on verified completed projects',
@@ -2806,6 +2814,7 @@ class MLService
             'model_source' => $source,
             'model_type' => $this->model ? CostModelStore::algorithm($this->model) : null,
             'model_recovery_source' => $this->modelRecoverySource,
+            'development_activation' => $this->metadata['development_activation'] ?? null,
             'uses_synthetic_data' => (bool) ($this->metadata['uses_synthetic_data'] ?? false),
             'estimated_historical_purchase_count' => $estimatedHistoricalPurchases,
             'samples_trained' => (int) ($this->metadata['samples_trained'] ?? 0),
@@ -2825,6 +2834,7 @@ class MLService
             'f1_score' => $metrics['f1_score'] ?? null,
             'overrun_detection' => $metrics['overrun_detection'] ?? null,
             'overrun_detector_source' => $detector === null ? 'cost_estimate' : 'independent_classifier',
+            'overrun_detector_evaluation_unit' => $detector['metadata']['evaluation_unit'] ?? null,
             'evaluation_observations' => $metrics['evaluation_observations'] ?? null,
             'latest_observation_per_project' => $metrics['latest_observation_per_project'] ?? null,
             'evaluation_scope_label' => $this->metadata['evaluation_scope_label'] ?? null,

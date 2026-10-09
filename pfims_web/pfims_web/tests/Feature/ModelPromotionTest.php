@@ -109,4 +109,42 @@ class ModelPromotionTest extends TestCase
         $this->assertTrue($service->getLastDetectorPrediction()['confirmed_spend_overrun']);
         $this->assertTrue($service->getLastDetectorPrediction()['any_overrun']);
     }
+
+    public function test_reviewed_development_activation_preserves_failed_evidence_and_cannot_waive_bad_scores(): void
+    {
+        $service = new ModelPromotionService;
+        $metrics = ['mean_absolute_percentage_error' => 5, 'mean_absolute_error' => 500, 'r_squared' => .95, 'target_median' => 20000];
+        $evidence = array_replace($this->evidence(), ['fresh_independent_holdout' => false, 'same_holdout_active_comparison' => false,
+            'active_model_evaluation' => [], 'budget_baseline_mape' => 10]);
+        (new CostModelStore($this->path, 10))->save($this->cost(), ['version' => 'before']);
+        $this->assertFalse($service->promoteCost($this->path, $this->cost(), ['evaluation' => $metrics], $evidence)['activated']);
+        $this->assertFalse($service->promoteCost($this->path, $this->cost(), ['evaluation' => array_replace($metrics, ['mean_absolute_error' => 4000])], $evidence, true)['activated']);
+        $result = $service->promoteCost($this->path, $this->cost(), ['evaluation' => $metrics], $evidence, true);
+        $this->assertTrue($result['activated']);
+        $this->assertFalse($result['metadata']['activation_policy']['eligible']);
+        $this->assertFalse($result['metadata']['activation_evidence']['fresh_independent_holdout']);
+        $this->assertSame('explicit_user_requested_development', $result['metadata']['development_activation']['mode']);
+        $this->assertFileExists($this->path.'.previous');
+    }
+
+    public function test_reviewed_detector_restores_but_rejects_bad_scores_and_wrong_cost_pair(): void
+    {
+        $cost = (new CostModelStore($this->path, 10))->save($this->cost(), []);
+        $model = new BudgetOverrunClassifier;
+        $model->train([[0], [.1], [.9], [1]], [false, false, true, true], [1, 2, 3, 4]);
+        $metrics = ['definition' => 'any_overrun', 'classification_accuracy' => 100, 'precision' => 100,
+            'recall' => 100, 'f1_score' => 100, 'balanced_accuracy' => 100, 'actual_overruns' => 2, 'actual_non_overruns' => 15];
+        $evidence = array_replace($this->evidence(), ['fresh_independent_holdout' => false,
+            'same_holdout_active_comparison' => false, 'active_model_evaluation' => []]);
+        $meta = ['evaluation' => $metrics, 'threshold' => .6, 'feature_names' => ['budget'], 'cost_model_sha256' => $cost['model_sha256']];
+        $service = new ModelPromotionService;
+        $path = $this->path.'.detector.json';
+        $this->assertTrue($service->promoteDetector($path, $model, $meta, $evidence, true)['activated']);
+        $this->assertNotNull($service->loadDetector($path, $cost['model_sha256']));
+        $this->assertNull($service->loadDetector($path, str_repeat('0', 64)));
+        $stored = json_decode(File::get($path), true);
+        $stored['metadata']['evaluation']['recall'] = 0;
+        File::put($path, json_encode($stored));
+        $this->assertNull($service->loadDetector($path, $cost['model_sha256']));
+    }
 }

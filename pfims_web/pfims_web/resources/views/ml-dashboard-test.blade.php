@@ -1457,7 +1457,7 @@
                     </div>
                     <div class="result-row">
                         <span class="result-label">Remaining forecast cost</span>
-                        <span class="result-value">₱${remainingForecastCost.toLocaleString()} after ₱${recordedExpenses.toLocaleString()} recorded expenses at ${completion.toFixed(1)}% completion</span>
+                        <span class="result-value">₱${remainingForecastCost.toLocaleString()} after ₱${recordedExpenses.toLocaleString()} recorded expenses${result.forecast_context === 'ongoing_planning_spending' ? ' using the project plan and dated spending' : ` at ${completion.toFixed(1)}% completion`}</span>
                     </div>
                     <div class="result-row" style="border-bottom: none;">
                         <span class="result-label">Recommended action</span>

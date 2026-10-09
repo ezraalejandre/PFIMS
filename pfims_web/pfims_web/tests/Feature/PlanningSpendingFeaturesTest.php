@@ -10,7 +10,10 @@ use App\Services\ML\ProjectCostAugmentationDataset;
 use App\Services\ML\ProjectCostRuleBasedGenerator;
 use App\Services\MLService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class PlanningSpendingFeaturesTest extends TestCase
@@ -131,6 +134,58 @@ class PlanningSpendingFeaturesTest extends TestCase
             $this->assertNull($comparison['evaluation']);
         } finally {
             File::delete([$path, $path.'.meta.json']);
+        }
+    }
+
+    public function test_current_spending_uses_record_dates_and_supplies_all_prediction_activity_fields(): void
+    {
+        $tables = ['fin_expense_category_tbl', 'fin_expense_tbl', 'inventory_transaction_tbl', 'inventory_cost_allocation_tbl'];
+        try {
+            Schema::create($tables[0], function (Blueprint $t) {
+                $t->integer('fin_category_id');
+                $t->string('category_name');
+            });
+            Schema::create($tables[1], function (Blueprint $t) {
+                $t->integer('project_id');
+                $t->integer('inventory_transaction_id')->nullable();
+                $t->date('expense_date');
+                $t->decimal('amount', 12, 2);
+                $t->string('project_cost_component');
+                $t->timestamp('created_at')->nullable();
+            });
+            Schema::create($tables[2], function (Blueprint $t) {
+                $t->integer('inventory_transaction_id');
+                $t->integer('project_id');
+                $t->string('transaction_type');
+                $t->date('transaction_date');
+            });
+            Schema::create($tables[3], function (Blueprint $t) {
+                $t->integer('out_transaction_id');
+                $t->string('valuation_status');
+                $t->decimal('allocated_amount', 12, 2);
+            });
+            DB::table($tables[1])->insert([
+                ['project_id' => 1, 'inventory_transaction_id' => null, 'expense_date' => today()->subDays(2)->toDateString(), 'amount' => 100, 'project_cost_component' => 'labor', 'created_at' => now()->addYears(1)],
+                ['project_id' => 1, 'inventory_transaction_id' => null, 'expense_date' => today()->addDay()->toDateString(), 'amount' => 999, 'project_cost_component' => 'labor', 'created_at' => now()],
+                ['project_id' => 1, 'inventory_transaction_id' => 1, 'expense_date' => today()->toDateString(), 'amount' => 50, 'project_cost_component' => 'material', 'created_at' => now()],
+            ]);
+            DB::table($tables[2])->insert([
+                ['inventory_transaction_id' => 1, 'project_id' => 1, 'transaction_type' => 'OUT', 'transaction_date' => today()->toDateString()],
+                ['inventory_transaction_id' => 2, 'project_id' => 1, 'transaction_type' => 'OUT', 'transaction_date' => today()->toDateString()],
+                ['inventory_transaction_id' => 3, 'project_id' => 1, 'transaction_type' => 'OUT', 'transaction_date' => today()->addDay()->toDateString()],
+            ]);
+            DB::table($tables[3])->insert(['out_transaction_id' => 1, 'valuation_status' => 'valued', 'allocated_amount' => 50]);
+            $input = (new PlanningSpendingCohort)->forecastInputs(1, today()->subDays(30), today()->addDays(90));
+            $this->assertSame(150., $input['fin_total_expense']);
+            $this->assertSame(1, $input['direct_expense_count_30d']);
+            $this->assertSame(1, $input['stock_out_count_30d']);
+            $this->assertSame(1, $input['unvalued_stock_out_count']);
+            $this->assertFalse($input['cost_coverage_complete']);
+            $this->assertSame(30, $input['elapsed_days']);
+        } finally {
+            foreach (array_reverse($tables) as $table) {
+                Schema::dropIfExists($table);
+            }
         }
     }
 }

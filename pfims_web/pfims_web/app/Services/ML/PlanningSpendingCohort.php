@@ -40,18 +40,24 @@ class PlanningSpendingCohort
             ->whereDate('transaction_date', '<=', $at)->get();
         $allocations = DB::table('inventory_cost_allocation_tbl')->whereIn('out_transaction_id', $movements->pluck('inventory_transaction_id'))->get()->groupBy('out_transaction_id');
         $complete = true;
+        $unvaluedCount = 0;
         foreach ($movements as $movement) {
             $valuation = $allocations->get($movement->inventory_transaction_id, collect());
             if ($valuation->isEmpty() || $valuation->contains(fn ($a) => $a->valuation_status !== 'valued')) {
                 $complete = false;
+                $unvaluedCount++;
 
                 continue;
             }
             $events[] = ['date' => substr($movement->transaction_date, 0, 10), 'amount' => (float) $valuation->sum('allocated_amount'), 'component' => 'material', 'inventory' => true];
         }
 
+        $recent = collect($events)->filter(fn ($event) => $event['date'] >= today()->subDays(29)->toDateString());
+
         return self::summarize($events, $at) + ['elapsed_days' => max(0, (int) $start->diffInDays(today(), false)),
             'planned_duration_days' => max(1, (int) $start->diffInDays($plannedEnd)), 'cost_coverage_complete' => $complete,
+            'unvalued_stock_out_count' => $unvaluedCount, 'direct_expense_count_30d' => $recent->where('inventory', false)->count(),
+            'stock_out_count_30d' => $recent->where('inventory', true)->count(),
             'finance_as_of_date' => collect($events)->max('date')];
     }
 
