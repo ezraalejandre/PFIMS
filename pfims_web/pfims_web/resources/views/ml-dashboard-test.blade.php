@@ -1653,6 +1653,12 @@
     }
 
     // ─── UPDATE BUDGET VARIANCE ────────────────────────────────────
+    function budgetComparisonDifference(item) {
+        const budget = parseFloat(item.budget) || 0;
+        const actualCost = parseFloat(item.actual_cost) || 0;
+        return (Math.round(budget * 100) - Math.round(actualCost * 100)) / 100;
+    }
+
     function updateBudgetVariance(varianceData) {
         const tbody = document.getElementById('budgetVarianceBody');
         if (varianceData !== budgetVarianceRows) {
@@ -1682,8 +1688,8 @@
             const projectName = String(item.project_name || '');
             const matchesSearch = !query || projectName.toLowerCase().includes(query);
             const matchesProject = !project || projectName === project;
-            const overBudget = Number(item.variance || 0) < 0;
-            const rowPosition = String(item.position || (overBudget ? 'over' : 'within')).toLowerCase();
+            const difference = budgetComparisonDifference(item);
+            const rowPosition = difference < 0 ? 'over' : 'within';
             return matchesSearch && matchesProject && (!year || String(item.start_date || '').startsWith(year)) && (!position || rowPosition === position);
         });
         const pageSize = Number(document.getElementById('budgetVariancePageSize')?.value || 5);
@@ -1702,8 +1708,10 @@
         visibleRows.forEach(item => {
             const budget = parseFloat(item.budget) || 0;
             const actualCost = parseFloat(item.actual_cost) || 0;
-            const variance = parseFloat(item.variance) || 0;
-            const variancePercentage = parseFloat(item.variance_percentage) || 0;
+            // Present the difference between the two amounts displayed in this row.
+            const variance = budgetComparisonDifference(item);
+            const variancePercentage = budget > 0 ? variance / budget * 100 : 0;
+            const currencyOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
             
             const isOverBudget = variance < 0;
             const statusColor = isOverBudget ? '#c62828' : '#2e7d32';
@@ -1711,10 +1719,10 @@
             html += `
                 <tr>
                     <td><strong>${escapeHtml(item.project_name || 'Unnamed')}</strong></td>
-                    <td>₱${budget.toLocaleString()}</td>
-                    <td>₱${actualCost.toLocaleString()}</td>
+                    <td>₱${budget.toLocaleString('en-PH', currencyOptions)}</td>
+                    <td>₱${actualCost.toLocaleString('en-PH', currencyOptions)}</td>
                     <td style="color:${statusColor}; font-weight:600;">
-                        ${isOverBudget ? '-' : '+'}₱${Math.abs(variance).toLocaleString()}
+                        ${variance === 0 ? '' : (isOverBudget ? '-' : '+')}₱${Math.abs(variance).toLocaleString('en-PH', currencyOptions)}
                         <br><small>(${variancePercentage.toFixed(1)}%)</small>
                     </td>
                 </tr>
