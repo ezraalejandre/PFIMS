@@ -186,7 +186,7 @@
             if (!response.ok) throw new Error(message);
             return response.json();
         }
-        Promise.all([
+        return Promise.all([
             fetch('/api/inventory', { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                 .then(function (response) { return json(response, 'Inventory items could not be loaded.'); }),
             fetch('/api/inventory/transactions', { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })

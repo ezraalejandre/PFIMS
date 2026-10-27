@@ -114,6 +114,38 @@ a[data-icon-label]:hover .button-label, a[data-icon-label]:focus-visible .button
     display: none !important;
 }
 
+/* Inventory details hide the entire enhanced dropdown when its edit field
+   is hidden, including the decorative underline and arrow. */
+#viewModal .pfims-select:has(> select.view-input:is([hidden], [style*="display: none"], [style*="display:none"])) {
+    display: none !important;
+}
+
+/* Keep material stock states distinct from the shared neutral badge style. */
+#materialProjectionSection .badge-success {
+    background: #e8f5e9 !important;
+    color: #2e7d32 !important;
+}
+#materialProjectionSection .badge-warning {
+    background: #fff3e0 !important;
+    color: #e65100 !important;
+}
+#materialProjectionSection .badge-danger {
+    background: #ffebee !important;
+    color: #c62828 !important;
+}
+html[data-theme="dark"] #materialProjectionSection .badge-success {
+    background: #163d2b !important;
+    color: #8bd8a8 !important;
+}
+html[data-theme="dark"] #materialProjectionSection .badge-warning {
+    background: #493214 !important;
+    color: #ffc17a !important;
+}
+html[data-theme="dark"] #materialProjectionSection .badge-danger {
+    background: #4b2229 !important;
+    color: #ff9b9b !important;
+}
+
 #profitTable { table-layout: auto !important; min-width: 2200px !important; }
 #receivableTable { table-layout: auto !important; min-width: 1250px !important; }
 #receivableTable :is(th, td) { min-width: 110px; white-space: nowrap; }
@@ -3331,22 +3363,6 @@ html[data-theme="dark"] .projects-page .status-chart-empty {
     max-width: none !important;
 }
 
-/* Projects: column visibility per status filter (declutters the table). */
-.projects-page .table-wrapper.col-hide-est-end table th:nth-child(4),
-.projects-page .table-wrapper.col-hide-est-end table td:nth-child(4) {
-    display: none !important;
-}
-
-.projects-page .table-wrapper.col-hide-actual-end table th:nth-child(5),
-.projects-page .table-wrapper.col-hide-actual-end table td:nth-child(5) {
-    display: none !important;
-}
-
-.projects-page .table-wrapper.col-hide-progress table th:nth-child(8),
-.projects-page .table-wrapper.col-hide-progress table td:nth-child(8) {
-    display: none !important;
-}
-
 /* Header notification/user JPEGs have white canvases; convert them to dark canvases. */
 html[data-theme="dark"] .top-header .right img:is(
     [src$="/notif.jpg"],
@@ -6272,3 +6288,98 @@ body.landing-page *::-webkit-scrollbar-track { background: transparent !importan
 :is(.table-wrap, .table-responsive, .analytics-table-wrapper) { display: flex; }
 :is(.table-wrap, .table-responsive, .analytics-table-wrapper) > table { flex: 0 0 auto; max-width: none; }
 .budget-table-wrapper:not(.visible) { display: none !important; }
+
+/* Project Records keeps every detail readable inside its scrolling wrapper. */
+.projects-page .table-wrapper table {
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+}
+.projects-page .table-wrapper :is(th, td) {
+    min-width: 132px;
+    white-space: nowrap;
+}
+.projects-page .table-wrapper :is(th, td):first-child { min-width: 220px; }
+.projects-page .table-wrapper :is(th, td):last-child { min-width: 88px; }
+
+/* Audit Logs: one control height across filters and pagination. */
+.audit-logs-page :is(.audit-log-filter-panel, .rows-info) :is(input:not([type="hidden"]), select, .pfims-select-trigger) {
+    box-sizing: border-box;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+}
+
+/* Deletion confirmations share the expense dialog's layout on every page. */
+body .modal-overlay.pfims-delete-confirm {
+    z-index: 9999 !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+body .pfims-delete-confirm .modal-container {
+    width: 400px !important;
+    padding: 30px 35px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    text-align: left !important;
+}
+body .pfims-delete-confirm .modal-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    margin: 0 0 20px !important;
+    padding: 0 0 16px !important;
+    border-bottom: 1px solid #eef2f6 !important;
+}
+body .pfims-delete-confirm .modal-header h2 {
+    margin: 0 !important;
+    font-size: 1.4rem !important;
+    font-weight: 600 !important;
+    color: #1a2b3c !important;
+}
+body .pfims-delete-confirm .modal-close {
+    width: auto !important;
+    padding: 0 8px !important;
+    font-size: 2rem !important;
+    line-height: 1 !important;
+    color: #888 !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+body .pfims-delete-confirm .modal-body { padding: 0 2px !important; }
+body .pfims-delete-confirm .modal-body p {
+    margin: 0 0 10px !important;
+    font-size: 1rem !important;
+    font-weight: 400 !important;
+    color: #333 !important;
+}
+body .pfims-delete-confirm .modal-body p:last-child {
+    margin-bottom: 20px !important;
+    font-size: .85rem !important;
+    color: #888 !important;
+}
+body .pfims-delete-confirm .modal-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin: 10px 0 0 !important;
+    padding: 20px 0 0 !important;
+    border-top: 1px solid #e9ecef !important;
+}
+body .pfims-delete-confirm .modal-footer button {
+    flex: 0 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 10px 24px !important;
+    border-radius: 12px !important;
+    font-size: .9rem !important;
+    font-weight: 800 !important;
+}
+@media (max-width: 480px) {
+    body .pfims-delete-confirm .modal-container { padding: 24px !important; }
+}

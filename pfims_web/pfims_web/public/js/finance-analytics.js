@@ -311,12 +311,12 @@
         return apiFetch('/finance-expenses')
             .then(function (data) {
                 financeExpenses = Array.isArray(data) ? data : [];
-                if (typeof window.updateBudgetActualAmounts === 'function' && Array.isArray(budgetData) && budgetData.length) {
-                    window.updateBudgetActualAmounts();
-                    if (typeof window.filterBudgetTable === 'function') window.filterBudgetTable();
-                }
-                if (currentReportTab === 'expenses') applyFilters();
-                return financeExpenses;
+                // Re-read canonical spending after every write; cached budget totals may be stale.
+                budgetDataCache = null;
+                return fetchBudgetData().then(function () {
+                    if (currentReportTab === 'expenses') applyFilters();
+                    return financeExpenses;
+                });
             })
             .catch(function (error) {
                 financeExpenses = [];

@@ -30,8 +30,8 @@ class ForgotPasswordController extends Controller
 
         if (!$user) {
             return response()->json([
-                'message' => 'No account found with that email address',
-            ], 404);
+                'message' => 'If that email exists in our system, a reset code has been sent.',
+            ]);
         }
 
         $otp = (string) random_int(100000, 999999);
@@ -39,7 +39,7 @@ class ForgotPasswordController extends Controller
         PasswordOtp::updateOrCreate(
             ['email' => $email],
             [
-                'otp' => $otp,
+                'otp' => Hash::make($otp),
                 'verified' => false,
                 'expires_at' => now()->addMinutes(10),
             ]
@@ -48,7 +48,7 @@ class ForgotPasswordController extends Controller
         $user->notify(new ForgotPasswordOtpNotification($otp));
 
         return response()->json([
-            'message' => 'Verification code sent',
+            'message' => 'If that email exists in our system, a reset code has been sent.',
         ]);
     }
 
@@ -59,11 +59,9 @@ class ForgotPasswordController extends Controller
             'otp' => 'required|digits:6',
         ]);
 
-        $record = PasswordOtp::where('email', $request->email)
-            ->where('otp', $request->otp)
-            ->first();
+        $record = PasswordOtp::where('email', $request->email)->first();
 
-        if (!$record) {
+        if (!$record || !Hash::check($request->otp, $record->otp)) {
             return response()->json(['message' => 'Invalid code'], 422);
         }
 
@@ -81,15 +79,14 @@ class ForgotPasswordController extends Controller
         $request->validate([
             'email' => 'required|email',
             'otp' => 'required|digits:6',
-            'password' => 'required|min:8|confirmed',
+            'password' => 'required|string|min:8|max:72|confirmed',
         ]);
 
         $record = PasswordOtp::where('email', $request->email)
-            ->where('otp', $request->otp)
             ->where('verified', true)
             ->first();
 
-        if (!$record || $record->expires_at->isPast()) {
+        if (!$record || !Hash::check($request->otp, $record->otp) || $record->expires_at->isPast()) {
             return response()->json([
                 'message' => 'Code not verified or has expired',
             ], 422);

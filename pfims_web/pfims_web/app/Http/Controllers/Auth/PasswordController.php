@@ -16,8 +16,8 @@ class PasswordController extends Controller
     public function update(Request $request)
     {
         $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'new_password' => ['required', 'confirmed', Password::min(8)],
+            'current_password' => ['required', 'string', 'max:4096', 'current_password'],
+            'new_password' => ['required', 'string', 'max:72', 'confirmed', Password::min(8)],
         ]);
 
         /** @var \App\Models\User $user */

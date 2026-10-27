@@ -38,10 +38,10 @@ Route::get('/test', function () {
 });
 
 // ─── AUTH ROUTES ─────────────────────────────────────────────────
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
-Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
-Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'reset']);
+Route::post('/login', [AuthController::class, 'login'])->middleware(['web','throttle:6,1']);
+Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp'])->middleware('throttle:6,1');
+Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->middleware('throttle:6,1');
+Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'reset'])->middleware('throttle:6,1');
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/profile', [AuthController::class, 'profile']);
@@ -61,6 +61,9 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
         );
     });
 
+    Route::get('/session/status', fn () => response()->json(['authenticated'=>true]));
+    Route::get('/trash', [\App\Http\Controllers\TrashController::class, 'index']);
+    Route::post('/trash/{id}/restore', [\App\Http\Controllers\TrashController::class, 'restore'])->whereNumber('id');
     Route::get('/settings', [SystemSettingsController::class, 'show']);
     Route::put('/settings', [SystemSettingsController::class, 'update']);
 
@@ -94,6 +97,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     // ─── PROJECT ROUTES ──────────────────────────────────────────────
     Route::get('/projects', [ProjectController::class, 'index']);
     Route::get('/projects/list', [ProjectController::class, 'list']);
+    Route::get('/project-managers', [ProjectController::class, 'managers']);
     Route::get('/project-phases', [ProjectController::class, 'phases']);
     Route::post('/projects', [ProjectController::class, 'store']);
     Route::put('/projects/{id}', [ProjectController::class, 'update'])->whereNumber('id');

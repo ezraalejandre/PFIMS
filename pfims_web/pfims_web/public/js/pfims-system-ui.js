@@ -5,6 +5,15 @@
     window.PFIMS_SYSTEM_UI_LOADED = true;
 
     var alertTimer = null;
+    function checkAccountSession() {
+        if (document.hidden) return;
+        fetch('/api/session/status', {headers:{'Accept':'application/json'},cache:'no-store'}).then(function(response) {
+            if (response.status === 401) window.location.replace('/');
+        }).catch(function() {});
+    }
+    window.setInterval(checkAccountSession, 15000);
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) checkAccountSession(); });
+
 
     function installHeaderClock() {
         var headerActions = document.querySelector('.top-header .right');
@@ -45,6 +54,9 @@
         window.setInterval(update, 1000);
     }
     window.showPfimsAlert = function (message, type, duration) {
+        if (type === 'success' && typeof message === 'string' && /\bdeleted\b|saved defaults removed/i.test(message) && !/30 days/.test(message)) {
+            message = 'Moved to Trash Bin. Restore from Settings within 30 days before permanent deletion.';
+        }
         var tone = ['success', 'error', 'info', 'warning'].includes(type) ? type : 'info';
         var alert = document.getElementById('pfimsGlobalAlert');
         if (!alert) {
@@ -954,6 +966,16 @@
     }
 
     function installModuleNavigation() {
+        var loginEpoch = document.querySelector('script[data-login-epoch]')?.dataset.loginEpoch || '';
+        var freshLogin = false;
+        try {
+            freshLogin = !!loginEpoch && window.sessionStorage.getItem('pfims-navigation-epoch') !== loginEpoch;
+            if (freshLogin) {
+                ['projects','finance','inventory'].forEach(function(module) { window.localStorage.setItem('pfims-nav-'+module,'closed'); });
+                window.sessionStorage.setItem('pfims-navigation-epoch',loginEpoch);
+            }
+        } catch(error) { freshLogin = true; }
+
         var portal = document.body?.dataset.portal || 'admin';
         document.querySelectorAll('.sidebar li > a').forEach(function (link) {
             var label = (link.textContent || '').trim().toLowerCase();
@@ -1029,7 +1051,7 @@
 
             var savedState = null;
             try { savedState = window.localStorage.getItem('pfims-nav-' + module); } catch (error) {}
-            if (activeChild) {
+            if (activeChild && !freshLogin) {
                 document.querySelectorAll('.sidebar .nav-parent').forEach(function (parent) {
                     if (parent === item) return;
                     parent.classList.remove('is-open');
@@ -1041,7 +1063,7 @@
                 });
                 try { window.localStorage.setItem('pfims-nav-' + module, 'open'); } catch (error) {}
             }
-            var shouldOpen = !!activeChild || savedState === 'open';
+            var shouldOpen = !freshLogin && (!!activeChild || savedState === 'open');
             item.classList.toggle('is-open', shouldOpen);
             toggle.setAttribute('aria-expanded', String(shouldOpen));
             item.dataset.pfimsModuleState = 'ready';
@@ -1391,7 +1413,14 @@
             var originalFetch = window.fetch;
             var trackedFetch = function () {
                 if (pageGate.active) pageGate.pending += 1;
-                return originalFetch.apply(this, arguments).finally(function () {
+                return originalFetch.apply(this, arguments).then(function(response) {
+                    if (response.status === 422) response.clone().json().then(function(data) {
+                        var first = Object.values(data.errors || {})[0];
+                        var message = Array.isArray(first) ? first[0] : first;
+                        window.showPfimsAlert(message || data.message || 'Invalid input. Please check the entered values.', 'error');
+                    }).catch(function() {});
+                    return response;
+                }).finally(function () {
                     if (!pageGate.active) return;
                     pageGate.pending = Math.max(0, Number(pageGate.pending || 0) - 1);
                     pending = pageGate.pending;

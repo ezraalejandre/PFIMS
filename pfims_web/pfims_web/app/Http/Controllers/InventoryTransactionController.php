@@ -41,7 +41,7 @@ class InventoryTransactionController extends Controller
         }
 
         $proofFile = $request->file('proof_file');
-        $proofPath = $proofFile?->store('inventory-transaction-proofs', 'public');
+        $proofPath = $proofFile?->store('inventory-transaction-proofs', 'protected');
         try {
             $result = DB::transaction(function () use ($validated, $proofFile, $proofPath) {
 
@@ -96,7 +96,7 @@ class InventoryTransactionController extends Controller
             });
         } catch (\Throwable $e) {
             if ($proofPath !== null) {
-                Storage::disk('public')->delete($proofPath);
+                app(\App\Services\TrashService::class)->retainFile($proofPath);
             }
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
             $message = $e->getMessage() ?: 'Failed to save transaction.';

@@ -151,6 +151,9 @@
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="notifications-page" data-portal="{{ $portal }}">
 
@@ -173,23 +176,23 @@
     </div>
 
     <!-- ─── CONFIRM MODAL (for Clear All) ─── -->
-    <div id="confirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+    <div id="confirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container">
             <div class="modal-header">
-                <h2>Confirm Action</h2>
+                <h2>Confirm Deletion</h2>
                 <button class="modal-close" onclick="closeConfirmModal()">×</button>
             </div>
             <div class="modal-body">
                 <p id="confirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
-                    Are you sure you want to clear all notifications?
+                    Are you sure you want to move all notifications to Trash Bin?
                 </p>
                 <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
-                    This action cannot be undone.
+                    You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.
                 </p>
             </div>
             <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
                 <button class="btn-cancel" onclick="closeConfirmModal()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: transparent; color: #888; transition: 0.3s;">Cancel</button>
-                <button class="btn-delete" id="confirmActionBtn" onclick="confirmAction()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #d32f2f; color: #fff; transition: 0.3s;">Yes, Clear All</button>
+                <button class="btn-delete" id="confirmActionBtn" onclick="confirmAction()" style="padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #d32f2f; color: #fff; transition: 0.3s;">Delete</button>
             </div>
         </div>
     </div>
@@ -297,6 +300,7 @@
                 var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         var allNotifications = [];
         var currentTab = 'all';
+        function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
         var showOnlyTotals = false;
         var notifPageSize = 10;
         var notifCurrentPage = 1;
@@ -328,13 +332,15 @@
         var confirmCallback = null;
 
         function openClearAllModal() {
-            document.getElementById('confirmMessage').textContent = 'Are you sure you want to clear all notifications?';
-            confirmCallback = function() {
-                // Show only total notifications after clearing
-                showOnlyTotals = true;
-                renderNotifications();
-                updateBadgeCount();
-                showSuccess('All notifications cleared! Showing summary only.');
+            document.getElementById('confirmMessage').textContent = 'Are you sure you want to move all notifications to Trash Bin?';
+            confirmCallback = async function() {
+                try {
+                    var response = await fetch('/api/notifications', {method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content}});
+                    var result=await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Unable to clear notifications.');
+                    showOnlyTotals=false; await loadNotifications();
+                    showSuccess(result.message || 'Notifications moved to Trash Bin for 30 days.');
+                } catch(error) { showError(error.message); }
             };
             document.getElementById('confirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -574,10 +580,10 @@
                     html += `
                         <div class="total-notif-item ${cardClass}" onclick="expandTotal('${total.type}')">
                             <div class="total-header">
-                                <span class="total-title">${icon.text} ${total.title}</span>
+                                <span class="total-title">${icon.text} ${escapeHtml(total.title)}</span>
                                 <span class="total-count ${countClass}">${total.count}</span>
                             </div>
-                            <div class="total-message">${total.message}</div>
+                            <div class="total-message">${escapeHtml(total.message)}</div>
                             <div class="total-time">Updated: ${timeStr}</div>
                         </div>
                     `;
@@ -642,10 +648,10 @@
                     <div class="notif-item ${readClass}" data-id="${notification.notification_id}" ${notification.requires_acknowledgement ? '' : 'onclick="markAsRead(this)"'}>
                         <div class="notif-icon ${icon.class}">${icon.text}</div>
                         <div class="notif-content">
-                            <div class="notif-title">${notification.title}</div>
-                            <div class="notif-desc">${notification.message}</div>
+                            <div class="notif-title">${escapeHtml(notification.title)}</div>
+                            <div class="notif-desc">${escapeHtml(notification.message)}</div>
                             <div class="notif-time">${isToday ? 'Today' : isYesterday ? 'Yesterday' : dateStr} at ${timeStr}</div>
-                            ${notification.requires_acknowledgement ? '<button type="button" style="margin-top:10px; padding:8px 14px; border:0; border-radius:8px; background:#c9a96e; color:#fff; font-weight:600; cursor:pointer;" onclick="event.stopPropagation(); window.location.href=\'' + notification.action_url + '\'">Change Password</button>' : ''}
+                            ${notification.requires_acknowledgement ? '<button type="button" style="margin-top:10px; padding:8px 14px; border:0; border-radius:8px; background:#c9a96e; color:#fff; font-weight:600; cursor:pointer;" onclick="event.stopPropagation(); window.pfimsNavigate(\'/settings?section=security\')">Change Password</button>' : ''}
                         </div>
                         ${!notification.is_read ? '<div style="width: 8px; height: 8px; background: #1a237e; border-radius: 50%; flex-shrink: 0; margin-left: 10px;"></div>' : ''}
                     </div>
@@ -812,6 +818,7 @@
         });
     </script>
 
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    @include('partials.validation-alert')
 </body>
 </html>

@@ -275,7 +275,7 @@ class ReportController extends Controller
         $fileName = (Str::slug($validated['title']) ?: $validated['dataset']).'-'.now()->format('Ymd-His').'-'.strtolower(Str::random(4)).'.csv';
         $filePath = "reports/exports/{$role}/{$fileName}";
         $csv = $this->buildCsv($validated['title'], $definition, $validated['columns'], $validated['sections'] ?? ['summary', 'data'], $filters, $rows, $kpis, $chart);
-        Storage::disk('public')->put($filePath, $csv);
+        Storage::disk('protected')->put($filePath, $csv);
 
         try {
             $report = Report::create([
@@ -283,7 +283,7 @@ class ReportController extends Controller
                 'type' => $definition['type'], 'role' => $role,
                 'description' => 'System-generated '.$definition['title'].' report',
                 'file_name' => $fileName, 'file_path' => $filePath,
-                'file_size' => Storage::disk('public')->size($filePath),
+                'file_size' => Storage::disk('protected')->size($filePath),
                 'date_uploaded' => today()->toDateString(), 'uploaded_by' => Auth::user()->name,
                 'status' => 'Completed', 'generation_method' => 'system_export',
                 'dataset_key' => $validated['dataset'], 'export_format' => 'csv',
@@ -292,12 +292,12 @@ class ReportController extends Controller
                 'generated_at' => now(), 'user_id' => Auth::id(),
             ]);
         } catch (\Throwable $exception) {
-            Storage::disk('public')->delete($filePath);
+            app(\App\Services\TrashService::class)->retainFile($filePath);
             throw $exception;
         }
 
         /** @var FilesystemAdapter $publicDisk */
-        $publicDisk = Storage::disk('public');
+        $publicDisk = Storage::disk('protected');
 
         return $publicDisk->download($report->file_path, $report->file_name, ['X-Report-Id' => $report->report_id]);
     }
@@ -364,14 +364,14 @@ class ReportController extends Controller
         $fileName = (Str::slug($validated['title']) ?: $validated['dataset']).'-'.now()->format('Ymd-His')
             .'-'.strtolower(Str::random(4)).'.'.$format;
         $filePath = "reports/exports/{$role}/{$fileName}";
-        Storage::disk('public')->put($filePath, $file);
+        Storage::disk('protected')->put($filePath, $file);
         try {
             $report = Report::create([
                 'report_id' => Report::generateReportId(), 'title' => $validated['title'],
                 'type' => $definition['type'], 'role' => $role,
                 'description' => 'System-generated '.$definition['title'].' report',
                 'file_name' => $fileName, 'file_path' => $filePath,
-                'file_size' => Storage::disk('public')->size($filePath),
+                'file_size' => Storage::disk('protected')->size($filePath),
                 'date_uploaded' => today()->toDateString(), 'uploaded_by' => Auth::user()->name,
                 'status' => 'Completed', 'generation_method' => 'system_export',
                 'dataset_key' => $validated['dataset'], 'export_format' => $format,
@@ -380,11 +380,11 @@ class ReportController extends Controller
                 'generated_at' => now(), 'user_id' => Auth::id(),
             ]);
         } catch (\Throwable $exception) {
-            Storage::disk('public')->delete($filePath);
+            app(\App\Services\TrashService::class)->retainFile($filePath);
             throw $exception;
         }
         /** @var FilesystemAdapter $publicDisk */
-        $publicDisk = Storage::disk('public');
+        $publicDisk = Storage::disk('protected');
         return $publicDisk->download($report->file_path, $report->file_name, ['X-Report-Id' => $report->report_id]);
     }
 
@@ -402,14 +402,14 @@ class ReportController extends Controller
     {
         $report = Report::query()->generated()->where('report_id', $id)->firstOrFail();
         $this->authorizeReport($report);
-        if (! Storage::disk('public')->exists($report->file_path)) {
+        if (! Storage::disk('protected')->exists($report->file_path)) {
             return response()->json(['message' => 'The exported file is no longer available.'], 404);
         }
 
         $this->audit->recordOperation('EXPORT', 'Reports', 'reports', 'Downloaded exported report: '.$report->title.' ('.$report->report_id.')');
 
         /** @var FilesystemAdapter $publicDisk */
-        $publicDisk = Storage::disk('public');
+        $publicDisk = Storage::disk('protected');
 
         return $publicDisk->download($report->file_path, $report->file_name);
     }
@@ -418,7 +418,7 @@ class ReportController extends Controller
     {
         $report = Report::query()->generated()->where('report_id', $id)->firstOrFail();
         $this->authorizeReport($report, true);
-        Storage::disk('public')->delete($report->file_path);
+        app(\App\Services\TrashService::class)->retainFile($report->file_path);
         $report->delete();
 
         return response()->json(['message' => 'Export history entry deleted.']);

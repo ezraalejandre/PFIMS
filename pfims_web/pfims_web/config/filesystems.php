@@ -29,6 +29,7 @@ return [
     */
 
     'disks' => [
+        'protected' => ['driver'=>'local','root'=>storage_path('app/protected'),'visibility'=>'private','throw'=>true],
 
         'local' => [
             'driver' => 'local',

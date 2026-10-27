@@ -17,6 +17,7 @@ class DataImportAndConfigurationTest extends TestCase
         parent::setUp();
         Schema::dropAllTables();
         $this->createSchema();
+        (require database_path('migrations/2026_10_17_000001_create_project_manager_table.php'))->up();
         $migration = require database_path('migrations/2026_10_02_000001_create_project_budget_history.php');
         $migration->up();
         $this->seedLookups();
@@ -178,6 +179,48 @@ class DataImportAndConfigurationTest extends TestCase
 
         $this->actingAs($this->user('operations'))->getJson('/api/config/units')->assertForbidden();
         $this->actingAs($admin)->getJson('/api/config/suppliers')->assertNotFound();
+    }
+
+    public function test_project_manager_configuration_controls_assignments_and_preserves_used_managers(): void
+    {
+        $admin = $this->user('admin');
+        $manager = $this->actingAs($admin)->postJson('/api/config/project_managers', ['manager_name' => 'Ana Santos'])
+            ->assertCreated()->json('data.manager_id');
+        $this->postJson('/api/config/project_managers', ['manager_name' => ' ana santos '])->assertConflict();
+        $this->postJson('/api/config/project_managers', ['manager_name' => '   '])->assertUnprocessable();
+        $this->getJson('/api/config/project_managers')->assertOk()
+            ->assertJsonPath('meta.name', 'manager_name');
+        $this->putJson('/api/projects/1', ['project_manager' => 'Unconfigured Manager'])
+            ->assertUnprocessable()->assertJsonValidationErrors('project_manager');
+        DB::table('project_tbl')->where('project_id', 1)->update(['client_name' => 'Client', 'start_date' => '2026-01-01']);
+        $this->putJson('/api/projects/1', ['project_manager' => 'Ana Santos'])->assertOk();
+        $this->patchJson('/api/config/project_managers/'.$manager, ['manager_name' => 'Ana Reyes'])->assertOk();
+        $this->assertDatabaseHas('project_tbl', ['project_id' => 1, 'project_manager' => 'Ana Reyes']);
+        $this->deleteJson('/api/config/project_managers/'.$manager)->assertConflict();
+        $unused = $this->postJson('/api/config/project_managers', ['manager_name' => 'Unused Manager'])
+            ->assertCreated()->json('data.manager_id');
+        $this->deleteJson('/api/config/project_managers/'.$unused)->assertOk();
+        $this->assertDatabaseMissing('project_manager_tbl', ['manager_id' => $unused]);
+        $this->get('/projects')->assertOk()->assertSee('<select id="projectManager"', false)
+            ->assertSee('<select id="editProjectManager"', false);
+        $this->actingAs($this->user('operations'))->getJson('/api/project-managers')
+            ->assertOk()->assertJsonPath('0.manager_name', 'Ana Reyes');
+        $this->getJson('/api/config/project_managers')->assertForbidden();
+        $this->postJson('/api/config/project_managers', ['manager_name' => 'Unauthorized'])->assertForbidden();
+        $this->patchJson('/api/config/project_managers/'.$manager, ['manager_name' => 'Unauthorized'])->assertForbidden();
+        $this->deleteJson('/api/config/project_managers/'.$manager)->assertForbidden();
+    }
+
+    public function test_project_manager_migration_preserves_existing_names_without_case_duplicates(): void
+    {
+        Schema::drop('project_manager_tbl');
+        DB::table('project_tbl')->where('project_id', 1)->update(['project_manager' => ' Legacy Manager ']);
+        DB::table('project_tbl')->insert([
+            'project_name' => 'Second', 'project_manager' => 'legacy manager',
+        ]);
+        (require database_path('migrations/2026_10_17_000001_create_project_manager_table.php'))->up();
+        $this->assertDatabaseCount('project_manager_tbl', 1);
+        $this->assertDatabaseHas('project_manager_tbl', ['manager_name' => 'Legacy Manager']);
     }
 
     public function test_project_phase_and_finance_component_configurations_load_and_populate_form_metadata(): void

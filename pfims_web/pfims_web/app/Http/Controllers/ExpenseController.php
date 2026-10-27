@@ -71,7 +71,7 @@ class ExpenseController extends Controller
         $path = null;
         try {
             if ($request->hasFile('proof_file')) {
-                $path = $request->file('proof_file')->store('proofs', 'public');
+                $path = $request->file('proof_file')->store('proofs', 'protected');
             }
             $expense = DB::transaction(function () use ($data, $request, $path) {
                 $this->assertNotDuplicate($data);
@@ -97,7 +97,7 @@ class ExpenseController extends Controller
             });
         } catch (\Throwable $exception) {
             if ($path) {
-                Storage::disk('public')->delete($path);
+                app(\App\Services\TrashService::class)->retainFile($path);
             }
             throw $exception;
         }
@@ -139,7 +139,7 @@ class ExpenseController extends Controller
         $newPath = null;
         try {
             if ($request->hasFile('proof_file')) {
-                $newPath = $request->file('proof_file')->store('proofs', 'public');
+                $newPath = $request->file('proof_file')->store('proofs', 'protected');
             }
             DB::transaction(function () use ($expense, $data, $request, $newPath, $oldProjectId, $id) {
                 $this->assertNotDuplicate($data, (int) $expense->fin_expense_id);
@@ -168,13 +168,13 @@ class ExpenseController extends Controller
             });
         } catch (\Throwable $exception) {
             if ($newPath) {
-                Storage::disk('public')->delete($newPath);
+                app(\App\Services\TrashService::class)->retainFile($newPath);
             }
             throw $exception;
         }
 
         if ($oldPath && ($newPath || $request->boolean('remove_proof_file'))) {
-            Storage::disk('public')->delete($oldPath);
+            app(\App\Services\TrashService::class)->retainFile($oldPath);
         }
 
         $updatedExpense = FinExpense::find($id);
@@ -208,7 +208,7 @@ class ExpenseController extends Controller
             $this->modelRetraining->afterDataChange([(int) $projectId]);
         }
         if ($path) {
-            Storage::disk('public')->delete($path);
+            app(\App\Services\TrashService::class)->retainFile($path);
         }
 
         return response()->json(['message' => 'Expense deleted']);

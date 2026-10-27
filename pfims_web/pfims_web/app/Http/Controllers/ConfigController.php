@@ -6,6 +6,7 @@ use App\Models\FinExpenseCategory;
 use App\Models\FinanceComponent;
 use App\Models\InventoryCategory;
 use App\Models\ProjectPhase;
+use App\Models\ProjectManager;
 use App\Models\Unit;
 use App\Services\ProjectPhaseProgressService;
 use Illuminate\Database\Eloquent\Model;
@@ -44,6 +45,15 @@ class ConfigController extends Controller
             'fields' => [
                 'category_name' => ['label' => 'Category name', 'type' => 'text', 'required' => true, 'max' => 100],
                 'classification' => ['label' => 'Expense type', 'type' => 'select', 'required' => true, 'options' => ['direct' => 'Direct', 'admin' => 'Admin']],
+            ],
+        ],
+        'project_managers' => [
+            'model' => ProjectManager::class,
+            'table' => 'project_manager_tbl',
+            'id' => 'manager_id',
+            'name' => 'manager_name',
+            'fields' => [
+                'manager_name' => ['label' => 'Project manager', 'type' => 'text', 'required' => true, 'max' => 150],
             ],
         ],
         'project_phases' => [
@@ -134,6 +144,10 @@ class ConfigController extends Controller
         if ($type === 'exp_categories') $validated['category_code'] = $this->generatedCategoryCode($validated, $id);
         DB::transaction(function () use ($type, $item, $validated) {
             if ($type !== 'project_phases') {
+                if ($type === 'project_managers') {
+                    DB::table('project_tbl')->whereRaw('LOWER(TRIM(project_manager)) = ?', [Str::lower(trim((string) $item->manager_name))])
+                        ->update(['project_manager' => $validated['manager_name']]);
+                }
                 $item->update($validated);
                 return;
             }
@@ -171,6 +185,7 @@ class ConfigController extends Controller
         /** @var Model $item */
         $item = $model::findOrFail($id);
         $dependency = match ($type) {
+            'project_managers' => DB::table('project_tbl')->whereRaw('LOWER(TRIM(project_manager)) = ?', [Str::lower(trim((string) $item->manager_name))])->exists() ? 'projects' : null,
             'units' => DB::table('inventory_item_tbl')->where('unit_id', $id)->exists() ? 'inventory items' : null,
             'inv_categories' => DB::table('inventory_item_tbl')->where('inventory_category_id', $id)->exists() ? 'inventory items' : null,
             'exp_categories' => DB::table('fin_expense_tbl')->where('fin_category_id', $id)->exists() ? 'finance expenses' : null,

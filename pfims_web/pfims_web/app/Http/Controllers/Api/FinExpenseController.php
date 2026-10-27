@@ -384,7 +384,7 @@ class FinExpenseController extends Controller
             }
 
             if ($request->hasFile('proof_file')) {
-                $data['proof_file_path'] = $request->file('proof_file')->store('proofs', 'public');
+                $data['proof_file_path'] = $request->file('proof_file')->store('proofs', 'protected');
                 $data['proof_file_name'] = $request->file('proof_file')->getClientOriginalName();
             }
 
@@ -496,13 +496,13 @@ class FinExpenseController extends Controller
 
             if ($request->hasFile('proof_file')) {
                 if ($existing->proof_file_path) {
-                    Storage::disk('public')->delete($existing->proof_file_path);
+                    app(\App\Services\TrashService::class)->retainFile($existing->proof_file_path);
                 }
-                $data['proof_file_path'] = $request->file('proof_file')->store('proofs', 'public');
+                $data['proof_file_path'] = $request->file('proof_file')->store('proofs', 'protected');
                 $data['proof_file_name'] = $request->file('proof_file')->getClientOriginalName();
             } elseif ($request->boolean('remove_proof_file')) {
                 if ($existing->proof_file_path) {
-                    Storage::disk('public')->delete($existing->proof_file_path);
+                    app(\App\Services\TrashService::class)->retainFile($existing->proof_file_path);
                 }
                 $data['proof_file_path'] = null;
                 $data['proof_file_name'] = null;
@@ -535,7 +535,7 @@ class FinExpenseController extends Controller
             }
 
             if ($existing->proof_file_path) {
-                Storage::disk('public')->delete($existing->proof_file_path);
+                app(\App\Services\TrashService::class)->retainFile($existing->proof_file_path);
             }
 
             DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->delete();

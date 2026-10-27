@@ -175,3 +175,6 @@ Artisan::command('inventory:price-legacy {--apply : Create linked purchase expen
 
     return 0;
 })->purpose('Backfill legacy purchase amounts from quantity times current item Unit Price');
+
+Artisan::command('trash:purge', function (\App\Services\TrashService $trash) { $this->info('Expired trash entries purged: '.$trash->purgeExpired()); });
+Schedule::command('trash:purge')->daily()->withoutOverlapping();

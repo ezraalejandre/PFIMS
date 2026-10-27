@@ -661,6 +661,9 @@
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="finance-page" data-portal="{{ $portal }}" data-finance-tab="{{ $financeTab }}">
 
@@ -683,15 +686,15 @@
     </div>
 
     <!-- ─── DELETE CONFIRMATION MODALS ─── -->
-    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+    <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
                 <h2>Confirm Deletion</h2>
                 <button class="modal-close" onclick="closeDeleteModal()">×</button>
             </div>
             <div class="modal-body">
-                <p id="deleteConfirmMessage" style="font-size:1rem;color:#333;margin-bottom:10px;">Are you sure you want to permanently delete this item?</p>
-                <p style="font-size:0.85rem;color:#888;margin-bottom:20px;">This action cannot be undone.</p>
+                <p id="deleteConfirmMessage" style="font-size:1rem;color:#333;margin-bottom:10px;">Are you sure you want to move this item to Trash Bin?</p>
+                <p style="font-size:0.85rem;color:#888;margin-bottom:20px;">You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.</p>
             </div>
             <div class="modal-footer" style="display:flex;justify-content:center;gap:12px;margin-top:10px;padding-top:20px;border-top:1px solid #e9ecef;">
                 <button class="btn-cancel" onclick="closeDeleteModal()" style="padding:10px 24px;border-radius:8px;font-weight:600;font-size:0.9rem;cursor:pointer;border:none;background:transparent;color:#888;transition:0.3s;">Cancel</button>
@@ -700,15 +703,15 @@
         </div>
     </div>
 
-    <div id="deleteBudgetConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+    <div id="deleteBudgetConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
                 <h2>Confirm Deletion</h2>
                 <button class="modal-close" onclick="closeBudgetDeleteModal()">×</button>
             </div>
             <div class="modal-body">
-                <p id="deleteBudgetConfirmMessage" style="font-size:1rem;color:#333;margin-bottom:10px;">Are you sure you want to permanently delete this budget?</p>
-                <p style="font-size:0.85rem;color:#888;margin-bottom:20px;">This action cannot be undone.</p>
+                <p id="deleteBudgetConfirmMessage" style="font-size:1rem;color:#333;margin-bottom:10px;">Are you sure you want to move this budget to Trash Bin?</p>
+                <p style="font-size:0.85rem;color:#888;margin-bottom:20px;">You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.</p>
             </div>
             <div class="modal-footer" style="display:flex;justify-content:center;gap:12px;margin-top:10px;padding-top:20px;border-top:1px solid #e9ecef;">
                 <button class="btn-cancel" onclick="closeBudgetDeleteModal()">Cancel</button>
@@ -717,15 +720,15 @@
         </div>
     </div>
 
-    <div id="deleteBondConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+    <div id="deleteBondConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
                 <h2>Confirm Deletion</h2>
                 <button class="modal-close" onclick="closeBondDeleteModal()">×</button>
             </div>
             <div class="modal-body">
-                <p id="deleteBondConfirmMessage" style="font-size:1rem;color:#333;margin-bottom:10px;">Are you sure you want to permanently delete this bond?</p>
-                <p style="font-size:0.85rem;color:#888;margin-bottom:20px;">This action cannot be undone.</p>
+                <p id="deleteBondConfirmMessage" style="font-size:1rem;color:#333;margin-bottom:10px;">Are you sure you want to move this bond to Trash Bin?</p>
+                <p style="font-size:0.85rem;color:#888;margin-bottom:20px;">You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.</p>
             </div>
             <div class="modal-footer" style="display:flex;justify-content:center;gap:12px;margin-top:10px;padding-top:20px;border-top:1px solid #e9ecef;">
                 <button class="btn-cancel" onclick="closeBondDeleteModal()">Cancel</button>
@@ -2147,8 +2150,8 @@
             var confirmButton = document.getElementById('confirmDeleteBtn');
             confirmButton.textContent = editing ? 'Update' : 'Delete';
             confirmButton.className = editing ? 'btn-save' : 'btn-delete';
-            document.querySelector('#deleteConfirmModal .modal-body p:last-child').textContent = editing ? 'This updates all records in the selected asset and period.' : 'This action cannot be undone.';
-            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this item?';
+            document.querySelector('#deleteConfirmModal .modal-body p:last-child').textContent = editing ? 'This updates all records in the selected asset and period.' : 'You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.';
+            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to move this item to Trash Bin?';
             deleteCallback = callback;
             document.getElementById('deleteConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -2170,7 +2173,7 @@
         });
 
         function openBudgetDeleteModal(message, callback) {
-            document.getElementById('deleteBudgetConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this budget?';
+            document.getElementById('deleteBudgetConfirmMessage').textContent = message || 'Are you sure you want to move this budget to Trash Bin?';
             budgetDeleteCallback = callback;
             document.getElementById('deleteBudgetConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -2192,7 +2195,7 @@
         });
 
         function openBondDeleteModal(message, callback) {
-            document.getElementById('deleteBondConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this bond?';
+            document.getElementById('deleteBondConfirmMessage').textContent = message || 'Are you sure you want to move this bond to Trash Bin?';
             bondDeleteCallback = callback;
             document.getElementById('deleteBondConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -3294,7 +3297,7 @@
             if (!currentBudgetRow) return;
             var projectId = currentBudgetRow.getAttribute('data-project-id');
 
-            openBudgetDeleteModal('Are you sure you want to delete the budget for this project?', function() {
+            openBudgetDeleteModal('Are you sure you want to move this budget to Trash Bin?', function() {
                 var budget = budgetData.find(function(b) {
                     return String(b.project_id) === String(projectId);
                 });
@@ -3465,7 +3468,7 @@
             } catch (storageError) {
                 console.warn('Unable to preserve the linked inventory transaction handoff.', storageError);
             }
-            window.location.assign('/inventory?section=transactions&transaction_id=' + encodeURIComponent(transactionId));
+            window.pfimsNavigate('/inventory?section=transactions&transaction_id=' + encodeURIComponent(transactionId));
         }
 
         function saveDetailChanges() {
@@ -3536,15 +3539,12 @@
 
         function deleteExpense() {
             if (!currentDetailRow) return;
-            openDeleteModal('Are you sure you want to permanently delete this expense?', function() {
+            openDeleteModal('Are you sure you want to move this expense to Trash Bin?', function() {
                 var expenseId = currentDetailRow.getAttribute('data-expense-id');
                 apiFetch('/finance-expenses/' + expenseId, { method: 'DELETE' })
                     .then(function() {
-                        financeExpenses = financeExpenses.filter(function(item) {
-                            return String(item.fin_expense_id || item.expense_id) !== String(expenseId);
-                        });
                         closeExpenseDetailModal();
-                        applyFilters();
+                        fetchExpenses();
                         showSuccess('Expense deleted successfully!');
                         currentDetailRow = null;
                     })
@@ -3917,7 +3917,7 @@
                 return;
             }
             
-            openDeleteModal('Are you sure you want to permanently delete this contract?', function() {
+            openDeleteModal('Are you sure you want to move this contract to Trash Bin?', function() {
                 apiFetch('/project-contracts/' + editId, { method: 'DELETE' })
                     .then(function() {
                         closeAddContractModal();
@@ -4160,7 +4160,7 @@
         function deleteReceivable() {
             if (!currentReceivableRow) return;
             var rpId = currentReceivableRow.getAttribute('data-rp-id');
-            openDeleteModal('Are you sure you want to delete this entry?', function() {
+            openDeleteModal('Are you sure you want to move this entry to Trash Bin?', function() {
                 apiFetch('/receivables-payables/' + rpId, { method: 'DELETE' })
                     .then(function() {
                         closeReceivableModal();
@@ -4459,7 +4459,7 @@
             if (!currentBondRow) return;
             var bondId = currentBondRow.getAttribute('data-bond-id');
             
-            openBondDeleteModal('Are you sure you want to permanently delete this bond?', function() {
+            openBondDeleteModal('Are you sure you want to move this bond to Trash Bin?', function() {
                 apiFetch('/construction-bonds/' + bondId, { method: 'DELETE' })
                     .then(function() {
                         closeBondModal();
@@ -5361,7 +5361,7 @@
             if (!currentCashRow) return;
             var cashId = currentCashRow.getAttribute('data-cash-id');
             
-            openDeleteModal('Are you sure you want to permanently delete this Cash Asset record?', function() {
+            openDeleteModal('Are you sure you want to move this Cash Asset record to Trash Bin?', function() {
                 apiFetch('/cash-positions/' + cashId, { method: 'DELETE' })
                     .then(function() {
                         closeCashModal();
@@ -5627,7 +5627,7 @@
         }
         function deleteEquipmentPeriod() {
             var payload=equipmentPeriodPayload();
-            openDeleteModal('Delete this asset and period? All underlying expenses and rental income for this period will be permanently deleted.',function() {
+            openDeleteModal('Are you sure you want to move this asset and period, including its expenses and rental income, to Trash Bin?',function() {
                 apiFetch('/equipment-period',{method:'DELETE',body:JSON.stringify(payload)}).then(function() { closeEquipmentDetailModal(); showSuccess('Equipment period and underlying records deleted.'); loadBackhoe(); }).catch(function(error) { showError(error.message); });
             });
         }
@@ -5672,7 +5672,7 @@
         }
 
         function deleteEquipmentRecord(type, id) {
-            openDeleteModal('Delete this equipment record?', function() {
+            openDeleteModal('Are you sure you want to move this equipment record to Trash Bin?', function() {
                 apiFetch((type === 'expense' ? '/equipment-expenses/' : '/equipment-rental-income/') + id, { method: 'DELETE' })
                     .then(function() { closeEquipmentDetailModal(); showSuccess('Equipment record deleted successfully.'); loadBackhoe(); })
                     .catch(function(error) { showError(error.message); });
@@ -6046,7 +6046,8 @@
 
     @include('partials.data-import', ['importModule' => 'finance'])
     <script src="{{ asset('js/finance-analytics.js') }}?v={{ filemtime(public_path('js/finance-analytics.js')) }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
     <script src="{{ asset('js/finance-review-flow.js') }}"></script>
+    @include('partials.validation-alert')
 </body>
 </html>

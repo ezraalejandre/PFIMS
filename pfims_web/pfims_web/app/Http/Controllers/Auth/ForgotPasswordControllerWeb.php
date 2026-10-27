@@ -69,7 +69,7 @@ class ForgotPasswordControllerWeb extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'A 6-digit reset code has been sent to your email.',
+            'message' => 'If that email exists in our system, a reset code has been sent.',
         ]);
     }
 
@@ -142,7 +142,7 @@ class ForgotPasswordControllerWeb extends Controller
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email'],
             'reset_token' => ['required', 'string'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'string', 'max:72', 'confirmed', Password::min(8)],
         ]);
 
         if ($validator->fails()) {

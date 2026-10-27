@@ -10,6 +10,7 @@ class AuthController extends Controller
 
 public function login(Request $request)
 {
+    $request->validate(['email'=>['required','string','email','max:254'],'password'=>['required','string','max:4096']]);
 
     $user = User::where(
         'email',
@@ -19,7 +20,13 @@ public function login(Request $request)
 
     if(!$user){
 
-        return response()->json([
+      if ($user->first_login_verification_required) return response()->json(['message'=>'Complete first-login verification through the sign-in page.'],403);
+    $accountToken = app(\App\Services\AccountSessionService::class)->claim($user, $request->session()->get('account_session_token'));
+    \Illuminate\Support\Facades\Auth::login($user);
+    $request->session()->regenerate();
+    $request->session()->put('account_session_token', $accountToken);
+    $request->session()->put('navigation_epoch', bin2hex(random_bytes(16)));
+      return response()->json([
             "success"=>false,
             "message"=>"Invalid email or password"
         ],401);
@@ -28,7 +35,7 @@ public function login(Request $request)
 
 
    
-    if (!Hash::check($request->password, $user->password)) {
+    if ($user->status !== 'Active' || !Hash::check($request->password, $user->password)) {
         return response()->json([
             "success" => false,
             "message" => "Invalid email or password"
@@ -187,7 +194,7 @@ public function changePassword(Request $request)
 {
     $request->validate([
         'current_password' => ['required', 'string'],
-        'new_password' => ['required', 'string', 'min:8'],
+        'new_password' => ['required', 'string', 'min:8', 'max:72'],
     ]);
 
     /** @var User $user */

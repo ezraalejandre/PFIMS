@@ -97,6 +97,7 @@ class SettingsRolePresentationTest extends TestCase
             ->assertOk()
             ->assertSee('System Administrator')
             ->assertSee('Configurations')
+            ->assertSee('Project Managers')
             ->assertSee('User Management');
 
         $response->assertDontSee('actionCell.append(edit, remove)', false);
