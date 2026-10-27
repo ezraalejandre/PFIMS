@@ -58,6 +58,9 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="reports-page" data-portal="{{ $portal }}" data-reports-api-base="{{ request()->getBaseUrl() }}/api/reports" data-report-view-icon="{{ asset('images/view.jpg') }}" data-report-download-icon="{{ asset('images/download.jpg') }}" data-report-header-image="{{ asset('images/report-header.jpeg') }}">
     <header class="top-header">
@@ -971,6 +974,7 @@
             initialize();
         })();
     </script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    @include('partials.validation-alert')
 </body>
 </html>

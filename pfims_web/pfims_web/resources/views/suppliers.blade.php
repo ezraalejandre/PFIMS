@@ -54,6 +54,9 @@
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="suppliers-page" data-portal="{{ $portal }}">
     
@@ -76,7 +79,7 @@
     </div>
 
     <!-- ─── DELETE CONFIRMATION MODAL ─── -->
-    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+    <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
                 <h2>Confirm Deletion</h2>
@@ -84,10 +87,10 @@
             </div>
             <div class="modal-body">
                 <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
-                    Are you sure you want to permanently delete this supplier?
+                    Are you sure you want to move this supplier to Trash Bin?
                 </p>
                 <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
-                    This action cannot be undone.
+                    You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.
                 </p>
             </div>
             <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
@@ -437,9 +440,9 @@
             pageData.forEach(supplier => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><strong>${supplier.supplier_name}</strong></td>
-                    <td>${supplier.address}</td>
-                    <td>${String(supplier.contact_number || '').trim() || '—'}</td>
+                    <td><strong>${escapeSupplierHtml(supplier.supplier_name)}</strong></td>
+                    <td>${escapeSupplierHtml(supplier.address)}</td>
+                    <td>${escapeSupplierHtml(String(supplier.contact_number || '').trim() || '—')}</td>
                     <td style="text-align: center;">
                     <button class="pfims-row-action" onclick="openViewModal(${supplier.supplier_id}, this)" title="View supplier" aria-label="View supplier"><img src="{{ asset('images/view.jpg') }}" alt=""></button>
                     <button class="pfims-row-action" onclick="openEditModal(${supplier.supplier_id})" title="Edit supplier" aria-label="Edit supplier"><img src="{{ asset('images/edit.jpg') }}" alt=""></button>
@@ -701,7 +704,7 @@
 
         function openDeleteModal(supplierId) {
             supplierToDelete = supplierId;
-            document.getElementById('deleteConfirmMessage').textContent = 'Are you sure you want to permanently delete this supplier?';
+            document.getElementById('deleteConfirmMessage').textContent = 'Are you sure you want to move this supplier to Trash Bin?';
             document.getElementById('deleteConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
@@ -853,7 +856,8 @@
         });
         </script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 
+    @include('partials.validation-alert')
 </body>
 </html>

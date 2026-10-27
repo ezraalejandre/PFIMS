@@ -222,7 +222,7 @@ class FinReportController extends Controller
 
         if ($period) {
             $query->where('ee.expense_date', '>=', $period)
-                ->where('ee.expense_date', '<', DB::raw("DATE_ADD('$period', INTERVAL 1 MONTH)"));
+                ->where('ee.expense_date', '<', \Carbon\Carbon::parse($period)->addMonth()->toDateString());
         }
 
         $results = $query->select(

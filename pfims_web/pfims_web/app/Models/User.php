@@ -20,6 +20,7 @@ class User extends Authenticatable
      * @var string
      */
     protected $table = 'users';
+    protected $attributes = ['status' => 'Active'];
 
     /**
      * The attributes that are mass assignable.

@@ -65,13 +65,16 @@ class PasswordReminderNotificationTest extends TestCase
             'role' => 'admin', 'status' => 'Active',
         ]);
 
-        $this->actingAs($admin)->postJson('/users', [
+        $created = $this->actingAs($admin)->postJson('/users', [
             'name' => 'New User',
             'email' => 'newperson@gmail.com',
             'role' => 'operations',
             'status' => 'Active',
         ])->assertOk();
 
+        $temporaryPassword = $created->json('password');
+        $this->assertIsString($temporaryPassword);
+        $this->assertNotSame('newperson', $temporaryPassword);
         $newUser = User::where('email', 'newperson@gmail.com')->firstOrFail();
         $reminder = AppNotification::where('type', 'password_change_reminder')->firstOrFail();
 
@@ -93,18 +96,18 @@ class PasswordReminderNotificationTest extends TestCase
         $this->assertDatabaseHas('notifications_tbl', ['notification_id' => $reminder->notification_id]);
 
         $this->actingAs($newUser)->postJson('/change-password', [
-            'current_password' => 'newperson',
-            'new_password' => 'newperson',
-            'new_password_confirmation' => 'newperson',
+            'current_password' => $temporaryPassword,
+            'new_password' => $temporaryPassword,
+            'new_password_confirmation' => $temporaryPassword,
         ])->assertUnprocessable()
             ->assertJsonValidationErrors('new_password')
             ->assertJsonPath('errors.new_password.0', 'The new password must be different from your current password.');
 
-        $this->assertTrue(Hash::check('newperson', $newUser->fresh()->password));
+        $this->assertTrue(Hash::check($temporaryPassword, $newUser->fresh()->password));
         $this->assertDatabaseHas('notifications_tbl', ['notification_id' => $reminder->notification_id]);
 
         $this->actingAs($newUser)->postJson('/change-password', [
-            'current_password' => 'newperson',
+            'current_password' => $temporaryPassword,
             'new_password' => 'SecurePass123!',
             'new_password_confirmation' => 'SecurePass123!',
         ])

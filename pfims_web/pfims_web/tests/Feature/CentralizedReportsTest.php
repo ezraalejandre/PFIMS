@@ -176,7 +176,7 @@ class CentralizedReportsTest extends TestCase
 
     public function test_export_row_limit_matches_preview_and_downloaded_inventory_file(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         DB::table('inventory_item_tbl')->insert(array_map(fn (int $number) => [
             'item_id' => $number, 'item_name' => sprintf('Item %02d', $number),
             'current_stock' => $number, 'reorder_level' => 1,
@@ -189,7 +189,7 @@ class CentralizedReportsTest extends TestCase
         $this->postJson('/api/reports/export', $config + ['format' => 'csv'])->assertOk();
 
         $report = Report::query()->firstOrFail();
-        $csv = Storage::disk('public')->get($report->file_path);
+        $csv = Storage::disk('protected')->get($report->file_path);
         $this->assertSame(5, $report->row_count);
         $this->assertSame(5, $report->export_options['row_limit']);
         $this->assertStringContainsString('Item 01', $csv);
@@ -336,7 +336,7 @@ class CentralizedReportsTest extends TestCase
 
     public function test_new_report_preview_and_all_file_formats_include_selected_columns(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         DB::table('project_tbl')->insert([
             'project_id' => 1, 'project_name' => 'Preview Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01',
         ]);
@@ -355,7 +355,7 @@ class CentralizedReportsTest extends TestCase
         foreach (['csv', 'xlsx', 'pdf'] as $format) {
             $this->actingAs($admin)->postJson('/api/reports/export', $config + ['format' => $format])->assertOk();
             $report = Report::query()->where('export_format', $format)->firstOrFail();
-            $bytes = Storage::disk('public')->get($report->file_path);
+            $bytes = Storage::disk('protected')->get($report->file_path);
             $this->assertSame(['project_name', 'construction_supply', 'total'], $report->selected_columns);
             $this->assertNotEmpty($bytes);
             if ($format === 'pdf') $this->assertStringStartsWith('%PDF', $bytes);
@@ -365,7 +365,7 @@ class CentralizedReportsTest extends TestCase
             }
             if ($format === 'xlsx') {
                 $this->assertStringStartsWith('PK', $bytes);
-                $zipPath = Storage::disk('public')->path($report->file_path);
+                $zipPath = Storage::disk('protected')->path($report->file_path);
                 $zip = new \ZipArchive;
                 $this->assertTrue($zip->open($zipPath) === true);
                 $this->assertNotFalse($zip->getFromName('xl/media/report-header.jpeg'));
@@ -392,7 +392,7 @@ class CentralizedReportsTest extends TestCase
 
     public function test_expense_summary_preview_and_export_totals_follow_selected_categories_and_date_filter(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         DB::table('project_tbl')->insert([
             'project_id' => 1, 'project_name' => 'Filtered Site', 'status' => 'Ongoing', 'start_date' => '2026-01-01',
         ]);
@@ -414,7 +414,7 @@ class CentralizedReportsTest extends TestCase
             ->assertOk()->assertJsonPath('rows.0.total', 50)->assertJsonPath('totals.total', 50);
         $this->postJson('/api/reports/export', $config + ['format' => 'csv'])->assertOk();
         $report = Report::query()->where('export_format', 'csv')->firstOrFail();
-        $csv = Storage::disk('public')->get($report->file_path);
+        $csv = Storage::disk('protected')->get($report->file_path);
         $this->assertStringContainsString('"Filtered Site",50,50', $csv);
         $this->assertStringNotContainsString('100', $csv);
     }
@@ -465,7 +465,7 @@ class CentralizedReportsTest extends TestCase
         $this->getJson('/api/reports/data/contracts?search=Contract&report_year=2026')->assertOk()->assertJsonPath('total_rows',1);
         $this->getJson('/api/reports/data/contracts?report_year=2025')->assertOk()->assertJsonPath('total_rows',0);
         $this->getJson('/api/reports/data/contracts?report_year=2026&report_month=12')->assertOk()->assertJsonPath('total_rows',1)->assertJsonPath('as_of','December 31, 2026');
-        Storage::fake('public');
+        Storage::fake('protected');
         $this->postJson('/api/reports/preview', ['dataset'=>'contracts','title'=>'Contracts 2026','columns'=>['project_name','total_contract_price','project_expense'],'filters'=>['report_year'=>2026],'row_limit'=>1])
             ->assertOk()->assertJsonPath('totals.project_name','TOTAL')->assertJsonPath('totals.total_contract_price',1100)->assertJsonPath('totals.project_expense',150);
         foreach (['csv','xlsx','pdf'] as $format) {
@@ -611,7 +611,7 @@ class CentralizedReportsTest extends TestCase
 
     public function test_configured_csv_export_is_downloaded_and_persisted_as_export_history(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         $admin = $this->user('admin');
         DB::table('project_tbl')->insert([
             'project_id' => 7, 'project_name' => 'Export Project', 'client_name' => 'Client',
@@ -634,14 +634,14 @@ class CentralizedReportsTest extends TestCase
         $this->assertSame(1, $report->row_count);
         $this->assertSame(['project_name', 'status', 'budget_amount'], $report->selected_columns);
         $this->assertSame(['summary', 'kpis', 'data'], $report->export_options['sections']);
-        $this->assertTrue(Storage::disk('public')->exists($report->file_path));
+        $this->assertTrue(Storage::disk('protected')->exists($report->file_path));
 
         $history = $this->actingAs($admin)->getJson('/api/reports?dataset=project');
         $history->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.report_id', $report->report_id);
 
         $download = $this->actingAs($admin)->get('/api/reports/download/'.$report->report_id);
         $download->assertOk()->assertDownload($report->file_name);
-        $this->assertSame(Storage::disk('public')->get($report->file_path), $download->streamedContent());
+        $this->assertSame(Storage::disk('protected')->get($report->file_path), $download->streamedContent());
     }
 
     public function test_dashboard_filters_update_kpis_charts_and_project_rows_together(): void
@@ -730,6 +730,7 @@ class CentralizedReportsTest extends TestCase
             $table->string('role');
             $table->rememberToken();
             $table->timestamps();
+            $table->string('status')->default('Active');
         });
         Schema::create('project_tbl', function (Blueprint $table) {
             $table->integer('project_id')->primary();

@@ -20,6 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['role.portal' => EnsureRoleAccess::class]);
         $middleware->append(HandleCors::class);
         $middleware->appendToGroup('web', PreventAuthenticatedPageCaching::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\SecurityControls::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnforceAccountSession::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\RequireNavigationGrant::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\RejectUnsafeInput::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\RejectUnsafeInput::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\ArchiveDeletedRecords::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (HttpException $exception, Request $request) {

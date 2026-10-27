@@ -229,6 +229,7 @@ Route::patch('/profile', function (Request $request) {
     ]);
 
     $user->update($validated);
+    if ($request->expectsJson()) return response()->json(['success'=>true,'user'=>$user->only(['name','email','phone','location'])]);
 
     $role = strtolower($user->role ?? '');
     $redirectPath = $role === 'accounting' ? '/aprofile' : ($role === 'operations' ? '/oprofile' : '/profile');
@@ -254,8 +255,14 @@ Route::get('/settings', function () {
 })->middleware('auth');
 
 // User CRUD endpoints (used by settings page)
+Route::get('/users', function () {
+    abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+    return response()->json(['data' => User::orderBy('name')->get(['id','name','email','role','status'])]);
+})->middleware('auth');
+
 Route::post('/users', function (Request $request) {
     abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+    $request->validate(['name'=>['sometimes','string'],'email'=>['sometimes','string'],'role'=>['sometimes','string'],'status'=>['sometimes','string']]);
     $request->merge([
         'name' => preg_replace('/\s+/u', ' ', trim((string) $request->input('name'))),
         'email' => mb_strtolower(trim((string) $request->input('email'))),
@@ -271,8 +278,8 @@ Route::post('/users', function (Request $request) {
 
     $role = strtolower($validated['role']);
 
-    // The initial password is the part of the user's email before the domain.
-    $plainPassword = strstr($validated['email'], '@', true);
+    // Initial credentials must not be predictable from a public email address.
+    $plainPassword = \Illuminate\Support\Str::password(16);
 
     $user = User::create([
         'name' => $validated['name'],
@@ -309,6 +316,7 @@ Route::patch('/users/{id}', function (Request $request, $id) {
     abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
 
+    $request->validate(['name'=>['sometimes','string'],'email'=>['sometimes','string'],'role'=>['sometimes','string'],'status'=>['sometimes','string']]);
     // The Settings role editor only submits a role. Preserve the existing
     // status when it is omitted instead of rejecting an otherwise valid role
     // update with the required status validation rule.
@@ -362,8 +370,8 @@ Route::delete('/users/{id}', function ($id) {
 Route::post('/login', function (Request $request) {
 
     $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
+        'email' => ['required', 'string', 'email', 'max:254'],
+        'password' => ['required', 'string', 'max:4096'],
     ]);
 
     $wantsJson = $request->expectsJson() || $request->ajax();
@@ -423,12 +431,16 @@ Route::post('/login', function (Request $request) {
             return back()->with('first_login_verification', true);
         }
 
+        $accountToken = app(\App\Services\AccountSessionService::class)->claim($user, $request->session()->get('account_session_token'));
         Auth::login($user);
+        $request->session()->put('account_session_token', $accountToken);
         $request->session()->forget('first_login_user_id');
         $request->session()->regenerate();
+        $request->session()->put('navigation_epoch', bin2hex(random_bytes(16)));
         LoginHistory::record($user, $request);
 
         $redirectPath = $dashboardPath($user->role ?? '');
+        app(\App\Services\NavigationGrantService::class)->allow($request,$redirectPath);
 
         if ($wantsJson) {
             return response()->json([
@@ -450,7 +462,7 @@ Route::post('/login', function (Request $request) {
     return back()->withErrors([
         'email' => 'Invalid email or password.',
     ]);
-});
+})->middleware('throttle:6,1');
 
 Route::post('/login/verify-first-login', function (Request $request) {
     $validated = $request->validate([
@@ -460,7 +472,7 @@ Route::post('/login/verify-first-login', function (Request $request) {
     $userId = $request->session()->get('first_login_user_id');
     $user = $userId ? User::find($userId) : null;
 
-    if (! $user || ! $user->first_login_verification_required || ! $user->first_login_otp) {
+    if (! $user || $user->status !== 'Active' || ! $user->first_login_verification_required || ! $user->first_login_otp) {
         return response()->json([
             'success' => false,
             'message' => 'Your verification session is no longer valid. Please sign in again.',
@@ -481,6 +493,7 @@ Route::post('/login/verify-first-login', function (Request $request) {
         ], 422);
     }
 
+    $accountToken = app(\App\Services\AccountSessionService::class)->claim($user, $request->session()->get('account_session_token'));
     $user->forceFill([
         'first_login_verification_required' => false,
         'first_login_otp' => null,
@@ -490,12 +503,15 @@ Route::post('/login/verify-first-login', function (Request $request) {
 
     $request->session()->forget('first_login_user_id');
     Auth::login($user);
+    $request->session()->put('account_session_token', $accountToken);
     $request->session()->regenerate();
+        $request->session()->put('navigation_epoch', bin2hex(random_bytes(16)));
     LoginHistory::record($user, $request);
 
     $role = strtolower($user->role ?? '');
     $redirectPath = $role === 'accounting' ? '/adashboard' : ($role === 'operations' ? '/odashboard' : '/dashboard');
 
+    app(\App\Services\NavigationGrantService::class)->allow($request,$redirectPath);
     return response()->json([
         'success' => true,
         'redirect' => url($redirectPath),
@@ -540,6 +556,7 @@ Route::post('/login/resend-first-login', function (Request $request) {
 })->middleware('throttle:6,1')->name('login.resend-first-login');
 
 Route::post('/logout', function (Request $request) {
+    app(\App\Services\AccountSessionService::class)->release($request->user(), $request->session()->get('account_session_token'));
 
     Auth::logout();
 
@@ -614,3 +631,33 @@ Route::post('/forgot-password/verify-otp', [ForgotPasswordControllerWeb::class, 
 Route::post('/forgot-password/reset', [ForgotPasswordControllerWeb::class, 'resetPassword'])
     ->middleware('throttle:10,1')
     ->name('password.reset');
+
+Route::get('/storage/{folder}/{file}', [\App\Http\Controllers\ProtectedProofController::class,'show'])->whereIn('folder',['proofs','inventory-transaction-proofs'])->middleware(['auth','role.portal']);
+
+Route::middleware('auth')->group(function(){
+    Route::post('/session/navigate',function(Request $request, \App\Services\NavigationGrantService $navigation){
+        $data=$request->validate(['target'=>['required','string','max:2048']]);
+        $target=\Illuminate\Http\Request::create($data['target'],'GET');
+        $route=Route::getRoutes()->match($target);
+        abort_unless(in_array('auth',$route->gatherMiddleware(),true),422,'Select a protected page within PFIMS.');
+        $navigation->allow($request,$data['target']);return response()->json(['ok'=>true]);
+    });
+    Route::post('/session/resume',function(Request $request){
+        $data=$request->validate(['mode'=>['required','in:navigate,reload']]);
+        if($data['mode']!=='reload' && !$request->session()->get('_page_navigation_granted'))abort(401,'Reopened pages require signing in again.');
+        $nonce=bin2hex(random_bytes(32));
+        DB::table('account_sessions')->where('user_id',$request->user()->id)->where('token_hash',hash('sha256',$request->session()->get('account_session_token')))->update(['page_nonce'=>$nonce,'closing_at'=>null,'expires_at'=>now()->addSeconds((int)config('session.account_lease_seconds'))]);
+        $request->session()->forget('_page_navigation_granted');
+        return response()->json(['page_nonce'=>$nonce]);
+    });
+    Route::post('/session/close',function(Request $request,\App\Services\AccountSessionService $sessions){
+        if(!is_string($request->input('epoch')) || !hash_equals((string)$request->session()->get('navigation_epoch'),$request->input('epoch')))return response()->noContent();
+        if($request->boolean('closing')){
+            $nonce=$request->input('page_nonce');
+            if(is_string($nonce))DB::table('account_sessions')->where('user_id',$request->user()->id)->where('page_nonce',$nonce)->update(['closing_at'=>now(),'expires_at'=>now()->addSeconds((int)config('session.close_grace_seconds'))]);
+            return response()->noContent();
+        }
+        $sessions->release($request->user(),$request->session()->get('account_session_token'));
+        Auth::logout();$request->session()->invalidate();$request->session()->regenerateToken();return response()->noContent();
+    });
+});

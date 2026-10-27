@@ -62,11 +62,23 @@ class InventoryTransactionModalPresentationTest extends TestCase
         $this->assertStringNotContainsString('Transaction proof file is required.', $view);
     }
 
-    public function test_transaction_delete_confirmation_allows_deletion_and_warns_about_recalculation(): void
+    public function test_transaction_delete_confirmation_keeps_recovery_note_separate(): void
     {
         $view = $this->view();
 
-        $this->assertStringContainsString('Stock will be recalculated. This action cannot be undone.', $view);
+        $this->assertStringContainsString("openDeleteModal('Are you sure you want to move this transaction to Trash Bin?',", $view);
+        $this->assertStringNotContainsString('Stock will be recalculated. You can restore', $view);
+        $document = new \DOMDocument();
+        $previousErrors = libxml_use_internal_errors(true);
+        try {
+            $document->loadHTML('<?xml encoding="UTF-8">' . $view);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousErrors);
+        }
+        $paragraphs = (new \DOMXPath($document))->query('//*[@id="deleteConfirmModal"]//div[@class="modal-body"]/p');
+        $this->assertCount(2, $paragraphs);
+        $this->assertSame('You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.', trim($paragraphs->item(1)->textContent));
         $this->assertStringNotContainsString('Inventory transactions are part of the Finance audit trail and cannot be deleted.', $view);
     }
 

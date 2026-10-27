@@ -67,8 +67,12 @@ class CoreIntegrityProjectTest extends TestCase
         parent::setUp();
         Schema::dropAllTables();
         $this->createSchema();
+        (require database_path('migrations/2026_10_17_000001_create_project_manager_table.php'))->up();
         $migration = require database_path('migrations/2026_10_02_000001_create_project_budget_history.php');
         $migration->up();
+        foreach (['Manager', 'A. Santos', 'B. Reyes', 'Updated Manager', 'Maria Cruz', 'Juan Reyes'] as $name) {
+            DB::table('project_manager_tbl')->insert(['manager_name' => $name]);
+        }
         foreach (['Planning', 'Foundation', 'Structure', 'Finishing', 'Complete'] as $index => $phase) {
             DB::table('project_phase_tbl')->insert(['phase_name' => $phase, 'stage_order' => $index + 1]);
         }
@@ -429,8 +433,7 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('id="editProjectName"', false)
                 ->assertSee('id="editClientName"', false)
                 ->assertSee('id="editProjectManager"', false)
-                ->assertSee('type="text" id="projectManager" maxlength="150"', false)
-                ->assertDontSee('<select id="projectManager">', false)
+                ->assertSee('<select id="projectManager" required>', false)
                 ->assertDontSee('id="editCompletionPercentage"', false)
                 ->assertSee('id="activeProjectsCount"', false)
                 ->assertDontSee('id="avgCompletion"', false)
@@ -438,11 +441,10 @@ class CoreIntegrityProjectTest extends TestCase
                 ->assertSee('function filterProjects()', false)
                 ->assertSee("document.getElementById('editProjectName').value = currentEditData.name || '';", false)
                 ->assertSee("document.getElementById('editClientName').value = currentEditData.client || '';", false)
-                ->assertSee('type="text" id="editProjectManager"', false)
-                ->assertSee("document.getElementById('editProjectManager').value = currentEditData.manager || '';", false)
+                ->assertSee('<select id="editProjectManager" required>', false)
+                ->assertSee("managerSelect.value = managerName;", false)
                 ->assertSee("project_manager: manager,", false)
-                ->assertSee("currentEditData.manager = updatedProject.project_manager || manager;", false)
-                ->assertSee("currentEditData.progress = parseFloat(updatedProject.completion_percentage) || 0;", false)
+                ->assertSee("currentEditData = mapProjectApiRecord(updatedProject);", false)
                 ->assertSee('function refreshProjectAnalytics(projects)', false)
                 ->assertSee('function renderStatusChart(projects)', false);
         }
@@ -595,7 +597,7 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringNotContainsString("['Predictive Analytics', '/ml-dashboard-test?section=predictive']", $sharedUi);
         $this->assertStringContainsString("localStorage.setItem('pfims-nav-' + module", $sharedUi);
         $this->assertStringContainsString("item.classList.toggle('has-active-child', !!activeChild)", $sharedUi);
-        $this->assertStringContainsString("var shouldOpen = !!activeChild || savedState === 'open'", $sharedUi);
+        $this->assertStringContainsString("var shouldOpen = !freshLogin && (!!activeChild || savedState === 'open')", $sharedUi);
         $this->assertStringContainsString("selected ? 'open' : 'closed'", $sharedUi);
         $this->assertStringContainsString('function installExpandableActionButtons()', $sharedUi);
         $this->assertStringContainsString("control.dataset.iconLabel = type", $sharedUi);
@@ -691,7 +693,8 @@ class CoreIntegrityProjectTest extends TestCase
         $this->assertStringContainsString('id="addContractModal"', file_get_contents(resource_path('views/finance.blade.php')));
 
         $financeAnalytics = file_get_contents(public_path('js/finance-analytics.js'));
-        $this->assertStringContainsString("window.updateBudgetActualAmounts", $financeAnalytics);
+        $this->assertStringContainsString("budgetDataCache = null;", $financeAnalytics);
+        $this->assertStringContainsString("return fetchBudgetData().then", $financeAnalytics);
 
         foreach (glob(resource_path('views/*.blade.php')) as $view) {
             $this->assertStringNotContainsString('>SUPPLIERS</a>', file_get_contents($view), basename($view));

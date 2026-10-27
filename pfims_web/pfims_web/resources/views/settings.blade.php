@@ -27,8 +27,11 @@
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
-<body class="settings-page" data-portal="{{ $portal }}" data-is-admin="{{ $isAdmin ? '1' : '0' }}" data-config-api-base="{{ request()->getBaseUrl() }}/api/config">
+<body class="settings-page" data-portal="{{ $portal }}" data-current-user-id="{{ auth()->id() }}" data-is-admin="{{ $isAdmin ? '1' : '0' }}" data-config-api-base="{{ request()->getBaseUrl() }}/api/config">
 
     <!-- ─── SUCCESS NOTIFICATION ─── -->
     <div id="successNotification" class="success-notification" style="display: none; z-index: 4000;">
@@ -113,6 +116,7 @@
                     @if($isAdmin)
                         <li onclick="switchSettings(this, 'configurations')">Configurations</li>
                     @endif
+                    <li onclick="switchSettings(this, 'trash')">Trash Bin</li>
                     <li onclick="switchSettings(this, 'defaultfilters')">Default Filters</li>
                     <li onclick="switchSettings(this, 'notifications')">Notifications</li>
                     @if($isAdmin)
@@ -123,6 +127,12 @@
 
             <!-- Settings Content -->
             <div class="settings-content">
+                <div id="section-trash" class="settings-section" style="display:none;">
+                    <div class="section-title">Trash Bin</div>
+                    <p>Deleted records stay here for 30 days. Restore them before their expiry date. Related records are restored together; conflicts never overwrite current data.</p>
+                    <button type="button" class="btn-save" onclick="loadTrash()">Refresh Trash Bin</button>
+                    <div class="table-wrapper"><table data-pfims-standard-actions="off"><thead><tr><th>Record</th><th>Deleted</th><th>Permanent deletion after</th><th>Action</th></tr></thead><tbody id="trashTableBody"></tbody></table></div>
+                </div>
 
                 <!-- ─── PROFILE ─── -->
                 <div id="section-profile" class="settings-section">
@@ -135,7 +145,7 @@
                             <div class="name">{{ $currentUserName }}</div>
                             <div class="role">{{ $currentUserRoleLabel }}</div>
                         </div>
-                        <button class="btn-go-profile" data-url="{{ url('/profile') }}" onclick="window.location.href=this.dataset.url">Go to Profile</button>
+                        <button class="btn-go-profile" data-url="{{ url('/profile') }}" onclick="window.pfimsNavigate(this.dataset.url)">Go to Profile</button>
                     </div>
                 </div>
 
@@ -182,6 +192,7 @@
                         <button class="config-tab" onclick="switchConfigType(this, 'inv_categories')">Inventory Categories</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'exp_categories')">Expense Categories</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'project_phases')">Project Phases</button>
+                        <button class="config-tab" onclick="switchConfigType(this, 'project_managers')">Project Managers</button>
                         <button class="config-tab" onclick="switchConfigType(this, 'thresholds')">Thresholds</button>
                     </div>
 
@@ -302,7 +313,7 @@
                                     <th style="text-align: center;">Action</th>
                                 </tr>
                             </thead>
-                                    <tbody>
+                                    <tbody id="userTableBody">
                                         @foreach($users as $u)
                                         <tr>
                                             <td><strong>{{ $u->name }}</strong></td>
@@ -374,30 +385,36 @@
     </div>
 
     <!-- ─── CONFIG ITEM MODAL (Add/Edit) ─── -->
-    <div id="deleteUserConfirmModal" class="modal-overlay settings-modal-overlay settings-confirm-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="deleteUserModalTitle">
-        <div class="modal-container settings-confirm-dialog">
-            <div class="settings-confirm-content">
-                <div class="settings-confirm-icon" aria-hidden="true">!</div>
-                <h2 id="deleteUserModalTitle">Delete user?</h2>
-                <p>Are you sure you want to permanently delete this user? This action cannot be undone.</p>
+    <div id="deleteUserConfirmModal" class="modal-overlay pfims-delete-confirm" style="display:none; z-index:9999;" role="dialog" aria-modal="true" aria-labelledby="deleteUserModalTitle">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="deleteUserModalTitle">Confirm Deletion</h2>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeDeleteUserModal()">×</button>
             </div>
-            <div class="modal-footer settings-confirm-actions">
+            <div class="modal-body">
+                <p id="deleteUserConfirmMessage">Are you sure you want to move this user to Trash Bin?</p>
+                <p>You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.</p>
+            </div>
+            <div class="modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeDeleteUserModal()">Cancel</button>
-                <button type="button" id="confirmDeleteUserBtn" class="btn-delete-config" onclick="confirmDeleteUser()">Delete User</button>
+                <button type="button" id="confirmDeleteUserBtn" class="btn-delete" onclick="confirmDeleteUser()">Delete</button>
             </div>
         </div>
     </div>
 
-    <div id="configDeleteConfirmModal" class="modal-overlay settings-modal-overlay settings-confirm-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="configDeleteModalTitle">
-        <div class="modal-container settings-confirm-dialog">
-            <div class="settings-confirm-content">
-                <div class="settings-confirm-icon" aria-hidden="true">!</div>
-                <h2 id="configDeleteModalTitle">Delete configuration?</h2>
-                <p id="configDeleteMessage">This action cannot be undone.</p>
+    <div id="configDeleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display:none; z-index:9999;" role="dialog" aria-modal="true" aria-labelledby="configDeleteModalTitle">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="configDeleteModalTitle">Confirm Deletion</h2>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeConfigDeleteModal()">×</button>
             </div>
-            <div class="modal-footer settings-confirm-actions">
+            <div class="modal-body">
+                <p id="configDeleteMessage">Are you sure you want to move this configuration to Trash Bin?</p>
+                <p>You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.</p>
+            </div>
+            <div class="modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeConfigDeleteModal()">Cancel</button>
-                <button type="button" id="confirmDeleteConfigBtn" class="btn-delete-config" onclick="confirmDeleteConfig()">Delete</button>
+                <button type="button" id="confirmDeleteConfigBtn" class="btn-delete" onclick="confirmDeleteConfig()">Delete</button>
             </div>
         </div>
     </div>
@@ -440,7 +457,7 @@
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                                 <div>
                                     <h3 style="margin:0; font-size:1.1rem;">User Created</h3>
-                                    <div style="font-size:0.9rem; color:#666;">Use the user's email without the @gmail.com as initial password.</div>
+                                    <div style="font-size:0.9rem; color:#666;">A random initial password will be shown after creating the account. Share it securely with the user.</div>
                                 </div>
                             </div>
                             <div style="margin-top:10px;">
@@ -549,8 +566,49 @@
             }
         }
 
+        function updateSignedInUser(user) {
+            if (!user || String(user.id)!==document.body.dataset.currentUserId) return false;
+            if (user.role !== 'admin') {
+                window.pfimsNavigate(user.role === 'accounting' ? '/asettings' : '/osettings');
+                return true;
+            }
+            document.querySelector('.top-header .right a[href*="profile"] span')?.replaceChildren(document.createTextNode(user.name));
+            document.querySelector('.profile-preview .info .name').textContent=user.name;
+            var parts=user.name.trim().split(/\s+/);
+            document.querySelector('.profile-preview .avatar').textContent=(Array.from(parts[0] || 'U')[0]+(parts.length>1?Array.from(parts[parts.length-1])[0]:'')).toUpperCase();
+            return false;
+        }
+
+        async function refreshUsers() {
+            if (!isAdmin) return;
+            try {
+                var response = await fetch('/users', {headers:{'Accept':'application/json'},cache:'no-store'});
+                if (!response.ok) throw new Error('Users could not be updated. Please try again.');
+                var result = await response.json();
+                var body = document.getElementById('userTableBody');
+                body.replaceChildren();
+                result.data.forEach(function(user) {
+                    var row = body.insertRow();
+                    [user.name, user.email, userRoleLabel(user.role), user.status].forEach(function(value) {
+                        var cell=row.insertCell(); cell.textContent=value || '—';
+                        if (row.cells.length===1) { var name=document.createElement('strong'); name.textContent=value; cell.replaceChildren(name); }
+                        if (row.cells.length===3) { var badge=document.createElement('span'); badge.className='role-badge '+(user.role==='admin'?'admin':user.role==='accounting'?'manager':'staff'); badge.textContent=value; cell.replaceChildren(badge); }
+                    });
+                    var actions = row.insertCell(); actions.className='settings-actions-cell';
+                    var group = document.createElement('div'); group.className='settings-action-group';
+                    [['View',openUserDetails,'btn-view-user'],['Edit',openUserConfig,'btn-edit-config'],['Delete',deleteUserById,'btn-delete-config']].forEach(function(action) {
+                        var button=document.createElement('button'); button.type='button'; button.className='btn-config-action '+action[2];
+                        button.textContent=action[0]; button.dataset.userId=user.id; button.setAttribute('aria-label',action[0]+' '+user.name);
+                        button.onclick=function(){action[1](user.id);}; group.appendChild(button);
+                    });
+                    actions.appendChild(group);
+                });
+            } catch(error) { alert(error.message); }
+        }
+
         function redirectToUserManagement() {
-            window.location.href = '/settings?section=usermanagement';
+            closeUserConfig();
+            refreshUsers();
         }
 
         function switchSettings(el, section) {
@@ -577,6 +635,7 @@
             closeConfigDeleteModal();
             closeAddUserModal();
 
+            if (section === 'trash') loadTrash();
             console.log('Switched to: ' + section);
         }
 
@@ -719,7 +778,7 @@
             .then(function(data) {
                 if (data.ok && data.data.success) {
                     showSuccess('User updated successfully!');
-                    setTimeout(redirectToUserManagement, 700);
+                    if (!updateSignedInUser(data.data.user)) redirectToUserManagement();
                 } else {
                     var message = data.data.errors ? Object.values(data.data.errors).flat().join('\n') : data.data.message;
                     alert(message || 'Failed to update user.');
@@ -766,7 +825,7 @@
                 if (data.success) {
                     closeDeleteUserModal();
                     showSuccess('User deleted');
-                    setTimeout(redirectToUserManagement, 700);
+                    redirectToUserManagement();
                 } else {
                     alert('Failed to delete user.');
                 }
@@ -777,7 +836,7 @@
             })
             .finally(function() {
                 confirmButton.disabled = false;
-                confirmButton.textContent = 'Delete User';
+                confirmButton.textContent = 'Delete';
             });
         }
 
@@ -785,12 +844,44 @@
             if (e.target === this) closeDeleteUserModal();
         });
 
+        async function loadTrash() {
+            var body = document.getElementById('trashTableBody');
+            body.replaceChildren();
+            try {
+                var response = await fetch('/api/trash', {headers:{'Accept':'application/json'}});
+                var result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Unable to load Trash Bin.');
+                result.data.forEach(function(entry) {
+                    var row = document.createElement('tr');
+                    [entry.label, entry.deleted_at, entry.expires_at].forEach(function(value) { var cell=document.createElement('td'); cell.textContent=value; row.appendChild(cell); });
+                    var cell=document.createElement('td'); var button=document.createElement('button'); button.type='button'; button.className='btn-config-action'; button.textContent='Restore';
+                    button.onclick=async function() {
+                        button.disabled=true;
+                        try {
+                            var response=await fetch('/api/trash/'+entry.id+'/restore', {method:'POST',headers:{'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content}});
+                            var result=await response.json();
+                            if (!response.ok) throw new Error(result.message || 'Restore failed.');
+                            showSuccess(result.message); loadTrash();
+                            refreshUsers();
+                            if (isAdmin && currentConfigType !== 'thresholds') fetchConfigItems(currentConfigType);
+                            if (isAdmin) loadSystemSettings();
+                            loadDefaultFilters();
+                        } catch(error) { alert(error.message); button.disabled=false; }
+                    };
+                    cell.appendChild(button); row.appendChild(cell); body.appendChild(row);
+                });
+                if (!result.data.length) { var row=body.insertRow(); var cell=row.insertCell(); cell.colSpan=4; cell.textContent='Trash Bin is empty.'; }
+            } catch(error) { alert(error.message); }
+        }
+
+
         // ─── CONFIGURATIONS (Dropdown Management) ───
         var configData = {
             'units': [],
             'inv_categories': [],
             'exp_categories': []
             , 'project_phases': []
+            , 'project_managers': []
         };
 
         var configFieldMap = {
@@ -798,6 +889,7 @@
             'inv_categories': { id: 'inventory_category_id', name: 'inventory_category_name' },
             'exp_categories': { id: 'fin_category_id', name: 'category_name' }
             , 'project_phases': { id: 'phase_id', name: 'phase_name' }
+            , 'project_managers': { id: 'manager_id', name: 'manager_name' }
         };
         var configMeta = {};
 
@@ -1006,7 +1098,7 @@
             if (!item) return;
             activeConfigItemId = id;
             var fields = configFieldMap[currentConfigType];
-            document.getElementById('configDeleteMessage').textContent = 'Delete “' + item[fields.name] + '”? This action cannot be undone.';
+            document.getElementById('configDeleteMessage').textContent = 'Are you sure you want to move this configuration to Trash Bin?';
             document.getElementById('configDetailsModal').style.display = 'none';
             document.getElementById('configDeleteConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -1192,7 +1284,7 @@
                 body: JSON.stringify(payload)
             }).then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
                 .then(function(result) {
-                    if (result.ok && result.data.success) showSuccess(result.data.message || 'System settings saved successfully.');
+                    if (result.ok && result.data.success) { loadSystemSettings(); showSuccess(result.data.message || 'System settings saved successfully.'); }
                     else alert(result.data.message || 'Unable to save system settings.');
                 }).catch(function(error) { console.error(error); alert('Unable to save system settings.'); })
                 .finally(function() { setButtonLoading(button, false); });
@@ -1238,6 +1330,7 @@
                     if (data.password) {
                         openPasswordModal(data.password, name);
                     }
+                    refreshUsers();
                     showSuccess('New user added successfully!');
                 } else {
                     alert('Failed to add user.');
@@ -1300,9 +1393,7 @@
                 modal.style.display = 'none';
                 document.body.style.overflow = '';
             }
-            if (reload) {
-                redirectToUserManagement();
-            }
+            if (reload) refreshUsers();
         }
 
         function copyPassword() {
@@ -1691,6 +1782,7 @@
                 .catch(function(error) { document.getElementById('defaultFilterStatus').textContent = error.message; });
         }
     </script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    @include('partials.validation-alert')
 </body>
 </html>

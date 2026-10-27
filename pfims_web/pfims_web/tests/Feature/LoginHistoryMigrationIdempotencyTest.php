@@ -12,6 +12,7 @@ class LoginHistoryMigrationIdempotencyTest extends TestCase
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('status')->default('Active');
         });
         Schema::create('login_histories', function (Blueprint $table) {
             $table->id();

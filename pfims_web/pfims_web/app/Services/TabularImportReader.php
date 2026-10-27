@@ -60,6 +60,11 @@ class TabularImportReader
                 continue;
             }
 
+            foreach ($rawRow as $column => $value) {
+                if (is_string($value) && PlainTextInput::invalid($value)) {
+                    throw new ImportValidationException('Invalid input in the import file.', [['row'=>$index+2,'errors'=>[($headers[$column] ?? 'value')=>['Invalid input. Markup and executable code are not allowed.']]]]);
+                }
+            }
             $rows[] = [
                 'row' => $index + 2,
                 'values' => array_combine($headers, array_map([$this, 'cleanValue'], $rawRow)),
@@ -225,6 +230,7 @@ class TabularImportReader
 
     private function xlsxCellValue(SimpleXMLElement $cell, array $sharedStrings): mixed
     {
+        if ($cell->xpath('./*[local-name()="f"]')) throw new ImportValidationException('Invalid input: formulas are not allowed in imported cells.');
         $type = (string) $cell['t'];
         if ($type === 'inlineStr') {
             $parts = $cell->xpath('.//*[local-name()="t"]') ?: [];

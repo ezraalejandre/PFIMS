@@ -143,7 +143,7 @@ class InventoryController extends Controller
         } elseif (! empty($validated['project_id'])) {
             return response()->json(['success' => false, 'message' => 'Stock-in is for storage and cannot be assigned to a project.'], 422);
         }
-        $validated['proof_file_path'] = $proofFile?->store('inventory-transaction-proofs', 'public');
+        $validated['proof_file_path'] = $proofFile?->store('inventory-transaction-proofs', 'protected');
         $validated['proof_file_name'] = $proofFile?->getClientOriginalName();
 
         DB::beginTransaction();
@@ -194,7 +194,7 @@ class InventoryController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             if (! empty($validated['proof_file_path'])) {
-                Storage::disk('public')->delete($validated['proof_file_path']);
+                app(\App\Services\TrashService::class)->retainFile($validated['proof_file_path']);
             }
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
@@ -460,7 +460,7 @@ class InventoryController extends Controller
             }
 
             if ($proofPath) {
-                Storage::disk('public')->delete($proofPath);
+                app(\App\Services\TrashService::class)->retainFile($proofPath);
             }
 
             return response()->json([

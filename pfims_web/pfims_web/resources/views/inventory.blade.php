@@ -256,6 +256,9 @@
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="inventory-page" data-portal="{{ $portal }}">
 
@@ -278,7 +281,7 @@
     </div>
 
     <!-- ─── DELETE CONFIRMATION MODAL ─── -->
-    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+    <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
                 <h2>Confirm Deletion</h2>
@@ -286,10 +289,10 @@
             </div>
             <div class="modal-body">
                 <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
-                    Are you sure you want to permanently delete this transaction?
+                    Are you sure you want to move this transaction to Trash Bin?
                 </p>
                 <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
-                    This action cannot be undone.
+                    You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.
                 </p>
             </div>
             <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
@@ -1101,7 +1104,7 @@
         var expenseConfirmCallback = null;
 
         function openDeleteModal(message, callback) {
-            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this transaction?';
+            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to move this transaction to Trash Bin?';
             deleteCallback = callback;
             document.getElementById('deleteConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -1602,10 +1605,10 @@
 
                     tr.innerHTML = `
 
-                    <td><strong>${item.item_name || 'Unknown'}</strong></td>
-                    <td>${item.category || '—'}</td>
-                    <td>${item.supplier || '—'}</td>
-                    <td>${item.unit || '—'}</td>
+                    <td><strong>${escapeHtml(item.item_name || 'Unknown')}</strong></td>
+                    <td>${escapeHtml(item.category || '—')}</td>
+                    <td>${escapeHtml(item.supplier || '—')}</td>
+                    <td>${escapeHtml(item.unit || '—')}</td>
                     <td>${formatInventoryUnitPrice(item.unit_price)}</td>
                     <td>${stock}</td>
                     <td><span class="status-badge ${statusClass}"><span class="dot"></span> ${statusText}</span></td>
@@ -1772,14 +1775,14 @@
                 var statusClass = status === 'in-stock' ? 'in-stock' : (status === 'out-of-stock' ? 'out-of-stock' : 'low-stock');
 
                 tr.innerHTML = `
-                    <td>${row.project || '-'}</td>
-                    <td>${row.category}</td>
-                    <td><strong>${row.item_name}</strong></td>
-                    <td>${row.description || '-'}</td>
-                    <td>${row.bar_code ?? '-'}</td>
+                    <td>${escapeHtml(row.project || '-')}</td>
+                    <td>${escapeHtml(row.category)}</td>
+                    <td><strong>${escapeHtml(row.item_name)}</strong></td>
+                    <td>${escapeHtml(row.description || '-')}</td>
+                    <td>${escapeHtml(row.bar_code ?? '-')}</td>
                     <td><span class="type-badge ${typeLabel === 'IN' ? 'in' : 'out'}">${typeLabel}</span></td>
                     <td>${dateValue}</td>
-                    <td>${row.unit}</td>
+                    <td>${escapeHtml(row.unit)}</td>
                     <td>${row.quantity}</td>
                     <td>${proofFile}</td>
                     <td style="text-align: center;">
@@ -2216,7 +2219,7 @@
             if (skipConfirmation) {
                 performDelete();
             } else {
-                openDeleteModal('Deleting this item will also delete its inventory transactions. Continue?', performDelete);
+                openDeleteModal('Are you sure you want to move this item and its inventory transactions to Trash Bin?', performDelete);
             }
         }
 
@@ -2224,7 +2227,7 @@
             currentItemDetailRow = row;
             currentItemEditRow = row;
             var itemName = row && row.dataset.itemName ? row.dataset.itemName : 'this item';
-            openDeleteModal('Delete "' + itemName + '"? Items with transaction history cannot be deleted.', function() {
+            openDeleteModal('Are you sure you want to move this item to Trash Bin?', function() {
                 deleteItem(true);
             });
         }
@@ -2695,7 +2698,7 @@
             if (skipConfirmation) {
                 performDelete();
             } else {
-                openDeleteModal('Are you sure you want to permanently delete this transaction?', performDelete);
+                openDeleteModal('Are you sure you want to move this transaction to Trash Bin?', performDelete);
             }
         }
 
@@ -2706,7 +2709,7 @@
                 showError('Transaction ID missing.');
                 return;
             }
-            openDeleteModal('Are you sure you want to permanently delete this transaction? Stock will be recalculated. This action cannot be undone.', function() {
+            openDeleteModal('Are you sure you want to move this transaction to Trash Bin?', function() {
                 deleteTransaction(true);
             });
         }
@@ -2754,6 +2757,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="{{ asset('js/inventory-analytics.js') }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    @include('partials.validation-alert')
 </body>
 </html>

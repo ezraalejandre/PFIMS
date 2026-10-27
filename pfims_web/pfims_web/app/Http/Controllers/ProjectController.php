@@ -92,6 +92,11 @@ class ProjectController extends Controller
         );
     }
 
+    public function managers(): JsonResponse
+    {
+        return response()->json(\App\Models\ProjectManager::orderBy('manager_name')->get(['manager_id', 'manager_name']));
+    }
+
     public function phases(): JsonResponse
     {
         return response()->json($this->phaseProgress->phases());
@@ -102,7 +107,7 @@ class ProjectController extends Controller
         $data = $this->validateProject($request, false);
         $data['project_name'] = $this->normalizeLabel($data['project_name']);
         $data['client_name'] = $this->normalizeLabel($data['client_name']);
-        $data['project_manager'] = $this->normalizeLabel($data['project_manager']);
+        $data['project_manager'] = trim($data['project_manager']);
 
         $projectId = DB::transaction(function () use ($data) {
             $this->assertUniqueNaturalKey($data['project_name'], $data['client_name'], $data['start_date']);
@@ -154,7 +159,7 @@ class ProjectController extends Controller
         $data = $this->validateProject($request, true, $existing);
         foreach (['project_name', 'client_name', 'project_manager'] as $field) {
             if (array_key_exists($field, $data)) {
-                $data[$field] = $this->normalizeLabel($data[$field]);
+                $data[$field] = $field === 'project_manager' ? trim($data[$field]) : $this->normalizeLabel($data[$field]);
             }
         }
 
@@ -266,7 +271,12 @@ class ProjectController extends Controller
         $validator = Validator::make($request->all(), [
             'project_name' => [...$required, 'string', 'max:150'],
             'client_name' => [...$required, 'string', 'max:150'],
-            'project_manager' => [...$required, 'string', 'max:150'],
+            'project_manager' => [...$required, 'string', 'max:150', function ($attribute, $value, $fail) use ($existing) {
+                if ($existing && trim((string) $existing->project_manager) === trim((string) $value)) return;
+                if (! DB::table('project_manager_tbl')->where('manager_name', trim((string) $value))->exists()) {
+                    $fail('Select a project manager configured in Settings.');
+                }
+            }],
             'start_date' => [...$required, 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'estimated_end_date' => [...$required, 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'actual_end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],

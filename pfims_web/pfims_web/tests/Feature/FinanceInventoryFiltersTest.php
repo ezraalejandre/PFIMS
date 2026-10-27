@@ -307,7 +307,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_purchase_stock_in_persists_a_valued_construction_supply_expense(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
 
         $this->post('/api/inventory/transaction', [
             'item_id' => 1,
@@ -347,7 +347,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_inventory_transactions_can_be_added_without_proof_and_uploaded_proofs_are_still_validated(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
 
         $this->postJson('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'adjustment',
@@ -382,7 +382,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_purchase_requires_a_priced_item_and_adjustment_does_not_create_an_expense(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         $input = [
             'item_id' => 1,
             'transaction_type' => 'IN',
@@ -406,7 +406,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_purchase_rolls_back_when_finance_category_is_unavailable(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         DB::table('fin_expense_category_tbl')->where('fin_category_id', 1)->update(['is_active' => false]);
         $this->post('/api/inventory/transaction', [
             'item_id' => 1,
@@ -420,12 +420,12 @@ class FinanceInventoryFiltersTest extends TestCase
         $this->assertSame(2, DB::table('inventory_transaction_tbl')->count());
         $this->assertSame(3, DB::table('fin_expense_tbl')->count());
         $this->assertEquals(8, DB::table('inventory_item_tbl')->where('item_id', 1)->value('current_stock'));
-        $this->assertSame([], Storage::disk('public')->allFiles('inventory-transaction-proofs'));
+        $this->assertSame([], Storage::disk('protected')->allFiles('inventory-transaction-proofs'));
     }
 
     public function test_purchase_amount_can_be_corrected_without_assigning_a_project(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         $this->post('/api/inventory/transaction', [
             'item_id' => 1,
             'transaction_type' => 'IN',
@@ -467,7 +467,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_stock_out_allocates_fifo_purchase_cost_without_another_finance_expense(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         foreach ([[3, 900, 700001], [2, 500, 700002]] as [$quantity, $amount, $barcode]) {
             DB::table('inventory_item_tbl')->where('item_id', 3)->update(['unit_price' => $amount / $quantity]);
             $this->post('/api/inventory/transaction', [
@@ -512,7 +512,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_project_cost_counts_stock_usage_once_not_the_storage_purchase(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         Schema::create('budgets_tbl', function (Blueprint $table) {
             $table->increments('budget_id');
             $table->integer('project_id');
@@ -542,7 +542,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_latest_stock_out_can_be_corrected_and_deleted_with_its_allocations(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
             'quantity' => 2, 'bar_code' => 700041,
@@ -572,7 +572,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_stock_out_marks_adjustment_stock_unvalued_not_free(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'adjustment',
             'quantity' => 1, 'bar_code' => 700011, 'transaction_date' => '2026-09-20',
@@ -605,7 +605,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_fifo_allocates_the_item_unit_price_to_each_withdrawal(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
             'quantity' => 3, 'bar_code' => 700021,
@@ -629,7 +629,7 @@ class FinanceInventoryFiltersTest extends TestCase
 
     public function test_unallocated_earlier_withdrawal_cannot_shift_cost_to_a_later_project(): void
     {
-        Storage::fake('public');
+        Storage::fake('protected');
         $this->post('/api/inventory/transaction', [
             'item_id' => 3, 'transaction_type' => 'IN', 'movement_reason' => 'purchase',
             'quantity' => 2, 'bar_code' => 700031,

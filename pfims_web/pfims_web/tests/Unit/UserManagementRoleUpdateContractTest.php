@@ -34,7 +34,7 @@ class UserManagementRoleUpdateContractTest extends TestCase
         $this->assertStringContainsString('class="btn-delete-config" onclick="deleteUserFromDetails()">Delete User</button>', $settings);
         $this->assertStringContainsString('function deleteUserFromDetails()', $settings);
         $this->assertStringContainsString('class="settings-action-group"', $settings);
-        $this->assertStringContainsString('class="modal-container settings-confirm-dialog"', $settings);
+        $this->assertStringContainsString('id="deleteUserConfirmModal" class="modal-overlay pfims-delete-confirm"', $settings);
         $this->assertStringContainsString('onclick="closeUserDetails()"', $settings);
         $this->assertStringContainsString('onclick="closeUserEdit()"', $settings);
         $this->assertStringContainsString('if (e.target === this) closeUserDetails();', $settings);

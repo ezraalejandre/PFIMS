@@ -21,7 +21,10 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
     <script src="{{ asset('js/table-scroll-fade.js') }}?v={{ filemtime(public_path('js/table-scroll-fade.js')) }}" defer></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}" defer></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}" defer></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="dashboard-page audit-logs-page" data-portal="admin" data-default-filter-module="audit-logs" data-latest-audit-id="{{ $latestAuditId }}" data-pfims-wait-for-ready="true">
     <header class="top-header">
@@ -169,7 +172,7 @@
                 var params = new URLSearchParams(window.location.search);
                 params.set('per_page', select.value);
                 params.set('page', '1');
-                window.location.assign(window.location.pathname + '?' + params.toString());
+                window.pfimsNavigate(window.location.pathname + '?' + params.toString());
             });
 
             function releaseInitialLoader() {
@@ -196,11 +199,12 @@
                         return response.json();
                     })
                     .then(function (payload) {
-                        if (Number(payload.latest_id || 0) > latestId) window.location.reload();
+                        if (Number(payload.latest_id || 0) > latestId) window.pfimsNavigate(window.location.href);
                     })
                     .catch(function () { /* Keep the current page stable if the check is unavailable. */ });
             }, 15000);
         })();
     </script>
+    @include('partials.validation-alert')
 </body>
 </html>

@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile - PFIMS</title>
@@ -9,6 +10,9 @@
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="profile-page" data-portal="{{ $portal }}" data-status-message="{{ session('status', '') }}">
 
@@ -293,20 +297,26 @@
                 return;
             }
 
-            // Update display values locally before submit
-            document.getElementById('displayFullName').textContent = fullName;
-            document.getElementById('displayEmail').textContent = email;
-            document.getElementById('displayPhone').textContent = phone;
-            document.getElementById('displayLocation').textContent = location;
-            document.getElementById('displayName').textContent = fullName;
-
-            var card = document.getElementById('profileCard');
-            card.classList.remove('edit-mode');
-
             setButtonLoading(saveBtn, true, 'Saving...');
-            document.getElementById('profileCard').submit();
+            fetch(document.getElementById('profileCard').action, {
+                method: 'POST', headers: {'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},
+                body: new FormData(document.getElementById('profileCard'))
+            }).then(async function(response) {
+                var result=await response.json();
+                if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Unable to save profile.');
+                var user=result.user;
+                [['displayFullName','name'],['displayEmail','email'],['displayPhone','phone'],['displayLocation','location'],['displayName','name']].forEach(function(field) {
+                    document.getElementById(field[0]).textContent=user[field[1]] || '';
+                });
+                document.querySelector('.top-header .right a[href*="profile"] span')?.replaceChildren(document.createTextNode(user.name));
+                document.querySelector('.profile-avatar').textContent=Array.from(user.name)[0]?.toUpperCase() || 'U';
+                document.getElementById('profileCard').classList.remove('edit-mode');
+                showSuccess('Profile updated successfully.');
+            }).catch(function(error) { showError(error.message); })
+              .finally(function() { setButtonLoading(saveBtn, false); });
         }
     </script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    @include('partials.validation-alert')
 </body>
 </html>

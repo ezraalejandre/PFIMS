@@ -63,7 +63,7 @@ class BudgetController extends Controller
         $path = null;
         try {
             if ($request->hasFile('proof_file')) {
-                $path = $request->file('proof_file')->store('proofs', 'public');
+                $path = $request->file('proof_file')->store('proofs', 'protected');
             }
             $budget = DB::transaction(function () use ($data, $path, $request) {
                 DB::table('project_tbl')->where('project_id', $data['project_id'])->lockForUpdate()->first();
@@ -81,7 +81,7 @@ class BudgetController extends Controller
             });
         } catch (\DomainException $exception) {
             if ($path) {
-                Storage::disk('public')->delete($path);
+                app(\App\Services\TrashService::class)->retainFile($path);
             }
 
             return response()->json([
@@ -90,7 +90,7 @@ class BudgetController extends Controller
             ], 409);
         } catch (\Throwable $exception) {
             if ($path) {
-                Storage::disk('public')->delete($path);
+                app(\App\Services\TrashService::class)->retainFile($path);
             }
             throw $exception;
         }
@@ -125,7 +125,7 @@ class BudgetController extends Controller
         $newPath = null;
         try {
             if ($request->hasFile('proof_file')) {
-                $newPath = $request->file('proof_file')->store('proofs', 'public');
+                $newPath = $request->file('proof_file')->store('proofs', 'protected');
             }
             DB::transaction(function () use ($budget, $data, $request, $newPath) {
                 $changes = ['budget_amount' => $data['budget_amount']];
@@ -158,13 +158,13 @@ class BudgetController extends Controller
             });
         } catch (\Throwable $exception) {
             if ($newPath) {
-                Storage::disk('public')->delete($newPath);
+                app(\App\Services\TrashService::class)->retainFile($newPath);
             }
             throw $exception;
         }
 
         if ($oldPath && ($newPath || $request->boolean('remove_proof_file'))) {
-            Storage::disk('public')->delete($oldPath);
+            app(\App\Services\TrashService::class)->retainFile($oldPath);
         }
         $budget->load('project:project_id,project_name');
 
@@ -189,7 +189,7 @@ class BudgetController extends Controller
             return response()->json(['message' => $exception->getMessage()], 409);
         }
         if ($path) {
-            Storage::disk('public')->delete($path);
+            app(\App\Services\TrashService::class)->retainFile($path);
         }
 
         return response()->json(['message' => 'Budget deleted']);

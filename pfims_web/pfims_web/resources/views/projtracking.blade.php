@@ -17,7 +17,8 @@
             font-size: 0.8rem;
             margin-top: 5px;
         }
-        .form-group input.input-error {
+        .form-group input.input-error,
+        .form-group select.input-error {
             border-color: #d32f2f !important;
             box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15) !important;
         }
@@ -41,6 +42,9 @@
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="projects-page" data-portal="{{ $portal }}" data-project-view-icon="{{ asset('images/view.jpg') }}" data-project-edit-icon="{{ asset('images/edit.jpg') }}">
 
@@ -63,7 +67,7 @@
     </div>
 
     <!-- ─── DELETE CONFIRMATION MODAL ─── -->
-    <div id="deleteConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
+    <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
                 <h2>Confirm Deletion</h2>
@@ -71,10 +75,10 @@
             </div>
             <div class="modal-body">
                 <p id="deleteConfirmMessage" style="font-size: 1rem; color: #333; margin-bottom: 10px;">
-                    Are you sure you want to permanently delete this project?
+                    Are you sure you want to move this project to Trash Bin?
                 </p>
                 <p style="font-size: 0.85rem; color: #888; margin-bottom: 20px;">
-                    This action cannot be undone.
+                    You can restore deleted records from Settings → Trash Bin for 30 days before permanent deletion.
                 </p>
             </div>
             <div class="modal-footer" style="display: flex; justify-content: center; gap: 12px; margin-top: 10px; padding-top: 20px; border-top: 1px solid #e9ecef;">
@@ -181,6 +185,8 @@
                     <tr>
                         <th>Project Name</th>
                         <th>Client Name</th>
+                        <th>Project Manager</th>
+                        <th>Worker Count</th>
                         <th>Start Date</th>
                         <th>Est. End Date</th>
                         <th>Actual End Date</th>
@@ -262,7 +268,8 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Project manager <span class="required">*</span></label>
-                        <input type="text" id="projectManager" maxlength="150" placeholder="Enter project manager name" autocomplete="name">
+                        <select id="projectManager" required><option value="">Select project manager</option></select>
+                        <small>Manage project managers in Settings → Configurations.</small>
                         <span id="projectManagerError" class="field-error"></span>
             </div>
                     <div class="form-group">
@@ -334,6 +341,14 @@
 
             <div class="project-details-grid">
                 <div class="detail-item">
+                    <label>Project Manager</label>
+                    <span id="updateProjectManager">—</span>
+                </div>
+                <div class="detail-item">
+                    <label>Worker Count</label>
+                    <span id="updateWorkerCount">0</span>
+                </div>
+                <div class="detail-item">
                     <label>Budget</label>
                     <span id="updateBudget">—</span>
                 </div>
@@ -360,6 +375,10 @@
                 <div class="detail-item">
                     <label>Status</label>
                     <span id="updateStatus" class="status-badge at-risk">—</span>
+                </div>
+                <div class="detail-item">
+                    <label>Overall Performance</label>
+                    <span id="updateProgress">0%</span>
                 </div>
             </div>
 
@@ -395,7 +414,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Project manager <span class="required">*</span></label>
-                        <input type="text" id="editProjectManager" maxlength="150" placeholder="Enter project manager name" autocomplete="name" required>
+                        <select id="editProjectManager" required><option value="">Select project manager</option></select>
                         <span id="editProjectManagerError" class="field-error"></span>
                     </div>
                 </div>
@@ -513,7 +532,7 @@
 
         // ─── DELETE CONFIRMATION MODAL ───
         function openDeleteModal(message, callback) {
-            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to permanently delete this project?';
+            document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to move this project to Trash Bin?';
             deleteCallback = callback;
             document.getElementById('deleteConfirmModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -805,7 +824,7 @@ if (currentStep === 2) {
     clearEndDateError();
 
     if (!manager) {
-        showFieldError('projectManager', 'projectManagerError', 'Please enter a project manager name.');
+        showFieldError('projectManager', 'projectManagerError', 'Please select a project manager.');
         return;
     }
 
@@ -897,7 +916,7 @@ if (currentStep === 2) {
                 id: record.project_id,
                 name: record.project_name || 'Untitled Project',
                 client: record.client_name || '—',
-                budget: record.budget || '',
+                budget: typeof record.budget === 'number' ? new Intl.NumberFormat('en-PH', {style:'currency',currency:'PHP'}).format(record.budget) : (record.budget || ''),
                 manager: record.project_manager || '',
                 workers: record.worker_count || '0',
                 startDate: record.start_date || '',
@@ -929,7 +948,7 @@ if (currentStep === 2) {
             var tbody = document.getElementById('projectTableBody');
             tbody.innerHTML = '';
             if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:28px;color:#6b7280">No projects match the selected filters.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:28px;color:#6b7280">No projects match the selected filters.</td></tr>';
             }
             pageData.forEach(function(project) {
                 tbody.appendChild(createProjectRow(project));
@@ -1010,21 +1029,9 @@ if (currentStep === 2) {
             renderProjectPage(1);
         }
 
-                function applyColumnVisibility(status) {
-            var wrapper = document.querySelector('.table-wrapper');
-            if (!wrapper) return;
-            wrapper.classList.remove('col-hide-est-end', 'col-hide-actual-end', 'col-hide-progress');
-            if (status === 'Completed') {
-                wrapper.classList.add('col-hide-est-end', 'col-hide-progress');
-            } else if (status === 'Ongoing' || status === 'Pending' || status === 'At Risk' || status === 'Delayed') {
-                wrapper.classList.add('col-hide-actual-end');
-            }
-        }
-
         function filterProjects() {
             projectSearchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
             var status = document.getElementById('projectStatusFilter').value;
-            applyColumnVisibility(status);
             var phase = document.getElementById('projectPhaseFilter').value;
             var from = document.getElementById('projectDateFrom').value;
             var to = document.getElementById('projectDateTo').value;
@@ -1159,6 +1166,23 @@ if (currentStep === 2) {
             });
         }
 
+        function loadProjectManagers() {
+            return fetch('/api/project-managers', {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function(response) {
+                if (!response.ok) throw new Error('Unable to load project managers');
+                return response.json();
+            }).then(function(managers) {
+                ['projectManager', 'editProjectManager'].forEach(function(id) {
+                    var select = document.getElementById(id);
+                    select.innerHTML = '<option value="">' + (managers.length ? 'Select project manager' : 'Add project managers in Settings first') + '</option>';
+                    managers.forEach(function(manager) {
+                        select.add(new Option(manager.manager_name, manager.manager_name));
+                    });
+                });
+            });
+        }
+
         function loadProjectPhases() {
             return fetch('/api/project-phases', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1244,6 +1268,8 @@ if (currentStep === 2) {
             row.innerHTML = '' +
                 '<td><strong>' + escapeHtml(project.name) + '</strong></td>' +
                 '<td>' + escapeHtml(project.client) + '</td>' +
+                '<td>' + escapeHtml(project.manager || '—') + '</td>' +
+                '<td>' + escapeHtml(project.workers ?? 0) + '</td>' +
                 '<td>' + escapeHtml(project.startDateDisplay) + '</td>' +
                 '<td>' + escapeHtml(project.estEndDateDisplay) + '</td>' +
                 '<td>' + escapeHtml(project.actualEndDateDisplay || '—') + '</td>' +
@@ -1252,6 +1278,7 @@ if (currentStep === 2) {
                 '<td>' +
                     '<div class="progress-cell">' +
                         '<div class="mini-bar"><div class="fill" style="width:' + progress + '%;"></div></div>' +
+                        '<span>' + progress + '%</span>' +
                     '</div>' +
                 '</td>' +
                 '<td><span class="status-badge ' + (project.status === 'Completed' ? 'completed' : project.status === 'Delayed' ? 'delayed' : project.status === 'Ongoing' ? 'on-track' : project.status === 'Pending' ? 'pending' : 'at-risk') + '"><span class="dot"></span> ' + escapeHtml(project.status) + '</span></td>' +
@@ -1294,7 +1321,7 @@ if (!client) {
 }
 
 if (!manager) {
-    showFieldError('projectManager', 'projectManagerError', 'Please enter a project manager name.');
+    showFieldError('projectManager', 'projectManagerError', 'Please select a project manager.');
     return;
 }
 
@@ -1362,7 +1389,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                     tbody.appendChild(createProjectRow(project));
                 }
                 // Update stats
-                                allProjects.push(project);
+                                allProjects.unshift(project);
                 updateStats(allProjects);
                 closeModal();
                 showSuccess('Project added successfully!');
@@ -1412,6 +1439,9 @@ if (new Date(endDate) <= new Date(startDate)) {
 
             document.getElementById('updateProjectName').textContent = projectName;
             document.getElementById('updateClientName').textContent = clientName;
+            document.getElementById('updateProjectManager').textContent = manager || '—';
+            document.getElementById('updateWorkerCount').textContent = workers ?? 0;
+            document.getElementById('updateProgress').textContent = Math.min(100, Math.max(0, parseFloat(progress) || 0)) + '%';
             document.getElementById('updateBudget').textContent = budget ? formatCurrency(budget) : '—';
             document.getElementById('updateStartDate').textContent = startDate;
             document.getElementById('updateEstEndDate').textContent = estEndDate;
@@ -1449,7 +1479,7 @@ if (new Date(endDate) <= new Date(startDate)) {
 
             var deleteConfirmBtn = document.getElementById('confirmDeleteBtn');
             var projectId = currentProjectRow.dataset.projectId;
-            openDeleteModal('Are you sure you want to permanently delete this project?', function() {
+            openDeleteModal('Are you sure you want to move this project to Trash Bin?', function() {
                 if (!projectId) {
                     currentProjectRow.remove();
                     allProjects = allProjects.filter(function(p) {
@@ -1515,7 +1545,16 @@ if (new Date(endDate) <= new Date(startDate)) {
             document.getElementById('editProjectOriginalName').value = currentEditData.name;
             document.getElementById('editProjectName').value = currentEditData.name || '';
             document.getElementById('editClientName').value = currentEditData.client || '';
-            document.getElementById('editProjectManager').value = currentEditData.manager || '';
+            var managerSelect = document.getElementById('editProjectManager');
+            // Preserve historical imported assignments when editing other fields.
+            managerSelect.querySelectorAll('[data-historical]').forEach(function(option) { option.remove(); });
+            var managerName = currentEditData.manager || '';
+            if (managerName && !Array.from(managerSelect.options).some(function(option) { return option.value === managerName; })) {
+                var historical = new Option(managerName + ' (current)', managerName);
+                historical.dataset.historical = '1';
+                managerSelect.add(historical);
+            }
+            managerSelect.value = managerName;
             document.getElementById('editPhase').value = currentEditData.phase || 'Planning';
             document.getElementById('editStatus').value = currentEditData.status || 'Ongoing';
             document.getElementById('editStartDate').value = currentEditData.startDate || '';
@@ -1561,7 +1600,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                 return;
             }
             if (!manager) {
-                showFieldError('editProjectManager', 'editProjectManagerError', 'Please enter a project manager name.');
+                showFieldError('editProjectManager', 'editProjectManagerError', 'Please select a project manager.');
                 return;
             }
 
@@ -1644,19 +1683,7 @@ if (actualEnd && actualEnd <= start) {
                 return response.json();
             })
             .then(function(updatedProject) {
-                currentEditData.name = updatedProject.project_name || projectName;
-                currentEditData.client = updatedProject.client_name || clientName;
-                currentEditData.manager = updatedProject.project_manager || manager;
-                currentEditData.phase = phase;
-                currentEditData.status = status;
-                currentEditData.startDate = start;
-                currentEditData.endDate = estEnd;
-                currentEditData.actualEndDate = actualEnd || '';
-                currentEditData.progress = parseFloat(updatedProject.completion_percentage) || 0;
-                currentEditData.startDateDisplay = formatDate(start);
-                currentEditData.estEndDateDisplay = formatDate(estEnd);
-                currentEditData.actualEndDateDisplay = actualEnd ? formatDate(actualEnd) : '—';
-                currentEditData.duration = calculateDuration(start, actualEnd);
+                currentEditData = mapProjectApiRecord(updatedProject);
 
                 updateProjectRow(currentProjectRow, currentEditData);
                 
@@ -1741,11 +1768,11 @@ if (actualEnd && actualEnd <= start) {
         }
 
         function initializeProjectPage() {
-            loadProjectPhases()
+            Promise.all([loadProjectPhases(), loadProjectManagers()])
                 .then(fetchProjects)
                 .catch(function(error) {
                     console.error(error);
-                    showError('Failed to load project phases.');
+                    showError('Failed to load project options. Please refresh the page.');
                 });
             fetchNotifBadge();
         }
@@ -1757,7 +1784,8 @@ if (actualEnd && actualEnd <= start) {
         }
     </script>
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
-    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
+    <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 
+    @include('partials.validation-alert')
 </body>
 </html>

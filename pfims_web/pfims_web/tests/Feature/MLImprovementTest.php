@@ -838,7 +838,7 @@ class MLImprovementTest extends TestCase
         $this->assertSame(3.0, (float) $row->stock_out_quantity_30d);
     }
 
-    public function test_automatic_retraining_hook_captures_each_affected_project_before_coalescing_retraining(): void
+    public function test_data_changes_capture_observations_without_queuing_retraining(): void
     {
         $projectId = $this->insertProject([
             'project_name' => 'Hooked Project',
@@ -849,8 +849,10 @@ class MLImprovementTest extends TestCase
             'status' => 'Ongoing',
         ], 500000, 0);
 
+        \Illuminate\Support\Facades\Queue::fake();
         $service = app(AutomaticModelRetraining::class);
         $service->afterDataChange([$projectId, $projectId]);
+        \Illuminate\Support\Facades\Queue::assertNothingPushed();
 
         $this->assertSame(1, DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)->count());
     }

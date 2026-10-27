@@ -11,6 +11,7 @@ class DashboardLifecycleTest extends TestCase
         $view = file_get_contents(dirname(__DIR__, 2).'/resources/views/dashboard.blade.php');
 
         $this->assertIsString($view);
+        $view = str_replace("\r\n", "\n", $view);
         $this->assertStringContainsString(
             "if (!state.data) return;\n                const size = Number(document.getElementById('pageSize').value);",
             $view

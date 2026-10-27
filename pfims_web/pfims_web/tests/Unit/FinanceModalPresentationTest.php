@@ -169,7 +169,7 @@ class FinanceModalPresentationTest extends TestCase
             'event.stopPropagation();',
             "window.sessionStorage.setItem('pfims_inventory_transaction_to_open', transactionId)",
             "openInventoryExpenseModal(transactionId)",
-            "window.location.assign('/inventory?section=transactions&transaction_id='",
+            "window.pfimsNavigate('/inventory?section=transactions&transaction_id='",
         ] as $contract) {
             $this->assertStringContainsString($contract, $view);
         }
