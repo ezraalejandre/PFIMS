@@ -129,9 +129,21 @@
             <div class="settings-content">
                 <div id="section-trash" class="settings-section" style="display:none;">
                     <div class="section-title">Trash Bin</div>
-                    <p>Deleted records stay here for 30 days. Restore them before their expiry date. Related records are restored together; conflicts never overwrite current data.</p>
-                    <button type="button" class="btn-save" onclick="loadTrash()">Refresh Trash Bin</button>
-                    <div class="table-wrapper"><table data-pfims-standard-actions="off"><thead><tr><th>Record</th><th>Deleted</th><th>Permanent deletion after</th><th>Action</th></tr></thead><tbody id="trashTableBody"></tbody></table></div>
+                    <p>Deleted records are kept for up to 30 days. Restore them before expiry, or empty the Trash Bin to delete them permanently. Related records restore together without overwriting existing data.</p>
+                    <div class="trash-actions" aria-label="Trash Bin actions">
+                        <button type="button" id="restoreAllTrashBtn" class="btn-save pfims-expand-action" data-icon-label="restore" data-pfims-no-expand onclick="openTrashBulkModal('restore-all', this)" aria-label="Restore All" title="Restore All" disabled>
+                            <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 10 5 6l4-4M5 6h8a7 7 0 0 1 7 7v7M4 14v7h11M8 13v4h6"/></svg></span><span class="button-label">Restore All</span>
+                        </button>
+                        <button type="button" id="emptyTrashBtn" class="btn-delete pfims-expand-action" data-icon-label="empty-trash" data-pfims-no-expand onclick="openTrashBulkModal('empty', this)" aria-label="Empty Trash Bin" title="Empty Trash Bin" disabled>
+                            <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></span><span class="button-label">Empty Trash Bin</span>
+                        </button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="trashTable" class="user-table" data-pfims-standard-actions="off">
+                            <thead><tr><th scope="col">Record</th><th scope="col">Deleted</th><th scope="col">Permanent deletion after</th><th scope="col">Action</th></tr></thead>
+                            <tbody id="trashTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- ─── PROFILE ─── -->
@@ -415,6 +427,40 @@
             <div class="modal-footer">
                 <button type="button" class="btn-cancel" onclick="closeConfigDeleteModal()">Cancel</button>
                 <button type="button" id="confirmDeleteConfigBtn" class="btn-delete" onclick="confirmDeleteConfig()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="restoreTrashConfirmModal" class="modal-overlay pfims-restore-confirm" style="display:none; z-index:9999;" role="dialog" aria-modal="true" aria-labelledby="restoreTrashModalTitle" aria-describedby="restoreTrashMessage restoreTrashNote">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="restoreTrashModalTitle">Confirm Restoration</h2>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeTrashRestoreModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="restoreTrashMessage">Are you sure you want to restore this record?</p>
+                <p id="restoreTrashNote">Related records will be restored together. Existing records will not be overwritten.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeTrashRestoreModal()">Cancel</button>
+                <button type="button" id="confirmTrashRestoreBtn" class="btn-save" onclick="confirmTrashAction()">Restore</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="emptyTrashConfirmModal" class="modal-overlay pfims-restore-confirm" style="display:none; z-index:9999;" role="dialog" aria-modal="true" aria-labelledby="emptyTrashModalTitle" aria-describedby="emptyTrashMessage emptyTrashNote">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="emptyTrashModalTitle">Empty Trash Bin</h2>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeEmptyTrashModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="emptyTrashMessage">Are you sure you want to permanently delete all records in your Trash Bin?</p>
+                <p id="emptyTrashNote">This permanently deletes these records and cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeEmptyTrashModal()">Cancel</button>
+                <button type="button" id="confirmEmptyTrashBtn" class="btn-delete" onclick="confirmTrashAction()">Empty Trash Bin</button>
             </div>
         </div>
     </div>
@@ -844,35 +890,152 @@
             if (e.target === this) closeDeleteUserModal();
         });
 
+        var trashEntries = [];
+        var trashLoading = false;
+        var trashLoadVersion = 0;
+        var pendingTrashAction = null;
+        var trashActionInProgress = false;
+
+        function updateTrashActionButtons() {
+            ['restoreAllTrashBtn', 'emptyTrashBtn'].forEach(function(id) {
+                document.getElementById(id).disabled = trashLoading || trashActionInProgress || !trashEntries.length;
+            });
+        }
+
         async function loadTrash() {
             var body = document.getElementById('trashTableBody');
-            body.replaceChildren();
+            var version = ++trashLoadVersion;
+            trashLoading = true;
+            updateTrashActionButtons();
             try {
                 var response = await fetch('/api/trash', {headers:{'Accept':'application/json'}});
                 var result = await response.json();
+                if (version !== trashLoadVersion) return;
                 if (!response.ok) throw new Error(result.message || 'Unable to load Trash Bin.');
-                result.data.forEach(function(entry) {
+                trashEntries = result.data;
+                var rows = document.createDocumentFragment();
+                trashEntries.forEach(function(entry) {
                     var row = document.createElement('tr');
-                    [entry.label, entry.deleted_at, entry.expires_at].forEach(function(value) { var cell=document.createElement('td'); cell.textContent=value; row.appendChild(cell); });
-                    var cell=document.createElement('td'); var button=document.createElement('button'); button.type='button'; button.className='btn-config-action'; button.textContent='Restore';
-                    button.onclick=async function() {
-                        button.disabled=true;
-                        try {
-                            var response=await fetch('/api/trash/'+entry.id+'/restore', {method:'POST',headers:{'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content}});
-                            var result=await response.json();
-                            if (!response.ok) throw new Error(result.message || 'Restore failed.');
-                            showSuccess(result.message); loadTrash();
-                            refreshUsers();
-                            if (isAdmin && currentConfigType !== 'thresholds') fetchConfigItems(currentConfigType);
-                            if (isAdmin) loadSystemSettings();
-                            loadDefaultFilters();
-                        } catch(error) { alert(error.message); button.disabled=false; }
-                    };
-                    cell.appendChild(button); row.appendChild(cell); body.appendChild(row);
+                    [entry.label, entry.deleted_at, entry.expires_at].forEach(function(value) {
+                        var cell = document.createElement('td'); cell.textContent = value; row.appendChild(cell);
+                    });
+                    var cell = document.createElement('td');
+                    var button = document.createElement('button');
+                    button.type = 'button'; button.className = 'btn-config-action'; button.textContent = 'Restore';
+                    button.onclick = function() { openTrashRestoreModal(entry, button); };
+                    cell.appendChild(button); row.appendChild(cell); rows.appendChild(row);
                 });
-                if (!result.data.length) { var row=body.insertRow(); var cell=row.insertCell(); cell.colSpan=4; cell.textContent='Trash Bin is empty.'; }
-            } catch(error) { alert(error.message); }
+                if (!trashEntries.length) {
+                    var row = document.createElement('tr'); var cell = document.createElement('td');
+                    cell.colSpan = 4; cell.textContent = 'Trash Bin is empty.';
+                    row.appendChild(cell); rows.appendChild(row);
+                }
+                body.replaceChildren(rows);
+            } catch(error) {
+                if (version === trashLoadVersion) alert(error.message);
+            } finally {
+                if (version === trashLoadVersion) { trashLoading = false; updateTrashActionButtons(); }
+            }
         }
+
+        function openTrashRestoreModal(entry, button) { openTrashAction('restore', button, entry); }
+        function openTrashBulkModal(type, button) { openTrashAction(type, button); }
+
+        function openTrashAction(type, button, entry) {
+            if (trashActionInProgress || trashLoading || (type !== 'restore' && !trashEntries.length)) return;
+            if (!['restore', 'restore-all', 'empty'].includes(type)) return;
+            var ids = entry ? [entry.id] : trashEntries.map(function(item) { return item.id; });
+            var empty = type === 'empty';
+            var modalId = empty ? 'emptyTrashConfirmModal' : 'restoreTrashConfirmModal';
+            pendingTrashAction = {type:type, ids:ids, button:button, modalId:modalId};
+            var countLabel = ids.length + (ids.length === 1 ? ' record' : ' records');
+            if (empty) {
+                document.getElementById('emptyTrashMessage').textContent = 'Are you sure you want to permanently delete all ' + countLabel + ' in your Trash Bin?';
+            } else {
+                var all = type === 'restore-all';
+                document.getElementById('restoreTrashModalTitle').textContent = all ? 'Confirm Restore All' : 'Confirm Restoration';
+                document.getElementById('restoreTrashMessage').textContent = all
+                    ? 'Are you sure you want to restore all ' + countLabel + ' in your Trash Bin?'
+                    : 'Are you sure you want to restore “' + entry.label + '”?';
+                document.getElementById('restoreTrashNote').textContent = all
+                    ? 'Related records will be restored together. If any record cannot be restored, nothing will be changed.'
+                    : 'Related records will be restored together. Existing records will not be overwritten.';
+                document.getElementById('confirmTrashRestoreBtn').textContent = all ? 'Restore All' : 'Restore';
+            }
+            document.getElementById(modalId).style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            document.querySelector('#' + modalId + ' .btn-cancel').focus();
+        }
+
+        function closeTrashRestoreModal() { closeTrashActionModal('restoreTrashConfirmModal'); }
+        function closeEmptyTrashModal() { closeTrashActionModal('emptyTrashConfirmModal'); }
+
+        function closeTrashActionModal(modalId) {
+            if (trashActionInProgress) return;
+            document.getElementById(modalId).style.display = 'none';
+            document.body.style.overflow = '';
+            if (pendingTrashAction && pendingTrashAction.button.isConnected) pendingTrashAction.button.focus();
+            pendingTrashAction = null;
+        }
+
+        async function confirmTrashAction() {
+            if (!pendingTrashAction || trashActionInProgress) return;
+            var selection = pendingTrashAction;
+            var empty = selection.type === 'empty';
+            var single = selection.type === 'restore';
+            var confirmButton = document.getElementById(empty ? 'confirmEmptyTrashBtn' : 'confirmTrashRestoreBtn');
+            var originalLabel = confirmButton.textContent;
+            var controls = document.querySelectorAll('#' + selection.modalId + ' button');
+            trashActionInProgress = true;
+            updateTrashActionButtons();
+            controls.forEach(function(button) { button.disabled = true; });
+            confirmButton.textContent = empty ? 'Emptying...' : 'Restoring...';
+            var succeeded = false;
+            var outdated = false;
+            var message = '';
+            try {
+                var url = single ? '/api/trash/' + selection.ids[0] + '/restore' : empty ? '/api/trash' : '/api/trash/restore-all';
+                var response = await fetch(url, {
+                    method: empty ? 'DELETE' : 'POST',
+                    headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},
+                    body: JSON.stringify({confirmed:true, ids:selection.ids})
+                });
+                var result = await response.json();
+                if (!response.ok) {
+                    outdated = response.status === 404 || response.status === 410;
+                    throw new Error(result.message || 'Unable to complete the Trash Bin action.');
+                }
+                succeeded = true; message = result.message;
+            } catch(error) {
+                alert(error.message);
+            } finally {
+                trashActionInProgress = false;
+                controls.forEach(function(button) { button.disabled = false; });
+                confirmButton.textContent = originalLabel;
+                updateTrashActionButtons();
+            }
+            if (succeeded) {
+                closeTrashActionModal(selection.modalId);
+                showSuccess(message);
+                loadTrash();
+                if (!empty) {
+                    refreshUsers();
+                    if (isAdmin && currentConfigType !== 'thresholds') fetchConfigItems(currentConfigType);
+                    if (isAdmin) loadSystemSettings();
+                    loadDefaultFilters();
+                }
+            } else if (outdated) {
+                closeTrashActionModal(selection.modalId);
+                loadTrash();
+            }
+        }
+
+        function refreshVisibleTrash() {
+            var section = document.getElementById('section-trash');
+            if (!document.hidden && section.style.display !== 'none' && !trashActionInProgress && !pendingTrashAction) loadTrash();
+        }
+        window.addEventListener('focus', refreshVisibleTrash);
+        document.addEventListener('visibilitychange', refreshVisibleTrash);
 
 
         // ─── CONFIGURATIONS (Dropdown Management) ───
@@ -1370,6 +1533,8 @@
         });
         document.addEventListener('keydown', function(e) {
             if (e.key !== 'Escape') return;
+            if (document.getElementById('emptyTrashConfirmModal').style.display === 'flex') return closeEmptyTrashModal();
+            if (document.getElementById('restoreTrashConfirmModal').style.display === 'flex') return closeTrashRestoreModal();
             if (document.getElementById('configDeleteConfirmModal').style.display === 'flex') return closeConfigDeleteModal();
             if (document.getElementById('configDetailsModal').style.display === 'flex') return closeConfigDetailsModal();
             if (document.getElementById('configItemModal').style.display === 'flex') return closeConfigItemModal();

@@ -63,6 +63,8 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
 
     Route::get('/session/status', fn () => response()->json(['authenticated'=>true]));
     Route::get('/trash', [\App\Http\Controllers\TrashController::class, 'index']);
+    Route::post('/trash/restore-all', [\App\Http\Controllers\TrashController::class, 'restoreAll']);
+    Route::delete('/trash', [\App\Http\Controllers\TrashController::class, 'empty']);
     Route::post('/trash/{id}/restore', [\App\Http\Controllers\TrashController::class, 'restore'])->whereNumber('id');
     Route::get('/settings', [SystemSettingsController::class, 'show']);
     Route::put('/settings', [SystemSettingsController::class, 'update']);

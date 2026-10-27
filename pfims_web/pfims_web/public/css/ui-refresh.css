@@ -6311,20 +6311,54 @@ body.landing-page *::-webkit-scrollbar-track { background: transparent !importan
     max-height: 42px !important;
 }
 
-/* Deletion confirmations share the expense dialog's layout on every page. */
-body .modal-overlay.pfims-delete-confirm {
+/* Trash Bin uses the same padded, left-aligned rows as Settings tables. */
+.settings-page .trash-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+.settings-page .trash-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.settings-page #section-trash > .table-wrapper { margin-top: 20px; }
+.settings-page #trashTable {
+    table-layout: auto;
+    width: 100%;
+    min-width: 800px;
+    border-collapse: collapse;
+}
+.settings-page #trashTable :is(th, td) {
+    text-align: left !important;
+    vertical-align: middle;
+    padding: 14px 16px !important;
+}
+.settings-page #trashTable th { white-space: nowrap; }
+.settings-page #trashTable :is(th, td):first-child {
+    width: 34% !important;
+    min-width: 260px !important;
+    max-width: none !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.settings-page #trashTable :is(th, td):nth-child(2) { min-width: 170px; white-space: nowrap; }
+.settings-page #trashTable :is(th, td):nth-child(3) { min-width: 220px; white-space: nowrap; }
+.settings-page #trashTable :is(th, td):last-child { min-width: 100px; }
+.settings-page #trashTable .btn-config-action { min-height: 36px; padding: 8px 14px; }
+
+/* Delete and restore confirmations share the same dialog layout. */
+body .modal-overlay:is(.pfims-delete-confirm, .pfims-restore-confirm) {
     z-index: 9999 !important;
     justify-content: center !important;
     align-items: center !important;
 }
-body .pfims-delete-confirm .modal-container {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-container {
     width: 400px !important;
     padding: 30px 35px !important;
     display: flex !important;
     flex-direction: column !important;
     text-align: left !important;
 }
-body .pfims-delete-confirm .modal-header {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-header {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
@@ -6333,13 +6367,13 @@ body .pfims-delete-confirm .modal-header {
     padding: 0 0 16px !important;
     border-bottom: 1px solid #eef2f6 !important;
 }
-body .pfims-delete-confirm .modal-header h2 {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-header h2 {
     margin: 0 !important;
     font-size: 1.4rem !important;
     font-weight: 600 !important;
     color: #1a2b3c !important;
 }
-body .pfims-delete-confirm .modal-close {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-close {
     width: auto !important;
     padding: 0 8px !important;
     font-size: 2rem !important;
@@ -6348,19 +6382,19 @@ body .pfims-delete-confirm .modal-close {
     border: 0 !important;
     background: transparent !important;
 }
-body .pfims-delete-confirm .modal-body { padding: 0 2px !important; }
-body .pfims-delete-confirm .modal-body p {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-body { padding: 0 2px !important; }
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-body p {
     margin: 0 0 10px !important;
     font-size: 1rem !important;
     font-weight: 400 !important;
     color: #333 !important;
 }
-body .pfims-delete-confirm .modal-body p:last-child {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-body p:last-child {
     margin-bottom: 20px !important;
     font-size: .85rem !important;
     color: #888 !important;
 }
-body .pfims-delete-confirm .modal-footer {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-footer {
     display: flex !important;
     flex-direction: row !important;
     justify-content: center !important;
@@ -6370,7 +6404,7 @@ body .pfims-delete-confirm .modal-footer {
     padding: 20px 0 0 !important;
     border-top: 1px solid #e9ecef !important;
 }
-body .pfims-delete-confirm .modal-footer button {
+body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-footer button {
     flex: 0 1 auto !important;
     width: auto !important;
     min-width: 0 !important;
@@ -6381,5 +6415,5 @@ body .pfims-delete-confirm .modal-footer button {
     font-weight: 800 !important;
 }
 @media (max-width: 480px) {
-    body .pfims-delete-confirm .modal-container { padding: 24px !important; }
+    body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-container { padding: 24px !important; }
 }
