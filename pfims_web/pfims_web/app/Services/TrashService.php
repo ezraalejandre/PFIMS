@@ -94,6 +94,80 @@ class TrashService
         if ($path && !request()->isMethod('DELETE')) Storage::disk('protected')->delete($path);
     }
 
+    public function restoreAll(array $ids, object $user): int
+    {
+        return DB::transaction(function () use ($ids, $user) {
+            $entries = $this->selectedEntries($ids, $user);
+            // Reverse deletion order also reverses dependent row updates.
+            foreach ($entries as $entry) $this->restore((int) $entry->id, $user);
+            return $entries->count();
+        });
+    }
+
+    public function empty(array $ids, object $user): int
+    {
+        return DB::transaction(function () use ($ids, $user) {
+            $entries = $this->selectedEntries($ids, $user);
+            if (strtolower($user->role) !== 'admin') foreach ($entries as $entry) {
+                $payload = Crypt::decrypt($entry->payload);
+                abort_if(($payload['role'] ?? strtolower($user->role)) !== strtolower($user->role), 403, 'Your current role cannot permanently delete these records. Ask an administrator.');
+            }
+            $count = $this->permanentlyDelete($entries);
+            app(AuditLogService::class)->recordOperation('DELETE', 'Trash Bin', 'trash_entries', 'Permanently emptied '.$count.' deleted records from Trash Bin.');
+            return $count;
+        });
+    }
+
+    private function selectedEntries(array $ids, object $user): \Illuminate\Support\Collection
+    {
+        $query = DB::table('trash_entries')->whereIn('id', $ids);
+        if (strtolower($user->role) !== 'admin') $query->where('deleted_by', $user->id);
+        $entries = $query->orderByDesc('id')->lockForUpdate()->get();
+        abort_unless($entries->count() === count($ids), 404, 'Trash Bin has changed or a record is unavailable. Please try again.');
+        return $entries;
+    }
+
+    private function permanentlyDelete(\Illuminate\Support\Collection $entries): int
+    {
+        $paths = [];
+        foreach ($entries as $entry) {
+            $payload = Crypt::decrypt($entry->payload);
+            foreach (($payload['tables'] ?? $payload) as $rows) foreach ($rows as $change) {
+                if ($change['after'] !== null) continue;
+                foreach (['proof_file_path', 'file_path'] as $field) {
+                    $path = $change['before'][$field] ?? null;
+                    if (is_string($path) && $path !== '' && !str_contains($path, '..') && !str_contains($path, '\\') && !str_starts_with($path, '/')) $paths[$path] = $path;
+                }
+            }
+        }
+        DB::table('trash_entries')->whereIn('id', $entries->pluck('id'))->delete();
+        DB::afterCommit(function () use ($paths) {
+            foreach ($paths as $path) {
+                try {
+                    if (!$this->fileIsRetained($path)) Storage::disk('protected')->delete($path);
+                } catch (\Throwable $error) {
+                    \Illuminate\Support\Facades\Log::warning('Trash attachment cleanup failed; file retained.', ['path' => $path, 'error' => $error->getMessage()]);
+                }
+            }
+        });
+        return $entries->count();
+    }
+
+    private function fileIsRetained(string $path): bool
+    {
+        foreach (['proof_file_path', 'file_path'] as $field) foreach (self::TABLES as $table) {
+            if (Schema::hasColumn($table, $field) && DB::table($table)->where($field, $path)->exists()) return true;
+        }
+        // Another user's recoverable record may share this attachment.
+        foreach (DB::table('trash_entries')->select('payload')->cursor() as $entry) {
+            $payload = Crypt::decrypt($entry->payload);
+            foreach (($payload['tables'] ?? $payload) as $rows) foreach ($rows as $change) {
+                if (($change['before']['proof_file_path'] ?? null) === $path || ($change['before']['file_path'] ?? null) === $path) return true;
+            }
+        }
+        return false;
+    }
+
     public function purgeExpired(): int
     {
         $count = 0;
@@ -102,21 +176,7 @@ class TrashService
                 DB::transaction(function () use ($entry, &$count) {
                     $locked = DB::table('trash_entries')->where('id', $entry->id)->lockForUpdate()->first();
                     if (!$locked || now()->lessThan($locked->expires_at)) return;
-                    $payload = Crypt::decrypt($locked->payload);
-                    $changes = $payload['tables'] ?? $payload;
-                    foreach ($changes as $table => $rows) foreach ($rows as $change) {
-                        if ($change['after'] !== null) continue;
-                        foreach (['proof_file_path','file_path'] as $field) {
-                            $path = $change['before'][$field] ?? null;
-                            if (!$path || str_contains($path, '..') || str_starts_with($path, '/')) continue;
-                            $used = false;
-                            foreach (self::TABLES as $active) {
-                                if (Schema::hasColumn($active, $field) && DB::table($active)->where($field, $path)->exists()) { $used = true; break; }
-                            }
-                            if (!$used) Storage::disk('protected')->delete($path);
-                        }
-                    }
-                    DB::table('trash_entries')->where('id', $entry->id)->delete();
+                    $this->permanentlyDelete(collect([$locked]));
                     $count++;
                 });
             }
