@@ -152,6 +152,7 @@ class ProjectCostOptimizationService extends MLService
 
         $progress('Step 2: compare linear, regularized linear, and locally trained SVR.');
         $models = [$best];
+        $models[] = $this->trial($training, $features, 'least_squares_linear_regression');
         foreach ([0.01, 0.1, 1.0, 10.0] as $alpha) {
             $models[] = $this->trial($training, $features, 'ridge_linear_regression', compact('alpha'));
         }

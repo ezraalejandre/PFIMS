@@ -12,6 +12,7 @@ use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\ProjectCostAugmentationDataset;
 use App\Services\ML\ProjectCostOptimizationService;
 use App\Services\ML\RidgeRegression;
+use App\Services\ML\StableLeastSquares;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -1963,10 +1964,10 @@ class MLService
         });
     }
 
-    /** Keep LeastSquares, without random changes, using deterministic feature selection/scaling. */
+    /** Ordinary least squares stays stable when supplied inputs overlap mathematically. */
     protected function buildLeastSquaresModel(Collection $records, array $featureNames = self::BASE_FEATURE_NAMES): array
     {
-        return $this->buildRegressionModel(new LeastSquares, $records, $featureNames);
+        return $this->buildRegressionModel(new StableLeastSquares, $records, $featureNames);
     }
 
     protected function buildSvrModel(Collection $records, array $featureNames, array $parameters = []): array

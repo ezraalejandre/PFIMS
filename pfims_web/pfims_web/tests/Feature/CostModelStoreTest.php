@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Services\ML\CostModelStore;
 use App\Services\ML\PortableRbfSvr;
 use App\Services\ML\RidgeRegression;
+use App\Services\ML\StableLeastSquares;
 use App\Services\MLService;
 use Illuminate\Support\Facades\File;
 use Phpml\ModelManager;
@@ -15,6 +16,18 @@ use Tests\TestCase;
 
 class CostModelStoreTest extends TestCase
 {
+    public function test_stable_least_squares_restores_as_an_ordinary_linear_model(): void
+    {
+        $model = new StableLeastSquares;
+        $model->train([[0, 0], [1, 2], [2, 4]], [10, 20, 30]);
+        $store = new CostModelStore($this->path, 10);
+        $store->save($model, ['transformer' => ['feature_names' => ['budget', 'worker_count'],
+            'selected_feature_indexes' => [0, 1], 'ranges' => [['min' => 0, 'max' => 1], ['min' => 0, 'max' => 1]]]]);
+        $pair = $store->load();
+        $this->assertSame('least_squares_linear_regression', $pair['metadata']['model_type']);
+        $this->assertEqualsWithDelta(40, $pair['model']->predict([3, 6]), 1e-9);
+    }
+
     public function test_saved_final_cost_comparison_does_not_add_spending_twice_for_snapshot_observations(): void
     {
         $model = new LeastSquares;
