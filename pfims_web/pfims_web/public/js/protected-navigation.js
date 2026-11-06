@@ -11,7 +11,10 @@
     var navigationType = performance.getEntriesByType('navigation')[0]?.type || 'navigate';
     var allowedEntry = settings.dataset.navigationGranted === '1' || navigationType === 'reload';
     var resumeReady = allowedEntry ? nativeFetch('/session/resume',{method:'POST',signal:AbortSignal.timeout(10000),headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify({mode:navigationType==='reload'?'reload':'navigate'})}).then(async function(response) {
-        if (!response.ok) throw new Error('Session ended');
+        if (!response.ok) {
+            try { window.pfimsRememberSessionExpiry?.(await response.clone().json()); } catch (error) {}
+            throw new Error('Session ended');
+        }
         pageNonce = (await response.json()).page_nonce;
         document.getElementById('pfims-session-privacy')?.remove();
         document.documentElement.style.visibility = 'visible';

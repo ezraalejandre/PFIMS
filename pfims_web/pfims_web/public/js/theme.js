@@ -1,4 +1,10 @@
 (function () {
+    window.pfimsRememberSessionExpiry = function (payload) {
+        if (payload?.reason !== 'inactivity' || !(Number(payload.inactivity_seconds) > 0)) return;
+        try {
+            window.sessionStorage.setItem('pfims-inactivity-notice', JSON.stringify({ seconds: Number(payload.inactivity_seconds), at: Date.now() }));
+        } catch (error) { /* The server flash remains available when browser storage is blocked. */ }
+    };
     const themeScript = document.currentScript;
     // Authenticated pages must begin behind the shared loading surface.  The
     // theme script runs in the document head, before the body and deferred

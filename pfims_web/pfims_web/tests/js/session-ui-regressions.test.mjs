@@ -71,3 +71,16 @@ test('GET forms read the action attribute even when a field named action shadows
     onSubmit({defaultPrevented:false,target:form,preventDefault(){}});
     assert.equal(target,'https://pfims.test/audit-logs?action=CREATE');
 });
+
+test('inactivity notice survives simultaneous expired requests and is consumed once',()=>{
+    let stored;const sessionStorage={setItem:(key,value)=>stored=value,getItem:()=>stored,removeItem:()=>stored=null};
+    const start=theme.indexOf('    window.pfimsRememberSessionExpiry');
+    vm.runInNewContext(theme.slice(start,theme.indexOf('    const themeScript',start))+
+        "window.pfimsRememberSessionExpiry({reason:'inactivity',inactivity_seconds:60});",{window:{sessionStorage}});
+    const notices=[];const window={sessionStorage,showPfimsAlert:message=>notices.push(message)};
+    const initStart=ui.indexOf('    function initializeSystemUi()');
+    const landing=ui.slice(initStart,ui.indexOf("        document.querySelectorAll('header",initStart))+'\n}\ninitializeSystemUi();';
+    const document={body:{classList:{contains:()=>true},dataset:{}}};
+    vm.runInNewContext(landing,{window,document});vm.runInNewContext(landing,{window,document});
+    assert.equal(notices.length,1);assert.match(notices[0],/1 minute of inactivity/);
+});
