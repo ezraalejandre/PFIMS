@@ -8,7 +8,10 @@
     function checkAccountSession() {
         if (document.hidden) return;
         fetch('/api/session/status', {headers:{'Accept':'application/json'},cache:'no-store'}).then(function(response) {
-            if (response.status === 401) window.location.replace('/');
+            if (response.status === 401) {
+                return response.clone().json().then(function (payload) { window.pfimsRememberSessionExpiry?.(payload); })
+                    .catch(function () {}).finally(function () { window.location.replace('/'); });
+            }
         }).catch(function() {});
     }
     if (window.location.pathname !== '/') {
@@ -1747,6 +1750,11 @@
     function initializeSystemUi() {
         if (document.body.classList.contains('landing-page')) {
             var seconds = Number(document.body.dataset.inactivityTimeoutSeconds || 0);
+            try {
+                var notice = JSON.parse(window.sessionStorage.getItem('pfims-inactivity-notice') || 'null');
+                window.sessionStorage.removeItem('pfims-inactivity-notice');
+                if (!seconds && notice && Date.now() - notice.at < 300000) seconds = Number(notice.seconds || 0);
+            } catch (error) {}
             if (seconds > 0) {
                 var duration = seconds % 60 === 0
                     ? (seconds / 60) + (seconds === 60 ? ' minute' : ' minutes')
