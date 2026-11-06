@@ -26,7 +26,7 @@
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
-<body class="dashboard-page audit-logs-page" data-portal="admin" data-default-filter-module="audit-logs" data-latest-audit-id="{{ $latestAuditId }}" data-pfims-wait-for-ready="true">
+<body class="dashboard-page audit-logs-page" data-portal="admin" data-default-filter-module="audit-logs" data-latest-audit-id="{{ $latestAuditId }}">
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="PFIMS logo">
@@ -174,18 +174,6 @@
                 params.set('page', '1');
                 window.pfimsNavigate(window.location.pathname + '?' + params.toString());
             });
-
-            function releaseInitialLoader() {
-                var state = document.body.dataset.pfimsDefaultFilters;
-                if (state === 'loading' || !state) {
-                    window.setTimeout(releaseInitialLoader, 40);
-                    return;
-                }
-                if (applyFilters()) return;
-                document.documentElement.dataset.pfimsPageReady = 'true';
-                document.dispatchEvent(new CustomEvent('pfims:page-ready'));
-            }
-            window.addEventListener('load', releaseInitialLoader, { once: true });
 
             var latestId = Number(document.body.dataset.latestAuditId || 0);
             window.setInterval(function () {

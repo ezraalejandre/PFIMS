@@ -10,7 +10,7 @@
     var nativeFetch = window.fetch.bind(window);
     var navigationType = performance.getEntriesByType('navigation')[0]?.type || 'navigate';
     var allowedEntry = settings.dataset.navigationGranted === '1' || navigationType === 'reload';
-    var resumeReady = allowedEntry ? nativeFetch('/session/resume',{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify({mode:navigationType==='reload'?'reload':'navigate'})}).then(async function(response) {
+    var resumeReady = allowedEntry ? nativeFetch('/session/resume',{method:'POST',signal:AbortSignal.timeout(10000),headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify({mode:navigationType==='reload'?'reload':'navigate'})}).then(async function(response) {
         if (!response.ok) throw new Error('Session ended');
         pageNonce = (await response.json()).page_nonce;
         document.getElementById('pfims-session-privacy')?.remove();
@@ -59,7 +59,7 @@
         var form=event.target;
         if ((form.getAttribute('method')||'GET').toUpperCase()==='GET') {
             event.preventDefault();
-            var target=new URL(form.action,window.location.origin);
+            var target=new URL(form.getAttribute('action') || window.location.href,window.location.href);
             target.search=new URLSearchParams(new FormData(form)).toString();
             window.pfimsNavigate(target.href);
         } else internalNavigation=true;

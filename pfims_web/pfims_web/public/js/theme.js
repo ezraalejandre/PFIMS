@@ -13,10 +13,18 @@
         document.documentElement.classList.add('pfims-preload');
         if (window.fetch && !window.fetch.__pfimsPageGateTracked) {
             const originalFetch = window.fetch;
-            const trackedFetch = function () {
-                if (pageGate.active) pageGate.pending += 1;
-                return originalFetch.apply(this, arguments).finally(function () {
-                    if (!pageGate.active) return;
+            const trackedFetch = function (input, options) {
+                const tracked = pageGate.active;
+                if (tracked) pageGate.pending += 1;
+                // Initial read requests must settle even if an optional endpoint stalls.
+                const method = options?.method || (typeof input === 'object' && input.method) || 'GET';
+                if (tracked && method.toUpperCase() === 'GET') {
+                    const callerSignal = options?.signal || (typeof input === 'object' && input.signal);
+                    const timeoutSignal = AbortSignal.timeout(15000);
+                    options = Object.assign({}, options, { signal: callerSignal ? AbortSignal.any([callerSignal, timeoutSignal]) : timeoutSignal });
+                }
+                return originalFetch.call(this, input, options).finally(function () {
+                    if (!tracked) return;
                     pageGate.pending = Math.max(0, pageGate.pending - 1);
                     window.dispatchEvent(new CustomEvent('pfims:page-fetch-settled'));
                 });

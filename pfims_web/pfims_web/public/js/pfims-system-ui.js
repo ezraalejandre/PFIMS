@@ -11,8 +11,10 @@
             if (response.status === 401) window.location.replace('/');
         }).catch(function() {});
     }
-    window.setInterval(checkAccountSession, 15000);
-    document.addEventListener('visibilitychange', function() { if (!document.hidden) checkAccountSession(); });
+    if (window.location.pathname !== '/') {
+        window.setInterval(checkAccountSession, 15000);
+        document.addEventListener('visibilitychange', function() { if (!document.hidden) checkAccountSession(); });
+    }
 
 
     function installHeaderClock() {
@@ -64,7 +66,7 @@
             alert.id = 'pfimsGlobalAlert';
             alert.setAttribute('role', 'alert');
             alert.setAttribute('aria-live', 'polite');
-            alert.innerHTML = '<span class="pfims-alert-icon" aria-hidden="true"></span><span class="pfims-alert-message"></span><button type="button" class="pfims-alert-close" aria-label="Close alert">&times;</button>';
+            alert.innerHTML = '<span class="pfims-alert-icon" aria-hidden="true"></span><span class="pfims-alert-message"></span><button type="button" class="pfims-alert-close" data-pfims-no-expand aria-label="Close alert">&times;</button>';
             alert.querySelector('.pfims-alert-close').addEventListener('click', function () { alert.removeAttribute('data-visible'); });
             document.body.appendChild(alert);
         }
@@ -197,7 +199,7 @@
         var module = currentDefaultFilterModule();
         if (!module || document.body.classList.contains('settings-page')) return;
         document.body.dataset.pfimsDefaultFilters = 'loading';
-        fetch('/api/default-filters', { headers: { Accept: 'application/json' } })
+        fetch('/api/default-filters', { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) })
             .then(function (response) { return response.ok ? response.json() : {}; })
             .then(function (allDefaults) {
                 var defaults = allDefaults[module] || {};
@@ -1086,7 +1088,8 @@
     function installExpandableActionButtons() {
         document.querySelectorAll('button, a').forEach(function (control) {
             if (control.dataset.pfimsActionLabel === 'ready' || control.hasAttribute('data-pfims-no-expand')
-                || control.matches('.pfims-select-trigger')
+                || control.matches('.pfims-select-trigger, .pfims-alert-close')
+                || /\b(close|dismiss)\b/i.test(control.getAttribute('aria-label') || '')
                 || control.closest('.sidebar, .pagination-links, .pfims-select-options, .pfims-column-chooser-menu')) return;
 
             var visibleText = (control.textContent || '').replace(/\s+/g, ' ').trim();
@@ -1095,7 +1098,8 @@
             var type = /(?:^|\s)\+?\s*(add|new)\b/i.test(candidate) ? 'add'
                 : /\bimport\b/i.test(candidate) ? 'import'
                 : /\b(export|configure export)\b/i.test(candidate) ? 'export'
-                : (/\bclear(?:\s+filters?)?\b/i.test(candidate) || /^\s*(x|✕|×)\s*$/i.test(visibleText)) ? 'clear'
+                : (/\bclear(?:\s+filters?)?\b/i.test(candidate) || (/^\s*(x|✕|×)\s*$/i.test(visibleText)
+                    && control.closest('.pfims-filter-panel, .filters-bar, .filter-row, .filters-grid, .history-filters'))) ? 'clear'
                 : '';
             if (!type) return;
             if (type === 'clear' && control.closest('.modal-overlay, dialog, [role="dialog"]')) return;
@@ -1741,6 +1745,17 @@
     }
 
     function initializeSystemUi() {
+        if (document.body.classList.contains('landing-page')) {
+            var seconds = Number(document.body.dataset.inactivityTimeoutSeconds || 0);
+            if (seconds > 0) {
+                var duration = seconds % 60 === 0
+                    ? (seconds / 60) + (seconds === 60 ? ' minute' : ' minutes')
+                    : seconds + (seconds === 1 ? ' second' : ' seconds');
+                window.showPfimsAlert('You were logged out after ' + duration + ' of inactivity. Please sign in again.', 'warning', 12000);
+            }
+            return;
+        }
+
         document.querySelectorAll('header a[href*="notification"] span:not(.pfims-notification-count), .top-header a[href*="notification"] span:not(.pfims-notification-count)').forEach(function (label) {
             label.classList.add('sr-only');
             label.textContent = 'Open alerts';

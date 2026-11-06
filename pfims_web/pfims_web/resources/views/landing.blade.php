@@ -6,6 +6,8 @@
     <title>Landing Page</title>
 
     <link rel="stylesheet" href="{{ asset('css/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/pfims-alert.css') }}?v={{ filemtime(public_path('css/pfims-alert.css')) }}">
+    <script src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}" defer></script>
 
     <style>
         .otp-links {
@@ -168,7 +170,7 @@
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
 </head>
-<body class="landing-page">
+<body class="landing-page" data-inactivity-timeout-seconds="{{ session()->pull('inactivity_timeout_seconds', 0) }}">
 
     <!-- ─── ERROR / SUCCESS NOTIFICATION ─── -->
     <div id="errorNotification" class="error-notification" style="display: none;">

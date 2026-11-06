@@ -65,7 +65,7 @@ function setup(defaults, initialOptions = ['all', 'Delayed'], module = 'projects
         querySelector: () => null,
         createElement: tag => element(tag.toUpperCase()),
     };
-    const context = {
+    const context = { AbortSignal,
         document,
         window: { setTimeout: callback => callback() },
         fetch: async () => ({ ok: true, json: async () => ({ [module]: defaults }) }),
