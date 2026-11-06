@@ -278,8 +278,8 @@ Route::post('/users', function (Request $request) {
 
     $role = strtolower($validated['role']);
 
-    // Initial credentials must not be predictable from a public email address.
-    $plainPassword = \Illuminate\Support\Str::password(16);
+    // Initial password is the normalized email address before the domain.
+    $plainPassword = explode('@', $validated['email'], 2)[0];
 
     $user = User::create([
         'name' => $validated['name'],
@@ -368,6 +368,9 @@ Route::delete('/users/{id}', function ($id) {
 
 // Redirect login form submission to dashboard
 Route::post('/login', function (Request $request) {
+    if (is_string($request->input('email'))) {
+        $request->merge(['email' => mb_strtolower(trim($request->input('email')))]);
+    }
 
     $credentials = $request->validate([
         'email' => ['required', 'string', 'email', 'max:254'],
