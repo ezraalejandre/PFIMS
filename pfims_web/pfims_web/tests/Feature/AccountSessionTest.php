@@ -32,4 +32,26 @@ class AccountSessionTest extends FirstLoginVerificationTest {
         $this->travel(config('session.account_lease_seconds')+1)->seconds();
         $this->getJson('/api/session/status')->assertUnauthorized();$this->actingAs($user);$this->getJson('/api/session/status')->assertOk();
     }
+    public function test_inactivity_expiry_reports_the_configured_duration_on_the_login_page_once(): void {
+        config(['session.account_lease_seconds' => 90]);
+        $user=User::factory()->create(['role'=>'admin','status'=>'Active']);
+        $this->actingAs($user);
+        $this->travel(91)->seconds();
+        $this->getJson('/api/session/status')->assertUnauthorized()
+            ->assertJsonPath('reason', 'inactivity')->assertJsonPath('inactivity_seconds', 90)
+            ->assertSessionHas('inactivity_timeout_seconds', 90);
+        $this->assertGuest();
+        $this->get('/')->assertOk()->assertSee('data-inactivity-timeout-seconds="90"', false)->assertSee('css/pfims-alert.css');
+        $this->get('/')->assertOk()->assertSee('data-inactivity-timeout-seconds="0"', false);
+    }
+    public function test_html_inactivity_redirect_keeps_the_notice_but_stale_credentials_do_not(): void {
+        $user=User::factory()->create(['role'=>'admin','status'=>'Active']);
+        $this->actingAs($user);
+        $this->travel(config('session.account_lease_seconds')+1)->seconds();
+        $this->get('/settings')->assertRedirect('/')->assertSessionHas('inactivity_timeout_seconds', 60);
+        $this->get('/')->assertOk();
+        $this->actingAs($user)->withSession(['account_session_token'=>'wrong']);
+        $this->getJson('/api/session/status')->assertUnauthorized()
+            ->assertJsonPath('reason', 'session_ended')->assertSessionMissing('inactivity_timeout_seconds');
+    }
 }

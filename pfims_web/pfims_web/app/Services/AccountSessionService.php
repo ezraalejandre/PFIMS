@@ -23,6 +23,15 @@ class AccountSessionService {
         if (!$active->closing_at) DB::table('account_sessions')->where('user_id',$user->id)->where('token_hash',hash('sha256',$token))->update(['expires_at'=>now()->addSeconds((int)config('session.account_lease_seconds',60))]);
         return true;
     }
+    public function inactivityTimeoutSeconds(object $user, ?string $token): ?int {
+        if (! $token) return null;
+        $active = DB::table('account_sessions')->where('user_id', $user->id)->first();
+        if (! $active || $active->closing_at || now()->lessThan($active->expires_at)
+            || ! hash_equals($active->token_hash, hash('sha256', $token))
+            || ! hash_equals($active->credential_hash, hash('sha256', $user->password))) return null;
+
+        return (int) config('session.account_lease_seconds', 60);
+    }
     public function release(?object $user, ?string $token): void {
         if($user && $token)DB::table('account_sessions')->where('user_id',$user->id)->where('token_hash',hash('sha256',$token))->delete();
     }

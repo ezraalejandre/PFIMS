@@ -152,7 +152,7 @@ class AuditLogsAndDefaultFiltersTest extends TestCase
             ->assertDontSee('Apply filters')
             ->assertSee("form.requestSubmit()", false)
             ->assertSee('data-pfims-page-size="ready"', false)
-            ->assertSee('data-pfims-wait-for-ready="true"', false)
+            ->assertDontSee('data-pfims-wait-for-ready="true"', false)
             ->assertSee('if (requested === current) return false;', false)
             ->assertSee('/audit-logs/latest', false)
             ->assertSee('pagination-wrapper');
