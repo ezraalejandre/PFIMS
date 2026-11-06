@@ -503,7 +503,7 @@
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                                 <div>
                                     <h3 style="margin:0; font-size:1.1rem;">User Created</h3>
-                                    <div style="font-size:0.9rem; color:#666;">A random initial password will be shown after creating the account. Share it securely with the user.</div>
+                                    <div style="font-size:0.9rem; color:#666;">The initial password is the part of the user’s email before @. Share it securely with the user.</div>
                                 </div>
                             </div>
                             <div style="margin-top:10px;">

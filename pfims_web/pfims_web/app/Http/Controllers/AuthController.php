@@ -8,54 +8,34 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
 
-public function login(Request $request)
-{
-    $request->validate(['email'=>['required','string','email','max:254'],'password'=>['required','string','max:4096']]);
+    public function login(Request $request)
+    {
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => mb_strtolower(trim($request->input('email')))]);
+        }
+        $credentials = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:254'],
+            'password' => ['required', 'string', 'max:4096'],
+        ]);
+        $user = User::where('email', $credentials['email'])->first();
+        if (! $user || $user->status !== 'Active' || ! Hash::check($credentials['password'], $user->password)) {
+            return response()->json(['success' => false, 'message' => 'Invalid email or password'], 401);
+        }
+        if ($user->first_login_verification_required) {
+            return response()->json(['success' => false, 'message' => 'Complete first-login verification through the sign-in page.'], 403);
+        }
 
-    $user = User::where(
-        'email',
-        $request->email
-    )->first();
+        $accountToken = app(\App\Services\AccountSessionService::class)->claim($user, $request->session()->get('account_session_token'));
+        \Illuminate\Support\Facades\Auth::login($user);
+        $request->session()->regenerate();
+        $request->session()->put('account_session_token', $accountToken);
+        $request->session()->put('navigation_epoch', bin2hex(random_bytes(16)));
 
-
-    if(!$user){
-
-      if ($user->first_login_verification_required) return response()->json(['message'=>'Complete first-login verification through the sign-in page.'],403);
-    $accountToken = app(\App\Services\AccountSessionService::class)->claim($user, $request->session()->get('account_session_token'));
-    \Illuminate\Support\Facades\Auth::login($user);
-    $request->session()->regenerate();
-    $request->session()->put('account_session_token', $accountToken);
-    $request->session()->put('navigation_epoch', bin2hex(random_bytes(16)));
-      return response()->json([
-            "success"=>false,
-            "message"=>"Invalid email or password"
-        ],401);
-
-    }
-
-
-   
-    if ($user->status !== 'Active' || !Hash::check($request->password, $user->password)) {
         return response()->json([
-            "success" => false,
-            "message" => "Invalid email or password"
-        ], 401);
+            'success' => true,
+            'user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => $user->role],
+        ]);
     }
-
-
-      return response()->json([
-        "success" => true,
-        "user" => [
-            "id" => $user->id,
-            "name" => $user->name,
-            "email" => $user->email,
-            "role" => $user->role,
-        ]
-    ]);
-
-}
-
-
 
 // public function profile(Request $request)
 // {

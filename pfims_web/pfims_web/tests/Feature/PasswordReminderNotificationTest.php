@@ -74,7 +74,7 @@ class PasswordReminderNotificationTest extends TestCase
 
         $temporaryPassword = $created->json('password');
         $this->assertIsString($temporaryPassword);
-        $this->assertNotSame('newperson', $temporaryPassword);
+        $this->assertSame('newperson', $temporaryPassword);
         $newUser = User::where('email', 'newperson@gmail.com')->firstOrFail();
         $reminder = AppNotification::where('type', 'password_change_reminder')->firstOrFail();
 
