@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -90,7 +90,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -106,7 +106,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -206,14 +206,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── PROJECT TRACKING PAGE SPECIFIC ─── */
+/* Project tracking page specific */
 
 /* Page Header with New Project Button */
 .page-header-with-btn {
@@ -287,7 +287,7 @@ body {
     color: #888;
 }
 
-/* ─── TABLE ─── */
+/* Table */
 .table-wrapper {
     background: #fff;
     border-radius: 16px;
@@ -335,7 +335,7 @@ body {
     border-bottom: none;
 }
 
-/* ─── STATUS BADGES (Transparent) ─── */
+/* Status badges (transparent) */
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -401,7 +401,7 @@ body {
     color: #2e7d32;
 }
 
-/* ─── SUCCESS NOTIFICATION ─── */
+/* Success notification */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -456,7 +456,7 @@ body {
     }
 }
 
-/* ─── MODAL OVERLAY (Centered Floating) ─── */
+/* Modal overlay (centered floating) */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -500,13 +500,13 @@ body {
     }
 }
 
-/* ─── UPDATE PROJECT MODAL ─── */
+/* Update project modal */
 .modal-update .modal-container {
     width: 800px;
     max-width: 95%;
 }
 
-/* ─── MODAL HEADER ─── */
+/* Modal header */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -541,7 +541,7 @@ body {
     color: #333;
 }
 
-/* ─── STEP INDICATOR (Numbered) ─── */
+/* Step indicator (numbered) */
 .step-indicator {
     display: flex;
     gap: 0;
@@ -595,7 +595,7 @@ body {
     background: #2e7d32;
 }
 
-/* ─── MODAL STEPS ─── */
+/* Modal steps */
 .modal-step {
     flex: 1;
     display: flex;
@@ -615,7 +615,7 @@ body {
     margin-top: 0;
 }
 
-/* ─── FORM ELEMENTS ─── */
+/* Form elements */
 .form-group {
     margin-bottom: 18px;
 }
@@ -662,7 +662,7 @@ body {
     margin-bottom: 18px;
 }
 
-/* ─── SUMMARY (Vertical List) ─── */
+/* Summary (vertical list) */
 .summary-list {
     background: #f8f6f2;
     padding: 20px 24px;
@@ -695,7 +695,7 @@ body {
     font-weight: 500;
 }
 
-/* ─── MODAL FOOTER ─── */
+/* Modal footer */
 .modal-footer {
     display: flex;
     justify-content: space-between;
@@ -765,7 +765,7 @@ body {
     transform: translateY(-1px);
 }
 
-/* ─── DELETE BUTTON ─── */
+/* Delete button */
 .btn-delete {
     background: #d32f2f;
     color: #fff;
@@ -783,7 +783,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── UPDATE PROJECT OVERVIEW ─── */
+/* Update project overview */
 .project-details-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -832,7 +832,7 @@ body {
     color: #666;
 }
 
-/* ─── EDIT PROJECT BUTTON ─── */
+/* Edit project button */
 .btn-edit-project {
     background: #c9a96e;
     color: #fff;
@@ -850,7 +850,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;
@@ -991,7 +991,7 @@ body {
     }
 }
 
-/* ─── PAGINATION ─── */
+/* Pagination */
 .pagination-wrapper {
     display: flex;
     justify-content: space-between;
@@ -1046,7 +1046,7 @@ body {
     cursor: default;
 }
 
-/* ─── SEARCH BAR ─── */
+/* Search bar */
 .search-bar-wrapper {
     margin-bottom: 20px;
 }

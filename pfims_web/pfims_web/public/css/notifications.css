@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -90,7 +90,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -106,7 +106,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -206,14 +206,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── NOTIFICATIONS PAGE SPECIFIC ─── */
+/* Notifications page specific */
 
 /* Page Header */
 .page-header {
@@ -237,7 +237,7 @@ body {
     margin-top: 2px;
 }
 
-/* ─── NOTIFICATION ACTIONS ─── */
+/* Notification actions */
 .notif-actions {
     display: flex;
     gap: 12px;
@@ -278,7 +278,7 @@ body {
     border-color: #d32f2f;
 }
 
-/* ─── TABS ─── */
+/* Tabs */
 .notif-tabs {
     display: flex;
     gap: 8px;
@@ -309,7 +309,7 @@ body {
     border-color: #1a2b3c;
 }
 
-/* ─── NOTIFICATION SECTIONS ─── */
+/* Notification sections */
 .notif-section {
     margin-bottom: 30px;
 }
@@ -323,7 +323,7 @@ body {
     border-bottom: 2px solid #f0ebe2;
 }
 
-/* ─── NOTIFICATION ITEMS ─── */
+/* Notification items */
 .notif-item {
     display: flex;
     align-items: flex-start;
@@ -382,7 +382,7 @@ body {
     margin-bottom: 6px;
 }
 
-/* ─── ERROR NOTIFICATION ─── */
+/* Error notification */
 .error-notification {
     position: fixed;
     top: 80px;
@@ -426,7 +426,7 @@ body {
     opacity: 1;
 }
 
-/* ─── SUCCESS NOTIFICATION ─── */
+/* Success notification */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -481,7 +481,7 @@ body {
     }
 }
 
-/* ─── MODAL OVERLAY ─── */
+/* Modal overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -602,7 +602,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;

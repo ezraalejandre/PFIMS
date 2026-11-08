@@ -262,16 +262,16 @@
 </head>
 <body class="inventory-page" data-portal="{{ $portal }}">
 
-    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <!-- Error notification (pop-up) -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
-            <span class="error-icon">⚠</span>
+            <span class="error-icon">!</span>
             <span id="errorMessage">An error occurred. Please try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <!-- Success notification (pop-up) -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -280,7 +280,7 @@
         </div>
     </div>
 
-    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+    <!-- Delete confirmation modal -->
     <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -302,7 +302,7 @@
         </div>
     </div>
 
-    <!-- ─── EXPENSE CONFIRMATION MODAL ─── -->
+    <!-- Expense confirmation modal -->
     <div id="expenseConfirmModal" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -324,7 +324,7 @@
         </div>
     </div>
 
-    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <!-- Full-width header (fixed) -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -345,7 +345,7 @@
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
+    <!-- Sidebar -->
     <aside class="sidebar">
                 <nav>
             <ul>
@@ -377,7 +377,7 @@
         </div>
     </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
+    <!-- Main content -->
     <main class="main-content">
 
         <!-- Page Header -->
@@ -391,7 +391,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 1: ITEMS ─── -->
+        <!-- Tab 1: items -->
         <div id="tabItems" class="tab-content active">
             <!-- Filters Bar -->
             <div class="filters-bar">
@@ -469,7 +469,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 2: TRANSACTIONS ─── -->
+        <!-- Tab 2: transactions -->
         <div id="tabTransactions" class="tab-content">
             <!-- Filters Bar -->
             <div class="filters-bar">
@@ -529,7 +529,7 @@
 
     </main>
 
-    <!-- ─── ADD ITEM MODAL ─── -->
+    <!-- Add item modal -->
     <div id="addItemModal" class="modal-overlay modal-add-item">
         <div class="modal-container">
             <div class="modal-header">
@@ -610,7 +610,7 @@
         </div>
     </div>
 
-    <!-- ─── ITEM DETAIL MODAL ─── -->
+    <!-- Item detail modal -->
     <div id="itemDetailModal" class="modal-overlay modal-view">
         <div class="modal-container">
             <div class="modal-header">
@@ -661,7 +661,7 @@
         </div>
     </div>
 
-    <!-- ─── EDIT ITEM MODAL ─── -->
+    <!-- Edit item modal -->
     <div id="editItemModal" class="modal-overlay modal-add-item">
         <div class="modal-container">
             <div class="modal-header">
@@ -708,7 +708,7 @@
         </div>
     </div>
 
-    <!-- ─── VIEW/EDIT TRANSACTION MODAL ─── -->
+    <!-- View/edit transaction modal -->
     <div id="viewModal" class="modal-overlay modal-view">
         <div class="modal-container">
             <div class="modal-header">
@@ -788,7 +788,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD TRANSACTION MODAL ─── -->
+    <!-- Add transaction modal -->
     <div id="transactionModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
@@ -806,7 +806,7 @@
                 </span>
             </div>
 
-            <!-- ─── STEP 1: Transaction Details ─── -->
+            <!-- Step 1: transaction details -->
             <div class="modal-step" id="step1">
                 <h3>Item Information</h3>
 
@@ -916,7 +916,7 @@
                 </div>
             </div>
 
-            <!-- ─── STEP 2: Review ─── -->
+            <!-- Step 2: review -->
             <div class="modal-step" id="step2" style="display: none;">
                 <h3>Review transaction details</h3>
 
@@ -995,7 +995,7 @@
             return Number.isFinite(price) ? '₱' + price.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
         }
 
-        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        // Button loading state (prevents double-click / double-submit)
         function setButtonLoading(button, isLoading, loadingText) {
             if (!button) return;
             if (isLoading) {
@@ -1031,7 +1031,7 @@
             });
         }
 
-                // ─── NOTIFICATION FUNCTIONS ──────────────────────────────────
+                // Notification functions
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -1134,7 +1134,7 @@
             }
         });
 
-        // ─── EXPENSE CONFIRM MODAL ───
+        // Expense confirm modal
         function openExpenseConfirmModal(message, callback) {
             document.getElementById('expenseConfirmMessage').textContent = message || 'Are you sure you want to create an expense for this item?';
             expenseConfirmCallback = callback;
@@ -1161,7 +1161,7 @@
             }
         });
 
-        // ─── INVENTORY TABS ──────────────────────────────────────────
+        // Inventory tabs
         function switchInventoryTab(el, tab) {
             document.getElementById('tabItems').classList.remove('active');
             document.getElementById('tabTransactions').classList.remove('active');
@@ -1181,7 +1181,7 @@
             }
         }
 
-        // ─── UPDATE STATS CARDS ──────────────────────────────────────
+        // Update stats cards
         function updateStats(transactions, items, categories) {
             var uniqueItems = new Set();
             transactions.forEach(function(t) {
@@ -1222,7 +1222,7 @@
             }
         }
 
-        // ─── LOAD LOOKUP DATA ────────────────────────────────────────
+        // Load lookup data
         function loadLookupData() {
             return fetch('/api/inventory/lookup-data', {
                 headers: { 
@@ -1244,7 +1244,7 @@
             });
         }
 
-        // ─── POPULATE ALL DROPDOWNS ──────────────────────────────────
+        // Populate all dropdowns
         function populateAllDropdowns() {
             populateAddItemDropdowns();
             populateTransactionItemSelect();
@@ -1281,7 +1281,7 @@
             }
         }
 
-        // ─── POPULATE ADD ITEM DROPDOWNS ─────────────────────────────
+        // Populate add item dropdowns
         function populateAddItemDropdowns() {
             var categorySelect = document.getElementById('newItemCategory');
             var unitSelect = document.getElementById('newItemUnit');
@@ -1318,7 +1318,7 @@
             }
         }
 
-        // ─── POPULATE TRANSACTION ITEM SELECT ────────────────────────
+        // Populate transaction item select
         function populateTransactionItemSelect() {
             var select = document.getElementById('transactionItemSelect');
             select.innerHTML = '<option value="">Select Item...</option>';
@@ -1352,7 +1352,7 @@
             });
         }
 
-        // ─── POPULATE ITEM FIELDS FROM SELECTION ─────────────────────
+        // Populate item fields from selection
         function populateItemFields() {
             var select = document.getElementById('transactionItemSelect');
             var selectedOption = select.options[select.selectedIndex];
@@ -1370,7 +1370,7 @@
             }
         }
 
-        // ─── POPULATE VIEW DROPDOWNS ─────────────────────────────────
+        // Populate view dropdowns
         function populateViewDropdowns() {
             var categorySelect = document.getElementById('viewCategoryInput');
             var unitSelect = document.getElementById('viewUnitInput');
@@ -1409,7 +1409,7 @@
             }
         }
 
-        // ─── POPULATE EDIT ITEM DROPDOWNS ────────────────────────────
+        // Populate edit item dropdowns
         function populateEditItemDropdowns() {
             var categorySelect = document.getElementById('editItemCategory');
             var unitSelect = document.getElementById('editItemUnit');
@@ -1446,7 +1446,7 @@
             }
         }
 
-        // ─── POPULATE PROJECT DROPDOWN ───────────────────────────────
+        // Populate project dropdown
         function populateProjectDropdown() {
             var select = document.getElementById('transactionProject');
             select.disabled = true;
@@ -1486,7 +1486,7 @@
             });
         }
 
-        // ─── LOAD INVENTORY ITEMS AND TRANSACTIONS ───────────────────
+        // Load inventory items and transactions
         function loadInventoryItems() {
             return Promise.all([
                 fetch('/api/inventory', {
@@ -1569,7 +1569,7 @@
             }
         }
 
-        // ─── ITEMS TAB FUNCTIONS ─────────────────────────────────────
+        // Items tab functions
         function renderItemsPage(page) {
             itemsCurrentPage = page;
             var start = (page - 1) * itemsPageSize;
@@ -1734,7 +1734,7 @@
             filterItemsTable();
         }
 
-        // ─── TRANSACTION TAB FUNCTIONS ──────────────────────────────
+        // Transaction tab functions
         function renderTransactionPage(page) {
             inventoryCurrentPage = page;
             var start = (page - 1) * inventoryPageSize;
@@ -1861,7 +1861,7 @@
             renderTransactionPage(1);
         }
 
-        // ─── FILTER TABLE (Transactions) ─────────────────────────────
+        // Filter table (transactions)
         function filterTable() {
             var searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             var typeFilter = document.getElementById('typeFilter').value;
@@ -1908,7 +1908,7 @@
             filterTable();
         }
 
-        // ─── ADD ITEM MODAL ──────────────────────────────────────────
+        // Add item modal
         function openAddItemModal() {
             document.getElementById('addItemModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -2020,7 +2020,7 @@
             .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
-        // ─── ITEM DETAIL MODAL FUNCTIONS ─────────────────────────────
+        // Item detail modal functions
         function openItemDetailModal(row) {
             currentItemDetailRow = row;
             
@@ -2058,7 +2058,7 @@
             currentItemDetailRow = null;
         }
 
-        // ─── EDIT ITEM MODAL FUNCTIONS ──────────────────────────────
+        // Edit item modal functions
         function openItemEditModal() {
             if (!currentItemDetailRow) return;
 
@@ -2247,7 +2247,7 @@
             if (e.target === this) { closeEditItemModal(); }
         });
 
-        // ─── TRANSACTION MODAL ───────────────────────────────────────
+        // Transaction modal
         var transactionCurrentStep = 1;
 
         function openTransactionModal() {
@@ -2412,7 +2412,7 @@
             select.style.borderColor = '';
         }
 
-        // ─── SAVE TRANSACTION ────────────────────────────────────────
+        // Save transaction
         function saveTransaction() {
             var saveBtn = document.querySelector('#step2 .btn-save');
             if (saveBtn && saveBtn.disabled) return;
@@ -2472,7 +2472,7 @@
             .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
-        // ─── VIEW/EDIT TRANSACTION MODAL ─────────────────────────────
+        // View/edit transaction modal
         var currentRow = null;
         var isEditMode = false;
 
@@ -2738,7 +2738,7 @@
             });
         }
 
-        // ─── CLOSE MODALS ON BACKDROP CLICK ──────────────────────────
+        // Close modals on backdrop click
         document.getElementById('addItemModal').addEventListener('click', function(e) {
             if (e.target === this) { closeAddItemModal(); }
         });
@@ -2768,7 +2768,7 @@
             }
         });
 
-                // ─── INIT ───
+                // Init
         document.addEventListener('DOMContentLoaded', function() {
             loadLookupData();
             fetchNotifBadge();

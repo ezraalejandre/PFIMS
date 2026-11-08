@@ -27,8 +27,6 @@ class FinConstructionBond extends Model
         'bond_date' => 'date',
     ];
 
-    // NOTE: adjust the referenced class/namespace below if your existing
-    // Project model uses a different name.
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');

@@ -44,7 +44,7 @@
             font-size: 0.8rem;
         }
 
-        /* ─── TOAST NOTIFICATION (base look + success state) ─── */
+        /* Toast notification (base look + success state) */
         .error-notification {
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -71,7 +71,7 @@
             color: #1e6b41 !important;
         }
 
-        /* ─── SIGN-IN FAILURE ALERT ─── */
+        /* Sign-in failure alert */
         .login-alert {
             display: flex;
             gap: 10px;
@@ -114,7 +114,7 @@
             display: none;
         }
 
-        /* ─── PASSWORD VISIBILITY TOGGLE ─── */
+        /* Password visibility toggle */
         .password-field {
             position: relative;
         }
@@ -172,17 +172,17 @@
 </head>
 <body class="landing-page" data-inactivity-timeout-seconds="{{ session()->pull('inactivity_timeout_seconds', 0) }}">
 
-    <!-- ─── ERROR / SUCCESS NOTIFICATION ─── -->
+    <!-- Error / success notification -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
-            <span class="error-icon" id="errorIcon">⚠</span>
+            <span class="error-icon" id="errorIcon">!</span>
             <span id="errorMessage">We couldn't sign you in — please check your details and try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
     <div id="serverLoginError" data-message="{{ $errors->first() }}" hidden></div>
 
-    <!-- ─── FORGOT PASSWORD MODAL ─── -->
+    <!-- Forgot password modal -->
     <div id="firstLoginVerificationModal" class="modal-overlay" style="display:none;">
         <div class="modal-container">
             <div class="modal-header">
@@ -313,7 +313,7 @@
 
     <div class="container">
 
-        <!-- ─── LEFT SIDE: BRAND (Transparent, text on background) ─── -->
+        <!-- Left side: brand (transparent, text on background) -->
         <div class="brand">
             <img src="{{ asset('images/logo.jpg') }}" alt="E.V. Catapang Logo" class="logo">
 
@@ -328,7 +328,7 @@
             </p>
         </div>
 
-        <!-- ─── RIGHT SIDE: FLOATING SIGN-IN CARD ─── -->
+        <!-- Right side: floating sign-in card -->
         <div class="form-wrapper">
             <h2>Sign In</h2>
             <p class="form-subtitle">Please enter your credentials below</p>
@@ -503,7 +503,7 @@
             }
         }
 
-        // ─── PASSWORD VISIBILITY TOGGLE ───
+        // Password visibility toggle
         function togglePasswordVisibility(inputId, btnEl) {
             if (window.event) window.event.preventDefault();
             var input = document.getElementById(inputId);
@@ -515,7 +515,7 @@
             input.focus({ preventScroll: true });
         }
 
-        // ─── NOTIFICATION ───
+        // Notification
         function showError(message, isSuccess) {
             var resetAlert = document.getElementById('resetInlineAlert');
             if (resetAlert && document.getElementById('forgotModal').style.display !== 'none') {
@@ -526,7 +526,7 @@
             var msgSpan = document.getElementById('errorMessage');
             var icon = document.getElementById('errorIcon');
             if (msgSpan) msgSpan.textContent = message || 'An error occurred. Please try again.';
-            if (icon) icon.textContent = isSuccess ? '✓' : '⚠';
+            if (icon) icon.textContent = isSuccess ? '✓' : '!';
             notif.classList.toggle('success', !!isSuccess);
             notif.style.display = 'block';
             setTimeout(function() { closeError(); }, 5000);
@@ -612,7 +612,7 @@
             }
         }
 
-        // ─── STEP NAVIGATION ───
+        // Step navigation
         function goToStep(stepNumber) {
             document.getElementById('resetInlineAlert').hidden = true;
             for (let i = 1; i <= 4; i++) {
@@ -620,7 +620,7 @@
             }
         }
 
-        // ─── MODAL OPEN/CLOSE ───
+        // Modal open/close
         function openForgotModal() {
             document.getElementById('forgotModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -643,7 +643,7 @@
             btn.textContent = loading ? 'Please wait...' : defaultText;
         }
 
-        // ─── STEP 1: SEND OTP ───
+        // Step 1: send otp
         async function sendResetLink(isResend) {
             var email = isResend ? resetState.email : document.getElementById('resetEmail').value.trim();
 
@@ -690,7 +690,7 @@
             }
         }
 
-        // ─── STEP 2: VERIFY OTP ───
+        // Step 2: verify otp
         async function verifyOtp() {
             var otp = document.getElementById('otpInput').value.trim();
 
@@ -729,7 +729,7 @@
             }
         }
 
-        // ─── STEP 3: SET NEW PASSWORD ───
+        // Step 3: set new password
         async function submitNewPassword() {
             var password = document.getElementById('newPassword').value;
             var confirm = document.getElementById('confirmPassword').value;

@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -90,7 +90,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -106,7 +106,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -206,14 +206,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── SUPPLIERS PAGE SPECIFIC ─── */
+/* Suppliers page specific */
 
 .page-header {
     display: flex;
@@ -249,7 +249,7 @@ body {
     box-shadow: 0 4px 15px rgba(26, 43, 60, 0.3);
 }
 
-/* ─── FILTERS BAR ─── */
+/* Filters bar */
 .filters-bar {
     display: flex;
     flex-wrap: wrap;
@@ -314,7 +314,7 @@ body {
     color: #333;
 }
 
-/* ─── SUPPLIER STATS ─── */
+/* Supplier stats */
 .stats-grid-supplier {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -347,7 +347,7 @@ body {
     line-height: 1.2;
 }
 
-/* ─── TABLE ─── */
+/* Table */
 .table-wrapper {
     background: #fff;
     border-radius: 16px;
@@ -391,7 +391,7 @@ body {
     border-bottom: none;
 }
 
-/* ─── EDIT BUTTON ─── */
+/* Edit button */
 .btn-edit {
     background: none;
     border: none;
@@ -473,7 +473,7 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     color: #fff;
 }
 
-/* ─── SUCCESS NOTIFICATION ─── */
+/* Success notification */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -528,7 +528,7 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     }
 }
 
-/* ─── MODAL OVERLAY ─── */
+/* Modal overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -572,7 +572,7 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     }
 }
 
-/* ─── MODAL HEADER ─── */
+/* Modal header */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -602,12 +602,12 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     color: #333;
 }
 
-/* ─── MODAL BODY ─── */
+/* Modal body */
 .modal-body {
     padding: 0 2px;
 }
 
-/* ─── ADD MODAL: ROW WITH LABEL + INPUT ─── */
+/* Add modal: row with label + input */
 .add-row {
     display: flex;
     align-items: center;
@@ -644,7 +644,7 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     background: #fff;
 }
 
-/* ─── ADD MODAL: TWO-COLUMN ROW ─── */
+/* Add modal: two-column row */
 .add-two-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -677,7 +677,7 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     background: #fff;
 }
 
-/* ─── EDIT MODAL: TWO-COLUMN SECTION ─── */
+/* Edit modal: two-column section */
 .edit-section {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -728,14 +728,14 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     background: #fff;
 }
 
-/* ─── MODAL DIVIDER ─── */
+/* Modal divider */
 .modal-divider {
     border: none;
     border-top: 1px solid #e9ecef;
     margin: 10px 0;
 }
 
-/* ─── MODAL FOOTER ─── */
+/* Modal footer */
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -775,7 +775,7 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     transform: translateY(-1px);
 }
 
-/* ─── MULTI-STEP MODAL (Add Supplier) ─── */
+/* Multi-step modal (add supplier) */
 .required {
     color: #d32f2f;
 }
@@ -890,7 +890,7 @@ html[data-theme="dark"] #viewSupplierModal :where(.view-item label, .view-value)
     transform: translateY(-1px);
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;

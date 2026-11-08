@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -33,7 +33,7 @@ body::before {
     z-index: -1;
 }
 
-/* ─── MAIN CONTAINER ─── */
+/* Main container */
 .container {
     display: flex;
     align-items: center;
@@ -45,7 +45,7 @@ body::before {
     /* No background – completely transparent */
 }
 
-/* ─── LEFT SIDE: BRAND (Centered) ─── */
+/* Left side: brand (centered) */
 .brand {
     flex: 1;
     display: flex;
@@ -96,7 +96,7 @@ body::before {
     font-weight: 400;
 }
 
-/* ─── RIGHT SIDE: FLOATING SIGN-IN CARD ─── */
+/* Right side: floating sign-in card */
 .form-wrapper {
     width: 420px;
     max-width: 100%;
@@ -122,7 +122,7 @@ body::before {
     margin-bottom: 30px;
 }
 
-/* ─── FORM FIELDS ─── */
+/* Form fields */
 .form-group {
     margin-bottom: 22px;
 }
@@ -153,7 +153,7 @@ body::before {
     background: #fff;
 }
 
-/* ─── SIGN IN BUTTON ─── */
+/* Sign in button */
 .btn-signin {
     width: 100%;
     padding: 14px;
@@ -174,7 +174,7 @@ body::before {
     box-shadow: 0 10px 26px rgba(207, 118, 10, 0.28);
 }
 
-/* ─── FORGOT PASSWORD ─── */
+/* Forgot password */
 .forgot-password {
     text-align: center;
     margin-top: 15px;
@@ -192,7 +192,7 @@ body::before {
     text-decoration: underline;
 }
 
-/* ─── FOOTER TEXT ─── */
+/* Footer text */
 .footer-text {
     font-size: 0.75rem;
     color: #aaa;
@@ -205,7 +205,7 @@ body::before {
     color: #1a2b3c;
 }
 
-/* ─── ERROR NOTIFICATION ─── */
+/* Error notification */
 .error-notification {
     position: fixed;
     top: 20px;
@@ -260,7 +260,7 @@ body::before {
     }
 }
 
-/* ─── MODAL OVERLAY ─── */
+/* Modal overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -374,7 +374,7 @@ body::before {
     transform: translateY(-1px);
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 1024px) {
     .container {
         padding-inline: 0;

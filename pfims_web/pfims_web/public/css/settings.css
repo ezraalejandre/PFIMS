@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -52,7 +52,7 @@ body {
     display: block;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -129,7 +129,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -145,7 +145,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SUCCESS NOTIFICATION ─── */
+/* Success notification */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -200,7 +200,7 @@ body {
     }
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -300,14 +300,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── SETTINGS PAGE SPECIFIC ─── */
+/* Settings page specific */
 
 /* Page Header */
 .page-header {
@@ -325,7 +325,7 @@ body {
     color: #1a2b3c;
 }
 
-/* ─── SETTINGS WRAPPER ─── */
+/* Settings wrapper */
 .settings-wrapper {
     display: flex;
     gap: 25px;
@@ -336,7 +336,7 @@ body {
     min-height: 500px;
 }
 
-/* ─── SETTINGS SIDEBAR ─── */
+/* Settings sidebar */
 .settings-sidebar {
     width: 250px;
     background: #faf8f5;
@@ -372,7 +372,7 @@ body {
     border-left-color: #c9a96e;
 }
 
-/* ─── SETTINGS CONTENT ─── */
+/* Settings content */
 .settings-content {
     flex: 1;
     padding: 25px 35px;
@@ -395,7 +395,7 @@ body {
     margin-bottom: 20px;
 }
 
-/* ─── PROFILE PREVIEW ─── */
+/* Profile preview */
 .profile-preview {
     display: flex;
     align-items: center;
@@ -450,7 +450,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── SECURITY ITEMS ─── */
+/* Security items */
 .security-item {
     display: flex;
     justify-content: space-between;
@@ -488,7 +488,7 @@ body {
     background: #f0ebe2;
     border-color: #c9a96e;
 }
-/* ─── LOGIN HISTORY ─── */
+/* Login history */
 .login-history {
     margin-top: 22px;
     border-top: 1px solid #f0ebe2;
@@ -572,7 +572,7 @@ body {
 }
 
 
-/* ─── PREFERENCE ITEMS ─── */
+/* Preference items */
 .preference-item {
     display: flex;
     justify-content: space-between;
@@ -609,7 +609,7 @@ body {
     border-color: #c9a96e;
 }
 
-/* ─── TOGGLE SWITCH ─── */
+/* Toggle switch */
 .toggle {
     width: 44px;
     height: 24px;
@@ -641,7 +641,7 @@ body {
     left: 22px;
 }
 
-/* ─── CONFIGURATION TABS (Daily/Weekly/Monthly/Yearly style) ─── */
+/* Configuration tabs (daily/weekly/monthly/yearly style) */
 .config-tabs {
     display: flex;
     gap: 8px;
@@ -672,7 +672,7 @@ body {
     border-color: #1a2b3c;
 }
 
-/* ─── CONFIG ITEMS ─── */
+/* Config items */
 .config-item {
     display: flex;
     justify-content: space-between;
@@ -695,7 +695,7 @@ body {
     color: #888;
 }
 
-/* ─── USER TABLE ─── */
+/* User table */
 .user-table {
     width: 100%;
     border-collapse: collapse;
@@ -887,7 +887,7 @@ body {
     color: #333;
 }
 
-/* ─── MODAL OVERLAY ─── */
+/* Modal overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -1177,7 +1177,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     color: #333;
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;

@@ -60,16 +60,16 @@
 </head>
 <body class="suppliers-page" data-portal="{{ $portal }}">
     
-    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <!-- Error notification (pop-up) -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
-            <span class="error-icon">⚠</span>
+            <span class="error-icon">!</span>
             <span id="errorMessage">An error occurred. Please try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION ─── -->
+    <!-- Success notification -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -78,7 +78,7 @@
         </div>
     </div>
 
-    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+    <!-- Delete confirmation modal -->
     <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -100,7 +100,7 @@
         </div>
     </div>
 
-    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <!-- Full-width header (fixed) -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -121,7 +121,7 @@
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
+    <!-- Sidebar -->
     <aside class="sidebar">
                 <nav>
             <ul>
@@ -153,7 +153,7 @@
         </div>
     </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
+    <!-- Main content -->
     <main class="main-content">
 
                 <div class="page-header">
@@ -203,7 +203,7 @@
 
     </main>
 
-    <!-- ─── OVERLAY / MODAL (Add Supplier) ─── -->
+    <!-- Overlay / modal (add supplier) -->
     <div id="addSupplierModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
@@ -272,7 +272,7 @@
         </div>
     </div>
 
-    <!-- ─── OVERLAY / MODAL (Supplier Details) ─── -->
+    <!-- Overlay / modal (supplier details) -->
     <div id="viewSupplierModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
@@ -292,7 +292,7 @@
         </div>
     </div>
 
-    <!-- ─── OVERLAY / MODAL (Edit Supplier) ─── -->
+    <!-- Overlay / modal (edit supplier) -->
     <div id="editSupplierModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
@@ -343,7 +343,7 @@
         let currentSupplierId = null;
         let suppliersData = [];
 
-        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        // Button loading state (prevents double-click / double-submit)
         function setButtonLoading(button, isLoading, loadingText) {
             if (!button) return;
             if (isLoading) {
@@ -363,13 +363,13 @@
             }
         }
 
-                // ─── LOAD SUPPLIERS ON PAGE LOAD ───
+                // Load suppliers on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadSuppliers();
             fetchNotifBadge();
         });
 
-        // ─── FETCH UNREAD NOTIFICATION COUNT ───
+        // Fetch unread notification count
         function fetchNotifBadge() {
             fetch('/api/notifications/unread-count', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -394,7 +394,7 @@
             });
         }
 
-        // ─── LOAD SUPPLIERS FROM API ───
+        // Load suppliers from api
         function loadSuppliers() {
             Promise.all([fetch('/api/suppliers').then(response => response.json()), fetch('/api/inventory').then(response => response.json()).catch(() => ({success: false, data: []}))])
                 .then(([supplierResponse, inventoryResponse]) => {
@@ -410,12 +410,12 @@
                 .catch(error => console.error('Error loading suppliers:', error));
         }
 
-                // ─── PAGINATION STATE ───
+                // Pagination state
         var supplierPageSize = 10;
         var supplierCurrentPage = 1;
         var supplierFilteredData = [];
 
-        // ─── RENDER SUPPLIERS IN TABLE ───
+        // Render suppliers in table
         function renderSuppliers(suppliers) {
             supplierFilteredData = suppliers;
             updateSupplierAnalytics(suppliers);
@@ -556,7 +556,7 @@
             openEditModal(currentSupplierId);
         }
 
-        // ─── HIDE NOTIFICATION BADGE ON CLICK ───
+        // Hide notification badge on click
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -564,7 +564,7 @@
             }
         }
 
-        // ─── ADD SUPPLIER MODAL ───
+        // Add supplier modal
                 function openAddModal() {
             currentSupplierId = null;
             document.getElementById('addSupplierModal').classList.add('active');
@@ -673,7 +673,7 @@
             });
         }
 
-        // ─── EDIT SUPPLIER MODAL ───
+        // Edit supplier modal
         function openEditModal(supplierId) {
             currentSupplierId = supplierId;
             
@@ -802,7 +802,7 @@
             .finally(() => setButtonLoading(saveBtn, false));
         }
 
-        // ─── SUCCESS NOTIFICATION ───
+        // Success notification
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = notif.querySelector('.success-content span:not(.success-icon)');
@@ -833,7 +833,7 @@
             document.getElementById('errorNotification').style.display = 'none';
         }
 
-        // ─── CLOSE MODALS ON BACKDROP CLICK ───
+        // Close modals on backdrop click
         document.getElementById('addSupplierModal').addEventListener('click', function(e) {
             if (e.target === this) { closeAddModal(); }
         });

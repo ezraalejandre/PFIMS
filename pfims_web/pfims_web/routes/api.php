@@ -37,7 +37,7 @@ Route::get('/test', function () {
     return response()->json(['message' => 'Laravel API connected']);
 });
 
-// ─── AUTH ROUTES ─────────────────────────────────────────────────
+// Auth routes
 Route::post('/login', [AuthController::class, 'login'])->middleware(['web','throttle:6,1']);
 Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp'])->middleware('throttle:6,1');
 Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp'])->middleware('throttle:6,1');
@@ -52,7 +52,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
 // Operational APIs are for the authenticated web application.
 Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
-    // ─── UNIT ROUTES ─────────────────────────────────────────────────
+    // Unit routes
     Route::get('/units', function () {
         return response()->json(
             DB::table('unit_tbl')
@@ -69,7 +69,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::get('/settings', [SystemSettingsController::class, 'show']);
     Route::put('/settings', [SystemSettingsController::class, 'update']);
 
-    // ─── INVENTORY & SUPPLIER ROUTES ────────────────────────────────
+    // Inventory & supplier routes
     Route::get('/inventory', [InventoryController::class, 'index']);
     Route::get('/inventory/lookup-data', [InventoryController::class, 'getLookupData']);
     Route::post('/inventory/item', [InventoryController::class, 'storeItem']);
@@ -96,7 +96,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::patch('/suppliers/{id}', [SupplierController::class, 'update'])->whereNumber('id');
     Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy'])->whereNumber('id');
 
-    // ─── PROJECT ROUTES ──────────────────────────────────────────────
+    // Project routes
     Route::get('/projects', [ProjectController::class, 'index']);
     Route::get('/projects/list', [ProjectController::class, 'list']);
     Route::get('/project-managers', [ProjectController::class, 'managers']);
@@ -105,7 +105,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::put('/projects/{id}', [ProjectController::class, 'update'])->whereNumber('id');
     Route::delete('/projects/{id}', [ProjectController::class, 'destroy'])->whereNumber('id');
 
-    // ─── EXPENSE CATEGORIES (finance table, compatibility aliases) ──
+    // Expense categories (finance table, compatibility aliases)
     Route::get('/expense-categories', function () {
         return response()->json(
             DB::table('fin_expense_category_tbl')
@@ -122,7 +122,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
         );
     });
 
-    // ─── BUDGET ROUTES ──────────────────────────────────────────────
+    // Budget routes
     Route::get('/budgets', [BudgetController::class, 'index']);
     Route::post('/budgets', [BudgetController::class, 'store']);
     Route::get('/budgets/{id}/history', [BudgetController::class, 'history'])->whereNumber('id');
@@ -135,10 +135,10 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::put('/expenses/{id}', [ExpenseController::class, 'update'])->whereNumber('id');
     Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy'])->whereNumber('id');
 
-    // ─── DASHBOARD ROUTES ───────────────────────────────────────────
+    // Dashboard routes
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
-    // ─── NOTIFICATION ROUTES ────────────────────────────────────────
+    // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::match(['post', 'put'], '/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
@@ -213,7 +213,7 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     Route::get('/reports/repair-total', [FinReportController::class, 'getRepairTotal']);
     Route::get('/reports/summary-expenses', [FinReportController::class, 'getSummaryExpenses']);
 
-    // ─── COMPANY ASSETS ──────────────────────────────────────────────
+    // Company assets
     Route::get('/company-assets', [CompanyAssetController::class, 'index']);
     Route::get('/company-assets/type/{type}', [CompanyAssetController::class, 'getByType']);
     Route::get('/company-assets/{id}', [CompanyAssetController::class, 'show']);

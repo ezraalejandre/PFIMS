@@ -353,7 +353,7 @@ class MLController extends Controller
     public function dashboardAnalytics()
     {
         try {
-            // ─── DESCRIPTIVE ANALYTICS ───
+            // Descriptive analytics
             $totalProjects = DB::table('project_tbl')->count();
             $activeProjects = DB::table('project_tbl')->where('status', '!=', 'Completed')->count();
             $completedProjects = DB::table('project_tbl')->where('status', 'Completed')->count();
@@ -390,7 +390,7 @@ class MLController extends Controller
                 'material_status' => $materialStatus,
             ];
 
-            // ─── DIAGNOSTIC ANALYTICS ───
+            // Diagnostic analytics
             $budgetVariance = $this->ml->analyzeBudgetVariance();
 
             $projectStatus = DB::table('project_tbl')
@@ -404,7 +404,7 @@ class MLController extends Controller
                 'project_status' => $projectStatus,
             ];
 
-            // ─── PREDICTIVE ANALYTICS ───
+            // Predictive analytics
             $monthlyExpenseHistory = $this->getMonthlyExpenseHistory();
             $predictive = [
                 'material_forecast' => $this->ml->predictMaterialDemand(),
@@ -414,7 +414,7 @@ class MLController extends Controller
                 'cost_series_type' => 'historical_monthly_expenses',
             ];
 
-            // ─── MODEL METRICS ───
+            // Model metrics
             $modelMetrics = $this->ml->getModelMetrics();
 
             return response()->json([

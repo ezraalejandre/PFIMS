@@ -28,7 +28,7 @@ Route::get('/', function () {
     return view('landing');
 })->name('login');
 
-// ─── DASHBOARD ROUTES (Role-based) ─────────────────────────────
+// Dashboard routes (role-based)
 // Admin Dashboard
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'role.portal:admin'])
@@ -44,7 +44,7 @@ Route::get('/odashboard', function () {
     return view('dashboard', ['portal' => 'operations']);
 })->middleware(['auth', 'role.portal:admin,operations'])->name('operations.dashboard');
 
-// ─── ACCOUNTING ROUTES ──────────────────────────────────────────
+// Accounting routes
 Route::get('/afinance', function () {
     if (request()->query('section') === 'contracts') return redirect('/afinance?section=budgets&subtab=contracts');
     return view('finance', ['portal' => 'accounting']);
@@ -79,7 +79,7 @@ Route::get('/asettings', function () {
     ]);
 })->middleware(['auth', 'role.portal:admin,accounting']);
 
-// ─── OPERATIONS ROUTES ──────────────────────────────────────────
+// Operations routes
 Route::get('/oprojects', function () {
     return view('projtracking', ['portal' => 'operations']);
 })->middleware(['auth', 'role.portal:admin,operations']);
@@ -583,7 +583,7 @@ Route::post('/logout', function (Request $request) {
 // Change password route
 Route::post('/change-password', [PasswordController::class, 'update'])->middleware('auth')->name('password.update');
 
-// ─── MACHINE LEARNING ROUTES ────────────────────────────────────
+// Machine learning routes
 // Financial analytics and model details are available only to signed-in users.
 Route::middleware('auth')->group(function () {
     Route::get('/ml-dashboard-test', function (Request $request) {

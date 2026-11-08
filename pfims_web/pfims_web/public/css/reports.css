@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -90,7 +90,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -106,7 +106,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── ERROR NOTIFICATION (HIGHEST Z-INDEX) ─── */
+/* Error notification (highest z-index) */
 .error-notification {
     position: fixed;
     top: 80px;
@@ -149,7 +149,7 @@ body {
     opacity: 1;
 }
 
-/* ─── SUCCESS NOTIFICATION (HIGHEST Z-INDEX) ─── */
+/* Success notification (highest z-index) */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -192,7 +192,7 @@ body {
     opacity: 1;
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -292,14 +292,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── REPORTS PAGE SPECIFIC ─── */
+/* Reports page specific */
 
 /* Page Header */
 .page-header {
@@ -317,7 +317,7 @@ body {
     color: #1a2b3c;
 }
 
-/* ─── FILTERS BAR ─── */
+/* Filters bar */
 .filters-bar {
     display: flex;
     flex-wrap: wrap;
@@ -394,7 +394,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── TAB ROW ─── */
+/* Tab row */
 .tab-row {
     display: flex;
     justify-content: space-between;
@@ -433,7 +433,7 @@ body {
     border-color: #1a2b3c;
 }
 
-/* ─── TAB ACTIONS ─── */
+/* Tab actions */
 .tab-actions {
     display: flex;
     gap: 10px;
@@ -469,7 +469,7 @@ body {
     background: #b8975a;
 }
 
-/* ─── KPI SECTION ─── */
+/* Kpi section */
 .kpi-section {
     margin-bottom: 30px;
 }
@@ -513,7 +513,7 @@ body {
     margin-top: 4px;
 }
 
-/* ─── CHARTS SECTION ─── */
+/* Charts section */
 .charts-section {
     margin-bottom: 30px;
 }
@@ -545,7 +545,7 @@ body {
     border: 2px dashed #f0ebe2;
 }
 
-/* ─── TABLE ─── */
+/* Table */
 .table-wrapper {
     background: #fff;
     border-radius: 16px;
@@ -673,7 +673,7 @@ body {
 .action-cell button.view-btn .action-icon { color: #1565c0; }
 .action-cell button.delete-btn .action-icon { color: #d32f2f; }
 
-/* ─── PAGINATION ─── */
+/* Pagination */
 .pagination-wrapper {
     display: flex;
     justify-content: space-between;
@@ -728,7 +728,7 @@ body {
     cursor: default;
 }
 
-/* ─── MODAL OVERLAY ─── */
+/* Modal overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -928,7 +928,7 @@ body {
     color: #d32f2f;
 }
 
-/* ─── ACTION BUTTONS ─── */
+/* Action buttons */
 .action-cell {
     display: flex;
     gap: 6px;
@@ -972,7 +972,7 @@ body {
     background: rgba(198, 40, 40, 0.1);
 }
 
-/* ─── TAB ROW ─── */
+/* Tab row */
 .tab-row {
     display: flex;
     justify-content: space-between;
@@ -1022,7 +1022,7 @@ body {
     display: block;
 }
 
-/* ─── DELETE BUTTON ─── */
+/* Delete button */
 .btn-delete {
     background: #d32f2f;
     color: #fff;
@@ -1040,7 +1040,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── PAGINATION ─── */
+/* Pagination */
 .pagination-wrapper {
     display: flex;
     justify-content: space-between;
@@ -1095,7 +1095,7 @@ body {
     cursor: default;
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;

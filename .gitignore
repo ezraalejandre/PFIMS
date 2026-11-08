@@ -1,0 +1,5 @@
+# Local workspace files and generated reports.
+/.*/
+/output/
+/outputs/
+/tmp/

@@ -33,7 +33,7 @@
 </head>
 <body class="settings-page" data-portal="{{ $portal }}" data-current-user-id="{{ auth()->id() }}" data-is-admin="{{ $isAdmin ? '1' : '0' }}" data-config-api-base="{{ request()->getBaseUrl() }}/api/config">
 
-    <!-- ─── SUCCESS NOTIFICATION ─── -->
+    <!-- Success notification -->
     <div id="successNotification" class="success-notification" style="display: none; z-index: 4000;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -42,7 +42,7 @@
         </div>
     </div>
 
-    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <!-- Full-width header (fixed) -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -64,7 +64,7 @@
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
+    <!-- Sidebar -->
     <aside class="sidebar">
                 <nav>
             <ul>
@@ -96,7 +96,7 @@
         </div>
     </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
+    <!-- Main content -->
     <main class="main-content">
 
         <!-- Page Header -->
@@ -146,7 +146,7 @@
                     </div>
                 </div>
 
-                <!-- ─── PROFILE ─── -->
+                <!-- Profile -->
                 <div id="section-profile" class="settings-section">
                     <div class="section-title">Profile</div>
                     <div class="section-desc">Manage your personal information and account settings.</div>
@@ -161,7 +161,7 @@
                     </div>
                 </div>
 
-                <!-- ─── ACCOUNT & SECURITY ─── -->
+                <!-- Account & security -->
                 <div id="section-security" class="settings-section" style="display: none;">
                     <div class="section-title">Account &amp; Security</div>
                     <div class="section-desc">Manage your password and security settings.</div>
@@ -176,7 +176,7 @@
                     @include('partials.login-history')
                 </div>
 
-                <!-- ─── SYSTEM PREFERENCES ─── -->
+                <!-- System preferences -->
                 <div id="section-preferences" class="settings-section" style="display: none;">
                     <div class="section-title">System Preferences</div>
                     <div class="section-desc">Customize your system experience and preferences.</div>
@@ -193,7 +193,7 @@
 
                 </div>
 
-                <!-- ─── CONFIGURATIONS (Dropdown Management) ─── -->
+                <!-- Dropdown options -->
                 @if($isAdmin)
                 <div id="section-configurations" class="settings-section" style="display: none;">
                     <div class="section-title">Configurations</div>
@@ -272,7 +272,7 @@
                     </div>
                 </div>
 
-                <!-- ─── NOTIFICATIONS ─── -->
+                <!-- Notifications -->
                 <div id="section-notifications" class="settings-section" style="display: none;">
                     <div class="section-title">Notifications</div>
                     <div class="section-desc">Manage your notification preferences.</div>
@@ -306,7 +306,7 @@
                     </div>
                 </div>
 
-                <!-- ─── USER MANAGEMENT ─── -->
+                <!-- User management -->
                 @if($isAdmin)
                 <div id="section-usermanagement" class="settings-section" style="display: none;">
                     <div class="section-title">User Management</div>
@@ -358,7 +358,7 @@
 
     </main>
 
-    <!-- ─── USER DETAILS MODAL ─── -->
+    <!-- User details modal -->
     <div id="userDetailsModal" class="modal-overlay settings-modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userDetailsModalTitle">
         <div class="modal-container settings-modal-dialog">
             <div class="modal-header">
@@ -374,7 +374,7 @@
         </div>
     </div>
 
-    <!-- ─── USER EDIT MODAL ─── -->
+    <!-- User edit modal -->
     <div id="userEditModal" class="modal-overlay settings-modal-overlay settings-user-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="userEditModalTitle">
         <div class="modal-container settings-modal-dialog">
             <div class="modal-header">
@@ -396,7 +396,7 @@
         </div>
     </div>
 
-    <!-- ─── CONFIG ITEM MODAL (Add/Edit) ─── -->
+    <!-- Config item modal (add/edit) -->
     <div id="deleteUserConfirmModal" class="modal-overlay pfims-delete-confirm" style="display:none; z-index:9999;" role="dialog" aria-modal="true" aria-labelledby="deleteUserModalTitle">
         <div class="modal-container">
             <div class="modal-header">
@@ -497,7 +497,7 @@
         </div>
     </div>
 
-                    <!-- ─── PASSWORD DISPLAY MODAL ─── -->
+                    <!-- Password display modal -->
                     <div id="passwordModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
                         <div class="modal-container" style="background: #fff; width: 480px; max-width: 95%; border-radius: 12px; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -516,7 +516,7 @@
                         </div>
                     </div>
 
-    <!-- ─── ADD USER MODAL ─── -->
+    <!-- Add user modal -->
     <div id="addUserModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
         <div class="modal-container" style="background: #fff; width: 500px; max-width: 95%; border-radius: 16px; padding: 30px 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -548,7 +548,7 @@
         </div>
     </div>
 
-    <!-- ─── CHANGE PASSWORD MODAL ─── -->
+    <!-- Change password modal -->
     <div id="changePasswordModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 3000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
         <div class="modal-container" style="background: #fff; width: 480px; max-width: 95%; border-radius: 16px; padding: 30px 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -592,10 +592,10 @@
     </div>
 
     <script>
-                // ─── SETTINGS NAVIGATION ───
+                // Settings navigation
         var csrfToken = '{{ csrf_token() }}';
 
-        // ─── BUTTON LOADING STATE ───
+        // Button loading state
         function setButtonLoading(button, isLoading, loadingText) {
             if (!button) return;
             if (isLoading) {
@@ -685,7 +685,7 @@
             console.log('Switched to: ' + section);
         }
 
-        // ─── TOGGLE SWITCH ───
+        // Toggle switch
         function toggleSwitch(el) {
             el.classList.toggle('active');
             var status = el.classList.contains('active') ? 'Enabled' : 'Disabled';
@@ -707,7 +707,7 @@
 
         document.addEventListener('DOMContentLoaded', initNotifCategoryToggles);
 
-        // ─── USER CONFIG (CRUD) ───
+        // User config (crud)
         var csrfToken = '{{ csrf_token() }}';
         var activeConfigUserId = null;
 
@@ -1038,7 +1038,7 @@
         document.addEventListener('visibilitychange', refreshVisibleTrash);
 
 
-        // ─── CONFIGURATIONS (Dropdown Management) ───
+        // Dropdown options
         var configData = {
             'units': [],
             'inv_categories': [],
@@ -1398,7 +1398,7 @@
             });
         }
 
-        // ─── SUCCESS NOTIFICATION ───
+        // Success notification
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
@@ -1453,7 +1453,7 @@
                 .finally(function() { setButtonLoading(button, false); });
         }
 
-        // ─── ADD USER MODAL ───
+        // Add user modal
         function openAddUserModal() {
             document.getElementById('addUserModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
@@ -1508,7 +1508,7 @@
             });
         }
 
-        // ─── CLOSE MODALS ON BACKDROP CLICK ───
+        // Close modals on backdrop click
         document.getElementById('addUserModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAddUserModal();
@@ -1581,7 +1581,7 @@
 
         // Password modal element will be added to DOM
 
-        // ─── CLOSE SUCCESS ON CLICK OUTSIDE ───
+        // Close success on click outside
         document.addEventListener('click', function(e) {
             if (document.getElementById('successNotification').style.display === 'block') {
                 if (!e.target.closest('.success-notification')) {
@@ -1590,11 +1590,10 @@
             }
         });
 
-        // ─── INIT ───
+        // Init
         if (isAdmin) fetchConfigItems(currentConfigType);
 
-        // ─── CHANGE PASSWORD FUNCTIONS ───
-
+        // Change password functions
         function openChangePasswordModal() {
             // Reset form
             document.getElementById('changePasswordForm').reset();
@@ -1617,10 +1616,10 @@
             var input = document.getElementById(inputId);
             if (input.type === 'password') {
                 input.type = 'text';
-                button.textContent = '🙈';
+                button.textContent = 'Hide';
             } else {
                 input.type = 'password';
-                button.textContent = '👁';
+                button.textContent = 'Show';
             }
         }
 
@@ -1738,7 +1737,7 @@
             });
         }
 
-        // ─── CLOSE CHANGE PASSWORD MODAL ON BACKDROP CLICK ───
+        // Close change password modal on backdrop click
         document.addEventListener('DOMContentLoaded', function() {
             var passwordModal = document.getElementById('changePasswordModal');
             if (passwordModal) {
@@ -1750,7 +1749,6 @@
             }
         });
 
-        // Add this to your JavaScript
         document.getElementById('newPassword').addEventListener('input', function() {
             var password = this.value;
             var strengthIndicator = document.getElementById('passwordStrength');

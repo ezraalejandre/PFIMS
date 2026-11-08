@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -90,7 +90,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -106,7 +106,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -206,14 +206,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── PROFILE PAGE SPECIFIC ─── */
+/* Profile page specific */
 
 /* Page Header */
 .page-header {
@@ -232,7 +232,7 @@ body {
     margin-top: 2px;
 }
 
-/* ─── ERROR NOTIFICATION (POP-UP) ─── */
+/* Error notification (pop-up) */
 .error-notification {
     position: fixed;
     top: 80px;
@@ -276,7 +276,7 @@ body {
     opacity: 1;
 }
 
-/* ─── SUCCESS NOTIFICATION (POP-UP) ─── */
+/* Success notification (pop-up) */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -331,7 +331,7 @@ body {
     }
 }
 
-/* ─── PROFILE CARD ─── */
+/* Profile card */
 .profile-card {
     background: #fff;
     border-radius: 16px;
@@ -339,7 +339,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-/* ─── PROFILE HEADER ─── */
+/* Profile header */
 .profile-header {
     display: flex;
     align-items: center;
@@ -411,7 +411,7 @@ body {
     box-shadow: 0 4px 15px rgba(225, 154, 69, 0.3);
 }
 
-/* ─── PROFILE DETAILS ─── */
+/* Profile details */
 .profile-details .section-title {
     font-size: 0.85rem;
     font-weight: 600;
@@ -464,7 +464,7 @@ body {
     background: #fff;
 }
 
-/* ─── EDIT MODE ─── */
+/* Edit mode */
 .profile-card.edit-mode .detail-item .value {
     display: none;
 }
@@ -532,7 +532,7 @@ body {
     align-items: center;
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;

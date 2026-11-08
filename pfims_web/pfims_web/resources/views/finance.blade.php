@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="{{ asset('css/finance.css') }}?v={{ filemtime(public_path('css/finance.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
     <style>
-        /* ─── MODAL Z-INDEX ─── */
+        /* Modal z-index */
         #deleteConfirmModal { z-index: 9999 !important; }
         #deleteBudgetConfirmModal { z-index: 9999 !important; }
         #deleteBondConfirmModal { z-index: 9999 !important; }
@@ -479,7 +479,7 @@
             to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
-        /* ─── DYNAMIC EXPENSE FIELDS ─── */
+        /* Dynamic expense fields */
         .dynamic-amount-fields {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -498,7 +498,7 @@
             color: #666;
         }
 
-        /* ─── CATEGORY BADGE ─── */
+        /* Category badge */
         .category-badge.admin {
             background: #e3f2fd;
             color: #1565c0;
@@ -524,7 +524,7 @@
             color: #666;
         }
 
-        /* ─── FILE UPLOAD ─── */
+        /* File upload */
         .file-upload-wrapper {
             display: flex;
             align-items: center;
@@ -637,7 +637,7 @@
         }
         .file-input-hidden { display: none; }
 
-        /* ─── RESPONSIVE ─── */
+        /* Responsive */
         @media (max-width: 650px) {
             .stats-row { grid-template-columns: 1fr; max-width: 100%; }
             .stats-row-budget { grid-template-columns: 1fr; max-width: 100%; }
@@ -667,16 +667,16 @@
 </head>
 <body class="finance-page" data-portal="{{ $portal }}" data-finance-tab="{{ $financeTab }}">
 
-    <!-- ─── ERROR NOTIFICATION ─── -->
+    <!-- Error notification -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
-            <span class="error-icon">⚠</span>
+            <span class="error-icon">!</span>
             <span id="errorMessage">An error occurred. Please try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION ─── -->
+    <!-- Success notification -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -685,7 +685,7 @@
         </div>
     </div>
 
-    <!-- ─── DELETE CONFIRMATION MODALS ─── -->
+    <!-- Delete confirmation modals -->
     <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -737,7 +737,7 @@
         </div>
     </div>
 
-    <!-- ─── FULL-WIDTH HEADER ─── -->
+    <!-- Full-width header -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -759,7 +759,7 @@
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
+    <!-- Sidebar -->
     <aside class="sidebar">
         <nav>
             <ul>
@@ -816,7 +816,7 @@
     </div>
     </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
+    <!-- Main content -->
     <main class="main-content">
 
         <!-- Page Header -->
@@ -850,7 +850,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 1: EXPENSES ─── -->
+        <!-- Tab 1: expenses -->
         <div id="tabExpenses" class="report-section {{ $financeTab === 'expenses' ? 'active' : '' }}">
             <div class="filter-tabs">
                 <span class="tab active" data-period="all" onclick="setActiveTab(this,'all')">All</span>
@@ -889,7 +889,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 2: BUDGETS ─── -->
+        <!-- Tab 2: budgets -->
         <div id="tabBudgets" class="report-section {{ $financeTab === 'budgets' ? 'active' : '' }}">
             <div class="budget-contract-tabs" role="tablist" aria-label="Budgets and contracts">
                 <button type="button" class="tab active" id="budgetsSubtab" role="tab" aria-selected="true" onclick="switchBudgetContractsSubtab('budgets')">Budgets</button>
@@ -938,7 +938,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 3: EXPOVRALL ─── -->
+        <!-- Tab 3: expovrall -->
         <div id="tabExpovrall" class="report-section">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
@@ -953,7 +953,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 4: EXP DIRECT ─── -->
+        <!-- Tab 4: exp direct -->
         <div id="tabExpdirect" class="report-section">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
@@ -968,7 +968,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 5: ADMIN EXP ─── -->
+        <!-- Tab 5: admin exp -->
         <div id="tabAdminexp" class="report-section">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
@@ -1001,7 +1001,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 6: DIRECT EXP ─── -->
+        <!-- Tab 6: direct exp -->
         <div id="tabDirectexp" class="report-section">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
@@ -1016,7 +1016,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 7: OVERALL EXP ─── -->
+        <!-- Tab 7: overall exp -->
         <div id="tabOverallexp" class="report-section">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
@@ -1031,7 +1031,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 9: AR/AP ─── -->
+        <!-- Tab 9: ar/ap -->
         <div id="tabReceivables" class="report-section {{ $financeTab === 'receivables' ? 'active' : '' }}">
             <div class="filter-row">
                 <input type="search" id="receivableSearch" class="project-filter" maxlength="150" placeholder="Search counterparty or project..." aria-label="Search accounts receivable and payable" oninput="filterFinanceRows('receivableSearch', 'receivableBody')">
@@ -1056,7 +1056,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 10: CASH ASSET ─── -->
+        <!-- Tab 10: cash asset -->
         <div id="tabCash" class="report-section {{ $financeTab === 'cash' ? 'active' : '' }}">
             <div class="filter-row">
                 <input type="search" id="cashSearch" placeholder="Search account..." aria-label="Search accounts" oninput="filterFinanceRows('cashSearch', 'cashBody')">
@@ -1073,7 +1073,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 12: BACKHOE ─── -->
+        <!-- Tab 12: backhoe -->
         <div id="tabBackhoe" class="report-section {{ $financeTab === 'backhoe' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
@@ -1088,7 +1088,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 13: BONDS ─── -->
+        <!-- Tab 13: bonds -->
         <div id="tabBonds" class="report-section {{ $financeTab === 'bonds' ? 'active' : '' }}">
             <div class="filter-row">
                 <input type="search" id="bondSearch" class="project-filter" maxlength="150" placeholder="Search project or provider..." aria-label="Search bonds" oninput="filterFinanceRows('bondSearch', 'bondBody')">
@@ -1112,7 +1112,7 @@
             </div>
         </div>
 
-        <!-- ─── TAB 14: SUMMARY ─── -->
+        <!-- Tab 14: summary -->
         <div id="tabSummary" class="report-section {{ $financeTab === 'summary' ? 'active' : '' }}">
             <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
                 <label style="display:flex;align-items:center;gap:8px;font-size:0.9rem;">Month:
@@ -1139,7 +1139,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD EXPENSE MODAL (Unified - Handles ALL Expense Types) ─── -->
+    <!-- Add expense modal (unified - handles all expense types) -->
     <div id="addExpenseModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2 id="addExpenseModalTitle">Add Expense</h2><button class="modal-close" onclick="closeAddExpenseModal()">×</button></div>
@@ -1176,7 +1176,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD BUDGET MODAL ─── -->
+    <!-- Add budget modal -->
     <div id="addBudgetModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Budget</h2><button class="modal-close" onclick="closeAddBudgetModal()">×</button></div>
@@ -1200,7 +1200,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD CONTRACT MODAL ─── -->
+    <!-- Add contract modal -->
     <div id="addContractModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2 id="contractModalTitle">Add Contract</h2><button class="modal-close" onclick="closeAddContractModal()">×</button></div>
@@ -1221,7 +1221,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD RECEIVABLE MODAL ─── -->
+    <!-- Add receivable modal -->
     <div id="addReceivableModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add AR/AP Entry</h2><button class="modal-close" onclick="closeAddReceivableModal()">×</button></div>
@@ -1260,7 +1260,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD CASH ASSET MODAL ─── -->
+    <!-- Add cash asset modal -->
     <div id="addCashAccountModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Account</h2><button class="modal-close" onclick="closeAddCashAccountModal()">×</button></div>
@@ -1298,7 +1298,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD REPAIR MODAL ─── -->
+    <!-- Add repair modal -->
     <div id="addRepairModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Repair/Maintenance</h2><button class="modal-close" onclick="closeAddRepairModal()">×</button></div>
@@ -1329,7 +1329,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD BACKHOE EXPENSE MODAL ─── -->
+    <!-- Add backhoe expense modal -->
     <div id="addBackhoeExpenseModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2 id="backhoeExpenseModalTitle">Add Backhoe Expense</h2><button class="modal-close" onclick="closeAddBackhoeExpenseModal()">×</button></div>
@@ -1361,7 +1361,7 @@
         </div>
     </div>
 
-    <!-- ─── ADD BACKHOE RENTAL MODAL ─── -->
+    <!-- Add backhoe rental modal -->
     <div id="addBackhoeRentalModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2 id="backhoeRentalModalTitle">Add Backhoe Rental Income</h2><button class="modal-close" onclick="closeAddBackhoeRentalModal()">×</button></div>
@@ -1383,7 +1383,7 @@
         </div>
     </div>
 
-    <!-- ─── EQUIPMENT RECORD DETAILS ─── -->
+    <!-- Equipment record details -->
     <div id="equipmentDetailModal" class="modal-overlay finance-edit-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Equipment Details</h2><button class="modal-close" onclick="closeEquipmentDetailModal()">×</button></div>
@@ -1400,7 +1400,7 @@
     <div class="modal-header"><h2>Edit Equipment Asset and Period</h2><button class="modal-close" onclick="closeEquipmentPeriodEdit()">×</button></div>
     <div class="modal-body"><div class="form-group"><label>Asset *</label><select id="equipmentPeriodAsset"></select></div><div class="form-group"><label>Period *</label><input type="month" id="equipmentPeriodMonth" max="{{ today()->format('Y-m') }}"></div></div>
     <div class="modal-footer"><button class="btn-cancel" onclick="closeEquipmentPeriodEdit()">Cancel</button><button class="btn-save" onclick="saveEquipmentPeriod()">Save Changes</button></div></div></div>
-    <!-- ─── ADD BOND MODAL ─── -->
+    <!-- Add bond modal -->
     <div id="addBondModal" class="modal-overlay pfims-add-modal">
         <div class="modal-container">
             <div class="modal-header"><h2>Add Construction Bond</h2><button class="modal-close" onclick="closeAddBondModal()">×</button></div>
@@ -1419,7 +1419,7 @@
         </div>
     </div>
 
-    <!-- ─── EXPENSE DETAIL MODAL ─── -->
+    <!-- Expense detail modal -->
     <div id="expenseDetailModal" class="modal-overlay modal-update finance-edit-modal">
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="detailModalTitle">Expense Details</h2></div><button class="modal-close" onclick="closeExpenseDetailModal()">×</button></div>
@@ -1436,7 +1436,7 @@
                     <label>Supporting File</label>
                     <div id="expenseFileDisplay" class="expense-file-display">
                         <div class="expense-file-info">
-                            <span id="expenseFileIcon" class="expense-file-icon">📎</span>
+                            <span id="expenseFileIcon" class="expense-file-icon">File</span>
                             <span id="expenseFileNameDisplay" class="expense-file-name">No file attached</span>
                         </div>
                         <div class="expense-file-actions">
@@ -1463,7 +1463,7 @@
         </div>
     </div>
 
-    <!-- ─── BUDGET DETAIL MODAL ─── -->
+    <!-- Budget detail modal -->
     <div id="budgetDetailModal" class="modal-overlay modal-update finance-edit-modal">
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="budgetDetailModalTitle">Budget Details</h2></div><button class="modal-close" onclick="closeBudgetDetailModal()">×</button></div>
@@ -1476,7 +1476,7 @@
                     <label>Supporting File</label>
                     <div id="budgetFileDisplay" class="expense-file-display">
                         <div class="expense-file-info">
-                            <span id="budgetFileIcon" class="expense-file-icon">📎</span>
+                            <span id="budgetFileIcon" class="expense-file-icon">File</span>
                             <span id="budgetFileNameDisplay" class="expense-file-name">No file attached</span>
                         </div>
                         <div class="expense-file-actions">
@@ -1500,7 +1500,7 @@
         </div>
     </div>
 
-    <!-- ─── RECEIVABLE DETAIL MODAL ─── -->
+    <!-- Receivable detail modal -->
     <div id="receivableDetailModal" class="modal-overlay modal-update finance-edit-modal">
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="receivableModalTitle">AR/AP Entry Details</h2></div><button class="modal-close" onclick="closeReceivableModal()">×</button></div>
@@ -1575,7 +1575,7 @@
         </div>
     </div>
 
-    <!-- ─── BOND DETAIL MODAL ─── -->
+    <!-- Bond detail modal -->
     <div id="bondDetailModal" class="modal-overlay modal-update finance-edit-modal">
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="bondModalTitle">Bond Details</h2></div><button class="modal-close" onclick="closeBondModal()">×</button></div>
@@ -1625,7 +1625,7 @@
         </div>
     </div>
 
-    <!-- ─── CASH ASSET DETAIL MODAL ─── -->
+    <!-- Cash asset detail modal -->
     <div id="cashDetailModal" class="modal-overlay modal-update finance-edit-modal">
         <div class="modal-container">
             <div class="modal-header"><div><h2 id="cashModalTitle">Cash Asset Details</h2></div><button class="modal-close" onclick="closeCashModal()">×</button></div>
@@ -1657,7 +1657,7 @@
     </div>
 
     <script>
-        // ─── STATE VARIABLES ───────────────────────────────────────────
+        // State variables
         var financeProjects = [];
         var financeCategories = [];
         var financeExpenses = [];
@@ -1678,7 +1678,7 @@
         var currentBudgetRow = null;
         var isBudgetEditMode = false;
 
-        // ─── CHANGE THIS: Default to 'all' instead of 'monthly' ───
+        // Change this: default to 'all' instead of 'monthly'
         var currentPeriod = 'all';
         var currentSearchTerm = '';
         var currentProjectFilter = 'all';
@@ -1698,7 +1698,7 @@
         var currentEquipmentPeriodKey = null;
         var equipmentEditState = { type: null, id: null };
 
-        // ─── ADMIN CATEGORY CODES ──────────────────────────────────────
+        // Admin category codes
         var PROJECT_COST_COMPONENT_LABELS = {
             material: 'Material',
             labor: 'Labor',
@@ -1706,7 +1706,7 @@
             other: 'Other'
         };
 
-        // ─── FILE UPLOAD UI STATE ─────────────────────────────────────
+        // File upload ui state
         var selectedDetailFile = null;
         var currentExpenseFileUrl = null;
         var expenseFileMarkedForRemoval = false;
@@ -1714,12 +1714,12 @@
         var currentBudgetFileUrl = null;
         var budgetFileMarkedForRemoval = false;
 
-        // ─── CATEGORY MAPPINGS ─────────────────────────────────────────
+        // Category mappings
         var EXPOVRALL_CATEGORIES = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'SSS_PHILHEALTH', 'OTHERS'];
         var EXP_DIRECT_CATEGORIES = ['CONST_SUPPLY', 'SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'OTHERS'];
         var ADMIN_EXP_CATEGORIES = ['SALARIES_WAGES', 'PERMIT_TAXES_LICENSES', 'TRANSPO', 'UTILITIES', 'DELIVERY', 'RENT', 'STATIONERY', 'DEPRECIATION', 'REPAIR_MAINT', 'MISC', 'PENALTY', 'SSS_PHILHEALTH', 'OTHERS'];
 
-        // ─── UTILITY FUNCTIONS ─────────────────────────────────────────
+        // Utility functions
         function hideBadge(event) { var badge = document.getElementById('notifBadge'); if (badge) badge.style.display = 'none'; }
 
         function showError(message) {
@@ -1847,14 +1847,14 @@
             return PROJECT_COST_COMPONENT_LABELS[component] || '—';
         }
 
-        // ─── DYNAMIC EXPENSE FIELDS ──────────────────────────────────
+        // Dynamic expense fields
         function toggleExpenseAmountFields() {
             var categorySelect = document.getElementById('expenseCategory');
             document.getElementById('addExpenseModalTitle').textContent = 'Add Expense';
             if (!categorySelect.value) document.getElementById('expenseAmount').value = '';
         }
 
-        // ─── EXPENSE DETAIL FILE SELECTION ────────────────────────────
+        // Expense detail file selection
         function handleDetailFileSelect(input) {
             var fileNameDisplay = document.getElementById('expenseFileNameDisplay');
             var fileIcon = document.getElementById('expenseFileIcon');
@@ -1866,7 +1866,7 @@
             if (!input.files || !input.files.length) {
                 selectedDetailFile = null;
                 fileNameDisplay.textContent = 'No file attached';
-                fileIcon.textContent = '📎';
+                fileIcon.textContent = 'File';
                 viewButton.style.display = 'none';
                 deleteButton.style.display = 'none';
                 previewContainer.style.display = 'none';
@@ -1879,16 +1879,16 @@
 
             var fileType = selectedDetailFile.type || '';
             if (fileType.startsWith('image/')) {
-                fileIcon.textContent = '🖼️';
+                fileIcon.textContent = 'Image';
                 if (currentExpenseFileUrl) { URL.revokeObjectURL(currentExpenseFileUrl); }
                 currentExpenseFileUrl = URL.createObjectURL(selectedDetailFile);
                 previewImage.src = currentExpenseFileUrl;
                 previewContainer.style.display = 'block';
             } else if (fileType === 'application/pdf') {
-                fileIcon.textContent = '📄';
+                fileIcon.textContent = 'PDF';
                 previewContainer.style.display = 'none';
             } else {
-                fileIcon.textContent = '📎';
+                fileIcon.textContent = 'File';
                 previewContainer.style.display = 'none';
             }
 
@@ -1922,7 +1922,7 @@
             var previewContainer = document.getElementById('filePreviewContainer');
 
             if (fileNameDisplay) fileNameDisplay.textContent = 'No file attached';
-            if (fileIcon) fileIcon.textContent = '📎';
+            if (fileIcon) fileIcon.textContent = 'File';
             if (viewButton) viewButton.style.display = 'none';
             if (deleteButton) deleteButton.style.display = 'none';
             if (previewContainer) previewContainer.style.display = 'none';
@@ -1930,7 +1930,7 @@
             if (currentExpenseFileUrl) { URL.revokeObjectURL(currentExpenseFileUrl); currentExpenseFileUrl = null; }
         }
 
-        // ─── BUDGET DETAIL FILE SELECTION ─────────────────────────────
+        // Budget detail file selection
         function handleBudgetDetailFileSelect(input) {
             var fileNameDisplay = document.getElementById('budgetFileNameDisplay');
             var fileIcon = document.getElementById('budgetFileIcon');
@@ -1942,7 +1942,7 @@
             if (!input.files || !input.files.length) {
                 selectedBudgetDetailFile = null;
                 fileNameDisplay.textContent = 'No file attached';
-                fileIcon.textContent = '📎';
+                fileIcon.textContent = 'File';
                 viewButton.style.display = 'none';
                 deleteButton.style.display = 'none';
                 previewContainer.style.display = 'none';
@@ -1955,16 +1955,16 @@
 
             var fileType = selectedBudgetDetailFile.type || '';
             if (fileType.startsWith('image/')) {
-                fileIcon.textContent = '🖼️';
+                fileIcon.textContent = 'Image';
                 if (currentBudgetFileUrl) { URL.revokeObjectURL(currentBudgetFileUrl); }
                 currentBudgetFileUrl = URL.createObjectURL(selectedBudgetDetailFile);
                 previewImage.src = currentBudgetFileUrl;
                 previewContainer.style.display = 'block';
             } else if (fileType === 'application/pdf') {
-                fileIcon.textContent = '📄';
+                fileIcon.textContent = 'PDF';
                 previewContainer.style.display = 'none';
             } else {
-                fileIcon.textContent = '📎';
+                fileIcon.textContent = 'File';
                 previewContainer.style.display = 'none';
             }
 
@@ -1998,7 +1998,7 @@
             var previewContainer = document.getElementById('budgetFilePreviewContainer');
 
             if (fileNameDisplay) fileNameDisplay.textContent = 'No file attached';
-            if (fileIcon) fileIcon.textContent = '📎';
+            if (fileIcon) fileIcon.textContent = 'File';
             if (viewButton) viewButton.style.display = 'none';
             if (deleteButton) deleteButton.style.display = 'none';
             if (previewContainer) previewContainer.style.display = 'none';
@@ -2053,7 +2053,7 @@
             });
         }
 
-        // ─── TAB SWITCHING ─────────────────────────────────────────────
+        // Tab switching
         function switchBudgetContractsSubtab(tab, updateUrl) {
             var contracts = tab === 'contracts';
             document.getElementById('budgetsSubpanel').hidden = contracts;
@@ -2146,7 +2146,7 @@
             switchReportTab(currentReportTab);
         });
 
-        // ─── DELETE MODALS ─────────────────────────────────────────────
+        // Delete modals
         function openDeleteModal(message, callback, editing) {
             document.querySelector('#deleteConfirmModal h2').textContent = editing ? 'Confirm Update' : 'Confirm Deletion';
             var confirmButton = document.getElementById('confirmDeleteBtn');
@@ -2254,7 +2254,7 @@
             loadBonds();
         }
 
-        // ─── EXPENSE FILTERS ───────────────────────────────────────────
+        // Expense filters
         function setActiveTab(el, period) {
             document.querySelectorAll('.filter-tabs .tab').forEach(function(tab) { tab.classList.remove('active'); });
             el.classList.add('active');
@@ -2415,7 +2415,7 @@
             rowsInfo.textContent = 'Total: ' + totalCount + ' expense' + (totalCount === 1 ? '' : 's');
         }
 
-        // ─── API FETCH FUNCTIONS ──────────────────────────────────────
+        // Api fetch functions
         function fetchProjects() {
             return fetch(API_BASE + '/projects', {
                 credentials: 'same-origin',
@@ -2629,7 +2629,7 @@
             });
         }
 
-        // ─── POPULATE DROPDOWNS ───────────────────────────────────────
+        // Populate dropdowns
         function populateProjectDropdowns() {
             var selects = ['budgetProject', 'budgetDetailProjectEdit', 'detailProjectEdit', 'bondProject', 'bondDetailProjectEdit', 'receivableProject', 'backhoeExpenseProject', 'backhoeRentalProject', 'contractProject', 'receivableDetailProjectEdit'];
             selects.forEach(function(id) {
@@ -2836,7 +2836,7 @@
             });
         }
 
-        // ─── RENDER EXPENSES ───────────────────────────────────────────
+        // Render expenses
         function renderFinancePage(page) {
             financeCurrentPage = page;
             var start = (page - 1) * financePageSize;
@@ -2999,7 +2999,7 @@
             renderFinancePage(1);
         }
 
-        // ─── RENDER BUDGETS ────────────────────────────────────────────
+        // Render budgets
         function renderBudgetPage(page) {
             budgetCurrentPage = page;
             var start = (page - 1) * budgetPageSize;
@@ -3179,7 +3179,7 @@
             filterBudgetTable();
         }
 
-        // ─── BUDGET DETAIL MODAL ──────────────────────────────────────
+        // Budget detail modal
         function openBudgetModal(row) {
             currentBudgetRow = row;
             document.getElementById('budgetDetailProjectDisplay').textContent = row.dataset.projectName;
@@ -3206,14 +3206,14 @@
             var existingBudgetProofName = row.getAttribute('data-proof-file-name');
             if (existingBudgetProofPath) {
                 if (budFileNameDisplay) budFileNameDisplay.textContent = existingBudgetProofName || existingBudgetProofPath;
-                if (budFileIcon) budFileIcon.textContent = existingBudgetProofPath.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️';
+                if (budFileIcon) budFileIcon.textContent = existingBudgetProofPath.toLowerCase().endsWith('.pdf') ? 'PDF' : 'Image';
                 if (budViewButton) {
                     budViewButton.style.display = 'inline-block';
                     budViewButton.setAttribute('data-file-url', '/storage/' + existingBudgetProofPath);
                 }
             } else {
                 if (budFileNameDisplay) budFileNameDisplay.textContent = 'No file attached';
-                if (budFileIcon) budFileIcon.textContent = '📎';
+                if (budFileIcon) budFileIcon.textContent = 'File';
                 if (budViewButton) budViewButton.style.display = 'none';
             }
 
@@ -3357,7 +3357,7 @@
             if (e.target === this) closeBudgetDetailModal();
         });
 
-        // ─── EXPENSE DETAIL MODAL ─────────────────────────────────────
+        // Expense detail modal
         function openExpenseModal(row) {
             currentDetailRow = row;
             var isPendingInventory = row.dataset.isPendingInventory === 'true';
@@ -3399,14 +3399,14 @@
             var existingExpenseProofName = row.getAttribute('data-proof-file-name');
             if (existingExpenseProofPath) {
                 if (expFileNameDisplay) expFileNameDisplay.textContent = existingExpenseProofName || existingExpenseProofPath;
-                if (expFileIcon) expFileIcon.textContent = existingExpenseProofPath.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️';
+                if (expFileIcon) expFileIcon.textContent = existingExpenseProofPath.toLowerCase().endsWith('.pdf') ? 'PDF' : 'Image';
                 if (expViewButton) {
                     expViewButton.style.display = 'inline-block';
                     expViewButton.setAttribute('data-file-url', '/storage/' + existingExpenseProofPath);
                 }
             } else {
                 if (expFileNameDisplay) expFileNameDisplay.textContent = 'No file attached';
-                if (expFileIcon) expFileIcon.textContent = '📎';
+                if (expFileIcon) expFileIcon.textContent = 'File';
                 if (expViewButton) expViewButton.style.display = 'none';
             }
 
@@ -3580,7 +3580,7 @@
             });
         }
 
-        // ─── ADD EXPENSE (Unified - Handles ALL Expense Types) ──────
+        // Add expense (unified - handles all expense types)
         function openAddExpenseModal() {
             document.getElementById('addExpenseModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -3679,7 +3679,7 @@
             .catch(function(error) { showError(error.message); });
         }
 
-        // ─── ADD BUDGET ───────────────────────────────────────────────
+        // Add budget
         function openAddBudgetModal() {
             document.getElementById('addBudgetModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -3739,7 +3739,7 @@
             .catch(function(error) { showError(error.message); });
         }
 
-        // ─── ADD CONTRACT ─────────────────────────────────────────────
+        // Add contract
         function openAddContractModal(row) {
             document.getElementById('addContractModal').classList.remove('is-viewing');
             document.querySelectorAll('#addContractModal .contract-detail-value').forEach(function(el) { el.remove(); });
@@ -3956,7 +3956,7 @@
             });
         }
 
-        // ─── ADD RECEIVABLE ──────────────────────────────────────────
+        // Add receivable
         function openAddReceivableModal() {
             document.getElementById('addReceivableModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -4020,7 +4020,7 @@
                 .catch(function(error) { showError(error.message); });
         }
 
-        // ─── RECEIVABLE DETAIL MODAL ──────────────────────────────────
+        // Receivable detail modal
         var currentReceivableRow = null;
         var isReceivableEditMode = false;
 
@@ -4204,7 +4204,7 @@
             if (e.target === this) closeReceivableModal();
         });
 
-        // ─── ADD CASH ASSET ──────────────────────────────────────────
+        // Add cash asset
         function openAddCashModal(selectedAccountId) {
             document.getElementById('addCashModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -4250,7 +4250,7 @@
                 .catch(function(error) { showError(error.message); });
         }
 
-        // ─── ADD REPAIR ───────────────────────────────────────────────
+        // Add repair
         function openAddRepairModal() {
             document.getElementById('addRepairModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -4297,7 +4297,7 @@
                 .catch(function(error) { showError(error.message); });
         }
 
-        // ─── ADD BACKHOE EXPENSE ──────────────────────────────────────
+        // Add backhoe expense
         function openAddBackhoeExpenseModal() {
             document.getElementById('backhoeExpenseProject').required = false;
             document.querySelector('#backhoeExpenseProject').closest('.form-group').querySelector('label').textContent = 'Project Site';
@@ -4355,7 +4355,7 @@
                 .catch(function(error) { showError(error.message); });
         }
 
-        // ─── ADD BACKHOE RENTAL ──────────────────────────────────────
+        // Add backhoe rental
         function openAddBackhoeRentalModal() {
             document.getElementById('backhoeRentalProject').required = false;
             document.querySelector('#backhoeRentalProject').closest('.form-group').querySelector('label').textContent = 'Project Site';
@@ -4408,7 +4408,7 @@
                 .catch(function(error) { showError(error.message); });
         }
 
-        // ─── ADD BOND ──────────────────────────────────────────────────
+        // Add bond
         function openAddBondModal() {
             document.getElementById('addBondModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -4507,7 +4507,7 @@
             if (e.target === this) closeBondModal();
         });
 
-        // ─── REPORTS ───────────────────────────────────────────────────
+        // Reports
         function financeLegacyCategoryCode(code) {
             return {
                 CONSTRUCTION_SUPPLY: 'CONST_SUPPLY',
@@ -5264,7 +5264,7 @@
                 });
         }
 
-        // ─── CASH ASSET DETAIL MODAL ──────────────────────────────────
+        // Cash asset detail modal
         var currentCashRow = null;
         var isCashEditMode = false;
 
@@ -5824,7 +5824,7 @@
                 });
         }
 
-        // ─── BOND DETAIL MODAL ──────────────────────────────────────
+        // Bond detail modal
         var currentBondRow = null;
         var isBondEditMode = false;
 
@@ -6003,7 +6003,7 @@
                 });
         }
 
-        // ─── EVENT LISTENERS ──────────────────────────────────────────
+        // Event listeners
         document.addEventListener('click', function(e) {
             var modals = ['addExpenseModal', 'addBudgetModal', 'addContractModal',
                           'addReceivableModal', 'addCashModal', 'addRepairModal', 'addBackhoeExpenseModal',
@@ -6041,7 +6041,7 @@
             }
         });
 
-        // ─── INIT ─────────────────────────────────────────────────────
+        // Init
         document.addEventListener('DOMContentLoaded', function() {
             var requestedTab = document.body.dataset.financeTab || 'expenses';
             currentReportTab = requestedTab;

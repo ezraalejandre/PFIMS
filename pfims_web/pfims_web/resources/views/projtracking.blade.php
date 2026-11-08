@@ -48,16 +48,16 @@
 </head>
 <body class="projects-page" data-portal="{{ $portal }}" data-project-view-icon="{{ asset('images/view.jpg') }}" data-project-edit-icon="{{ asset('images/edit.jpg') }}">
 
-    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <!-- Error notification (pop-up) -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
-            <span class="error-icon">⚠</span>
+            <span class="error-icon">!</span>
             <span id="errorMessage">An error occurred. Please try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <!-- Success notification (pop-up) -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -66,7 +66,7 @@
         </div>
     </div>
 
-    <!-- ─── DELETE CONFIRMATION MODAL ─── -->
+    <!-- Delete confirmation modal -->
     <div id="deleteConfirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container" style="width: 400px; max-width: 95%;">
             <div class="modal-header">
@@ -88,7 +88,7 @@
         </div>
     </div>
 
-    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <!-- Full-width header (fixed) -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -110,7 +110,7 @@
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
+    <!-- Sidebar -->
     <aside class="sidebar">
                 <nav>
             <ul>
@@ -142,7 +142,7 @@
         </div>
     </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
+    <!-- Main content -->
     <main class="main-content">
 
         <div class="page-header-with-btn">
@@ -221,7 +221,7 @@
 
     </main>
 
-    <!-- ─── OVERLAY / MODAL (Add Project) ─── -->
+    <!-- Overlay / modal (add project) -->
     <div id="projectModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
@@ -328,7 +328,7 @@
         </div>
     </div>
 
-    <!-- ─── UPDATE PROJECT OVERVIEW MODAL (with Delete) ─── -->
+    <!-- Update project overview modal (with delete) -->
     <div id="updateModal" class="modal-overlay modal-update">
         <div class="modal-container">
             <div class="modal-header">
@@ -390,7 +390,7 @@
         </div>
     </div>
 
-    <!-- ─── EDIT PROJECT MODAL (standalone) ─── -->
+    <!-- Edit project modal (standalone) -->
     <div id="editProjectModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-header">
@@ -467,7 +467,7 @@
     @include('partials.data-import', ['importModule' => 'projects'])
 
     <script>
-        // ─── GLOBAL VARIABLES ───
+        // Global variables
                 var currentEditData = null;
         var currentProjectRow = null;
         var deleteCallback = null;
@@ -475,7 +475,7 @@
         var projectSearchTerm = '';
         var isOpeningProjectModal = false;
 
-        // ─── HIDE NOTIFICATION BADGE ON CLICK ───
+        // Hide notification badge on click
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -483,7 +483,7 @@
             }
         }
 
-        // ─── ERROR NOTIFICATION (POP-UP) ───
+        // Error notification (pop-up)
                 var suppressErrorAutoClose = false;
 
         function showError(message) {
@@ -512,7 +512,7 @@
             }
         }
 
-        // ─── SUCCESS NOTIFICATION (POP-UP) ───
+        // Success notification (pop-up)
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
@@ -534,7 +534,7 @@
             }
         }
 
-        // ─── DELETE CONFIRMATION MODAL ───
+        // Delete confirmation modal
         function openDeleteModal(message, callback) {
             document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to move this project to Trash Bin?';
             deleteCallback = callback;
@@ -561,7 +561,7 @@
             }
         });
 
-        // ─── ADD PROJECT MODAL ───
+        // Add project modal
         function projectToday() {
             var parts = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
@@ -884,7 +884,7 @@ if (currentStep === 2) {
             return meta ? meta.content : '';
         }
 
-        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        // Button loading state (prevents double-click / double-submit)
         function setButtonLoading(button, isLoading, loadingText) {
             if (!button) return;
             if (isLoading) {
@@ -936,12 +936,12 @@ if (currentStep === 2) {
             };
         }
 
-        // ─── PAGINATION VARIABLES ───
+        // Pagination variables
         var projectPageSize = 5;
         var projectCurrentPage = 1;
         var projectFilteredData = [];
 
-        // ─── RENDER PROJECT PAGE ───
+        // Render project page
         function renderProjectPage(page) {
             var totalPages = Math.max(1, Math.ceil(projectFilteredData.length / projectPageSize));
             projectCurrentPage = Math.min(Math.max(parseInt(page, 10) || 1, 1), totalPages);
@@ -962,7 +962,7 @@ if (currentStep === 2) {
             if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
-        // ─── RENDER PROJECT PAGINATION ───
+        // Render project pagination
                 function renderProjectPagination() {
             var container = document.getElementById('projectPaginationLinks');
             if (!container) return;
@@ -1025,7 +1025,7 @@ if (currentStep === 2) {
             container.innerHTML = html;
         }
 
-        // ─── CHANGE PROJECT PAGE SIZE ───
+        // Change project page size
         function changeProjectPageSize() {
             var select = document.getElementById('projectRowsPerPage');
             projectPageSize = parseInt(select.value) || 10;
@@ -1114,7 +1114,7 @@ if (currentStep === 2) {
             }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' }, tooltip: { enabled: true } } } });
         }
 
-                // ─── FETCH PROJECTS (modified) ───
+                // Fetch projects (modified)
         function fetchProjects() {
             return fetch('/api/projects', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1297,7 +1297,7 @@ if (currentStep === 2) {
             return tr;
         }
 
-                // ─── SAVE PROJECT ───
+                // Save project
         function saveProject() {
             var saveBtn = document.querySelector('#step3 .btn-save');
             var name = document.getElementById('projectName').value.trim();
@@ -1411,7 +1411,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             if (e.target === this) { closeModal(); }
         });
 
-        // ─── UPDATE PROJECT OVERVIEW MODAL ───
+        // Update project overview modal
         function openUpdateModal(
             row,
             projectId,
@@ -1474,7 +1474,7 @@ if (new Date(endDate) <= new Date(startDate)) {
         document.getElementById('projectDetailsEditBtn').addEventListener('click', openEditProjectModal);
         document.getElementById('projectDetailsDeleteBtn').addEventListener('click', deleteProject);
 
-        // ─── DELETE PROJECT ───
+        // Delete project
                 function deleteProject() {
             if (!currentProjectRow) {
                 showError('No project selected to delete.');
@@ -1539,7 +1539,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             });
         }
 
-        // ─── EDIT PROJECT MODAL ───
+        // Edit project modal
         function openEditProjectModal() {
             if (!currentEditData) {
                 showError('No project data to edit.');
@@ -1737,7 +1737,7 @@ if (actualEnd && actualEnd <= start) {
             });
         }
 
-        // ─── CLOSE MODALS ON BACKDROP CLICK ───
+        // Close modals on backdrop click
         document.getElementById('updateModal').addEventListener('click', function(e) {
             if (e.target === this) { closeUpdateModal(); }
         });

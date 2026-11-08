@@ -1304,7 +1304,7 @@
     <script src="{{ asset('js/ml-performance.js') }}?v={{ filemtime(public_path('js/ml-performance.js')) }}"></script>
     <script src="{{ asset('js/ml-retrain.js') }}?v={{ filemtime(public_path('js/ml-retrain.js')) }}"></script>
     <script>
-    // ─── CONFIGURATION ─────────────────────────────────────────────
+    // Configuration
     const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
     const requestedAnalyticsSection = new URLSearchParams(window.location.search).get('section');
@@ -1318,7 +1318,7 @@
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     })[character]);
 
-    // ─── NOTIFICATION SYSTEM ──────────────────────────────────────
+    // Notification system
     function showNotification(message, type = 'info', duration = 5000) {
         if (typeof window.showPfimsAlert === 'function') {
             window.showPfimsAlert(message, type, duration);
@@ -1339,7 +1339,7 @@
         }, duration);
     }
 
-    // ─── LOAD DASHBOARD DATA ──────────────────────────────────────
+    // Load dashboard data
     async function loadDashboard() {
         try {
             const response = await fetch(`${API_BASE}/analytics/dashboard`, {
@@ -1363,7 +1363,7 @@
         }
     }
 
-    // ─── UPDATE MODEL METRICS ─────────────────────────────────────
+    // Update model metrics
     function updateModelMetrics(metrics) {
         window.pfimsPerformance.update(metrics);
     }
@@ -1431,7 +1431,7 @@
         document.getElementById('snapshotOther').textContent = `${currency(project.fin_equipment_expense)} / ${currency(project.fin_other_expense)}`;
     }
 
-    // ─── PREDICT COST ─────────────────────────────────────────────
+    // Predict cost
     async function predictCost() {
         const form = document.getElementById('predictionForm');
         if (!form.reportValidity()) return;
@@ -1518,17 +1518,17 @@
             } else {
                 resultDiv.className = 'prediction-result show danger';
                 const errors = result.errors ? Object.values(result.errors).flat().join('<br>') : '';
-                contentDiv.innerHTML = `<p style="color:#c62828;">❌ ${escapeHtml(errors || result.message || 'Prediction failed')}</p>`;
+                contentDiv.innerHTML = `<p style="color:#c62828;">Error ${escapeHtml(errors || result.message || 'Prediction failed')}</p>`;
                 showNotification('Prediction failed: ' + (result.message || 'Unknown error'), 'error');
             }
         } catch (error) {
             resultDiv.className = 'prediction-result show danger';
-            contentDiv.innerHTML = `<p style="color:#c62828;">❌ Error: ${escapeHtml(error.message)}</p>`;
+            contentDiv.innerHTML = `<p style="color:#c62828;">Error: ${escapeHtml(error.message)}</p>`;
             showNotification('Error: ' + error.message, 'error');
         }
     }
 
-    // ─── CLEAR PREDICTION FORM ────────────────────────────────────
+    // Clear prediction form
     function clearPredictionForm() {
         document.getElementById('predictionProject').value = '';
         updatePredictionProjectSnapshot();
@@ -1536,7 +1536,7 @@
         document.getElementById('predictionResult').className = 'prediction-result';
     }
 
-    // ─── LOAD MATERIAL FORECAST ──────────────────────────────────
+    // Load material forecast
     async function loadMaterialForecast() {
         try {
             const response = await fetch(`${API_BASE}/predict/material-demand`, {
@@ -1557,7 +1557,7 @@
         }
     }
 
-    // ─── UPDATE MATERIAL FORECAST ─────────────────────────────────
+    // Update material forecast
     function updateMaterialForecast(predictions) {
         const tbody = document.getElementById('materialForecastBody');
         if (predictions !== materialForecastRows) materialForecastRows = predictions ? Object.values(predictions) : [];
@@ -1631,7 +1631,7 @@
         links.innerHTML = html;
     }
 
-    // ─── LOAD BUDGET VARIANCE ────────────────────────────────────
+    // Load budget variance
     async function loadBudgetVariance() {
         try {
             const response = await fetch(`${API_BASE}/analytics/budget-variance`, {
@@ -1655,7 +1655,7 @@
         }
     }
 
-    // ─── UPDATE BUDGET VARIANCE ────────────────────────────────────
+    // Update budget variance
     function budgetComparisonDifference(item) {
         const budget = parseFloat(item.budget) || 0;
         const actualCost = parseFloat(item.actual_cost) || 0;
@@ -1754,7 +1754,7 @@
         links.innerHTML = html;
     }
 
-    // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
+    // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
@@ -1762,7 +1762,7 @@
         }
     });
 
-    // ─── INIT ─────────────────────────────────────────────────────
+    // Init
     document.addEventListener('DOMContentLoaded', function() {
         const sectionMap = { predictive: 'costPredictionSection', 'material-projection': 'materialProjectionSection', 'budget-comparison': 'budgetComparisonSection' };
         const targetSection = sectionMap[requestedAnalyticsSection] || 'costPredictionSection';

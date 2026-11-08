@@ -16,16 +16,16 @@
 </head>
 <body class="profile-page" data-portal="{{ $portal }}" data-status-message="{{ session('status', '') }}">
 
-    <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+    <!-- Error notification (pop-up) -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
-            <span class="error-icon">⚠</span>
+            <span class="error-icon">!</span>
             <span id="errorMessage">An error occurred. Please try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <!-- Success notification (pop-up) -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -34,7 +34,7 @@
         </div>
     </div>
 
-    <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+    <!-- Full-width header (fixed) -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -55,7 +55,7 @@
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
+    <!-- Sidebar -->
 <aside class="sidebar">
     <nav>
                 <ul>
@@ -87,7 +87,7 @@
     </div>
 </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
+    <!-- Main content -->
     <main class="main-content">
 
         <!-- Page Header -->
@@ -158,7 +158,7 @@
     </main>
 
     <script>
-                // ─── HIDE NOTIFICATION BADGE ON CLICK ───
+                // Hide notification badge on click
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -167,7 +167,7 @@
             // The link will still navigate to /notifications.
         }
 
-        // ─── FETCH UNREAD NOTIFICATION COUNT ───
+        // Fetch unread notification count
         function fetchNotifBadge() {
             fetch('/api/notifications/unread-count', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -194,7 +194,7 @@
 
         document.addEventListener('DOMContentLoaded', fetchNotifBadge);
 
-        // ─── ERROR NOTIFICATION (POP-UP) ───
+        // Error notification (pop-up)
         function showError(message) {
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
@@ -216,7 +216,7 @@
             }
         }
 
-        // ─── SUCCESS NOTIFICATION (POP-UP) ───
+        // Success notification (pop-up)
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
@@ -247,7 +247,7 @@
             }
         });
 
-        // ─── BUTTON LOADING STATE (prevents double-click / double-submit) ───
+        // Button loading state (prevents double-click / double-submit)
         function setButtonLoading(button, isLoading, loadingText) {
             if (!button) return;
             if (isLoading) {
@@ -264,13 +264,13 @@
             }
         }
 
-        // ─── ENABLE EDIT MODE ───
+        // Enable edit mode
         function enableEdit() {
             var card = document.getElementById('profileCard');
             card.classList.add('edit-mode');
         }
 
-        // ─── CANCEL EDIT ───
+        // Cancel edit
         function cancelEdit() {
             var card = document.getElementById('profileCard');
             card.classList.remove('edit-mode');
@@ -282,7 +282,7 @@
             document.getElementById('editLocation').value = document.getElementById('displayLocation').textContent;
         }
 
-        // ─── SAVE PROFILE ───
+        // Save profile
         function saveProfile() {
             var saveBtn = document.querySelector('.profile-actions .btn-save-profile');
             if (saveBtn && saveBtn.disabled) return;

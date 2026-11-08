@@ -157,16 +157,16 @@
 </head>
 <body class="notifications-page" data-portal="{{ $portal }}">
 
-        <!-- ─── ERROR NOTIFICATION (POP-UP) ─── -->
+        <!-- Error notification (pop-up) -->
     <div id="errorNotification" class="error-notification" style="display: none;">
         <div class="error-content">
-            <span class="error-icon">⚠</span>
+            <span class="error-icon">!</span>
             <span id="errorMessage">An error occurred. Please try again.</span>
             <button class="error-close" onclick="closeError()">×</button>
         </div>
     </div>
 
-    <!-- ─── SUCCESS NOTIFICATION (POP-UP) ─── -->
+    <!-- Success notification (pop-up) -->
     <div id="successNotification" class="success-notification" style="display: none;">
         <div class="success-content">
             <span class="success-icon">●</span>
@@ -175,7 +175,7 @@
         </div>
     </div>
 
-    <!-- ─── CONFIRM MODAL (for Clear All) ─── -->
+    <!-- Confirm modal (for clear all) -->
     <div id="confirmModal" class="modal-overlay pfims-delete-confirm" style="display: none; z-index: 9999;">
         <div class="modal-container">
             <div class="modal-header">
@@ -197,7 +197,7 @@
         </div>
     </div>
 
-        <!-- ─── FULL-WIDTH HEADER (Fixed) ─── -->
+        <!-- Full-width header (fixed) -->
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -219,7 +219,7 @@
         </div>
     </header>
 
-    <!-- ─── SIDEBAR ─── -->
+    <!-- Sidebar -->
     <aside class="sidebar">
                 <nav>
             <ul>
@@ -251,7 +251,7 @@
         </div>
     </aside>
 
-    <!-- ─── MAIN CONTENT ─── -->
+    <!-- Main content -->
     <main class="main-content">
 
         <!-- Page Header -->
@@ -272,7 +272,7 @@
             <span class="tab" onclick="switchTab(this, 'system')">System</span>
         </div>
 
-                <!-- ─── NOTIFICATIONS LIST ─── -->
+                <!-- Notifications list -->
         <div id="notifList">
             <div style="text-align: center; padding: 40px; color: #888;">Loading notifications...</div>
         </div>
@@ -320,7 +320,7 @@
             return list.filter(function(n) { return n.requires_acknowledgement || mutedTypes.indexOf(n.type) === -1; });
         }
 
-        // ─── HIDE NOTIFICATION BADGE ───
+        // Hide notification badge
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
             if (badge) {
@@ -328,7 +328,7 @@
             }
         }
 
-        // ─── CONFIRM MODAL ───
+        // Confirm modal
         var confirmCallback = null;
 
         function openClearAllModal() {
@@ -365,7 +365,7 @@
             }
         });
 
-                // ─── TAB SWITCHING ───
+                // Tab switching
         function switchTab(el, type) {
             var tabs = document.querySelectorAll('.notif-tabs .tab');
             tabs.forEach(function(tab) {
@@ -377,20 +377,20 @@
             renderNotifications();
         }
 
-        // ─── GET NOTIFICATION ICON BASED ON KIND ───
+        // Get notification icon based on kind
         function getNotificationIcon(kind) {
             var iconMap = {
-                'warning': { class: 'orange', text: '⚠️' },
-                'overdue': { class: 'red', text: '⏰' },
-                'success': { class: 'green', text: '✅' },
-                'info': { class: 'blue', text: 'ℹ️' },
-                'maintenance': { class: 'wrench', text: '🔧' },
-                'system_update': { class: 'purple', text: '🔄' }
+                'warning': { class: 'orange', text: 'Warning' },
+                'overdue': { class: 'red', text: 'Due' },
+                'success': { class: 'green', text: 'Success' },
+                'info': { class: 'blue', text: 'Info' },
+                'maintenance': { class: 'wrench', text: 'Service' },
+                'system_update': { class: 'purple', text: 'Update' }
             };
-            return iconMap[kind] || { class: 'blue', text: '📌' };
+            return iconMap[kind] || { class: 'blue', text: 'Notice' };
         }
 
-        // ─── GET TOTAL NOTIFICATIONS BY TYPE ───
+        // Get total notifications by type
         function getTotalNotifications() {
             var totals = [];
             var types = {};
@@ -416,7 +416,7 @@
             return Object.values(types);
         }
 
-                // ─── LOAD NOTIFICATIONS ───
+                // Load notifications
         function loadNotifications() {
             var list = document.getElementById('notifList');
             list.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;">Loading notifications...</div>';
@@ -442,7 +442,7 @@
             });
         }
 
-        // ─── LOAD MOCK NOTIFICATIONS ───
+        // Load mock notifications
         function loadMockNotifications() {
             var now = new Date();
             allNotifications = [
@@ -502,7 +502,7 @@
             renderNotifications();
         }
 
-        // ─── UPDATE BADGE COUNT ───
+        // Update badge count
         function updateBadgeCount() {
             var unread = allNotifications.filter(function(n) { return !n.is_read; }).length;
             var badge = document.getElementById('notifBadge');
@@ -514,7 +514,7 @@
             }
         }
 
-                // ─── RENDER NOTIFICATIONS ───
+                // Render notifications
         function renderNotifications() {
             var list = document.getElementById('notifList');
             var paginationWrapper = document.getElementById('notifPaginationWrapper');
@@ -550,7 +550,7 @@
                 if (totals.length === 0) {
                     list.innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-icon">🔔</div>
+                            <div class="empty-icon">Notifications</div>
                             <div style="font-size: 1.1rem; color: #666;">No notifications</div>
                             <div style="font-size: 0.85rem; color: #aaa; margin-top: 5px;">You're all caught up!</div>
                         </div>
@@ -603,7 +603,7 @@
                 paginationWrapper.style.display = 'none';
                 list.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">🔔</div>
+                        <div class="empty-icon">Notifications</div>
                         <div style="font-size: 1.1rem; color: #666;">No notifications</div>
                         <div style="font-size: 0.85rem; color: #aaa; margin-top: 5px;">You're all caught up!</div>
                     </div>
@@ -662,7 +662,7 @@
             list.innerHTML = html;
         }
 
-        // ─── NOTIFICATION PAGINATION ───
+        // Notification pagination
         function renderNotifPaginationLinks(totalPages) {
             var container = document.getElementById('notifPaginationLinks');
             var current = notifCurrentPage;
@@ -696,7 +696,7 @@
             renderNotifications();
         }
 
-                // ─── EXPAND TOTAL TO SHOW INDIVIDUAL NOTIFICATIONS ───
+                // Expand total to show individual notifications
         function expandTotal(type) {
             showOnlyTotals = false;
             notifCurrentPage = 1;
@@ -704,7 +704,7 @@
             loadNotifications();
         }
 
-        // ─── MARK AS READ ───
+        // Mark as read
         function markAsRead(element) {
             var id = element.dataset.id;
             if (!id) return;
@@ -753,7 +753,7 @@
             });
         }
 
-        // ─── MARK ALL READ ───
+        // Mark all read
         function markAllRead() {
             var unreadIds = allNotifications.filter(function(n) { return !n.is_read && !n.requires_acknowledgement; }).map(function(n) { return n.notification_id; });
             
@@ -790,7 +790,7 @@
             });
         }
 
-        // ─── SUCCESS NOTIFICATION ───
+        // Success notification
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
@@ -812,7 +812,7 @@
             }
         }
 
-        // ─── INIT ───
+        // Init
         document.addEventListener('DOMContentLoaded', function() {
             loadNotifications();
         });

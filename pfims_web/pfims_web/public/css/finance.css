@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -90,7 +90,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -106,7 +106,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SIDEBAR ─── */
+/* Sidebar */
 .sidebar {
     width: 260px;
     background: #111827;
@@ -206,21 +206,21 @@ body {
     width: 100%;
 }
 
-/* ─── SIDEBAR ICONS ─── */
+/* Sidebar icons */
 .sidebar .nav-link-icon {
     width: 20px;
     height: 20px;
     object-fit: contain;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── FINANCE PAGE SPECIFIC ─── */
+/* Finance page specific */
 
 /* Page Header */
 .page-header {
@@ -238,7 +238,7 @@ body {
     color: #172033;
 }
 
-/* ─── BUTTONS (Dashboard Colors) ─── */
+/* Buttons (dashboard colors) */
 .btn-add-data {
     background: linear-gradient(135deg, #f08a1a, #d97508);
     color: #fff;
@@ -305,7 +305,7 @@ body {
     box-shadow: 0 8px 20px rgba(240, 138, 26, 0.3);
 }
 
-/* ─── REPORT DROPDOWN (Dashboard Colors) ─── */
+/* Report dropdown (dashboard colors) */
 .report-dropdown-toggle {
     border-color: #f08a1a;
     background: #fff;
@@ -322,7 +322,7 @@ body {
     color: #fff;
 }
 
-/* ─── STATS ROW ─── */
+/* Stats row */
 .stats-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -378,7 +378,7 @@ body {
     line-height: 1.35;
 }
 
-/* ─── FILTER TABS ─── */
+/* Filter tabs */
 .filter-tabs, .budget-contract-tabs {
     display: flex;
     gap: 8px;
@@ -416,7 +416,7 @@ body {
 #budgetsSubpanel[hidden], #contractsSubpanel[hidden] { display: none !important; }
 #addBudgetHeaderButton[hidden], #addContractHeaderButton[hidden] { display: none !important; }
 
-/* ─── FILTER ROW ─── */
+/* Filter row */
 .filter-row {
     display: flex;
     gap: 15px;
@@ -493,7 +493,7 @@ body {
     color: #172033;
 }
 
-/* ─── EXPENSE TABLE ─── */
+/* Expense table */
 .table-wrapper {
     background: #fff;
     border-radius: 18px;
@@ -543,7 +543,7 @@ body {
     border-bottom: none;
 }
 
-/* ─── CATEGORY BADGES ─── */
+/* Category badges */
 .category-badge {
     display: inline-block;
     padding: 4px 12px;
@@ -582,7 +582,7 @@ body {
     color: #666;
 }
 
-/* ─── PAGINATION ─── */
+/* Pagination */
 .pagination-wrapper {
     display: flex;
     justify-content: space-between;
@@ -638,7 +638,7 @@ body {
     cursor: default;
 }
 
-/* ─── CHART COLORS ─── */
+/* Chart colors */
 .insight-chart {
     display: grid;
     min-height: 110px;
@@ -693,7 +693,7 @@ body {
     background: linear-gradient(90deg, #1f9d61, #57c98e);
 }
 
-/* ─── MODULE INSIGHTS ─── */
+/* Module insights */
 .module-insights {
     margin-bottom: 20px;
 }
@@ -789,7 +789,7 @@ body {
     .insight-pie { width: 170px; }
 }
 
-/* ─── MODAL OVERLAY ─── */
+/* Modal overlay */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -1157,7 +1157,7 @@ body {
     box-shadow: 0 8px 20px rgba(240, 138, 26, 0.3);
 }
 
-/* ─── DETAIL GRID ─── */
+/* Detail grid */
 .detail-grid,
 .budget-detail-grid {
     display: grid;
@@ -1212,7 +1212,7 @@ body {
     background: #fff;
 }
 
-/* ─── BUDGET TABLE ─── */
+/* Budget table */
 .budget-table-wrapper {
     background: #fff;
     border-radius: 18px;
@@ -1267,7 +1267,7 @@ body {
     border-bottom: none;
 }
 
-/* ─── BUDGET STATS ROW ─── */
+/* Budget stats row */
 .stats-row-budget {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1324,7 +1324,7 @@ body {
     display: grid;
 }
 
-/* ─── BUDGET ROW STATES ─── */
+/* Budget row states */
 .budget-overrun { background: #fee2e2 !important; }
 .budget-warning { background: #fff3d6 !important; }
 
@@ -1332,7 +1332,7 @@ body {
 .status-released { color: #f08a1a; }
 .status-forfeited { color: #d93636; }
 
-/* ─── BADGES ─── */
+/* Badges */
 .badge {
     display: inline-block;
     padding: 4px 12px;
@@ -1347,7 +1347,7 @@ body {
 .badge-secondary { background: #edf2f7; color: #475569; }
 .badge-info { background: #e3f2fd; color: #1565c0; }
 
-/* ─── BUDGET FILTER ROW ─── */
+/* Budget filter row */
 .budget-filter-row {
     display: flex;
     gap: 15px;
@@ -1362,7 +1362,7 @@ body {
     min-width: 150px;
 }
 
-/* ─── REPORT TABLE WRAPPER ─── */
+/* Report table wrapper */
 .report-table-wrapper {
     overflow-x: auto;
     margin-top: 15px;
@@ -1410,7 +1410,7 @@ body {
     border-top: 2px solid #e4e8ef;
 }
 
-/* ─── FILE UPLOAD ─── */
+/* File upload */
 .file-upload-wrapper {
     display: flex;
     align-items: center;
@@ -1454,7 +1454,7 @@ body {
     font-size: 0.8rem;
 }
 
-/* ─── EXPENSE FILE SECTION ─── */
+/* Expense file section */
 .expense-file-section {
     margin-top: 20px;
     padding-top: 18px;
@@ -1563,7 +1563,7 @@ body {
     display: none;
 }
 
-/* ─── DYNAMIC AMOUNT FIELDS ─── */
+/* Dynamic amount fields */
 .dynamic-amount-fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1584,7 +1584,7 @@ body {
     color: #6b7280;
 }
 
-/* ─── NOTIFICATIONS ─── */
+/* Notifications */
 .error-notification {
     position: fixed;
     top: 80px;
@@ -1671,7 +1671,7 @@ body {
     opacity: 1;
 }
 
-/* ─── SIDEBAR LOGOUT BUTTON FIX ─── */
+/* Sidebar logout button fix */
 .sidebar .bottom-nav ul li.logout form {
     width: 100%;
     margin: 0;
@@ -1720,7 +1720,7 @@ body {
     }
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;

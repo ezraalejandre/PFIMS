@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -98,7 +98,7 @@ body {
     font-weight: 600;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -114,7 +114,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -208,14 +208,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── PAGE HEADER ─── */
+/* Page header */
 .page-header h1 {
     font-size: 1.8rem;
     font-weight: 600;
@@ -229,7 +229,7 @@ body {
     display: block;
 }
 
-/* ─── STATS CARDS ─── */
+/* Stats cards */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -265,7 +265,7 @@ body {
     color: #888;
 }
 
-/* ─── CHARTS ROW ─── */
+/* Charts row */
 .charts-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -287,7 +287,7 @@ body {
     margin-bottom: 15px;
 }
 
-/* ─── BAR CHART ─── */
+/* Bar chart */
 .bar-chart {
     display: flex;
     align-items: flex-end;
@@ -323,7 +323,7 @@ body {
     background: #000000;
 }
 
-/* ─── LINE CHART ─── */
+/* Line chart */
 .chart-box .line-chart {
     position: relative;
     height: 180px;
@@ -385,7 +385,7 @@ body {
     dominant-baseline: central;
 }
 
-/* ─── PROJECTS LIST ─── */
+/* Projects list */
 .projects-section {
     margin-top: 20px;
 }
@@ -472,7 +472,7 @@ body {
     margin-top: 4px;
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;
@@ -559,7 +559,7 @@ body {
     }
 }
 
-/* ─── PAGINATION ─── */
+/* Pagination */
 .pagination-wrapper {
     display: flex;
     justify-content: space-between;
@@ -614,7 +614,7 @@ body {
     cursor: default;
 }
 
-/* ─── ADDED MODAL STYLES (matching Project Tracking) ─── */
+/* Added modal styles (matching project tracking) */
 
 .modal-overlay {
     position: fixed;
@@ -659,13 +659,13 @@ body {
     }
 }
 
-/* ─── UPDATE PROJECT MODAL ─── */
+/* Update project modal */
 .modal-update .modal-container {
     width: 800px;
     max-width: 95%;
 }
 
-/* ─── MODAL HEADER ─── */
+/* Modal header */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -700,7 +700,7 @@ body {
     color: #333;
 }
 
-/* ─── PROJECT DETAILS GRID ─── */
+/* Project details grid */
 .project-details-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -749,7 +749,7 @@ body {
     color: #666;
 }
 
-/* ─── STATUS BADGES (Reused from projtracking) ─── */
+/* Status badges (reused from projtracking) */
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -778,7 +778,7 @@ body {
 .status-badge.at-risk { color: #e65100; }
 .status-badge.at-risk .dot { background: #e65100; }
 
-/* ─── MODAL FOOTER ─── */
+/* Modal footer */
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -819,7 +819,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── RESPONSIVE FOR MODAL ─── */
+/* Responsive for modal */
 @media (max-width: 650px) {
     .modal-container {
         padding: 20px;

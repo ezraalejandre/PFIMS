@@ -38,7 +38,7 @@ class ImportData extends Command
         // Show summary
         $this->showSummary();
 
-        $this->info("\n✅ Import completed successfully!");
+        $this->info("\nImport completed successfully.");
     }
 
     /**
@@ -46,7 +46,7 @@ class ImportData extends Command
      */
     protected function checkTables()
     {
-        $this->info('📋 Checking database tables...');
+        $this->info('Checking database tables...');
 
         $tables = ['project_tbl', 'budgets_tbl', 'fin_expense_category_tbl', 'fin_expense_tbl', 'inventory_item_tbl', 'inventory_transaction_tbl'];
         $missing = [];
@@ -59,11 +59,11 @@ class ImportData extends Command
         }
 
         if (! empty($missing)) {
-            $this->error('❌ Missing tables: '.implode(', ', $missing));
+            $this->error('Missing tables: '.implode(', ', $missing));
             exit(1);
         }
 
-        $this->info('✅ All tables exist!');
+        $this->info('All tables exist.');
     }
 
     /**
@@ -118,7 +118,7 @@ class ImportData extends Command
      */
     protected function importProjects($mode)
     {
-        $this->info("\n📦 Importing projects from projects.json...");
+        $this->info("\nImporting projects from projects.json...");
 
         $data = $this->getData('projects');
         if (empty($data)) {
@@ -145,7 +145,7 @@ class ImportData extends Command
         }
 
         $this->insertData('project_tbl', $cleanData, 'project_id', $mode);
-        $this->info('✅ Projects imported');
+        $this->info('Projects imported');
     }
 
     /**
@@ -153,7 +153,7 @@ class ImportData extends Command
      */
     protected function importBudgets($mode)
     {
-        $this->info("\n💰 Importing budgets from budgets.json...");
+        $this->info("\nImporting budgets from budgets.json...");
 
         $data = $this->getData('budgets');
         if (empty($data)) {
@@ -173,7 +173,7 @@ class ImportData extends Command
         }
 
         $this->insertData('budgets_tbl', $cleanData, 'budget_id', $mode);
-        $this->info('✅ Budgets imported');
+        $this->info('Budgets imported');
     }
 
     /**
@@ -181,7 +181,7 @@ class ImportData extends Command
      */
     protected function importExpenses($mode)
     {
-        $this->info("\n🧾 Importing expenses from expenses.json...");
+        $this->info("\nImporting expenses from expenses.json...");
 
         $data = $this->getData('expenses');
         if (empty($data)) {
@@ -227,7 +227,7 @@ class ImportData extends Command
         }
 
         $this->insertData('fin_expense_tbl', $cleanData, 'fin_expense_id', $mode);
-        $this->info('✅ Expenses imported');
+        $this->info('Expenses imported');
     }
 
     protected function finExpenseCategoryIdForComponent(string $component): int
@@ -257,7 +257,7 @@ class ImportData extends Command
      */
     protected function importInventoryItems($mode)
     {
-        $this->info("\n📦 Importing inventory items from inventory_items.json...");
+        $this->info("\nImporting inventory items from inventory_items.json...");
 
         $data = $this->getData('inventory_items');
         if (empty($data)) {
@@ -280,7 +280,7 @@ class ImportData extends Command
         }
 
         $this->insertData('inventory_item_tbl', $cleanData, 'item_id', $mode);
-        $this->info('✅ Inventory items imported');
+        $this->info('Inventory items imported');
     }
 
     /**
@@ -288,7 +288,7 @@ class ImportData extends Command
      */
     protected function importInventoryTransactions($mode)
     {
-        $this->info("\n📊 Importing inventory transactions from inventory_transactions.json...");
+        $this->info("\nImporting inventory transactions from inventory_transactions.json...");
 
         $data = $this->getData('inventory_transactions');
         if (empty($data)) {
@@ -310,7 +310,7 @@ class ImportData extends Command
         }
 
         $this->insertData('inventory_transaction_tbl', $cleanData, 'inventory_transaction_id', $mode);
-        $this->info('✅ Inventory transactions imported');
+        $this->info('Inventory transactions imported');
     }
 
     /**
@@ -354,7 +354,7 @@ class ImportData extends Command
         switch ($mode) {
             case 'overwrite':
                 if (! $this->option('force')) {
-                    if (! $this->confirm("⚠️  Truncate table {$table} and insert all data? (--force to skip)")) {
+                    if (! $this->confirm("Warning: Truncate table {$table} and insert all data? (--force to skip)")) {
                         return;
                     }
                 }

@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\Project; // <-- adjust to your actual Project model class
+use App\Models\Project;
 use App\Services\NotificationService;
 
 class ProjectObserver

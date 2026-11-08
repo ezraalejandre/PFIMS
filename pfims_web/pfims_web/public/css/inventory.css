@@ -1,4 +1,4 @@
-/* ─── RESET & BASE ─── */
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
@@ -13,7 +13,7 @@ body {
     min-height: 100vh;
 }
 
-/* ─── FIXED FULL-WIDTH HEADER ─── */
+/* Fixed full-width header */
 .top-header {
     position: fixed;
     top: 0;
@@ -90,7 +90,7 @@ body {
     opacity: 1;
 }
 
-/* ─── NOTIFICATION BADGE ─── */
+/* Notification badge */
 .notif-badge {
     position: absolute;
     top: -6px;
@@ -106,7 +106,7 @@ body {
     line-height: 1.4;
 }
 
-/* ─── SIDEBAR (Black) ─── */
+/* Sidebar (black) */
 .sidebar {
     width: 260px;
     background: #000000;
@@ -206,14 +206,14 @@ body {
     width: 100%;
 }
 
-/* ─── MAIN CONTENT ─── */
+/* Main content */
 .main-content {
     margin-left: 260px;
     flex: 1;
     padding: 30px 40px 60px;
 }
 
-/* ─── INVENTORY PAGE SPECIFIC ─── */
+/* Inventory page specific */
 
 /* Page Header */
 .page-header {
@@ -267,7 +267,7 @@ body {
     margin-top: 2px;
 }
 
-/* ─── FILTERS BAR ─── */
+/* Filters bar */
 .filters-bar {
     display: flex;
     flex-wrap: wrap;
@@ -364,7 +364,7 @@ body {
     color: #333;
 }
 
-/* ─── TABLE ─── */
+/* Table */
 .table-wrapper {
     background: #fff;
     border-radius: 16px;
@@ -476,7 +476,7 @@ body {
     color: #d32f2f;
 }
 
-/* ─── PAGINATION ─── */
+/* Pagination */
 .pagination-wrapper {
     display: flex;
     justify-content: space-between;
@@ -531,7 +531,7 @@ body {
     cursor: default;
 }
 
-/* ─── ERROR NOTIFICATION (HIGHEST Z-INDEX) ─── */
+/* Error notification (highest z-index) */
 .error-notification {
     position: fixed;
     top: 80px;
@@ -575,7 +575,7 @@ body {
     opacity: 1;
 }
 
-/* ─── SUCCESS NOTIFICATION (HIGHEST Z-INDEX) ─── */
+/* Success notification (highest z-index) */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -630,7 +630,7 @@ body {
     }
 }
 
-/* ─── MODAL OVERLAY (Centered Floating) ─── */
+/* Modal overlay (centered floating) */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -674,7 +674,7 @@ body {
     }
 }
 
-/* ─── MODAL HEADER ─── */
+/* Modal header */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -704,7 +704,7 @@ body {
     color: #333;
 }
 
-/* ─── STEP INDICATOR (Numbered) ─── */
+/* Step indicator (numbered) */
 .step-indicator {
     display: flex;
     gap: 0;
@@ -758,7 +758,7 @@ body {
     background: #2e7d32;
 }
 
-/* ─── MODAL STEPS ─── */
+/* Modal steps */
 .modal-step {
     flex: 1;
     display: flex;
@@ -778,7 +778,7 @@ body {
     margin-top: 0;
 }
 
-/* ─── FORM ELEMENTS ─── */
+/* Form elements */
 .form-group {
     margin-bottom: 18px;
 }
@@ -909,7 +909,7 @@ body {
     margin-left: 26px;
 }
 
-/* ─── SUMMARY (Review) ─── */
+/* Summary (review) */
 .summary-list {
     background: #f8f6f2;
     padding: 20px 24px;
@@ -960,7 +960,7 @@ body {
     color: #d32f2f;
 }
 
-/* ─── MODAL FOOTER ─── */
+/* Modal footer */
 .modal-footer {
     display: flex;
     justify-content: space-between;
@@ -1030,7 +1030,7 @@ body {
     transform: translateY(-1px);
 }
 
-/* ─── VIEW / EDIT MODAL SPECIFIC ─── */
+/* View / edit modal specific */
 .modal-view .modal-container {
     max-width: 700px;
 }
@@ -1084,7 +1084,7 @@ body {
     font-size: 0.9rem;
 }
 
-/* ─── BUTTONS ─── */
+/* Buttons */
 .btn-delete {
     background: #d32f2f;
     color: #fff;
@@ -1119,7 +1119,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ─── RESPONSIVE ─── */
+/* Responsive */
 @media (max-width: 900px) {
     .sidebar {
         width: 200px;

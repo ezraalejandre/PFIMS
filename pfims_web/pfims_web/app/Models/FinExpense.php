@@ -35,8 +35,6 @@ class FinExpense extends Model
         'expense_date' => 'date',
     ];
 
-    // NOTE: adjust the referenced class/namespace below if your existing
-    // Project and Expense models use different names.
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');
