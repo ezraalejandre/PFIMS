@@ -187,6 +187,7 @@
         <div class="modal-container">
             <div class="modal-header">
                 <h2>Verify Your Email</h2>
+                <button type="button" class="modal-close" aria-label="Cancel email verification" onclick="closeFirstLoginVerification()">×</button>
             </div>
             <div class="modal-body">
                 <p style="color:#888; margin-bottom:20px; font-size:.95rem;">
@@ -210,6 +211,7 @@
 
     <div id="forgotModal" class="modal-overlay" style="display: none;">
         <div class="modal-container">
+            <div id="resetInlineAlert" class="login-alert" role="alert" hidden></div>
 
             <!-- STEP 1: EMAIL -->
             <div id="step1" class="modal-step">
@@ -515,6 +517,11 @@
 
         // ─── NOTIFICATION ───
         function showError(message, isSuccess) {
+            var resetAlert = document.getElementById('resetInlineAlert');
+            if (resetAlert && document.getElementById('forgotModal').style.display !== 'none') {
+                resetAlert.textContent = message || 'Please try again.';
+                resetAlert.hidden = false;
+            }
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
             var icon = document.getElementById('errorIcon');
@@ -527,6 +534,12 @@
 
         function closeError() {
             document.getElementById('errorNotification').style.display = 'none';
+        }
+
+        function closeFirstLoginVerification() {
+            document.getElementById('firstLoginVerificationModal').style.display = 'none';
+            document.body.style.overflow = '';
+            document.getElementById('firstLoginOtpInput').value = '';
         }
 
         function showLoginInlineError(message) {
@@ -601,6 +614,7 @@
 
         // ─── STEP NAVIGATION ───
         function goToStep(stepNumber) {
+            document.getElementById('resetInlineAlert').hidden = true;
             for (let i = 1; i <= 4; i++) {
                 document.getElementById('step' + i).style.display = (i === stepNumber) ? 'block' : 'none';
             }

@@ -118,6 +118,8 @@
         var portal = document.body?.dataset.portal || 'admin';
         var paths = ROLE_PATHS[portal] || ROLE_PATHS.admin;
         document.querySelectorAll('a[href]').forEach(function (link) {
+            var rawHref = link.getAttribute('href') || '';
+            if (!rawHref || rawHref.startsWith('#') || /^javascript:/i.test(rawHref)) return;
             var url;
             try { url = new URL(link.href, window.location.origin); } catch (_) { return; }
             if (!Object.prototype.hasOwnProperty.call(paths, url.pathname)) return;

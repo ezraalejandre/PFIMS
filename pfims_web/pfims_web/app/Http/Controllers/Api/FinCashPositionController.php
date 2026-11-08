@@ -53,6 +53,27 @@ class FinCashPositionController extends Controller
             })->get());
     }
 
+    public function updateAccount(Request $request, int $id)
+    {
+        $account = CompanyBankAccount::findOrFail($id);
+        abort_if($this->isHiddenAccount($id), 404);
+        $data = $request->validate(['account_name' => ['required', 'string', 'max:100']]);
+        $name = trim($data['account_name']);
+        abort_if($name === '', 422, 'Account title is required.');
+        abort_if(CompanyBankAccount::whereKeyNot($id)->whereRaw('LOWER(TRIM(account_name)) = ?', [mb_strtolower($name)])->exists(), 409, 'An account with this title already exists.');
+        $account->update(['account_name' => $name]);
+        return response()->json($account);
+    }
+
+    public function destroyAccount(int $id)
+    {
+        $account = CompanyBankAccount::findOrFail($id);
+        abort_if($this->isHiddenAccount($id), 404);
+        abort_if($account->cashPositions()->exists(), 409, 'This account is used by Cash Asset records. Remove those records before deleting the account.');
+        $account->delete();
+        return response()->json(['success' => true, 'message' => 'Account deleted.']);
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [

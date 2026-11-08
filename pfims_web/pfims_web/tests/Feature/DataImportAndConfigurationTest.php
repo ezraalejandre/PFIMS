@@ -12,6 +12,17 @@ use ZipArchive;
 
 class DataImportAndConfigurationTest extends TestCase
 {
+    public function test_unused_phase_deletes_to_trash_and_used_phase_returns_a_clear_conflict(): void
+    {
+        $this->actingAs($this->user('admin'));
+        $id = DB::table('project_phase_tbl')->insertGetId(['phase_name'=>'Unused QA phase','stage_order'=>99]);
+        $this->deleteJson('/api/config/project_phases/'.$id)->assertOk();
+        $this->assertDatabaseMissing('project_phase_tbl',['phase_id'=>$id]);
+        $this->assertDatabaseCount('trash_entries',1);
+        $used = DB::table('project_phase_tbl')->insertGetId(['phase_name'=>'Used QA phase','stage_order'=>99]);
+        DB::table('project_tbl')->insert(['project_name'=>'QA project','client_name'=>'QA client','project_manager'=>'Manager One','start_date'=>'2026-01-01','estimated_end_date'=>'2026-06-01','worker_count'=>1,'phase'=>'Used QA phase','status'=>'Ongoing','completion_percentage'=>0]);
+        $this->deleteJson('/api/config/project_phases/'.$used)->assertConflict()->assertJsonPath('message','This configuration cannot be deleted because it is used by projects.');
+    }
     protected function setUp(): void
     {
         parent::setUp();

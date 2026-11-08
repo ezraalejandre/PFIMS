@@ -1067,7 +1067,7 @@
             </div>
             <div class="report-table-wrapper">
                 <table id="cashTable">
-                    <thead><tr><th>Account</th><th>Balance</th></tr></thead>
+                    <thead><tr><th>Account</th><th>Month</th><th>Balance</th></tr></thead>
                     <tbody id="cashBody"><tr><td colspan="3" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
                 </table>
             </div>
@@ -1082,7 +1082,7 @@
             </div>
             <div class="report-table-wrapper">
                 <table id="backhoeTable" data-pfims-standard-actions="off">
-                    <thead><tr><th>Asset</th><th>Period</th><th>Gas/Diesel</th><th>Payroll (Operator)</th><th>Repair</th><th>Other</th><th>Delivery</th><th>Transport</th><th>Total</th><th>Rental Income</th><th>Net Income</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Asset</th><th>Period</th><th>Project Site</th><th>Gas/Diesel</th><th>Payroll (Operator)</th><th>Repair</th><th>Other</th><th>Delivery</th><th>Transport</th><th>Total</th><th>Rental Income</th><th>Net Income</th><th>Actions</th></tr></thead>
                     <tbody id="backhoeBody"><tr><td colspan="12" style="text-align:center;padding:20px;">Loading...</td></tr></tbody>
                 </table>
             </div>
@@ -1284,6 +1284,8 @@
                     <select id="cashAccount">
                         <option value="">Select Account...</option>
                     </select>
+                    <button type="button" class="btn-edit-project" onclick="editSelectedCashAccount()">Rename Account</button>
+                    <button type="button" class="btn-delete" onclick="deleteSelectedCashAccount()">Delete Account</button>
                 </div>
                 <div class="form-group"><label>Month <span class="required">*</span></label><input type="month" id="cashPeriod" value="{{ date('Y-m') }}" max="{{ today()->format('Y-m') }}"></div>
                 <div class="form-group"><label>Balance <span class="required">*</span></label><input type="number" step="0.01" placeholder="0.00" id="cashBalance"></div>
@@ -2759,6 +2761,9 @@
         }
 
         function openAddCashAccountModal() {
+            document.getElementById('addCashAccountModal').dataset.accountId = '';
+            document.querySelector('#addCashAccountModal h2').textContent = 'Add Account';
+            document.getElementById('saveCashAccountButton').textContent = 'Add Account';
             document.getElementById('cashAccountTitle').value = '';
             document.getElementById('addCashAccountModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -2778,10 +2783,12 @@
             }
             var button = document.getElementById('saveCashAccountButton');
             button.disabled = true;
-            apiFetch('/cash-accounts', { method: 'POST', body: JSON.stringify({ account_name: title }) })
+            var accountId = document.getElementById('addCashAccountModal').dataset.accountId;
+            apiFetch('/cash-accounts' + (accountId ? '/' + accountId : ''), { method: accountId ? 'PUT' : 'POST', body: JSON.stringify({ account_name: title }) })
                 .then(function(account) {
                     closeAddCashAccountModal();
-                    showSuccess('Account added. Enter its balance to display it in Cash Asset.');
+                    showSuccess(accountId ? 'Account renamed.' : 'Account added. Enter its balance to display it in Cash Asset.');
+                    loadCashAsset();
                     return openAddCashModal(account.account_id);
                 })
                 .catch(function(error) { showError(error.message); })
@@ -2791,6 +2798,27 @@
         document.getElementById('addCashAccountModal').addEventListener('click', function(event) {
             if (event.target === this) closeAddCashAccountModal();
         });
+
+        function editSelectedCashAccount() {
+            var account = cashAccounts.find(function(item) { return String(item.account_id) === document.getElementById('cashAccount').value; });
+            if (!account) { showError('Select an account first.'); return; }
+            closeAddCashModal();
+            openAddCashAccountModal();
+            document.getElementById('addCashAccountModal').dataset.accountId = account.account_id;
+            document.getElementById('cashAccountTitle').value = account.account_name;
+            document.querySelector('#addCashAccountModal h2').textContent = 'Rename Account';
+            document.getElementById('saveCashAccountButton').textContent = 'Save Changes';
+        }
+
+        function deleteSelectedCashAccount() {
+            var id = document.getElementById('cashAccount').value;
+            if (!id) { showError('Select an account first.'); return; }
+            openBondDeleteModal('Move this unused account to Trash Bin?', function() {
+                apiFetch('/cash-accounts/' + id, {method: 'DELETE'})
+                    .then(function() { showSuccess('Account deleted.'); return openAddCashModal(); })
+                    .catch(function(error) { showError(error.message); });
+            });
+        }
         document.getElementById('cashAccountTitle').addEventListener('keydown', function(event) {
             if (event.key === 'Enter') saveCashAccount();
         });
@@ -3226,7 +3254,7 @@
                 deleteBtn.style.display = 'inline-block';
                 saveBtn.style.display = 'inline-block';
                 if (changeFileBtn) changeFileBtn.style.display = 'inline-block';
-                displayEls.forEach(function(el) { el.style.display = 'none'; });
+                displayEls.forEach(function(el) { el.style.display = el.parentElement.querySelector('.budget-detail-edit') ? 'none' : ''; });
                 editEls.forEach(function(el) { el.style.display = ''; });
                 var hasFile = selectedBudgetDetailFile || (fileNameDisplay && fileNameDisplay.textContent !== 'No file attached');
                 if (deleteFileBtn) deleteFileBtn.style.display = hasFile ? 'inline-block' : 'none';
@@ -4441,7 +4469,11 @@
                 remarks: document.getElementById('bondDetailRemarksEdit').value.trim() || null
             };
 
-            if (!payload.project_id || !payload.bond_date || payload.amount <= 0) {
+            if (!Number.isFinite(payload.amount) || payload.amount <= 0) {
+                showError('Amount is required and must contain a valid value greater than 0.');
+                return;
+            }
+            if (!payload.project_id || !payload.bond_date) {
                 showError('Please fill in all required fields.');
                 return;
             }
@@ -5215,6 +5247,7 @@
                         tr.onclick = function() { openCashModal(this); };
 
                         tr.innerHTML = '<td><strong>' + accountName + '</strong></td>' +
+                            '<td>' + escapeFinanceHtml(String(row.period_month || '').substring(0, 7)) + '</td>' +
                             '<td>' + formatCurrency(row.balance_amount || 0) + '</td>';
                         tbody.appendChild(tr);
                         total += parseFloat(row.balance_amount) || 0;
@@ -5222,7 +5255,7 @@
 
                     var tr = document.createElement('tr');
                     tr.className = 'total-row';
-                    tr.innerHTML = '<td><strong>TOTAL CASH ASSET</strong></td><td><strong>' + formatCurrency(total) + '</strong></td>';
+                    tr.innerHTML = '<td colspan="2"><strong>TOTAL CASH ASSET</strong></td><td><strong>' + formatCurrency(total) + '</strong></td>';
                     tbody.appendChild(tr);
                     filterFinanceRows('cashSearch', 'cashBody');
                 })
@@ -5542,8 +5575,13 @@
                         var net = a.net_income;
                         
                         var periodKey = a.asset_id + '|' + String(a.period_month || '').substring(0, 7);
+                        var siteRecords = equipmentRecordsByPeriod[periodKey] || {expenses: [], rentals: []};
+                        var projectSites = Array.from(new Set(siteRecords.expenses.concat(siteRecords.rentals).map(function(record) {
+                            return record.project && record.project.project_name ? record.project.project_name : 'Office/Admin';
+                        }))).join(', ');
                         tr.innerHTML = '<td><strong>' + a.asset_name + '</strong></td>' +
                             '<td>' + String(a.period_month || '').substring(0, 7) + '</td>' +
+                            '<td>' + escapeFinanceHtml(projectSites || 'Office/Admin') + '</td>' +
                             '<td>' + formatCurrency(a.gas_diesel) + '</td>' +
                             '<td>' + formatCurrency(a.payroll_operator) + '</td>' +
                             '<td>' + formatCurrency(a.repair) + '</td>' +
@@ -5562,7 +5600,7 @@
 
                     var tr = document.createElement('tr');
                     tr.className = 'total-row';
-                    tr.innerHTML = '<td><strong>GRAND TOTAL</strong></td>' + '<td></td>'.repeat(7) +
+                    tr.innerHTML = '<td><strong>GRAND TOTAL</strong></td>' + '<td></td>'.repeat(8) +
                         '<td><strong>' + formatCurrency(grandExpense) + '</strong></td>' +
                         '<td><strong>' + formatCurrency(grandIncome) + '</strong></td>' +
                         '<td class="' + (grandNet < 0 ? 'amount-negative' : 'amount-positive') + '"><strong>' + formatCurrency(grandNet) + '</strong></td><td>—</td>';

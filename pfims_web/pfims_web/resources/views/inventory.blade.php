@@ -769,6 +769,11 @@
                     <span id="viewDateDisplay" class="view-value">—</span>
                     <input type="date" id="viewDateInput" class="view-input" max="{{ today()->toDateString() }}" style="display: none;">
                 </div>
+                <div class="view-item">
+                    <label for="viewProofInput">Transaction Proof</label>
+                    <span id="viewProofDisplay" class="view-value">No proof attached</span>
+                    <input type="file" id="viewProofInput" class="view-input" accept=".jpg,.jpeg,.png,.pdf" style="display:none;">
+                </div>
                 <div class="view-item" id="viewProjectRow" style="display: none;">
                     <label>Project</label>
                     <span id="viewProjectDisplay" class="view-value">—</span>
@@ -1771,6 +1776,8 @@
                 tr.setAttribute('data-stock', stock);
                 tr.setAttribute('data-status', statusText);
                 tr.setAttribute('data-project', row.project || '');
+                tr.dataset.proofPath = row.proof_file_path || '';
+                tr.dataset.proofName = row.proof_file_name || '';
 
                 var statusClass = status === 'in-stock' ? 'in-stock' : (status === 'out-of-stock' ? 'out-of-stock' : 'low-stock');
 
@@ -2517,6 +2524,17 @@
             document.getElementById('viewTypeDisplay').textContent = type;
             document.getElementById('viewDateDisplay').textContent = date;
             document.getElementById('viewDateInput').value = date;
+            document.getElementById('viewProofInput').value = '';
+            var proofDisplay = document.getElementById('viewProofDisplay');
+            proofDisplay.replaceChildren();
+            if (row.dataset.proofPath) {
+                var proofLink = document.createElement('a');
+                proofLink.href = '/storage/' + row.dataset.proofPath.split('/').map(encodeURIComponent).join('/');
+                proofLink.target = '_blank';
+                proofLink.rel = 'noopener';
+                proofLink.textContent = row.dataset.proofName || 'View / download proof';
+                proofDisplay.appendChild(proofLink);
+            } else proofDisplay.textContent = 'No proof attached';
             var projectRow = document.getElementById('viewProjectRow');
             if (type === 'OUT' && project) {
                 projectRow.style.display = 'flex';
@@ -2552,6 +2570,7 @@
             document.getElementById('viewBarCodeInput').style.display = 'block';
             document.getElementById('viewDateDisplay').style.display = 'none';
             document.getElementById('viewDateInput').style.display = 'block';
+            document.getElementById('viewProofInput').style.display = 'block';
             
             // Hide other edit fields
             document.getElementById('viewItemNameInput').style.display = 'none';
@@ -2613,22 +2632,27 @@
                 return;
             }
 
-            var payload = {
-                quantity: quantity,
-                bar_code: barCode === '' ? null : barCode,
-                transaction_date: date
-            };
+            var proof = document.getElementById('viewProofInput').files[0];
+            if (proof && (!['application/pdf', 'image/jpeg', 'image/png'].includes(proof.type) || proof.size > 10 * 1024 * 1024)) {
+                showError('Proof must be a PDF, JPG, or PNG file no larger than 10MB.');
+                return;
+            }
+            var payload = new FormData();
+            payload.append('_method', 'PATCH');
+            payload.append('quantity', quantity);
+            payload.append('bar_code', barCode);
+            payload.append('transaction_date', date);
+            if (proof) payload.append('proof_file', proof);
 
             setButtonLoading(saveBtn, true, 'Saving...');
             fetch('/api/inventory/transaction/' + transactionId, {
-                method: 'PATCH',
+                method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(payload)
+                body: payload
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {

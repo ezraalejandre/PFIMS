@@ -180,6 +180,8 @@ Route::middleware(['web', 'auth', 'role.portal'])->group(function () {
     // 6. Cash Asset
     Route::get('/cash-accounts', [FinCashPositionController::class, 'accounts']);
     Route::post('/cash-accounts', [FinCashPositionController::class, 'storeAccount']);
+    Route::put('/cash-accounts/{id}', [FinCashPositionController::class, 'updateAccount'])->whereNumber('id');
+    Route::delete('/cash-accounts/{id}', [FinCashPositionController::class, 'destroyAccount'])->whereNumber('id');
     Route::get('/cash-positions', [FinCashPositionController::class, 'index']);
     Route::post('/cash-positions', [FinCashPositionController::class, 'store']);
     Route::put('/cash-positions/{id}', [FinCashPositionController::class, 'update']);
