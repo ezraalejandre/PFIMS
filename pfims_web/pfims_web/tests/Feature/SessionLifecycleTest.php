@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 class SessionLifecycleTest extends TestCase {
+    public function test_another_login_cannot_silently_replace_the_browser_account(): void {
+        $user=$this->signInFixture();
+        $this->postJson('/login',['email'=>'another@example.test','password'=>'password123'])->assertConflict()
+            ->assertJsonPath('success',false);
+        $this->assertAuthenticatedAs($user);
+        $this->postJson('/login/verify-first-login',['otp'=>'123456'])->assertConflict();
+        $this->assertAuthenticatedAs($user);
+    }
     protected bool $simulateInternalNavigation=false;
     protected function setUp(): void {
         parent::setUp();config(['session.strict_navigation'=>true]);Schema::dropAllTables();

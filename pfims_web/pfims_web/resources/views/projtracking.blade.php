@@ -274,7 +274,7 @@
             </div>
                     <div class="form-group">
     <label>No. of workers</label>
-    <input type="number" placeholder="e.g. 50" id="workerCount" min="0" max="100000" step="1">
+    <input type="number" placeholder="e.g. 50" id="workerCount" min="1" max="100000" step="1">
     <span id="workerCountError" class="field-error"></span>
 </div>
                 </div>
@@ -416,6 +416,10 @@
                         <label>Project manager <span class="required">*</span></label>
                         <select id="editProjectManager" required><option value="">Select project manager</option></select>
                         <span id="editProjectManagerError" class="field-error"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="editWorkerCount">No. of workers</label>
+                        <input type="number" id="editWorkerCount" min="1" max="100000" step="1" required>
                     </div>
                 </div>
                 <div class="form-row">
@@ -838,8 +842,8 @@ if (currentStep === 2) {
         return;
     }
 
-    if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) > 100000)) {
-        showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 0 to 100,000.');
+    if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) < 1 || parseInt(workers, 10) > 100000)) {
+        showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 1 to 100,000.');
         return;
     }
 
@@ -1340,8 +1344,8 @@ if (endDate < projectToday()) {
     return;
 }
 
-if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) > 100000)) {
-    showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 0 to 100,000.');
+if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) < 1 || parseInt(workers, 10) > 100000)) {
+    showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 1 to 100,000.');
     return;
 }
 
@@ -1544,6 +1548,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             refreshProjectEndDateBounds();
             document.getElementById('editProjectOriginalName').value = currentEditData.name;
             document.getElementById('editProjectName').value = currentEditData.name || '';
+            document.getElementById('editWorkerCount').value = currentEditData.workers || '';
             document.getElementById('editClientName').value = currentEditData.client || '';
             var managerSelect = document.getElementById('editProjectManager');
             // Preserve historical imported assignments when editing other fields.
@@ -1652,7 +1657,13 @@ if (actualEnd && actualEnd <= start) {
     return;
 }
 
+            var editedWorkers = Number(document.getElementById('editWorkerCount').value);
+            if (!Number.isInteger(editedWorkers) || editedWorkers < 1 || editedWorkers > 100000) {
+                showError('Workers must be a whole number from 1 to 100,000.');
+                return;
+            }
                         var payload = {
+                worker_count: editedWorkers,
                 project_name: projectName,
                 client_name: clientName,
                 project_manager: manager,

@@ -13,6 +13,43 @@ use Tests\TestCase;
 
 class FinanceInventoryFiltersTest extends TestCase
 {
+    public function test_cash_accounts_can_be_renamed_and_only_unused_accounts_can_be_deleted(): void
+    {
+        Schema::create('fin_cash_position_tbl', function (Blueprint $table) {
+            $table->increments('cash_position_id'); $table->unsignedInteger('account_id');
+            $table->date('period_month'); $table->decimal('balance_amount', 14, 2);
+        });
+        $id = $this->postJson('/api/cash-accounts', ['account_name'=>'QA account'])->assertCreated()->json('account_id');
+        $this->putJson('/api/cash-accounts/'.$id, ['account_name'=>'Renamed account'])->assertOk()->assertJsonPath('account_name','Renamed account');
+        $this->postJson('/api/cash-accounts', ['account_name'=>'Duplicate title'])->assertCreated();
+        $this->putJson('/api/cash-accounts/'.$id, ['account_name'=>'duplicate title'])->assertConflict();
+        DB::table('fin_cash_position_tbl')->insert(['account_id'=>$id,'period_month'=>'2026-01-01','balance_amount'=>10]);
+        $this->deleteJson('/api/cash-accounts/'.$id)->assertConflict();
+        DB::table('fin_cash_position_tbl')->where('account_id',$id)->delete();
+        $this->deleteJson('/api/cash-accounts/'.$id)->assertOk();
+        $this->assertDatabaseMissing('company_bank_account_tbl',['account_id'=>$id]);
+        $this->assertDatabaseCount('trash_entries',1);
+    }
+
+    public function test_existing_transaction_proof_can_be_added_replaced_and_invalid_upload_rejected(): void
+    {
+        Storage::fake('protected');
+        $payload = ['quantity'=>2,'bar_code'=>'222001','transaction_date'=>'2026-01-11'];
+        $first = $this->post('/api/inventory/transaction/1', [...$payload, '_method'=>'PATCH',
+            'proof_file'=>UploadedFile::fake()->createWithContent('first.pdf', "%PDF-1.4\nQA proof")], ['Accept'=>'application/json'])
+            ->assertOk()->json('data.proof_file_path');
+        Storage::disk('protected')->assertExists($first);
+        $second = $this->post('/api/inventory/transaction/1', [...$payload, '_method'=>'PATCH',
+            'proof_file'=>UploadedFile::fake()->createWithContent('second.pdf', "%PDF-1.4\nReplacement proof")], ['Accept'=>'application/json'])
+            ->assertOk()->json('data.proof_file_path');
+        $this->assertNotSame($first,$second);
+        Storage::disk('protected')->assertExists($second);
+        $this->post('/api/inventory/transaction/1', [...$payload, '_method'=>'PATCH',
+            'proof_file'=>UploadedFile::fake()->createWithContent('bad.php','<?php echo 1;')], ['Accept'=>'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('proof_file');
+        $this->assertDatabaseHas('inventory_transaction_tbl',['inventory_transaction_id'=>1,'proof_file_path'=>$second,'proof_file_name'=>'second.pdf']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

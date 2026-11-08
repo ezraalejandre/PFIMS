@@ -280,7 +280,7 @@ class ProjectController extends Controller
             'start_date' => [...$required, 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'estimated_end_date' => [...$required, 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             'actual_end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
-            'worker_count' => [...$optionalOnCreate, 'integer', 'min:0', 'max:100000'],
+            'worker_count' => [...$optionalOnCreate, 'integer', 'min:1', 'max:100000'],
             'phase' => [...$optionalOnCreate, 'string', Rule::exists('project_phase_tbl', 'phase_name')],
             'status' => [...$optionalOnCreate, 'string', 'in:'.implode(',', self::STATUSES)],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],

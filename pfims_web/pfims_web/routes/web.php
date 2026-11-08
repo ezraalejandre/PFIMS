@@ -368,6 +368,12 @@ Route::delete('/users/{id}', function ($id) {
 
 // Redirect login form submission to dashboard
 Route::post('/login', function (Request $request) {
+    if (Auth::check()) {
+        $message = 'This browser is already signed in. Sign out first, or use a separate browser profile or private window for another account.';
+        return $request->expectsJson() || $request->ajax()
+            ? response()->json(['success' => false, 'message' => $message], 409)
+            : back()->withErrors(['email' => $message]);
+    }
     if (is_string($request->input('email'))) {
         $request->merge(['email' => mb_strtolower(trim($request->input('email')))]);
     }
@@ -468,6 +474,9 @@ Route::post('/login', function (Request $request) {
 })->middleware('throttle:6,1');
 
 Route::post('/login/verify-first-login', function (Request $request) {
+    if (Auth::check()) {
+        return response()->json(['success' => false, 'message' => 'This browser is already signed in. Sign out first, or use a separate browser profile or private window for another account.'], 409);
+    }
     $validated = $request->validate([
         'otp' => ['required', 'digits:6'],
     ]);

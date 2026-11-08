@@ -14,6 +14,14 @@ use Tests\TestCase;
 
 class CoreIntegrityProjectTest extends TestCase
 {
+    public function test_worker_count_rejects_zero_and_can_be_updated(): void
+    {
+        $id = $this->project();
+        $this->actingAs($this->user());
+        $this->putJson('/api/projects/'.$id, ['worker_count'=>0])->assertUnprocessable()->assertJsonValidationErrors('worker_count');
+        $this->putJson('/api/projects/'.$id, ['worker_count'=>12])->assertOk();
+        $this->assertDatabaseHas('project_tbl',['project_id'=>$id,'worker_count'=>12]);
+    }
     public function test_budget_project_can_be_changed_but_cannot_replace_another_budget(): void
     {
         $source = $this->project();

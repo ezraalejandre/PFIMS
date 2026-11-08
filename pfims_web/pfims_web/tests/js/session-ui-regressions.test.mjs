@@ -4,6 +4,34 @@ import {test} from 'node:test';
 import vm from 'node:vm';
 const ui = readFileSync(new URL('../../public/js/pfims-system-ui.js',import.meta.url),'utf8');
 const theme = readFileSync(new URL('../../public/js/theme.js',import.meta.url),'utf8');
+test('password reset validation remains visible inside the open dialog',async()=>{
+    const blade=readFileSync(new URL('../../resources/views/landing.blade.php',import.meta.url),'utf8');
+    const elements={resetInlineAlert:{hidden:true},forgotModal:{style:{display:'flex'}},
+        errorNotification:{style:{},classList:{toggle(){}}},errorMessage:{},errorIcon:{},
+        newPassword:{value:'. '},confirmPassword:{value:'different'}};
+    const show=blade.slice(blade.indexOf('        function showError('),blade.indexOf('        function closeError('));
+    const submit=blade.slice(blade.indexOf('        async function submitNewPassword('),blade.indexOf("        document.getElementById('forgotModal').addEventListener"));
+    const context={document:{getElementById:id=>elements[id]},setTimeout(){},fetch(){throw new Error('Invalid passwords must not be submitted');}};
+    vm.createContext(context);vm.runInContext(show+submit,context);
+    await vm.runInContext('submitNewPassword()',context);
+    assert.equal(elements.resetInlineAlert.hidden,false);
+    assert.match(elements.resetInlineAlert.textContent,/at least 8/);
+    elements.newPassword.value='valid-password';
+    await vm.runInContext('submitNewPassword()',context);
+    assert.match(elements.resetInlineAlert.textContent,/do not match/);
+});
+test('role navigation preserves pagination fragments and maps only actual page links',()=>{
+    function link(raw) { return {href:new URL(raw,'https://pfims.test/projects').href,getAttribute:()=>raw,closest:()=>null}; }
+    const pagination=link('#'), fragment=link('#details'), page=link('/projects?section=records');
+    const source=ui.slice(ui.indexOf('    function installRoleNavigation()'),ui.indexOf('    var MODULE_NAVIGATION'));
+    vm.runInNewContext(source+'\ninstallRoleNavigation();',{
+        document:{body:{dataset:{portal:'operations'}},querySelectorAll:()=>[pagination,fragment,page]},
+        window:{location:{origin:'https://pfims.test'}},URL,ROLE_PATHS:{operations:{'/projects':'/oprojects'}}
+    });
+    assert.equal(pagination.href,'https://pfims.test/projects#');
+    assert.equal(fragment.href,'https://pfims.test/projects#details');
+    assert.equal(page.href,'/oprojects?section=records');
+});
 function functionSource(name,next) {return ui.slice(ui.indexOf('    function '+name),ui.indexOf('    function '+next,ui.indexOf('    function '+name)));}
 function control(text,label='',filter=false) {
     const attrs={'aria-label':label};

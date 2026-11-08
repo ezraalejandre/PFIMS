@@ -360,8 +360,11 @@ class InventoryController extends Controller
             'quantity' => ['required', 'numeric', 'min:0.01', 'max:'.$maxQuantity],
             'bar_code' => ['nullable', 'regex:/\A[0-9]{1,64}\z/'],
             'transaction_date' => 'required|date|before_or_equal:today',
+            'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
 
+        $newProofPath = null;
+        $proofCommitted = false;
         DB::beginTransaction();
         try {
             $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
@@ -397,6 +400,13 @@ class InventoryController extends Controller
                 'bar_code' => $validated['bar_code'] ?? null,
                 'transaction_date' => $validated['transaction_date'],
             ]);
+            if ($request->hasFile('proof_file')) {
+                $newProofPath = $request->file('proof_file')->store('inventory-transaction-proofs', 'protected');
+                $transaction->update([
+                    'proof_file_path' => $newProofPath,
+                    'proof_file_name' => $request->file('proof_file')->getClientOriginalName(),
+                ]);
+            }
 
             $this->syncLinkedStockInExpense($transaction, (float) $before['quantity']);
 
@@ -410,6 +420,7 @@ class InventoryController extends Controller
             $transaction->refresh();
             $this->audit->record($transaction, 'UPDATE', $before, $transaction->getAttributes());
             DB::commit();
+            $proofCommitted = true;
             if ($transaction->transaction_type === 'OUT') {
                 app(ProjectCostSnapshotService::class)->captureAfterCommit((int) $transaction->project_id, 'stock_out_updated');
             }
@@ -417,6 +428,7 @@ class InventoryController extends Controller
             return response()->json(['success' => true, 'data' => $transaction, 'message' => 'Transaction updated successfully!']);
         } catch (\Throwable $e) {
             DB::rollBack();
+            if ($newProofPath && ! $proofCommitted) Storage::disk('protected')->delete($newProofPath);
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
             return response()->json(['success' => false, 'message' => $e->getMessage() ?: 'Failed to update transaction.'], $status ?: 500);
