@@ -5,6 +5,7 @@
     box-sizing: border-box;
 }
 
+/* Style the body. */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f4f6f9;
@@ -30,17 +31,20 @@ body {
     height: 70px;
 }
 
+/* Style the top header left. */
 .top-header .left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
+/* Style the top header left. */
 .top-header .left img {
     height: 40px;
     width: auto;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text {
     font-weight: 600;
     font-size: 1.1rem;
@@ -48,6 +52,7 @@ body {
     color: #1a2b3c;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text small {
     display: block;
     font-weight: 300;
@@ -56,6 +61,7 @@ body {
     color: #555;
 }
 
+/* Style the top header right. */
 .top-header .right {
     display: flex;
     align-items: center;
@@ -63,6 +69,7 @@ body {
     font-size: 0.95rem;
 }
 
+/* Style the top header right. */
 .top-header .right a {
     display: flex;
     align-items: center;
@@ -72,10 +79,12 @@ body {
     position: relative;
 }
 
+/* Style the top header right on hover. */
 .top-header .right a:hover {
     opacity: 0.7;
 }
 
+/* Style the top header right. */
 .top-header .right span {
     cursor: pointer;
     opacity: 0.8;
@@ -86,6 +95,7 @@ body {
     color: #333;
 }
 
+/* Style the top header right on hover. */
 .top-header .right span:hover {
     opacity: 1;
 }
@@ -123,16 +133,19 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the error notification error content. */
 .error-notification .error-content {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
+/* Style the error notification error icon. */
 .error-notification .error-icon {
     font-size: 1.5rem;
 }
 
+/* Style the error notification error close. */
 .error-notification .error-close {
     background: none;
     border: none;
@@ -145,6 +158,7 @@ body {
     margin-left: auto;
 }
 
+/* Style the error notification error close on hover. */
 .error-notification .error-close:hover {
     opacity: 1;
 }
@@ -166,16 +180,19 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the success notification success content. */
 .success-notification .success-content {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
+/* Style the success notification success icon. */
 .success-notification .success-icon {
     font-size: 1.5rem;
 }
 
+/* Style the success notification success close. */
 .success-notification .success-close {
     background: none;
     border: none;
@@ -188,6 +205,7 @@ body {
     margin-left: auto;
 }
 
+/* Style the success notification success close on hover. */
 .success-notification .success-close:hover {
     opacity: 1;
 }
@@ -208,15 +226,18 @@ body {
     z-index: 100;
 }
 
+/* Style the sidebar. */
 .sidebar nav {
     flex: 1;
     margin-top: 20px;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul {
     list-style: none;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li {
     padding: 12px 16px;
     margin-bottom: 4px;
@@ -227,32 +248,38 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li a {
     color: inherit;
     text-decoration: none;
     display: block;
 }
 
+/* Style the sidebar active. */
 .sidebar nav ul li.active {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
 }
 
+/* Style the sidebar on hover. */
 .sidebar nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 20px;
     margin-top: 20px;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul {
     list-style: none;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li {
     display: flex;
     align-items: center;
@@ -264,25 +291,30 @@ body {
     transition: 0.2s;
 }
 
+/* Style the bottom nav nav icon. */
 .sidebar .bottom-nav ul li .nav-icon {
     width: 20px;
     height: 20px;
     object-fit: contain;
 }
 
+/* Style the sidebar bottom nav on hover. */
 .sidebar .bottom-nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout {
     color: #fff;
 }
 
+/* Style the bottom nav logout on hover. */
 .sidebar .bottom-nav ul li.logout:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li a {
     display: flex;
     align-items: center;
@@ -311,6 +343,7 @@ body {
     gap: 15px;
 }
 
+/* Style the page header. */
 .page-header h1 {
     font-size: 1.8rem;
     font-weight: 600;
@@ -330,6 +363,7 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* Style the filters bar search input. */
 .filters-bar .search-input {
     flex: 1;
     min-width: 180px;
@@ -341,6 +375,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the filters bar search input when focused. */
 .filters-bar .search-input:focus {
     outline: none;
     border-color: #c9a96e;
@@ -348,6 +383,7 @@ body {
     background: #fff;
 }
 
+/* Style the filters bar date input. */
 .filters-bar .date-input {
     padding: 8px 12px;
     border: 1px solid #ddd;
@@ -356,11 +392,13 @@ body {
     background: #fafafa;
 }
 
+/* Style the filters bar date input when focused. */
 .filters-bar .date-input:focus {
     outline: none;
     border-color: #c9a96e;
 }
 
+/* Style the filters bar. */
 .filters-bar select {
     padding: 8px 14px;
     border: 1px solid #ddd;
@@ -371,11 +409,13 @@ body {
     min-width: 140px;
 }
 
+/* Style the filters bar when focused. */
 .filters-bar select:focus {
     outline: none;
     border-color: #c9a96e;
 }
 
+/* Style the btn filter. */
 .btn-filter {
     background: #1a2b3c;
     color: #fff;
@@ -389,6 +429,7 @@ body {
     white-space: nowrap;
 }
 
+/* Style the btn filter on hover. */
 .btn-filter:hover {
     background: #2a3f54;
     transform: translateY(-2px);
@@ -404,12 +445,14 @@ body {
     margin-bottom: 25px;
 }
 
+/* Style the report tabs. */
 .report-tabs {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
 }
 
+/* Style the report tabs tab. */
 .report-tabs .tab {
     padding: 10px 24px;
     border-radius: 8px;
@@ -422,11 +465,13 @@ body {
     transition: 0.3s;
 }
 
+/* Style the report tabs tab on hover. */
 .report-tabs .tab:hover {
     border-color: #c9a96e;
     color: #333;
 }
 
+/* Style the tab active. */
 .report-tabs .tab.active {
     background: #1a2b3c;
     color: #fff;
@@ -440,6 +485,7 @@ body {
     align-items: center;
 }
 
+/* Style the btn action. */
 .btn-action {
     background: #1a2b3c;
     color: #fff;
@@ -455,16 +501,19 @@ body {
     gap: 6px;
 }
 
+/* Style the btn action on hover. */
 .btn-action:hover {
     background: #2a3f54;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(26, 43, 60, 0.3);
 }
 
+/* Style the btn action export. */
 .btn-action.export {
     background: #c9a96e;
 }
 
+/* Style the btn action export on hover. */
 .btn-action.export:hover {
     background: #b8975a;
 }
@@ -474,6 +523,7 @@ body {
     margin-bottom: 30px;
 }
 
+/* Style the kpi section section label. */
 .kpi-section .section-label {
     font-size: 1.1rem;
     font-weight: 600;
@@ -481,12 +531,14 @@ body {
     margin-bottom: 15px;
 }
 
+/* Style the kpi grid. */
 .kpi-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
 }
 
+/* Style the kpi card. */
 .kpi-card {
     background: #fff;
     border-radius: 16px;
@@ -494,12 +546,14 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
+/* Style the kpi card kpi label. */
 .kpi-card .kpi-label {
     font-size: 0.8rem;
     color: #888;
     margin-bottom: 6px;
 }
 
+/* Style the kpi card kpi value. */
 .kpi-card .kpi-value {
     font-size: 2rem;
     font-weight: 700;
@@ -507,6 +561,7 @@ body {
     line-height: 1.2;
 }
 
+/* Style the kpi card kpi sub. */
 .kpi-card .kpi-sub {
     font-size: 0.75rem;
     color: #aaa;
@@ -518,6 +573,7 @@ body {
     margin-bottom: 30px;
 }
 
+/* Style the charts section section label. */
 .charts-section .section-label {
     font-size: 1.1rem;
     font-weight: 600;
@@ -525,12 +581,14 @@ body {
     margin-bottom: 15px;
 }
 
+/* Style the charts grid. */
 .charts-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 25px;
 }
 
+/* Style the chart card. */
 .chart-card {
     background: #fff;
     border-radius: 16px;
@@ -554,6 +612,7 @@ body {
     overflow-x: auto;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table {
     width: 100%;
     border-collapse: collapse;
@@ -561,6 +620,7 @@ body {
     min-width: 900px;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table thead th {
     text-align: left;
     padding: 12px 16px;
@@ -573,6 +633,7 @@ body {
     white-space: nowrap;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody td {
     padding: 10px 16px;
     border-bottom: 1px solid #f5f5f5;
@@ -580,10 +641,12 @@ body {
     white-space: nowrap;
 }
 
+/* Style the table wrapper on hover. */
 .table-wrapper table tbody tr:hover {
     background: #faf8f5;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody tr:last-child td {
     border-bottom: none;
 }
@@ -598,6 +661,7 @@ body {
     font-weight: 500;
 }
 
+/* Style the status badge dot. */
 .status-badge .dot {
     width: 6px;
     height: 6px;
@@ -605,13 +669,19 @@ body {
     display: inline-block;
 }
 
+/* Style the status badge completed. */
 .status-badge.completed { color: #2e7d32; }
+/* Style the completed dot. */
 .status-badge.completed .dot { background: #2e7d32; }
 
+/* Style the status badge pending. */
 .status-badge.pending { color: #e65100; }
+/* Style the pending dot. */
 .status-badge.pending .dot { background: #e65100; }
 
+/* Style the status badge in progress. */
 .status-badge.in-progress { color: #c9a96e; }
+/* Style the in progress dot. */
 .status-badge.in-progress .dot { background: #c9a96e; }
 
 /* Type Badges */
@@ -622,13 +692,21 @@ body {
     font-size: 0.7rem;
     font-weight: 500;
 }
+/* Style the type badge project. */
 .type-badge.project { background: #e3f2fd; color: #1565c0; }
+/* Style the type badge finance. */
 .type-badge.finance { background: #e8f5e9; color: #2e7d32; }
+/* Style the type badge inventory. */
 .type-badge.inventory { background: #fce4ec; color: #c62828; }
+/* Style the type badge budget. */
 .type-badge.budget { background: #fff3e0; color: #e65100; }
+/* Style the type badge expense. */
 .type-badge.expense { background: #f3e5f5; color: #6a1b9a; }
+/* Style the type badge supplier. */
 .type-badge.supplier { background: #e0f7fa; color: #00695c; }
+/* Style the type badge workforce. */
 .type-badge.workforce { background: #fce4ec; color: #c62828; }
+/* Style the type badge other. */
 .type-badge.other { background: #f5f5f5; color: #888; }
 
 /* Role Badges */
@@ -641,8 +719,11 @@ body {
     background: #f5f5f5;
     color: #888;
 }
+/* Style the role badge accounting. */
 .role-badge.accounting { background: #e8f5e9; color: #2e7d32; }
+/* Style the role badge operations. */
 .role-badge.operations { background: #e3f2fd; color: #1565c0; }
+/* Style the role badge admin. */
 .role-badge.admin { background: #fce4ec; color: #c62828; }
 
 /* Action Cell */
@@ -652,6 +733,7 @@ body {
     align-items: center;
     justify-content: center;
 }
+/* Style the action cell. */
 .action-cell button {
     background: transparent;
     border: none;
@@ -663,14 +745,19 @@ body {
     align-items: center;
     justify-content: center;
 }
+/* Style the action cell on hover. */
 .action-cell button:hover {
     background: rgba(0,0,0,0.06);
 }
+/* Style the action cell action icon. */
 .action-cell button .action-icon {
     font-size: 18px;
 }
+/* Style the download btn action icon. */
 .action-cell button.download-btn .action-icon { color: #2e7d32; }
+/* Style the view btn action icon. */
 .action-cell button.view-btn .action-icon { color: #1565c0; }
+/* Style the delete btn action icon. */
 .action-cell button.delete-btn .action-icon { color: #d32f2f; }
 
 /* Pagination */
@@ -683,11 +770,13 @@ body {
     gap: 15px;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info {
     font-size: 0.85rem;
     color: #888;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info select {
     padding: 4px 8px;
     border: 1px solid #ddd;
@@ -697,12 +786,14 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links {
     display: flex;
     gap: 6px;
     align-items: center;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links a,
 .pagination-wrapper .pagination-links span {
     padding: 6px 12px;
@@ -714,15 +805,18 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links on hover. */
 .pagination-wrapper .pagination-links a:hover {
     background: #e9ecef;
 }
 
+/* Style the pagination links active. */
 .pagination-wrapper .pagination-links .active {
     background: #1a2b3c;
     color: #fff;
 }
 
+/* Style the pagination links dots. */
 .pagination-wrapper .pagination-links .dots {
     color: #aaa;
     cursor: default;
@@ -743,10 +837,12 @@ body {
     backdrop-filter: blur(4px);
 }
 
+/* Style the modal overlay active. */
 .modal-overlay.active {
     display: flex;
 }
 
+/* Style the modal container. */
 .modal-container {
     background: #fff;
     width: 600px;
@@ -761,6 +857,7 @@ body {
     flex-direction: column;
 }
 
+/* Style the modal header. */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -768,6 +865,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the modal header. */
 .modal-header h2 {
     font-size: 1.4rem;
     font-weight: 600;
@@ -775,6 +873,7 @@ body {
     margin: 0;
 }
 
+/* Style the modal close. */
 .modal-close {
     background: none;
     border: none;
@@ -784,14 +883,17 @@ body {
     line-height: 1;
     transition: 0.2s;
 }
+/* Style the modal close on hover. */
 .modal-close:hover {
     color: #333;
 }
 
+/* Style the modal body form group. */
 .modal-body .form-group {
     margin-bottom: 18px;
 }
 
+/* Style the modal body form group. */
 .modal-body .form-group label {
     display: block;
     font-size: 0.85rem;
@@ -800,6 +902,7 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the modal body form group. */
 .modal-body .form-group input,
 .modal-body .form-group select,
 .modal-body .form-group textarea {
@@ -812,6 +915,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the modal body form group when focused. */
 .modal-body .form-group input:focus,
 .modal-body .form-group select:focus,
 .modal-body .form-group textarea:focus {
@@ -820,6 +924,7 @@ body {
     box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
 }
 
+/* Style the modal footer. */
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -829,6 +934,7 @@ body {
     border-top: 1px solid #e9ecef;
 }
 
+/* Style the btn cancel. */
 .btn-cancel {
     background: transparent;
     color: #888;
@@ -839,11 +945,13 @@ body {
     cursor: pointer;
     transition: 0.3s;
 }
+/* Style the btn cancel on hover. */
 .btn-cancel:hover {
     background: #f5f5f5;
     border-color: #ccc;
 }
 
+/* Style the btn save. */
 .btn-save {
     background: #c9a96e;
     color: #fff;
@@ -854,16 +962,19 @@ body {
     cursor: pointer;
     transition: 0.3s;
 }
+/* Style the btn save on hover. */
 .btn-save:hover {
     background: #b8975a;
     transform: translateY(-2px);
 }
+/* Style the btn save. */
 .btn-save:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
 }
 
+/* Style the upload area. */
 .upload-area {
     border: 2px dashed #ddd;
     border-radius: 12px;
@@ -874,35 +985,43 @@ body {
     cursor: pointer;
     margin-bottom: 20px;
 }
+/* Style the upload area on hover. */
 .upload-area:hover {
     border-color: #c9a96e;
     background: #f8f5f0;
 }
+/* Style the upload area dragover. */
 .upload-area.dragover {
     border-color: #c9a96e;
     background: #f0ebe2;
 }
+/* Style the upload area upload icon. */
 .upload-area .upload-icon {
     font-size: 2.5rem;
     color: #c9a96e;
     margin-bottom: 10px;
 }
+/* Style the upload area upload text. */
 .upload-area .upload-text {
     font-size: 1rem;
     color: #666;
 }
+/* Style the upload area upload sub. */
 .upload-area .upload-sub {
     font-size: 0.85rem;
     color: #aaa;
 }
+/* Style the upload area. */
 .upload-area input[type="file"] {
     display: none;
 }
 
+/* Style the upload progress. */
 .upload-progress {
     display: none;
     margin: 10px 0;
 }
+/* Style the upload progress progress bar. */
 .upload-progress .progress-bar {
     width: 100%;
     height: 6px;
@@ -910,6 +1029,7 @@ body {
     border-radius: 3px;
     overflow: hidden;
 }
+/* Style the progress bar progress fill. */
 .upload-progress .progress-bar .progress-fill {
     height: 100%;
     background: #c9a96e;
@@ -917,6 +1037,7 @@ body {
     transition: 0.3s;
     border-radius: 3px;
 }
+/* Style the upload progress progress text. */
 .upload-progress .progress-text {
     font-size: 0.75rem;
     color: #888;
@@ -924,6 +1045,7 @@ body {
     text-align: center;
 }
 
+/* Style the required. */
 .required {
     color: #d32f2f;
 }
@@ -936,6 +1058,7 @@ body {
     justify-content: center;
 }
 
+/* Style the action cell. */
 .action-cell button {
     background: transparent;
     border: none;
@@ -948,11 +1071,13 @@ body {
     justify-content: center;
 }
 
+/* Style the action cell on hover. */
 .action-cell button:hover {
     background: rgba(0, 0, 0, 0.08);
     transform: scale(1.1);
 }
 
+/* Style the action cell. */
 .action-cell button img {
     width: 18px;
     height: 18px;
@@ -960,14 +1085,17 @@ body {
     display: block;
 }
 
+/* Style the action cell download btn on hover. */
 .action-cell button.download-btn:hover {
     background: rgba(46, 125, 50, 0.1);
 }
 
+/* Style the action cell view btn on hover. */
 .action-cell button.view-btn:hover {
     background: rgba(21, 101, 192, 0.1);
 }
 
+/* Style the action cell delete btn on hover. */
 .action-cell button.delete-btn:hover {
     background: rgba(198, 40, 40, 0.1);
 }
@@ -982,12 +1110,14 @@ body {
     margin-bottom: 25px;
 }
 
+/* Style the tab actions. */
 .tab-actions {
     display: flex;
     gap: 10px;
     align-items: center;
 }
 
+/* Style the icon group. */
 .icon-group {
     display: flex;
     gap: 4px;
@@ -998,6 +1128,7 @@ body {
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
+/* Style the btn action icon. */
 .btn-action-icon {
     background: transparent;
     border: none;
@@ -1010,11 +1141,13 @@ body {
     border-radius: 6px;
 }
 
+/* Style the btn action icon on hover. */
 .btn-action-icon:hover {
     background: rgba(0, 0, 0, 0.06);
     transform: scale(1.1);
 }
 
+/* Style the btn action icon. */
 .btn-action-icon img {
     width: 20px;
     height: 20px;
@@ -1035,6 +1168,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn delete on hover. */
 .btn-delete:hover {
     background: #b71c1c;
     transform: translateY(-2px);
@@ -1050,11 +1184,13 @@ body {
     gap: 15px;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info {
     font-size: 0.85rem;
     color: #888;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info select {
     padding: 4px 8px;
     border: 1px solid #ddd;
@@ -1064,12 +1200,14 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links {
     display: flex;
     gap: 6px;
     align-items: center;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links a,
 .pagination-wrapper .pagination-links span {
     padding: 6px 12px;
@@ -1081,15 +1219,18 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links on hover. */
 .pagination-wrapper .pagination-links a:hover {
     background: #e9ecef;
 }
 
+/* Style the pagination links active. */
 .pagination-wrapper .pagination-links .active {
     background: #1a2b3c;
     color: #fff;
 }
 
+/* Style the pagination links dots. */
 .pagination-wrapper .pagination-links .dots {
     color: #aaa;
     cursor: default;
@@ -1097,17 +1238,21 @@ body {
 
 /* Responsive */
 @media (max-width: 900px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 200px;
         padding: 20px 15px;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 200px;
         padding: 20px;
     }
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 100%;
         height: auto;
@@ -1118,87 +1263,108 @@ body {
         padding: 15px;
         gap: 10px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul li {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    /* Style the sidebar bottom nav. */
     .sidebar .bottom-nav {
         border-top: none;
         padding-top: 0;
         margin-top: 0;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 0;
         padding: 20px 15px;
     }
+    /* Style the top header. */
     .top-header {
         flex-wrap: wrap;
         height: auto;
         padding: 10px 15px;
         gap: 8px;
     }
+    /* Style the left brand text. */
     .top-header .left .brand-text small {
         display: none;
     }
+    /* Style the top header right. */
     .top-header .right {
         gap: 12px;
         font-size: 0.8rem;
     }
+    /* Style the body. */
     body {
         padding-top: 90px;
     }
+    /* Style the sidebar. */
     .sidebar {
         top: 90px;
         height: auto;
         min-height: 60px;
     }
 
+    /* Style the filters bar. */
     .filters-bar {
         flex-direction: column;
         align-items: stretch;
     }
+    /* Style the filters bar search input. */
     .filters-bar .search-input {
         min-width: auto;
     }
+    /* Style the filters bar. */
     .filters-bar select,
     .filters-bar .date-input {
         width: 100%;
     }
+    /* Style the btn filter. */
     .btn-filter {
         width: 100%;
         text-align: center;
         justify-content: center;
     }
+    /* Style the tab row. */
     .tab-row {
         flex-direction: column;
         align-items: stretch;
     }
+    /* Style the report tabs. */
     .report-tabs {
         justify-content: center;
     }
+    /* Style the report tabs tab. */
     .report-tabs .tab {
         padding: 6px 14px;
         font-size: 0.8rem;
     }
+    /* Style the tab actions. */
     .tab-actions {
         justify-content: center;
     }
+    /* Style the btn action. */
     .btn-action {
         flex: 1;
         justify-content: center;
         padding: 8px 12px;
     }
+    /* Style the kpi grid. */
     .kpi-grid {
         grid-template-columns: 1fr 1fr;
     }
+    /* Style the charts grid. */
     .charts-grid {
         grid-template-columns: 1fr;
     }
+    /* Style the pagination wrapper. */
     .pagination-wrapper {
         flex-direction: column;
         align-items: center;
@@ -1206,22 +1372,28 @@ body {
     }
 }
 
+/* Define the slide down animation. */
 @keyframes slideDown {
+    /* Style the from. */
     from {
         transform: translateX(-50%) translateY(-30px);
         opacity: 0;
     }
+    /* Style the to. */
     to {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
     }
 }
 
+/* Define the fade in scale animation. */
 @keyframes fadeInScale {
+    /* Style the from. */
     from {
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
+    /* Style the to. */
     to {
         opacity: 1;
         transform: scale(1) translateY(0);

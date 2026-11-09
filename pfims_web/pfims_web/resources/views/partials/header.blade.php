@@ -14,6 +14,7 @@
     </div>
 
     <div class="right">
+        {{-- Show this section when its display check passes. --}}
         @if(auth()->check())
             <a href="{{ url('/notifications') }}" onclick="hideBadge(event)" style="position: relative;">
                 <img src="{{ asset('images/notif.jpg') }}" style="height: 22px; width: auto; cursor: pointer;">
@@ -34,11 +35,13 @@
 
 <!-- Sidebar with role-based links -->
 <aside class="sidebar">
+    {{-- Show the page navigation. --}}
     <nav>
         <ul>
             
             <li class="{{ request()->is('dashboard') ? 'active' : '' }}"><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
 
+            {{-- Show this section when its display check passes. --}}
             @if(in_array($role, ['admin','project']))
                 <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">PROJECTS</a></li>
                 <li class="{{ request()->is('finance*') ? 'active' : '' }}"><a href="{{ url('/finance') }}">FINANCE</a></li>
@@ -46,10 +49,12 @@
                 <li class="{{ request()->is('reports*') ? 'active' : '' }}"><a href="{{ url('/reports') }}">REPORTS</a></li>
             @endif
 
+            {{-- Show this section when its display check passes. --}}
             @if(in_array($role, ['accounting','finance']))
                 <li class="{{ request()->is('finance*') ? 'active' : '' }}"><a href="{{ url('/finance') }}">FINANCE</a></li>
             @endif
 
+            {{-- Show this section when its display check passes. --}}
             @if(in_array($role, ['operations','inventory']))
                 <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">PROJECTS</a></li>
                 <li class="{{ request()->is('inventory*') ? 'active' : '' }}"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
@@ -67,6 +72,7 @@
                 </a>
             </li>
             <li class="logout">
+                {{-- Collect the details entered in this form. --}}
                 <form action="{{ url('/logout') }}" method="POST" style="margin: 0;">
                     @csrf
                     <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; padding: 0; cursor: pointer;">

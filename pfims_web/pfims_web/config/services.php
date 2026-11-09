@@ -1,22 +1,13 @@
 <?php
 
+// Set the services options for the app.
 return [
 
     'ip_geolocation' => [
         'url' => env('IP_GEOLOCATION_URL', 'https://ipwho.is'),
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
+    // Set the third party services.
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),

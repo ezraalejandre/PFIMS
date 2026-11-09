@@ -27,6 +27,7 @@ use Phpml\SupportVectorMachine\Kernel;
 use RuntimeException;
 use Throwable;
 
+// Group the ml actions.
 class MLService
 {
     private const MODEL_SCHEMA_VERSION = 10;
@@ -117,18 +118,21 @@ class MLService
         'status_reason' => 'No prediction has been produced.',
     ];
 
+    // Set up the values this class needs.
     public function __construct(?string $modelPath = null, bool $loadModel = true)
     {
         $this->modelPath = $modelPath ?: $this->defaultModelPath();
         $this->metadataPath = $this->modelPath.'.meta.json';
+        // Run this step if the load model is set.
         if ($loadModel) {
             $this->loadOrTrainModel();
         }
     }
 
-    /** Keep automated-test artifacts isolated from the model served by the application. */
+    /** Keep test model files separate from the model used by the app. */
     protected function defaultModelPath(): string
     {
+        // Run this step if the environment check matches.
         if (app()->environment('testing')) {
             $process = (string) (getenv('TEST_TOKEN') ?: getmypid());
 
@@ -138,22 +142,28 @@ class MLService
         return storage_path('app/ml_model.phpml');
     }
 
+    // Load or train model.
     protected function loadOrTrainModel(): void
     {
+        // Run this step if the restore stored model check matches.
         if ($this->restoreStoredModel()) {
             return;
         }
         $this->train();
     }
 
+    // Check candidate.
     public function evaluateCandidate(string $cohortMode = 'auto'): array
     {
+        // Run this step if the project group mode checks match.
         if ($cohortMode === 'auto' && config('ml.augmentation_enabled')) {
             $cohortMode = 'database_augmented';
         }
         $this->augmentation = null;
+        // Run this step if the project group mode equals database augmented.
         if ($cohortMode === 'database_augmented') {
             $cohort = $this->databaseTrainingCohort();
+            // Run this step if the value check matches.
             if (config('ml.planning_spending_enabled')) {
                 $cohort['feature_names'] = PlanningSpendingFeatures::validate($cohort);
             }
@@ -178,6 +188,7 @@ class MLService
             'cost_label_note' => 'Eligibility and reconciliation do not turn current-price historical inventory estimates into verified original invoices. Results remain conditional on the recorded cost labels.',
             'feature_catalog' => ProjectCostFeatureBuilder::catalog(),
         ];
+        // Return early if the report eligible projects is below self minimum real samples.
         if ($report['eligible_projects'] < self::MINIMUM_REAL_SAMPLES) {
             return $report + ['status' => 'insufficient_projects', 'evaluation' => null];
         }
@@ -205,9 +216,10 @@ class MLService
         $policy = app(ModelActivationPolicy::class);
         $evidence = ['training_project_ids' => $result['training_project_ids'],
             'holdout_project_ids' => $result['holdout_project_ids'], 'training_only_tuning' => true];
-        // Diagnostic cohorts have been inspected during development. Source labels alone
+        // Diagnostic project groups have been inspected during development. Source labels alone
         // cannot establish genuineness, and older active metrics are not same-holdout evidence.
         $result['activation_checks'] = ['scope' => 'read_only_policy_assessment', 'cost_models' => []];
+        // Process each candidate.
         foreach ($comparison['models'] as $name => $candidate) {
             $result['activation_checks']['cost_models'][$name] = $policy->assessCost($candidate['evaluation'] ?? [], $evidence);
         }
@@ -215,6 +227,7 @@ class MLService
         $result['activation_checks']['overrun_detector'] = $policy->assessDetector($detectorMetrics,
             $evidence + ['project_level_primary_evaluation' => true]);
 
+        // Run this step if the augmentation is not null.
         if ($this->augmentation !== null) {
             $result['augmentation'] = $this->augmentation->summary();
             $result['scope_note'] = 'Training uses ingested projects plus the earlier 80% of eligible database projects. All final test observations come only from the newest 20% of database projects. Source provenance is retained.';
@@ -227,15 +240,18 @@ class MLService
 
     protected bool $useBudgetRatioTarget = false;
 
-    /** Export the existing eligible cohort without relabelling source provenance. */
+    /** Export the projects that pass the checks. Keep their original source labels. */
     public function databaseTrainingCohort(): array
     {
         $connection = DB::connection();
         $pdo = $connection->getPdo();
+        // Return early if the in transaction check matches.
         if ($pdo->inTransaction()) {
             return config('ml.planning_spending_enabled') ? app(PlanningSpendingCohort::class)->database() : $this->selectTrainingCohort('auto');
         }
+        // Try this action and handle any errors below.
         try {
+            // Run this step if the get driver name equals mysql.
             if ($connection->getDriverName() === 'mysql') {
                 $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
                 $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
@@ -245,6 +261,7 @@ class MLService
 
             return config('ml.planning_spending_enabled') ? app(PlanningSpendingCohort::class)->database() : $this->selectTrainingCohort('auto');
         } finally {
+            // Run this step if the in transaction check matches.
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
@@ -254,6 +271,7 @@ class MLService
     /** Explicit publication for a portfolio consisting entirely of presentation records. */
     public function publishPresentationCandidate(array $report, string $algorithm): array
     {
+        // Stop if the report status and report project group policy checks match.
         if (($report['status'] ?? null) !== 'evaluated'
             || ($report['cohort_policy'] ?? null) !== 'presentation_progress'
             || ($report['data_sources'] ?? []) !== ['company_inspired_sample']
@@ -261,6 +279,7 @@ class MLService
             throw new RuntimeException('Demonstration publication requires an exclusively presentation portfolio.');
         }
         $candidate = $report['model_comparison']['models'][$algorithm] ?? [];
+        // Stop if the candidate status and algorithm checks match.
         if (($candidate['status'] ?? null) !== 'evaluated'
             || ! in_array($algorithm, ['least_squares_linear_regression', 'ridge_linear_regression', 'support_vector_regression_rbf'], true)) {
             throw new RuntimeException('An evaluated supported demonstration candidate is required.');
@@ -269,6 +288,7 @@ class MLService
         $records = $cohort['records'];
         $trainingIds = $report['training_project_ids'] ?? [];
         $testIds = $report['holdout_project_ids'] ?? [];
+        // Stop if the training ids and test ids checks match.
         if ($trainingIds === [] || $testIds === [] || array_intersect($trainingIds, $testIds) !== []
             || $records->pluck('project_id')->unique()->count() !== count($trainingIds) + count($testIds)) {
             throw new RuntimeException('The evaluation partitions no longer match the current portfolio.');
@@ -276,6 +296,7 @@ class MLService
         $training = $records->whereIn('project_id', $trainingIds)->values();
         $test = $records->whereIn('project_id', $testIds)->values();
         $features = $report['evaluated_feature_names'];
+        // Stop if the pluck and training ids checks match.
         if ($training->pluck('project_id')->unique()->count() !== count($trainingIds)
             || $test->pluck('project_id')->unique()->count() !== count($testIds)
             || array_diff($features, $cohort['feature_names']) !== []) {
@@ -284,9 +305,11 @@ class MLService
         [$model, $transformer] = $this->buildServableRegressionModel($algorithm,
             $candidate['selected_parameters'] ?? [], $training, $features);
         $evaluation = $this->evaluateModel($model, $transformer, $test);
+        // Process each metric.
         foreach (['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared'] as $metric) {
             // Portable libsvm text can lose a few centavos after currency scaling.
             $tolerance = $metric === 'mean_absolute_error' ? 0.50 : 0.01;
+            // Stop if the candidate evaluation and metric checks match.
             if (! isset($candidate['evaluation'][$metric])
                 || abs($evaluation[$metric] - $candidate['evaluation'][$metric]) > $tolerance) {
                 throw new RuntimeException('Published estimator does not reproduce its saved evaluation: '.$metric
@@ -294,17 +317,21 @@ class MLService
             }
         }
         $detection = $evaluation['latest_observation_per_project']['overrun_detection']['any_overrun'] ?? [];
+        // Stop if the detection classification counts and candidate evaluation checks match.
         if (($detection['classification_counts'] ?? null) !== ($candidate['evaluation']['latest_observation_per_project']['overrun_detection']['any_overrun']['classification_counts'] ?? null)) {
             throw new RuntimeException('Portable estimator changed the evaluated project-level overrun decisions.');
         }
         $maeTarget = app(ModelActivationPolicy::class)->maeTarget($evaluation['latest_observation_per_project']);
         $costPasses = $maeTarget['actual_percent'] !== null && $maeTarget['actual_percent'] <= ModelActivationPolicy::AGREED_MAE_MAX_PERCENT
             && $evaluation['mean_absolute_percentage_error'] <= 5 && $evaluation['r_squared'] >= 0.9;
+        // Process each minimum.
         foreach (['classification_accuracy' => 90, 'precision' => 85, 'recall' => 90, 'f1_score' => 85, 'balanced_accuracy' => 85] as $metric => $minimum) {
+            // Stop if the metric and minimum checks match.
             if (! is_numeric($detection[$metric] ?? null) || $detection[$metric] < $minimum) {
                 throw new RuntimeException('Demonstration overrun target not met: '.$metric);
             }
         }
+        // Stop if the cost passes and detection actual overruns checks match.
         if (! $costPasses || ($detection['actual_overruns'] ?? 0) === 0 || ($detection['actual_non_overruns'] ?? 0) === 0) {
             throw new RuntimeException('Demonstration cost targets and both outcome classes are required.');
         }
@@ -348,8 +375,10 @@ class MLService
         $comparison ??= $this->compareTunedRegressionModels($training, $test, $features);
         $models = $comparison['models'];
         $models['saved_active_estimator'] = $this->evaluateSavedActiveEstimator($test);
+        // Build a result for each record.
         $planningTraining = $training->map(function ($row) {
             $copy = clone $row;
+            // Run this step if the snapshot id is set.
             if (isset($copy->snapshot_id)) {
                 $copy->actual_cost += (float) ($copy->fin_total_expense ?? 0);
                 unset($copy->snapshot_id);
@@ -357,9 +386,11 @@ class MLService
 
             return $copy;
         })->unique('project_id')->values();
+        // Try this action and handle any errors below.
         try {
             [$planning, $transformer] = $this->buildLeastSquaresModel($planningTraining, self::PLANNING_FEATURE_NAMES);
             $predictions = $actuals = $budgets = [];
+            // Process each row.
             foreach ($test as $row) {
                 $estimate = (float) $planning->predict($this->transformFeatureVector(
                     $this->rowToFeatures($row, self::PLANNING_FEATURE_NAMES),
@@ -378,6 +409,7 @@ class MLService
         }
         $baseline = $this->budgetBaselineComparison($test, $comparison['models']['least_squares_linear_regression']['evaluation']);
         $models['recorded_budget'] = ['status' => 'evaluated', 'evaluation' => $baseline['baseline_evaluation']];
+        // Process each result.
         foreach ($this->stageBaselines($test) ?? [] as $name => $result) {
             $models[$name] = ['status' => 'evaluated'] + $result;
         }
@@ -396,28 +428,34 @@ class MLService
             'note' => 'Diagnostic comparison only. A new independent holdout is required after development; absence from saved reports does not prove a project was never inspected.'];
     }
 
-    /** Score the saved estimator on identical observations without refitting it. */
+    /** Test the saved model on the same records without training it again. */
     protected function evaluateSavedActiveEstimator(Collection $test): array
     {
+        // Try this action and handle any errors below.
         try {
             $pair = (new CostModelStore($this->modelPath, self::MODEL_SCHEMA_VERSION))->load();
+            // Stop if the pair is null.
             if ($pair === null) {
                 throw new RuntimeException('Saved active estimator is unavailable.');
             }
             $transformer = $pair['metadata']['transformer'];
+            // Stop if the pair saved details and contains checks match.
             if (($pair['metadata']['prediction_strategy'] ?? '') === 'progress_snapshot_model'
                 && $test->contains(fn ($row) => ($row->observation_basis ?? '') === 'record_dates')) {
                 throw new RuntimeException('The active model requires historical physical progress, which record-date spending observations do not supply. A reliable same-observation comparison is unavailable.');
             }
             $remainingTarget = ($pair['metadata']['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend';
             $predictions = $actuals = $budgets = [];
+            // Process each row.
             foreach ($test as $row) {
                 $vector = $this->transformFeatureVector($this->rowToFeatures($row, $transformer['feature_names']),
                     $transformer['selected_feature_indexes'], $transformer['ranges']);
                 $estimate = (float) $pair['model']->predict($vector);
+                // Run this step if the transformer target normalization is set.
                 if (isset($transformer['target_normalization'])) {
                     $estimate = $estimate * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
                 }
+                // Run this step if the transformer target scaling check matches.
                 if (in_array($transformer['target_scaling'] ?? 'currency', ['remaining_cost_fraction_of_budget', 'final_cost_fraction_of_budget'], true)) {
                     $estimate *= (float) $row->budget;
                 }
@@ -438,7 +476,7 @@ class MLService
         }
     }
 
-    /** Independent detector evaluation; no active classifier or cost artifact is written. */
+    /** Test the risk model separately. Leave the active risk and cost models unchanged. */
     protected function evaluateOverrunClassifier(Collection $training, Collection $test, array $features, array $folds = []): array
     {
         $report = ['algorithm' => 'project_balanced_logistic_regression', 'definition' => 'any_overrun',
@@ -451,6 +489,7 @@ class MLService
             'decision_rule' => 'Recorded spending already above budget is a confirmed overrun; otherwise model score >= 0.5.',
             'score_note' => 'Class-balanced score, not a calibrated probability.',
             'scope_note' => 'Separate diagnostic classifier; these results do not replace the active cost model or displayed detection metrics.'];
+        // Try this action and handle any errors below.
         try {
             $tuning = $this->tuneOverrunClassifier($training, $features, $folds);
             $features = $tuning['feature_names'];
@@ -463,8 +502,10 @@ class MLService
             $outcomes = $this->classifierOutcomes($model, $test, $features, $threshold);
             $metrics = app(ProjectOverrunEvaluation::class)->evaluateClasses($outcomes['predictions'], $outcomes['actuals']);
             $latest = [];
+            // Process each row.
             foreach ($test->values() as $i => $row) {
                 $key = (string) $row->project_id;
+                // Run this step if the key and captured at checks match.
                 if (! isset($latest[$key]) || strcmp((string) ($row->captured_at ?? ''), (string) ($test->values()[$latest[$key]]->captured_at ?? '')) > 0) {
                     $latest[$key] = $i;
                 }
@@ -473,9 +514,11 @@ class MLService
                 array_map(fn ($i) => $outcomes['predictions'][$i], array_values($latest)),
                 array_map(fn ($i) => $outcomes['actuals'][$i], array_values($latest)));
             $cv = [];
+            // Process each fold.
             foreach ($folds as $fold) {
                 $foldTraining = $training->whereIn('project_id', $fold['training_project_ids'])->values();
                 $foldTest = $training->whereIn('project_id', $fold['test_project_ids'])->values();
+                // Try this action and handle any errors below.
                 try {
                     $foldModel = $this->fitOverrunClassifier($foldTraining, $features);
                     $foldOutcomes = $this->classifierOutcomes($foldModel, $foldTest, $features, $threshold);
@@ -504,22 +547,27 @@ class MLService
     protected function tuneOverrunClassifier(Collection $training, array $features, array $folds): array
     {
         $candidates = ['current_features' => $features];
+        // Run this step if the contains and row checks match.
         if (! config('ml.planning_spending_enabled') && $training->contains(fn ($row) => isset($row->snapshot_id))) {
             $expanded = array_values(array_unique([...$features, 'remaining_work_fraction', 'remaining_budget_fraction',
                 'required_cost_performance_index', 'required_cost_performance_available',
                 'recent_burn_remaining_budget_days', 'budget_runway_available']));
+            // Run this step if the expanded does not equal features.
             if ($expanded !== $features) {
                 $candidates['remaining_work_features'] = $expanded;
             }
         }
         $trials = [];
+        // Process each names.
         foreach ($candidates as $name => $names) {
             $scores = $labels = [];
             $successfulFolds = 0;
+            // Process each fold.
             foreach ($folds as $fold) {
                 $fit = $training->whereIn('project_id', $fold['training_project_ids'])->values();
                 $validation = $training->whereIn('project_id', $fold['test_project_ids'])->sortBy('captured_at')
                     ->groupBy('project_id')->map(fn ($rows) => $rows->last())->values();
+                // Try this action and handle any errors below.
                 try {
                     $model = $this->fitOverrunClassifier($fit, $names);
                     $outcomes = $this->classifierOutcomes($model, $validation, $names);
@@ -530,9 +578,11 @@ class MLService
                     // One-class early windows cannot fit a binary detector.
                 }
             }
+            // Skip this item if the successful folds and labels checks match.
             if ($successfulFolds < 2 || ! in_array(true, $labels, true) || ! in_array(false, $labels, true)) {
                 continue;
             }
+            // Process each threshold.
             foreach ([0.3, 0.4, 0.5, 0.6, 0.7] as $threshold) {
                 $metrics = app(ProjectOverrunEvaluation::class)->evaluateClasses(
                     array_map(fn ($score) => $score >= $threshold, $scores), $labels);
@@ -541,8 +591,10 @@ class MLService
             }
         }
         usort($trials, function ($a, $b) {
+            // Process each metric.
             foreach (['f1_score', 'balanced_accuracy', 'recall'] as $metric) {
                 $order = ($b['evaluation'][$metric] ?? 0) <=> ($a['evaluation'][$metric] ?? 0);
+                // Return early if the order does not equal 0.
                 if ($order !== 0) {
                     return $order;
                 }
@@ -562,9 +614,11 @@ class MLService
             'trials' => $trials];
     }
 
+    // Get the fit overrun classifier.
     protected function fitOverrunClassifier(Collection $records, array $features): BudgetOverrunClassifier
     {
         $records = $this->augmentation?->augment($records) ?? $records;
+        // Build a result for each record.
         $labels = $records->map(function ($row) {
             $finalCost = (float) $row->actual_cost + (isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0);
 
@@ -577,10 +631,12 @@ class MLService
         return $model;
     }
 
+    // Get the classifier outcomes.
     protected function classifierOutcomes(BudgetOverrunClassifier $model, Collection $records, array $features, float $threshold = 0.5): array
     {
         $predictions = $actuals = $scores = [];
         $confirmed = 0;
+        // Process each row.
         foreach ($records as $row) {
             $spent = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
             $known = app(ProjectOverrunPolicy::class)->classify($spent, (float) $row->budget)['any_overrun'] === true;
@@ -593,9 +649,10 @@ class MLService
         return ['predictions' => $predictions, 'actuals' => $actuals, 'scores' => $scores, 'confirmed_spend_overruns' => $confirmed];
     }
 
-    /** Persist evaluation evidence independently of the active estimator. */
+    /** Save the test results separately from the active model. */
     public function saveCandidateEvaluationReport(array $report): void
     {
+        // Stop if the report mode and report project group policy checks match.
         if (($report['mode'] ?? null) !== 'read_only_candidate_evaluation'
             || ! in_array($report['cohort_policy'] ?? null, ['auto', 'planning', 'presentation_progress', 'database_augmented'], true)) {
             throw new InvalidArgumentException('A validated candidate evaluation report is required.');
@@ -607,7 +664,9 @@ class MLService
         $existing['reports'][$report['cohort_policy']] = $report;
         File::ensureDirectoryExists(dirname($path));
         $temporary = $path.'.candidate.'.bin2hex(random_bytes(8));
+        // Try this action and handle any errors below.
         try {
+            // Stop if the temporary and existing checks match.
             if (file_put_contents($temporary, json_encode($existing, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), LOCK_EX) === false
                 || ! rename($temporary, $path)) {
                 throw new RuntimeException('Candidate evaluation evidence could not be saved.');
@@ -617,10 +676,13 @@ class MLService
         }
     }
 
+    // Get candidate evaluation reports.
     public function getCandidateEvaluationReports(): ?array
     {
+        // Try this action and handle any errors below.
         try {
             $path = $this->modelPath.'.evaluation.json';
+            // Return early if the path check matches.
             if (! File::exists($path)) {
                 return null;
             }
@@ -632,14 +694,18 @@ class MLService
         }
     }
 
+    // Get optimization summary.
     public function getOptimizationSummary(): ?array
     {
+        // Try this action and handle any errors below.
         try {
             $path = $this->modelPath.'.optimization.json';
+            // Return early if the path check matches.
             if (! File::exists($path)) {
                 return null;
             }
             $report = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
+            // Return early if the report schema version and report status checks match.
             if (($report['schema_version'] ?? null) !== 1 || ($report['status'] ?? null) !== 'evaluated') {
                 return null;
             }
@@ -658,13 +724,14 @@ class MLService
         }
     }
 
-    /** Training metadata retains the provenance of presentation examples. */
+    /** Keep the source of each demo example in the training details. */
     public function train(?string $cohortMode = null): bool
     {
+        // Return early if the project group mode checks match.
         if ($cohortMode === 'database_augmented' || (in_array($cohortMode, [null, 'auto'], true) && config('ml.augmentation_enabled'))) {
             return $this->retrainAugmented()['candidate_activated'];
         }
-        // Routine retraining must not replace a served pair through the legacy path.
+        // Routine training again must not replace a served pair through the legacy path.
         // Qualified replacements use ModelPromotionService's separate policy checks.
         if ($this->restoreStoredModel()) {
             return false;
@@ -672,11 +739,14 @@ class MLService
         $cohortMode ??= $this->metadata['cohort_policy'] ?? 'auto';
         File::ensureDirectoryExists(dirname($this->modelPath));
         $lockHandle = fopen($this->modelPath.'.lock', 'c');
+        // Stop if the lock handle is false.
         if ($lockHandle === false) {
             throw new RuntimeException('Unable to create the model training lock.');
         }
 
+        // Try this action and handle any errors below.
         try {
+            // Stop if the lock handle check matches.
             if (! flock($lockHandle, LOCK_EX)) {
                 throw new RuntimeException('Unable to acquire the model training lock.');
             }
@@ -688,7 +758,9 @@ class MLService
             $realSampleCount = $trainingCohort->count() - $sampleCount;
             $usesSampleData = $sampleCount > 0;
 
+            // Run this step if the count is below self minimum real samples.
             if ($trainingCohort->pluck('project_id')->unique()->count() < self::MINIMUM_REAL_SAMPLES) {
+                // Return early if the project group mode equals presentation progress.
                 if ($cohortMode === 'presentation_progress') {
                     return false;
                 }
@@ -715,6 +787,7 @@ class MLService
             if ($strategy === 'progress_snapshot_model'
                 && (! ($baselineComparison['model_outperforms_budget_baseline'] ?? false)
                     || ! ($comparison['production_model_is_best_option'] ?? false))) {
+                // Run this step if the project group mode equals presentation progress.
                 if ($cohortMode === 'presentation_progress') {
                     Log::info('Presentation progress candidate rejected; saved estimator retained.', ['baseline' => $baselineComparison]);
 
@@ -726,6 +799,7 @@ class MLService
                     ->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])->values();
                 $featureNames = self::PLANNING_FEATURE_NAMES;
                 $strategy = 'planning_only_baseline';
+                // Run this step if the count is below self minimum real samples.
                 if ($trainingCohort->count() < self::MINIMUM_REAL_SAMPLES) {
                     $this->createFallbackModel($trainingCohort->count(), 'Snapshot candidate failed holdout comparison and planning data are insufficient.');
 
@@ -815,11 +889,13 @@ class MLService
         } catch (Throwable $exception) {
             Log::error('ML training candidate failed validation.', ['message' => $exception->getMessage()]);
             $realSampleCount = isset($realSampleCount) ? $realSampleCount : 0;
+            // Run this step if the project group mode equals presentation progress.
             if ($cohortMode === 'presentation_progress') {
                 $this->restoreStoredModel();
 
                 return false;
             }
+            // Run this step if the restore stored model check matches.
             if (! $this->restoreStoredModel()) {
                 $this->createFallbackModel($realSampleCount, 'Real-data training failed: '.$exception->getMessage());
             }
@@ -831,6 +907,7 @@ class MLService
         }
     }
 
+    // Create backup model.
     protected function createFallbackModel(int $realSampleCount, string $reason): void
     {
         $fallbackData = $this->getFallbackData();
@@ -874,6 +951,7 @@ class MLService
     /** Retrieve one deduplicated, completed and auditable record per project. */
     protected function getTrainingData(): Collection
     {
+        // Try this action and handle any errors below.
         try {
             $latestBudgetIds = DB::table('budgets_tbl')
                 ->select('project_id', DB::raw('MAX(budget_id) as budget_id'))
@@ -894,16 +972,20 @@ class MLService
                 ->joinSub($latestBudgetIds, 'latest_budget', fn ($join) => $join->on('project_tbl.project_id', '=', 'latest_budget.project_id'))
                 ->join('budgets_tbl', 'latest_budget.budget_id', '=', 'budgets_tbl.budget_id');
 
+            // Run this step if the fin expenses is not null.
             if ($finExpenses !== null) {
                 $query->leftJoinSub($finExpenses, 'fin_expenses', fn ($join) => $join->on('project_tbl.project_id', '=', 'fin_expenses.project_id'));
             }
+            // Run this step if the actual expenses is not null.
             if ($actualExpenses !== null) {
                 $query->leftJoinSub($actualExpenses, 'fin_actuals', fn ($join) => $join->on('project_tbl.project_id', '=', 'fin_actuals.project_id'));
             }
+            // Run this step if the allocations is not null.
             if ($allocations !== null) {
                 $query->leftJoinSub($allocations, 'fin_allocations', fn ($join) => $join->on('project_tbl.project_id', '=', 'fin_allocations.project_id'));
                 $query->whereRaw('COALESCE(fin_allocations.unvalued_count, 0) = 0');
             }
+            // Run this step if the feature allocations is not null.
             if ($featureAllocations !== null) {
                 $query->leftJoinSub($featureAllocations, 'fin_feature_allocations', fn ($join) => $join->on('project_tbl.project_id', '=', 'fin_feature_allocations.project_id'));
             }
@@ -938,13 +1020,16 @@ class MLService
                 ->where('project_tbl.worker_count', '>=', 1)
                 ->whereColumn('project_tbl.actual_end_date', '>=', 'project_tbl.start_date')
                 ->whereColumn('project_tbl.estimated_end_date', '>=', 'project_tbl.start_date')
-                // Cap the newest verified cohort first, then restore chronological order for evaluation.
+                // Cap the newest verified project group first, then restore chronological order for evaluation.
                 ->orderByDesc('project_tbl.actual_end_date')->orderByDesc('project_tbl.project_id')->limit(500)->get()
+                // Keep the items that pass these checks.
                 ->filter(function ($row) {
+                    // Try this action and handle any errors below.
                     try {
                         $valid = Carbon::parse($row->completed_at)->startOfDay()
                             ->greaterThanOrEqualTo(Carbon::parse($row->start_date)->startOfDay())
                             && is_numeric($row->worker_count) && (float) $row->worker_count >= 1;
+                        // Return early if the valid checks match.
                         if (! $valid || ! Schema::hasTable('inventory_cost_allocation_tbl')) {
                             return $valid;
                         }
@@ -958,6 +1043,7 @@ class MLService
                         return false;
                     }
                 })
+                // Build a result for each record.
                 ->map(function ($row) {
                     $start = Carbon::parse($row->start_date)->startOfDay();
                     $plannedEnd = Carbon::parse($row->estimated_end_date)->startOfDay();
@@ -987,9 +1073,11 @@ class MLService
      */
     protected function selectTrainingCohort(string $cohortMode = 'auto'): array
     {
+        // Return early if the project group mode equals database augmented.
         if ($cohortMode === 'database_augmented') {
             return $this->databaseTrainingCohort();
         }
+        // Stop if the project group mode check matches.
         if (! in_array($cohortMode, ['auto', 'planning', 'presentation_progress'], true)) {
             throw new InvalidArgumentException('Unknown training cohort policy.');
         }
@@ -1001,6 +1089,7 @@ class MLService
                 ->where('capture_reason', 'presentation_scenario')->where('capture_schema_version', 3)->values()
             : $operationalSnapshots;
         $stageProjectCounts = [];
+        // Process each stage.
         foreach (['early', 'middle', 'late'] as $stage) {
             $stageProjectCounts[$stage] = $selectedSnapshots
                 ->filter(fn ($row) => $this->progressStage((float) $row->completion_percentage) === $stage)
@@ -1024,6 +1113,7 @@ class MLService
                 : 'Only snapshots captured by the application at the time of a real data change are eligible; no history is reconstructed.',
         ];
 
+        // Run this step if the ready and project group mode checks match.
         if (($ready && $cohortMode !== 'planning') || $cohortMode === 'presentation_progress') {
             $hasActivity = Schema::hasColumn('ml_project_cost_snapshots', 'direct_expense_count_30d');
 
@@ -1047,8 +1137,10 @@ class MLService
         ];
     }
 
+    // Get snapshot training data.
     protected function getSnapshotTrainingData(): Collection
     {
+        // Return early if the value check matches.
         if (! Schema::hasTable('ml_project_cost_snapshots')) {
             return collect();
         }
@@ -1087,6 +1179,7 @@ class MLService
             ->where('project.completion_percentage', '>=', 100)
             ->whereNotNull('project.actual_end_date')
             ->orderBy('project.actual_end_date')->orderBy('snapshot.project_id')->orderBy('snapshot.captured_at');
+        // Run this step if the has activity is set.
         if ($hasActivity) {
             $query->addSelect('snapshot.direct_expense_count_30d', 'snapshot.direct_expense_amount_30d',
                 'snapshot.stock_out_count_30d', 'snapshot.stock_out_quantity_30d',
@@ -1094,6 +1187,7 @@ class MLService
                 ->whereNotNull('snapshot.direct_expense_count_30d')
                 ->whereNotNull('snapshot.stock_out_count_30d');
         }
+        // Run this step if the value check matches.
         if (Schema::hasColumn('ml_project_cost_snapshots', 'cost_coverage_complete')) {
             $query->addSelect('snapshot.planned_duration_days', 'snapshot.elapsed_days', 'snapshot.cost_coverage_complete');
             // Legacy rows keep their existing validation path; newly captured incomplete costs cannot train.
@@ -1101,9 +1195,11 @@ class MLService
                 $query->whereNull('snapshot.capture_schema_version')->orWhere('snapshot.cost_coverage_complete', true);
             });
         }
+        // Process each column.
         foreach (['direct_expense_count_7d', 'stock_out_count_7d', 'valued_stock_out_cost',
             'direct_expense_amount_7d', 'valued_stock_out_cost_7d', 'valued_stock_out_cost_30d',
             'capture_reason', 'capture_schema_version'] as $column) {
+            // Run this step if the column check matches.
             if (Schema::hasColumn('ml_project_cost_snapshots', $column)) {
                 $query->addSelect('snapshot.'.$column);
             }
@@ -1112,7 +1208,9 @@ class MLService
         $qualityByProject = [];
 
         return $query->get()
+            // Build a result for each record.
             ->map(function ($row) {
+                // Process each value.
                 foreach (app(ProjectCostFeatureBuilder::class)->build((array) $row)['values'] as $name => $value) {
                     $row->{$name} = $value;
                 }
@@ -1128,7 +1226,9 @@ class MLService
 
                 return $row;
             })
+            // Keep the items that pass these checks.
             ->filter(function ($row) use (&$ledgerByProject, &$qualityByProject) {
+                // Return early if the value check matches.
                 if (! Schema::hasTable('inventory_cost_allocation_tbl')) {
                     return true;
                 }
@@ -1146,6 +1246,7 @@ class MLService
             })->values();
     }
 
+    // Get snapshot readiness.
     public function getSnapshotReadiness(): array
     {
         $readiness = $this->selectTrainingCohort()['snapshot_readiness'];
@@ -1153,6 +1254,7 @@ class MLService
             ->map(fn ($count) => max(0, $readiness['minimum_projects_per_stage'] - $count))->all();
         $readiness['collected_snapshot_rows'] = Schema::hasTable('ml_project_cost_snapshots')
             ? DB::table('ml_project_cost_snapshots')->count() : 0;
+        // Run this step if the value check matches.
         if (Schema::hasColumn('ml_project_cost_snapshots', 'cost_coverage_complete')) {
             $snapshots = DB::table('ml_project_cost_snapshots');
             $readiness['capture_quality_rows'] = [
@@ -1173,6 +1275,7 @@ class MLService
      */
     protected function finExpenseAggregateQuery(bool $beforeProjectCompletion = true): mixed
     {
+        // Return early if the input checks match.
         if (! Schema::hasTable('fin_expense_tbl')
             || ! Schema::hasTable('fin_expense_category_tbl')
             || ! Schema::hasColumn('fin_expense_tbl', 'project_id')
@@ -1183,6 +1286,7 @@ class MLService
 
         $amountColumn = Schema::hasColumn('fin_expense_tbl', 'amount') ? 'amount'
             : (Schema::hasColumn('fin_expense_tbl', 'actual_amount') ? 'actual_amount' : null);
+        // Return early if the amount column is null.
         if ($amountColumn === null) {
             return null;
         }
@@ -1197,16 +1301,19 @@ class MLService
             ->whereNotNull('fin_expense.project_id')
             ->selectRaw("COALESCE(SUM({$amount}), 0) as fin_total_expense")
             ->selectRaw('MAX(fin_expense.expense_date) as finance_as_of_date');
+        // Run this step if the value check matches.
         if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
             $query->whereNull('fin_expense.inventory_transaction_id');
         }
 
+        // Run this step if the before project completion is set.
         if ($beforeProjectCompletion) {
             $query->whereNotNull('fin_expense.expense_date')
                 ->whereNotNull('finance_project.actual_end_date')
                 ->whereColumn('fin_expense.expense_date', '<', 'finance_project.actual_end_date');
         }
 
+        // Process each name.
         foreach (['material', 'labor', 'equipment', 'other'] as $name) {
             $expression = "COALESCE(SUM(CASE WHEN {$component} = '{$name}' THEN {$amount} ELSE 0 END), 0)";
             $query->selectRaw("{$expression} as fin_{$name}_expense");
@@ -1215,8 +1322,10 @@ class MLService
         return $query->groupBy('fin_expense.project_id');
     }
 
+    // Get the allocation aggregate query.
     protected function allocationAggregateQuery(bool $beforeProjectCompletion = false): mixed
     {
+        // Return early if the input checks match.
         if (! Schema::hasTable('inventory_cost_allocation_tbl') || ! Schema::hasTable('inventory_transaction_tbl')) {
             return null;
         }
@@ -1228,6 +1337,7 @@ class MLService
             ->selectRaw("COALESCE(SUM(CASE WHEN allocation.valuation_status = 'valued' THEN allocation.allocated_amount ELSE 0 END), 0) as material_cost")
             ->selectRaw("SUM(CASE WHEN allocation.valuation_status = 'unvalued' THEN 1 ELSE 0 END) as unvalued_count")
             ->selectRaw('MAX(withdrawal.transaction_date) as allocation_as_of_date');
+        // Run this step if the before project completion is set.
         if ($beforeProjectCompletion) {
             $query->whereColumn('withdrawal.transaction_date', '<', 'allocation_project.actual_end_date');
         }
@@ -1243,6 +1353,7 @@ class MLService
             ->groupBy('project_id');
         $finance = $this->finExpenseAggregateQuery(false);
         $allocations = $this->allocationAggregateQuery(false);
+        // Run this step if the finance is not null.
         if ($finance !== null) {
             $finance->whereDate('fin_expense.expense_date', '<=', now()->toDateString());
         }
@@ -1250,9 +1361,11 @@ class MLService
         $query = DB::table('project_tbl')
             ->joinSub($latestBudgetIds, 'latest_budget', fn ($join) => $join->on('project_tbl.project_id', '=', 'latest_budget.project_id'))
             ->join('budgets_tbl', 'latest_budget.budget_id', '=', 'budgets_tbl.budget_id');
+        // Run this step if the finance is not null.
         if ($finance !== null) {
             $query->leftJoinSub($finance, 'prediction_finance', fn ($join) => $join->on('project_tbl.project_id', '=', 'prediction_finance.project_id'));
         }
+        // Run this step if the allocations is not null.
         if ($allocations !== null) {
             $query->leftJoinSub($allocations, 'prediction_allocations', fn ($join) => $join->on('project_tbl.project_id', '=', 'prediction_allocations.project_id'));
         }
@@ -1284,11 +1397,13 @@ class MLService
             ->where(fn ($builder) => $builder->whereNull('project_tbl.status')->orWhere('project_tbl.status', '!=', 'Completed'))
             ->orderBy('project_tbl.project_name')
             ->get()
+            // Build a result for each record.
             ->map(function ($project) {
                 $duration = max(1, Carbon::parse($project->start_date)->startOfDay()
                     ->diffInMonths(Carbon::parse($project->estimated_end_date)->startOfDay()));
                 $activity = (($this->metadata['prediction_strategy'] ?? '') === PlanningSpendingFeatures::STRATEGY ? app(PlanningSpendingCohort::class) : app(ProjectCostSnapshotService::class))->forecastInputs((int) $project->project_id,
                     Carbon::parse($project->start_date)->startOfDay(), Carbon::parse($project->estimated_end_date)->startOfDay());
+                // Process each name.
                 foreach (['fin_total_expense', 'fin_material_expense', 'fin_labor_expense', 'fin_equipment_expense', 'fin_other_expense', 'finance_as_of_date'] as $name) {
                     $project->{$name} = $activity[$name];
                 }
@@ -1323,6 +1438,7 @@ class MLService
             })->values();
     }
 
+    // Get the fin expense component expression.
     protected function finExpenseComponentExpression(): string
     {
         return 'CASE
@@ -1335,8 +1451,10 @@ class MLService
         END";
     }
 
+    // Get the fin category like clause.
     protected function finCategoryLikeClause(array $terms): string
     {
+        // Build a result for each record.
         return collect($terms)->map(function (string $term) {
             $term = str_replace("'", "''", strtolower($term));
 
@@ -1345,9 +1463,12 @@ class MLService
         })->implode(' OR ');
     }
 
+    // Get the project type select.
     protected function projectTypeSelect(): string
     {
+        // Process each column.
         foreach (['project_type', 'type', 'category'] as $column) {
+            // Return early if the column check matches.
             if (Schema::hasColumn('project_tbl', $column)) {
                 return "project_tbl.{$column}";
             }
@@ -1356,9 +1477,12 @@ class MLService
         return 'NULL';
     }
 
+    // Get the project type source.
     protected function projectTypeSource(): string
     {
+        // Process each column.
         foreach (['project_type', 'type', 'category'] as $column) {
+            // Return early if the column check matches.
             if (Schema::hasColumn('project_tbl', $column)) {
                 return "project_tbl.{$column}";
             }
@@ -1367,9 +1491,11 @@ class MLService
         return 'normalized_project_name';
     }
 
+    // Clean up project type.
     protected function normalizeProjectType(mixed $rawType, ?string $projectName): string
     {
         $value = strtolower(trim((string) $rawType));
+        // Return early if the value is not empty.
         if ($value !== '') {
             return ucwords(str_replace(['_', '-'], ' ', $value));
         }
@@ -1388,6 +1514,7 @@ class MLService
         };
     }
 
+    // Choose training feature set.
     protected function selectTrainingFeatureSet(Collection $realData): array
     {
         $baseCv = $this->kFoldCrossValidation($realData, self::BASE_FEATURE_NAMES);
@@ -1397,6 +1524,7 @@ class MLService
         $decision = 'base_features_selected';
         $improvementPoints = null;
 
+        // Run this step if the finance rows is at least self minimum real samples.
         if ($financeRows >= self::MINIMUM_REAL_SAMPLES) {
             $financeCv = $this->kFoldCrossValidation($realData, self::FINANCE_ENRICHED_FEATURE_NAMES);
             $baseMape = $baseCv['average_mean_absolute_percentage_error'] ?? null;
@@ -1404,6 +1532,7 @@ class MLService
             $improvementPoints = is_numeric($baseMape) && is_numeric($financeMape)
                 ? ((float) $baseMape - (float) $financeMape)
                 : null;
+            // Run this step if the improvement points checks match.
             if ($improvementPoints !== null && $improvementPoints >= self::FIN_FEATURE_IMPROVEMENT_THRESHOLD_PERCENT) {
                 $selectedFeatureNames = self::FINANCE_ENRICHED_FEATURE_NAMES;
                 $decision = 'finance_features_selected_significant_cross_validated_mape_improvement';
@@ -1429,6 +1558,7 @@ class MLService
         ];
     }
 
+    // Get the training feature set saved details.
     protected function trainingFeatureSetMetadata(Collection $records, array $featureNames, string $strategy): array
     {
         $crossValidation = $this->kFoldCrossValidation($records, $featureNames);
@@ -1451,9 +1581,12 @@ class MLService
         ];
     }
 
+    // Check for any finance feature value.
     protected function hasAnyFinanceFeatureValue(object $row): bool
     {
+        // Process each name.
         foreach (array_diff(self::FINANCE_ENRICHED_FEATURE_NAMES, self::BASE_FEATURE_NAMES) as $name) {
+            // Return early if the name is above 0.
             if ((float) ($row->{$name} ?? 0) > 0) {
                 return true;
             }
@@ -1462,6 +1595,7 @@ class MLService
         return false;
     }
 
+    // Get the best chronological split.
     protected function bestChronologicalSplit(Collection $realData, array $featureNames): array
     {
         $options = [
@@ -1470,10 +1604,12 @@ class MLService
         ];
         usort($options, function (array $left, array $right): int {
             $mae = ($left['evaluation']['mean_absolute_error'] ?? INF) <=> ($right['evaluation']['mean_absolute_error'] ?? INF);
+            // Return early if the mae does not equal 0.
             if ($mae !== 0) {
                 return $mae;
             }
             $mape = ($left['evaluation']['mean_absolute_percentage_error'] ?? INF) <=> ($right['evaluation']['mean_absolute_percentage_error'] ?? INF);
+            // Return early if the mape does not equal 0.
             if ($mape !== 0) {
                 return $mape;
             }
@@ -1487,6 +1623,7 @@ class MLService
         ];
     }
 
+    // Choose chronological split.
     protected function selectChronologicalSplit(Collection $realData, array $featureNames): array
     {
         $ingested = $this->augmentation !== null;
@@ -1510,6 +1647,7 @@ class MLService
         ];
     }
 
+    // Check chronological split.
     protected function evaluateChronologicalSplit(Collection $realData, array $featureNames, float $testRatio, string $method): array
     {
         $projects = $this->chronologicalSort($realData)
@@ -1525,10 +1663,12 @@ class MLService
         $testLookup = array_fill_keys($testProjectIds, true);
         $trainingData = $realData->filter(fn ($row) => ! isset($testLookup[(string) $row->project_id]))->values();
         $testData = $realData->filter(fn ($row) => isset($testLookup[(string) $row->project_id]))->values();
+        // Stop if the count and is empty checks match.
         if ($trainingData->count() < 2 || $testData->isEmpty()) {
             throw new RuntimeException('The grouped chronological holdout does not contain enough training and test records.');
         }
         $featureSelection = null;
+        // Run this step if the snapshot id check matches.
         if ($trainingData->contains(fn ($row) => isset($row->snapshot_id))) {
             $featureSelection = $this->selectProgressFeatures($trainingData, $featureNames);
             $featureNames = $featureSelection['selected_feature_names'];
@@ -1551,6 +1691,7 @@ class MLService
         ];
     }
 
+    // Get the chronological sort.
     protected function chronologicalSort(Collection $records): Collection
     {
         return $records->sort(function ($left, $right): int {
@@ -1562,6 +1703,7 @@ class MLService
         })->values();
     }
 
+    // Split summary.
     protected function splitSummary(array $split): array
     {
         return [
@@ -1576,6 +1718,7 @@ class MLService
         ];
     }
 
+    // Get the k fold cross validation.
     protected function kFoldCrossValidation(Collection $records, array $featureNames, string $algorithm = 'least_squares_linear_regression', array $parameters = []): array
     {
         $projectIds = $records->sortBy([['completed_at', 'asc'], ['project_id', 'asc']])
@@ -1583,6 +1726,7 @@ class MLService
         $warmupCount = max(2, (int) ceil($projectIds->count() * 0.4));
         $foldCount = min(self::K_FOLD_COUNT, max(0, $projectIds->count() - $warmupCount));
         $folds = [];
+        // Repeat for each step in this range.
         for ($fold = 0; $fold < $foldCount; $fold++) {
             $remaining = $projectIds->count() - $warmupCount;
             $offset = $warmupCount + (int) floor($fold * $remaining / $foldCount);
@@ -1596,6 +1740,7 @@ class MLService
             $trainingData = $trainingData->groupBy('project_id')
                 ->filter(fn (Collection $rows) => strcmp((string) $rows->max('completed_at'), (string) $cutoff) < 0)
                 ->flatten(1)->values();
+            // Skip this item if the count and is empty checks match.
             if ($trainingData->count() < 2 || $testData->isEmpty()) {
                 continue;
             }
@@ -1641,6 +1786,7 @@ class MLService
     /** Choose complexity before inspecting the reserved holdout. */
     protected function selectProgressFeatures(Collection $trainingData, array $fullFeatures): array
     {
+        // Run this step if the value check matches.
         if (config('ml.planning_spending_enabled')) {
             $features = PlanningSpendingFeatures::validate(['strategy' => PlanningSpendingFeatures::STRATEGY, 'feature_names' => $fullFeatures, 'records' => $trainingData]);
 
@@ -1655,7 +1801,9 @@ class MLService
             'schedule_progress_gap', 'time_eac_to_budget',
         ]));
         $options = [];
+        // Process each features.
         foreach (['compact_progress' => $compact, 'full_engineered_progress' => $fullFeatures] as $name => $features) {
+            // Try this action and handle any errors below.
             try {
                 $cv = $this->kFoldCrossValidation($trainingData, $features);
                 $options[$name] = ['status' => 'evaluated', 'feature_names' => $features, 'cross_validation' => $cv];
@@ -1667,6 +1815,7 @@ class MLService
         $fullMape = $options['full_engineered_progress']['cross_validation']['average_mean_absolute_percentage_error'] ?? null;
         $selected = is_numeric($fullMape) && (! is_numeric($compactMape) || $fullMape < $compactMape * 0.95)
             ? 'full_engineered_progress' : 'compact_progress';
+        // Stop if the selected cross validation average mean absolute percentage error is not a number.
         if (! is_numeric($options[$selected]['cross_validation']['average_mean_absolute_percentage_error'] ?? null)) {
             throw new RuntimeException('No progress feature candidate passed training-only validation.');
         }
@@ -1677,6 +1826,7 @@ class MLService
             'options' => $options];
     }
 
+    // Compare regression models.
     protected function compareRegressionModels(Collection $trainingData, Collection $testData, array $featureNames): array
     {
         [$linearModel, $linearTransformer] = $this->buildLeastSquaresModel($trainingData, $featureNames);
@@ -1696,6 +1846,7 @@ class MLService
             ],
         ];
 
+        // Try this action and handle any errors below.
         try {
             [$svrModel, $svrTransformer] = $this->buildSvrModel($trainingData, $featureNames);
             $svrEvaluation = $this->evaluateModel($svrModel, $svrTransformer, $testData);
@@ -1754,26 +1905,34 @@ class MLService
         $comparison['models']['least_squares_linear_regression']['cross_validation'] = $linearCv;
         $grids = ['ridge_linear_regression' => array_map(fn ($alpha) => ['alpha' => $alpha], [0.01, 0.1, 1.0, 10.0]),
             'support_vector_regression_rbf' => []];
+        // Process each cost.
         foreach ([1.0, 10.0] as $cost) {
+            // Process each gamma.
             foreach ([0.1, 1.0] as $gamma) {
+                // Process each epsilon.
                 foreach ([0.01, 0.1] as $epsilon) {
                     $grids['support_vector_regression_rbf'][] = compact('cost', 'gamma', 'epsilon');
                 }
             }
         }
+        // Process each grid.
         foreach ($grids as $algorithm => $grid) {
             $trials = [];
             $selected = null;
+            // Process each parameters.
             foreach ($grid as $parameters) {
+                // Try this action and handle any errors below.
                 try {
                     $cv = $this->kFoldCrossValidation($trainingData, $featureNames, $algorithm, $parameters);
                     $mape = $cv['average_mean_absolute_percentage_error'];
                     $mae = $cv['average_mean_absolute_error'];
+                    // Stop if the cv folds run and mape checks match.
                     if ($cv['folds_run'] === 0 || ! is_numeric($mape) || ! is_numeric($mae)) {
                         throw new RuntimeException('No usable training-only temporal folds.');
                     }
                     $trials[] = ['status' => 'evaluated', 'parameters' => $parameters,
                         'training_cv_mape' => $mape, 'training_cv_mae' => $mae, 'folds_run' => $cv['folds_run']];
+                    // Run this step if the selected and mape checks match.
                     if ($selected === null || [$mape, $mae] < [$selected['mape'], $selected['mae']]) {
                         $selected = ['parameters' => $parameters, 'mape' => $mape, 'mae' => $mae, 'cv' => $cv];
                     }
@@ -1781,7 +1940,9 @@ class MLService
                     $trials[] = ['status' => 'unavailable', 'parameters' => $parameters, 'message' => $exception->getMessage()];
                 }
             }
+            // Try this action and handle any errors below.
             try {
+                // Stop if the selected is null.
                 if ($selected === null) {
                     throw new RuntimeException('No settings passed training-only validation.');
                 }
@@ -1818,6 +1979,7 @@ class MLService
         return $comparison;
     }
 
+    // Build comparison model.
     protected function buildComparisonModel(string $algorithm, array $parameters, Collection $records, array $features): array
     {
         return match ($algorithm) {
@@ -1832,6 +1994,7 @@ class MLService
     protected function buildServableRegressionModel(string $algorithm, array $parameters, Collection $records, array $features): array
     {
         [$model, $transformer] = $this->buildComparisonModel($algorithm, $parameters, $records, $features);
+        // Run this step if the model check matches.
         if ($model instanceof SVR) {
             $model = PortableRbfSvr::fromLibsvm($model->getModel(), count($transformer['selected_feature_indexes']));
         }
@@ -1839,6 +2002,7 @@ class MLService
         return [$model, $transformer];
     }
 
+    // Get the budget baseline comparison.
     protected function budgetBaselineComparison(Collection $testData, array $modelEvaluation): array
     {
         $isRemainingCostTarget = $testData->contains(fn ($row) => isset($row->snapshot_id));
@@ -1869,14 +2033,17 @@ class MLService
         ];
     }
 
+    // Get the stage baselines.
     protected function stageBaselines(Collection $rows): ?array
     {
+        // Return early if the snapshot id check matches.
         if (! $rows->contains(fn ($row) => isset($row->snapshot_id))) {
             return null;
         }
         $result = [];
         $actuals = $rows->map(fn ($row) => (float) $row->actual_cost + (float) ($row->fin_total_expense ?? 0))->all();
         $budgets = $rows->pluck('budget')->map(fn ($value) => (float) $value)->all();
+        // Process each feature.
         foreach (['progress_extrapolation' => 'progress_eac_to_budget', 'recent_cost_burn' => 'time_eac_to_budget'] as $name => $feature) {
             $available = $rows->filter(fn ($row) => (float) ($row->{$feature} ?? 0) > 0)->count();
             $predictions = $rows->map(fn ($row) => max((float) ($row->fin_total_expense ?? 0),
@@ -1889,6 +2056,7 @@ class MLService
         return $result;
     }
 
+    // Get the data capture policy.
     protected function dataCapturePolicy(): array
     {
         return [
@@ -1920,6 +2088,7 @@ class MLService
         ];
     }
 
+    // Get the training again policy.
     protected function retrainingPolicy(): array
     {
         return [
@@ -1931,6 +2100,7 @@ class MLService
         ];
     }
 
+    // Get the risk business actions.
     protected function riskBusinessActions(): array
     {
         return [
@@ -1942,6 +2112,7 @@ class MLService
         ];
     }
 
+    // Get backup data.
     protected function getFallbackData(): Collection
     {
         return collect([
@@ -1953,7 +2124,9 @@ class MLService
             (object) ['project_id' => 'synthetic-6', 'budget' => 800000, 'duration_months' => 4, 'worker_count' => 6, 'completion_percentage' => 100, 'material_cost' => 480000, 'labor_cost' => 280000, 'actual_cost' => 760000],
             (object) ['project_id' => 'synthetic-7', 'budget' => 2500000, 'duration_months' => 10, 'worker_count' => 18, 'completion_percentage' => 100, 'material_cost' => 1500000, 'labor_cost' => 800000, 'actual_cost' => 2300000],
             (object) ['project_id' => 'synthetic-8', 'budget' => 4000000, 'duration_months' => 14, 'worker_count' => 25, 'completion_percentage' => 100, 'material_cost' => 2400000, 'labor_cost' => 1300000, 'actual_cost' => 3700000],
+        // Build a result for each record.
         ])->map(function ($row) {
+            // Process each name.
             foreach (self::FIN_FEATURE_NAMES as $name) {
                 $row->{$name} = 0;
             }
@@ -1970,15 +2143,18 @@ class MLService
         return $this->buildRegressionModel(new StableLeastSquares, $records, $featureNames);
     }
 
+    // Build prediction model.
     protected function buildSvrModel(Collection $records, array $featureNames, array $parameters = []): array
     {
         return $this->buildRegressionModel(new SVR(Kernel::RBF, epsilon: $parameters['epsilon'] ?? 0.1,
             cost: $parameters['cost'] ?? 1.0, gamma: $parameters['gamma'] ?? null), $records, $featureNames, normalizeTargets: $parameters !== []);
     }
 
+    // Build regression model.
     protected function buildRegressionModel(Regression $model, Collection $records, array $featureNames, bool $normalizeTargets = false): array
     {
         $records = $this->augmentation?->augment($records) ?? $records;
+        // Stop if the count is below 2.
         if ($records->count() < 2) {
             throw new RuntimeException('At least two records are required to build a regression model.');
         }
@@ -1987,6 +2163,7 @@ class MLService
         $budgetRatio = $this->useBudgetRatioTarget && ! $remainingFraction && $records->every(fn ($row) => (float) $row->budget > 0);
         $labels = $records->map(fn ($row) => (float) $row->actual_cost / ($remainingFraction || $budgetRatio ? (float) $row->budget : 1))->values()->all();
         $targetNormalization = null;
+        // Run this step if the normalize targets is set.
         if ($normalizeTargets) {
             $mean = array_sum($labels) / count($labels);
             $variance = array_sum(array_map(fn ($value) => ($value - $mean) ** 2, $labels)) / count($labels);
@@ -1997,6 +2174,7 @@ class MLService
         $ranges = $this->rangesFromSamples($rawSamples, $featureNames);
         $fixedFeatures = config('ml.planning_spending_enabled') && $featureNames === PlanningSpendingFeatures::FEATURES;
         $selectedIndexes = $fixedFeatures ? array_keys($featureNames) : $this->selectIndependentFeatures($rawSamples, $ranges, $featureNames);
+        // Stop if the selected indexes is empty.
         if ($selectedIndexes === []) {
             throw new RuntimeException('Training data has no varying independent features.');
         }
@@ -2005,6 +2183,7 @@ class MLService
             $rawSamples
         );
         $model->train($samples, $labels);
+        // Stop if the model and get starting value checks match.
         if ($model instanceof LeastSquares && (! is_finite($model->getIntercept()) || collect($model->getCoefficients())->contains(fn ($value) => ! is_finite((float) $value)))) {
             throw new RuntimeException('LeastSquares produced non-finite coefficients.');
         }
@@ -2021,10 +2200,13 @@ class MLService
         ]];
     }
 
+    // Choose independent features.
     protected function selectIndependentFeatures(array $samples, array $ranges, array $featureNames): array
     {
         $candidates = [];
+        // Process each name.
         foreach ($featureNames as $index => $name) {
+            // Run this step if the index max min is above 0 000000001.
             if (($ranges[$index]['max'] - $ranges[$index]['min']) > 0.000000001) {
                 $candidates[] = $index;
             }
@@ -2032,16 +2214,20 @@ class MLService
         $selected = [];
         $matrix = array_fill(0, count($samples), [1.0]);
         $rank = $this->matrixRank($matrix);
+        // Process each index.
         foreach ($candidates as $index) {
+            // Run this step if the number of selected is at least samples.
             if (count($selected) + 1 >= count($samples)) {
                 break;
             }
             $candidateMatrix = $matrix;
+            // Process each sample.
             foreach ($samples as $rowIndex => $sample) {
                 $candidateMatrix[$rowIndex][] = ($sample[$index] - $ranges[$index]['min'])
                     / ($ranges[$index]['max'] - $ranges[$index]['min']);
             }
             $candidateRank = $this->matrixRank($candidateMatrix);
+            // Run this step if the candidate rank is above rank.
             if ($candidateRank > $rank) {
                 $selected[] = $index;
                 $matrix = $candidateMatrix;
@@ -2052,34 +2238,44 @@ class MLService
         return $selected;
     }
 
+    // Get the matrix rank.
     protected function matrixRank(array $matrix, float $epsilon = 0.000000001): int
     {
+        // Return early if the matrix checks match.
         if ($matrix === [] || $matrix[0] === []) {
             return 0;
         }
         $rows = count($matrix);
         $columns = count($matrix[0]);
         $rank = 0;
+        // Repeat for each step in this range.
         for ($column = 0; $column < $columns && $rank < $rows; $column++) {
             $pivot = $rank;
+            // Repeat for each step in this range.
             for ($row = $rank + 1; $row < $rows; $row++) {
+                // Run this step if the column is above column.
                 if (abs($matrix[$row][$column]) > abs($matrix[$pivot][$column])) {
                     $pivot = $row;
                 }
             }
+            // Skip this item if the column is at most epsilon.
             if (abs($matrix[$pivot][$column]) <= $epsilon) {
                 continue;
             }
             [$matrix[$rank], $matrix[$pivot]] = [$matrix[$pivot], $matrix[$rank]];
             $pivotValue = $matrix[$rank][$column];
+            // Repeat for each step in this range.
             for ($currentColumn = $column; $currentColumn < $columns; $currentColumn++) {
                 $matrix[$rank][$currentColumn] /= $pivotValue;
             }
+            // Repeat for each step in this range.
             for ($row = 0; $row < $rows; $row++) {
+                // Skip this item if the row equals rank.
                 if ($row === $rank) {
                     continue;
                 }
                 $factor = $matrix[$row][$column];
+                // Repeat for each step in this range.
                 for ($currentColumn = $column; $currentColumn < $columns; $currentColumn++) {
                     $matrix[$row][$currentColumn] -= $factor * $matrix[$rank][$currentColumn];
                 }
@@ -2090,11 +2286,13 @@ class MLService
         return $rank;
     }
 
+    // Get the row to features.
     protected function rowToFeatures(object $row, array $featureNames = self::BASE_FEATURE_NAMES): array
     {
         return array_map(fn (string $name) => $this->featureValue($row, $name), $featureNames);
     }
 
+    // Get the feature value.
     protected function featureValue(object $row, string $name): float
     {
         return match ($name) {
@@ -2114,9 +2312,11 @@ class MLService
         };
     }
 
+    // Get the ranges from samples.
     protected function rangesFromSamples(array $samples, array $featureNames): array
     {
         $ranges = [];
+        // Process each name.
         foreach ($featureNames as $index => $name) {
             $values = array_column($samples, $index);
             $ranges[$index] = ['name' => $name, 'min' => (float) min($values), 'max' => (float) max($values)];
@@ -2125,8 +2325,10 @@ class MLService
         return $ranges;
     }
 
+    // Get the transform feature vector.
     protected function transformFeatureVector(array $features, array $selectedIndexes, array $ranges): array
     {
+        // Build a result for each item.
         return array_map(function ($index) use ($features, $ranges) {
             $span = $ranges[$index]['max'] - $ranges[$index]['min'];
 
@@ -2134,6 +2336,7 @@ class MLService
         }, $selectedIndexes);
     }
 
+    // Get the feature ranges.
     protected function featureRanges(Collection $records, array $featureNames = self::BASE_FEATURE_NAMES): array
     {
         $ranges = $this->rangesFromSamples($records->map(fn ($row) => $this->rowToFeatures($row, $featureNames))->all(), $featureNames);
@@ -2143,11 +2346,13 @@ class MLService
         ])->all();
     }
 
+    // Check model.
     protected function evaluateModel(Regression $model, array $transformer, Collection $testData): array
     {
         $predictions = $actuals = $budgets = [];
         $constrainedCount = 0;
         $featureNames = $transformer['feature_names'] ?? self::BASE_FEATURE_NAMES;
+        // Process each row.
         foreach ($testData as $row) {
             $transformed = $this->transformFeatureVector(
                 $this->rowToFeatures($row, $featureNames),
@@ -2155,12 +2360,15 @@ class MLService
                 $transformer['ranges']
             );
             $prediction = (float) $model->predict($transformed);
+            // Run this step if the transformer target normalization is set.
             if (isset($transformer['target_normalization'])) {
                 $prediction = $prediction * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
             }
+            // Run this step if the transformer target scaling check matches.
             if (in_array($transformer['target_scaling'] ?? 'currency', ['remaining_cost_fraction_of_budget', 'final_cost_fraction_of_budget'], true)) {
                 $prediction *= (float) $row->budget;
             }
+            // Stop if the prediction is not a finite number.
             if (! is_finite($prediction)) {
                 throw new RuntimeException('Holdout evaluation produced a non-finite prediction.');
             }
@@ -2173,9 +2381,11 @@ class MLService
         }
 
         $latestIndexes = [];
+        // Process each row.
         foreach ($testData->values() as $index => $row) {
             $key = (string) ($row->project_id ?? 'observation-'.$index);
             $previous = $latestIndexes[$key] ?? null;
+            // Run this step if the previous and captured at checks match.
             if ($previous === null || strcmp((string) ($row->captured_at ?? ''), (string) ($testData->values()[$previous]->captured_at ?? '')) > 0) {
                 $latestIndexes[$key] = $index;
             }
@@ -2194,15 +2404,19 @@ class MLService
         ];
     }
 
+    // Calculate metrics.
     protected function calculateMetrics(array $predictions, array $actuals, array $budgets, ?Collection $rows = null): array
     {
         $count = count($predictions);
+        // Stop if the count equals 0.
         if ($count === 0) {
             throw new RuntimeException('No holdout predictions are available.');
         }
         $absoluteErrors = $percentageErrors = [];
+        // Process each prediction.
         foreach ($predictions as $index => $prediction) {
             $absoluteErrors[] = abs($prediction - $actuals[$index]);
+            // Run this step if the index is above 0.
             if ($actuals[$index] > 0) {
                 $percentageErrors[] = abs(($actuals[$index] - $prediction) / $actuals[$index]) * 100;
             }
@@ -2213,6 +2427,7 @@ class MLService
 
         $meanActual = array_sum($actuals) / count($actuals);
         $projectActuals = [];
+        // Process each actual.
         foreach ($actuals as $index => $actual) {
             $projectActuals[(string) ($rows?->values()[$index]->project_id ?? 'observation-'.$index)] = $actual;
         }
@@ -2222,6 +2437,7 @@ class MLService
         $middle = intdiv($targetCount, 2);
         $medianActual = $targetCount % 2 ? $sortedActuals[$middle] : ($sortedActuals[$middle - 1] + $sortedActuals[$middle]) / 2;
         $totalSumSquares = $residualSumSquares = 0.0;
+        // Process each actual.
         foreach ($actuals as $index => $actual) {
             $totalSumSquares += ($actual - $meanActual) ** 2;
             $residualSumSquares += ($actual - $predictions[$index]) ** 2;
@@ -2229,6 +2445,7 @@ class MLService
         $rSquared = $totalSumSquares > 0 ? 1 - ($residualSumSquares / $totalSumSquares) : null;
 
         $detection = [];
+        // Process each definition.
         foreach (['any_overrun', 'material_overrun'] as $definition) {
             $detection[$definition] = app(ProjectOverrunEvaluation::class)->evaluate($predictions, $actuals, $budgets, $definition);
         }
@@ -2254,6 +2471,7 @@ class MLService
 
         $metrics['mae_target'] = app(ModelActivationPolicy::class)->maeTarget($metrics);
 
+        // Run this step if the rows is not null.
         if ($rows !== null) {
             $metrics['monitoring_segments'] = $this->monitoringSegmentMetrics($rows, $predictions, $actuals, $budgets);
         }
@@ -2261,6 +2479,7 @@ class MLService
         return $metrics;
     }
 
+    // Get the monitoring segment metrics.
     protected function monitoringSegmentMetrics(Collection $rows, array $predictions, array $actuals, array $budgets): array
     {
         return [
@@ -2272,6 +2491,7 @@ class MLService
         ];
     }
 
+    // Get the progress stage.
     protected function progressStage(float $completion): string
     {
         return match (true) {
@@ -2281,9 +2501,11 @@ class MLService
         };
     }
 
+    // Get the metrics by segment.
     protected function metricsBySegment(Collection $rows, array $predictions, array $actuals, array $budgets, callable $segmenter): array
     {
         $groups = [];
+        // Process each row.
         foreach ($rows->values() as $index => $row) {
             $segment = $segmenter($row);
             $groups[$segment]['predictions'][] = $predictions[$index];
@@ -2292,6 +2514,7 @@ class MLService
             $groups[$segment]['projects'][(string) ($row->project_id ?? $index)] = true;
         }
 
+        // Build a result for each record.
         return collect($groups)->map(function (array $group) {
             $metrics = $this->calculateMetrics($group['predictions'], $group['actuals'], $group['budgets']);
 
@@ -2309,6 +2532,7 @@ class MLService
         })->all();
     }
 
+    // Get the project size bucket.
     protected function projectSizeBucket(float $budget): string
     {
         return match (true) {
@@ -2318,6 +2542,7 @@ class MLService
         };
     }
 
+    // Calculate a prediction from the supplied values.
     public function predict(array $features, array $context = []): float
     {
         $features = $this->normalizePredictionFeatures($features);
@@ -2325,6 +2550,7 @@ class MLService
         $this->lastEngineeredFeatures = app(ProjectCostFeatureBuilder::class)->build(array_replace($context,
             array_combine(self::FEATURE_NAMES, array_map('floatval', $features)),
             ['fin_total_expense' => $this->recordedSpend($features)]));
+        // Run this step if the saved details prediction strategy equals planning spending features strategy.
         if (($this->metadata['prediction_strategy'] ?? '') === PlanningSpendingFeatures::STRATEGY) {
             $planningInputs = PlanningSpendingFeatures::build(array_replace($context, array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), ['fin_total_expense' => $this->recordedSpend($features)]));
             $this->lastEngineeredFeatures['values'] = $planningInputs;
@@ -2335,11 +2561,14 @@ class MLService
         $this->lastPredictionWarnings = $this->predictionWarnings($features);
         $this->lastPredictionWasConstrained = false;
         $this->lastForecastCalculation = [];
+        // Stop if the model is missing or false.
         if (! $this->model) {
             throw new RuntimeException('Model not trained. Please train the model first.');
         }
+        // Try this action and handle any errors below.
         try {
             $transformer = $this->metadata['transformer'] ?? null;
+            // Stop if the transformer is not a list.
             if (! is_array($transformer)) {
                 throw new RuntimeException('Model transformation metadata is unavailable.');
             }
@@ -2350,13 +2579,16 @@ class MLService
                 $transformer['ranges']
             );
             $prediction = (float) $this->model->predict($transformed);
+            // Run this step if the transformer target normalization is set.
             if (isset($transformer['target_normalization'])) {
                 $prediction = $prediction * $transformer['target_normalization']['scale'] + $transformer['target_normalization']['mean'];
             }
+            // Run this step if the transformer target scaling check matches.
             if (in_array($transformer['target_scaling'] ?? 'currency', ['remaining_cost_fraction_of_budget', 'final_cost_fraction_of_budget'], true)) {
                 $prediction *= (float) $features[0];
             }
             $remainingCost = ($this->metadata['prediction_target'] ?? 'final_cost') === 'remaining_cost_then_add_recorded_spend';
+            // Stop if the prediction is not a finite number.
             if (! is_finite($prediction)) {
                 throw new RuntimeException('Model returned an invalid project cost.');
             }
@@ -2373,11 +2605,13 @@ class MLService
         }
 
         $recordedSpend = $this->recordedSpend($features);
+        // Run this step if the prediction is below recorded spend.
         if ($prediction < $recordedSpend) {
             $prediction = $recordedSpend;
             $this->lastPredictionWasConstrained = true;
             $this->lastPredictionWarnings[] = 'The raw estimate was below recorded spending. The displayed value was raised to the recorded-spend floor and must not be treated as an on-track forecast.';
         }
+        // Run this step if the prediction is at most 0.
         if ($prediction <= 0) {
             $this->lastPredictionWasConstrained = true;
             $this->lastPredictionWarnings[] = 'There is no positive final-cost estimate. This result cannot support a project budget decision.';
@@ -2388,6 +2622,7 @@ class MLService
         return $prediction;
     }
 
+    // Get the recorded spend.
     protected function recordedSpend(array $features): float
     {
         return max(
@@ -2397,6 +2632,7 @@ class MLService
         );
     }
 
+    // Get the prediction feature vector.
     protected function predictionFeatureVector(array $features, array $featureNames, array $engineered = []): array
     {
         $byName = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), $engineered);
@@ -2405,9 +2641,11 @@ class MLService
             ? $this->featureValue((object) $byName, $name) : (float) ($byName[$name] ?? 0), $featureNames);
     }
 
+    // Clean up prediction features.
     protected function normalizePredictionFeatures(array $features): array
     {
         $count = count($features);
+        // Stop if the count checks match.
         if ($count < count(self::BASE_FEATURE_NAMES) || $count > count(self::FEATURE_NAMES)) {
             throw new InvalidArgumentException('Six base project-cost features are required; finance features are optional.');
         }
@@ -2415,30 +2653,40 @@ class MLService
         return array_pad(array_values($features), count(self::FEATURE_NAMES), 0.0);
     }
 
+    // Check feature vector.
     protected function validateFeatureVector(array $features): void
     {
+        // Process each value.
         foreach ($features as $index => $value) {
+            // Stop if the value checks match.
             if (! is_numeric($value) || ! is_finite((float) $value)) {
                 throw new InvalidArgumentException(self::FEATURE_NAMES[$index].' must be a finite number.');
             }
         }
         [$budget, $duration, $workers, $completion, $material, $labor] = array_map('floatval', $features);
+        // Stop if the budget checks match.
         if ($budget <= 0 || $budget > 9999999999.99) {
             throw new InvalidArgumentException('Budget must be greater than zero and at most ₱9,999,999,999.99.');
         }
+        // Stop if the duration checks match.
         if ($duration < 1 || $duration > 600 || floor($duration) !== $duration) {
             throw new InvalidArgumentException('Duration must be a whole number from 1 to 600 months.');
         }
+        // Stop if the workers checks match.
         if ($workers < 1 || $workers > 100000 || floor($workers) !== $workers) {
             throw new InvalidArgumentException('Worker count must be a whole number from 1 to 100,000.');
         }
+        // Stop if the completion checks match.
         if ($completion < 0 || $completion > 100) {
             throw new InvalidArgumentException('Completion percentage must be from 0 to 100.');
         }
+        // Stop if the material and labor checks match.
         if ($material < 0 || $material > 9999999999.99 || $labor < 0 || $labor > 9999999999.99) {
             throw new InvalidArgumentException('Material and labor costs must be between zero and ₱9,999,999,999.99.');
         }
+        // Process each value.
         foreach (array_slice($features, count(self::BASE_FEATURE_NAMES)) as $index => $value) {
+            // Run this step if the value checks match.
             if ((float) $value < 0 || (float) $value > 9999999999.99) {
                 $name = self::FEATURE_NAMES[$index + count(self::BASE_FEATURE_NAMES)];
                 throw new InvalidArgumentException($name.' must be between zero and ₱9,999,999,999.99.');
@@ -2446,6 +2694,7 @@ class MLService
         }
     }
 
+    // Get the backup prediction.
     protected function fallbackPrediction(array $features): float
     {
         [$budget, $duration, $workers] = array_map('floatval', array_slice($features, 0, 3));
@@ -2455,6 +2704,7 @@ class MLService
         return max($prediction, $budget * 0.5);
     }
 
+    // Get the predict project cost.
     public function predictProjectCost(
         $budget,
         $durationMonths,
@@ -2480,19 +2730,24 @@ class MLService
         ]), $context);
     }
 
+    // Get last feature indicators.
     public function getLastFeatureIndicators(): array
     {
         return $this->lastEngineeredFeatures['indicators'] ?? [];
     }
 
+    // Get last detector prediction.
     public function getLastDetectorPrediction(): ?array
     {
         $stored = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json', $this->metadata['model_sha256'] ?? null);
+        // Return early if the stored checks match.
         if ($stored === null || $this->lastDetectorInputs === []) {
             return null;
         }
         $metadata = $stored['metadata'];
+        // Process each name.
         foreach ($metadata['feature_names'] as $name) {
+            // Return early if the last detector inputs check matches.
             if (! array_key_exists($name, $this->lastDetectorInputs)) {
                 return null;
             }
@@ -2506,31 +2761,37 @@ class MLService
             'score_note' => 'Model score, not a calibrated probability.', 'recovery_source' => $stored['recovery_source']];
     }
 
+    // Get last forecast calculation.
     public function getLastForecastCalculation(): array
     {
         return $this->lastForecastCalculation;
     }
 
+    // Get last prediction source.
     public function getLastPredictionSource(): string
     {
         return $this->lastPredictionSource;
     }
 
+    // Get last prediction warnings.
     public function getLastPredictionWarnings(): array
     {
         return array_values(array_unique($this->lastPredictionWarnings));
     }
 
+    // Get the was last prediction constrained.
     public function wasLastPredictionConstrained(): bool
     {
         return $this->lastPredictionWasConstrained;
     }
 
+    // Get last prediction support.
     public function getLastPredictionSupport(): array
     {
         return $this->lastPredictionSupport;
     }
 
+    // Get the prediction support.
     protected function predictionSupport(array $features): array
     {
         $source = $this->metadata['model_source'] ?? 'unknown';
@@ -2540,10 +2801,12 @@ class MLService
         $context = $strategy === PlanningSpendingFeatures::STRATEGY
             ? ($recordedSpend <= 0 ? 'pre_start_planning' : 'ongoing_planning_spending')
             : ($completion <= 0 && $recordedSpend <= 0 ? 'pre_start_planning' : 'ongoing_progress');
+        // Return early if the last prediction source equals rule based backup.
         if ($this->lastPredictionSource === 'rule_based_fallback') {
             return ['prediction_usable' => false, 'support_level' => 'fallback_only',
                 'forecast_context' => $context, 'status_reason' => 'The trained estimator failed. This rule-based estimate has no validated model performance.'];
         }
+        // Return early if the saved details development activation is set.
         if (isset($this->metadata['development_activation'])) {
             return ['prediction_usable' => false, 'support_level' => 'development_evaluation',
                 'forecast_context' => $context, 'status_reason' => 'The planning and spending model is active at your request. Independent company validation remains pending.'];
@@ -2551,11 +2814,13 @@ class MLService
         $baselineSupported = (bool) ($this->metadata['budget_baseline_comparison']['model_outperforms_budget_baseline'] ?? false);
         $productionModelIsBest = (bool) ($this->metadata['model_comparison']['production_model_is_best_option'] ?? false);
         $snapshotReady = (bool) ($this->metadata['snapshot_readiness']['eligible'] ?? false);
+        // Return early if the strategy checks match.
         if ($strategy === 'progress_snapshot_model' && ($this->lastEngineeredFeatures['values']['snapshot_cost_coverage_complete'] ?? 0) !== 1) {
             return ['prediction_usable' => false, 'support_level' => 'incomplete_cost_coverage',
                 'forecast_context' => $context, 'status_reason' => 'Complete observed project costs are required for a progress forecast.'];
         }
 
+        // Return early if the source does not equal real trained model.
         if ($source !== 'real_trained_model') {
             return [
                 'prediction_usable' => false,
@@ -2566,6 +2831,7 @@ class MLService
                     : 'Verified company training evidence is insufficient.',
             ];
         }
+        // Return early if the last prediction was constrained is set.
         if ($this->lastPredictionWasConstrained) {
             return [
                 'prediction_usable' => false,
@@ -2574,6 +2840,7 @@ class MLService
                 'status_reason' => 'The raw model estimate failed the recorded-spend floor.',
             ];
         }
+        // Return early if the last prediction warnings check matches.
         if (in_array('Project inventory withdrawals include unvalued material; known material cost is incomplete.', $this->lastPredictionWarnings, true)) {
             return [
                 'prediction_usable' => false,
@@ -2582,6 +2849,7 @@ class MLService
                 'status_reason' => 'Project material cost is incomplete because one or more withdrawals are unvalued.',
             ];
         }
+        // Return early if the warning check matches.
         if (collect($this->lastPredictionWarnings)->contains(fn ($warning) => str_contains($warning, 'outside the'))) {
             return [
                 'prediction_usable' => false,
@@ -2590,6 +2858,7 @@ class MLService
                 'status_reason' => 'One or more active inputs are outside the verified training range.',
             ];
         }
+        // Return early if the baseline supported is missing or false.
         if (! $baselineSupported) {
             return [
                 'prediction_usable' => false,
@@ -2598,6 +2867,7 @@ class MLService
                 'status_reason' => 'The model has not outperformed the recorded-budget baseline on the untouched holdout.',
             ];
         }
+        // Return early if the production model is best is missing or false.
         if (! $productionModelIsBest) {
             return [
                 'prediction_usable' => false,
@@ -2606,6 +2876,7 @@ class MLService
                 'status_reason' => 'The served estimator was not the best evaluated candidate on the untouched holdout.',
             ];
         }
+        // Return early if the strategy and snapshot ready checks match.
         if ($strategy === 'progress_snapshot_model' && ! $snapshotReady) {
             return [
                 'prediction_usable' => false,
@@ -2614,6 +2885,7 @@ class MLService
                 'status_reason' => 'Genuine progress snapshots do not yet meet the required stage coverage.',
             ];
         }
+        // Return early if the strategy and context checks match.
         if ($strategy === 'planning_only_baseline' && $context !== 'pre_start_planning') {
             return [
                 'prediction_usable' => false,
@@ -2631,41 +2903,50 @@ class MLService
         ];
     }
 
+    // Get the business action for risk level.
     public function businessActionForRiskLevel(string $riskLevel): string
     {
         return $this->riskBusinessActions()[$riskLevel]
             ?? 'Review the forecast inputs and continue monitoring the project.';
     }
 
+    // Get the prediction warnings.
     protected function predictionWarnings(array $features): array
     {
         $warnings = [];
+        // Run this step if the features is above 0.
         if (($features[14] ?? 0) > 0) {
             $warnings[] = 'Project inventory withdrawals include unvalued material; known material cost is incomplete.';
         }
         $source = $this->metadata['model_source'] ?? 'unknown';
+        // Run this step if the source equals synthetic backup model.
         if ($source === 'synthetic_fallback_model') {
             $warnings[] = 'Insufficient verified company data: this prediction uses a synthetic fallback model and is experimental.';
         } elseif ($source === 'sample_trained_model') {
             $warnings[] = 'This prediction uses a company-inspired sample dataset; evaluation metrics are demo sample results, not company-validated accuracy.';
         }
         $sufficiency = $this->metadata['sample_sufficiency'] ?? null;
+        // Run this step if the sufficiency and sufficiency level checks match.
         if (is_array($sufficiency) && ($sufficiency['level'] ?? null) !== 'adequate') {
             $warnings[] = $sufficiency['message'];
         }
         $hasFinanceInputs = collect(array_slice($features, count(self::BASE_FEATURE_NAMES)))
             ->contains(fn ($value) => (float) $value > 0);
         $includedFinanceFeatures = $this->metadata['feature_set']['included_fin_features'] ?? [];
+        // Run this step if the has finance inputs and included finance features checks match.
         if ($hasFinanceInputs && $includedFinanceFeatures === []) {
             $warnings[] = 'Finance totals were received but were not used because the finance feature gate has not met its cross-validated improvement threshold.';
         }
         $byName = array_replace(array_combine(self::FEATURE_NAMES, array_map('floatval', $features)), $this->lastEngineeredFeatures['values'] ?? []);
+        // Process each value.
         foreach ($byName as $name => $value) {
             $range = $this->metadata['feature_ranges'][$name] ?? null;
+            // Skip this item if the range is not a list.
             if (! is_array($range)) {
                 continue;
             }
             $value = (float) $value;
+            // Run this step if the value and range min checks match.
             if ($value < $range['min'] || $value > $range['max']) {
                 $rangeSource = match ($source) {
                     'real_trained_model' => 'verified training projects',
@@ -2682,6 +2963,7 @@ class MLService
         return array_values(array_unique(array_filter($warnings)));
     }
 
+    // Get the plain number.
     protected function plainNumber(float $value): string
     {
         return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
@@ -2690,6 +2972,7 @@ class MLService
     /** Time-based 30-day stock projection; compatibility response fields remain. */
     public function predictMaterialDemand(): Collection
     {
+        // Try this action and handle any errors below.
         try {
             $items = DB::table('inventory_item_tbl')
                 ->select('item_id', 'item_name', 'current_stock', 'reorder_level')->orderBy('item_name')->get();
@@ -2702,10 +2985,13 @@ class MLService
 
             return $items->mapWithKeys(function ($item) use ($transactions, $today, $windowStart) {
                 $itemTransactions = $transactions->get((string) $item->item_id, collect());
+                // Keep the items that pass these checks.
                 $datedTransactions = $itemTransactions->filter(function ($transaction) use ($today) {
+                    // Return early if the transaction date is empty.
                     if (empty($transaction->transaction_date)) {
                         return false;
                     }
+                    // Try this action and handle any errors below.
                     try {
                         return Carbon::parse($transaction->transaction_date)->startOfDay()->lessThanOrEqualTo($today);
                     } catch (Throwable) {
@@ -2715,6 +3001,7 @@ class MLService
                 $totalUsed = (float) $itemTransactions->sum(fn ($transaction) => (float) $transaction->quantity);
                 $averageTransaction = $itemTransactions->isEmpty() ? 0.0 : $totalUsed / $itemTransactions->count();
 
+                // Run this step if the is not empty check matches.
                 if ($datedTransactions->isNotEmpty()) {
                     $recentTransactions = $datedTransactions->filter(fn ($transaction) => Carbon::parse($transaction->transaction_date)->startOfDay()->greaterThanOrEqualTo($windowStart));
                     $firstObserved = $datedTransactions
@@ -2745,6 +3032,7 @@ class MLService
                     'Low Stock' => 'Plan replenishment within the 30-day demand horizon.',
                     default => 'Stock covers the current projection; continue monitoring usage.',
                 };
+                // Run this step if the calculation method equals legacy transaction average backup.
                 if ($calculationMethod === 'legacy_transaction_average_fallback') {
                     $recommendation .= ' Add transaction dates to enable a time-based forecast.';
                 }
@@ -2776,8 +3064,10 @@ class MLService
         }
     }
 
+    // Get model metrics.
     public function getModelMetrics(): array
     {
+        // Return early if the input checks match.
         if (! $this->model || $this->metadata === []) {
             return $this->emptyMetrics('Model not trained', 'Train the model first.');
         }
@@ -2785,6 +3075,7 @@ class MLService
         $source = $this->metadata['model_source'] ?? 'unknown';
         $metrics = is_array($evaluation) ? $evaluation : [];
         $detector = app(ModelPromotionService::class)->loadDetector($this->modelPath.'.detector.json', $this->metadata['model_sha256'] ?? null);
+        // Run this step if the detector is not null.
         if ($detector !== null) {
             $metrics['overrun_detection']['any_overrun'] = $detector['metadata']['evaluation'];
         }
@@ -2800,6 +3091,7 @@ class MLService
             default => [],
         };
         $estimatedHistoricalPurchases = (int) ($this->metadata['estimated_historical_purchase_count'] ?? 0);
+        // Run this step if the estimated historical purchases is above 0.
         if ($estimatedHistoricalPurchases > 0) {
             $provenanceWarnings[] = "{$estimatedHistoricalPurchases} historical inventory purchases were priced using current item prices, not original invoices. Model metrics are conditional on these estimates.";
         }
@@ -2886,6 +3178,7 @@ class MLService
         ];
     }
 
+    // Get the empty metrics.
     protected function emptyMetrics(string $status, string $interpretation): array
     {
         return [
@@ -2910,6 +3203,7 @@ class MLService
         ];
     }
 
+    // Get the feature engineering saved details.
     protected function featureEngineeringMetadata(): array
     {
         $active = array_values(array_intersect($this->metadata['transformer']['selected_feature_names'] ?? [],
@@ -2922,15 +3216,19 @@ class MLService
         ];
     }
 
+    // Get the sample sufficiency.
     protected function sampleSufficiency(int $samples, bool $usesSampleData = false): array
     {
         $description = $usesSampleData ? 'company-inspired sample projects' : 'verified completed projects';
+        // Return early if the samples is below self minimum real samples.
         if ($samples < self::MINIMUM_REAL_SAMPLES) {
             return ['level' => 'insufficient', 'message' => "Only {$samples} {$description} are available; at least ".self::MINIMUM_REAL_SAMPLES.' are required for training and holdout evaluation.'];
         }
+        // Return early if the samples is below 30.
         if ($samples < 30) {
             return ['level' => 'experimental', 'message' => "The model uses only {$samples} {$description}; treat its results as experimental."];
         }
+        // Return early if the samples is below 100.
         if ($samples < 100) {
             return ['level' => 'limited', 'message' => "The model uses {$samples} {$description}; continue collecting varied completed-project data."];
         }
@@ -2938,13 +3236,16 @@ class MLService
         return ['level' => 'adequate', 'message' => "The model uses {$samples} {$description} and has an adequate initial sample size."];
     }
 
+    // Get interpretation.
     protected function getInterpretation(array $metrics, array $sufficiency, string $source): string
     {
+        // Return early if the source equals synthetic backup model.
         if ($source === 'synthetic_fallback_model') {
             return 'No unseen-project performance is reported because the active model uses synthetic fallback examples.';
         }
         $accuracy = $metrics['accuracy'] ?? null;
         $mae = $metrics['mean_absolute_error'] ?? null;
+        // Return early if the accuracy and mae checks match.
         if ($accuracy === null || $mae === null) {
             return 'Holdout performance is unavailable; do not use this model for financial decisions.';
         }
@@ -2960,8 +3261,10 @@ class MLService
         );
     }
 
+    // Get the retrain.
     public function retrain(?string $cohortMode = null): array
     {
+        // Return early if the project group mode checks match.
         if ($cohortMode === 'database_augmented' || (in_array($cohortMode, [null, 'auto'], true) && config('ml.augmentation_enabled'))) {
             return $this->retrainAugmented();
         }
@@ -2981,18 +3284,21 @@ class MLService
         ];
     }
 
-    /** Train the CV-selected model, persist its candidate, and retain existing promotion gates. */
+    /** Train the model chosen by repeated testing. Save it as a candidate and keep the activation checks. */
     protected function retrainAugmented(): array
     {
         File::ensureDirectoryExists(dirname($this->modelPath));
         $lock = fopen($this->modelPath.'.training.lock', 'c');
+        // Stop if the lock is false.
         if ($lock === false) {
             throw new RuntimeException('Unable to open the augmented training lock.');
         }
+        // Run this step if the lock check matches.
         if (! flock($lock, LOCK_EX | LOCK_NB)) {
             fclose($lock);
             throw new RuntimeException('Augmented model training is already running.');
         }
+        // Try this action and handle any errors below.
         try {
             return $this->performAugmentedRetraining();
         } finally {
@@ -3001,8 +3307,10 @@ class MLService
         }
     }
 
+    // Get the perform augmented training again.
     protected function performAugmentedRetraining(): array
     {
+        // Run this step if the value check matches.
         if (config('ml.optimization_enabled')) {
             $report = (new ProjectCostOptimizationService($this->modelPath))->run();
 
@@ -3012,6 +3320,7 @@ class MLService
                 'model_source' => $this->metadata['model_source'] ?? 'unknown', 'metrics' => $this->getModelMetrics()];
         }
         $report = $this->evaluateCandidate('database_augmented');
+        // Stop if the report status does not equal evaluated.
         if (($report['status'] ?? null) !== 'evaluated') {
             throw new RuntimeException('Not enough eligible database projects to evaluate augmentation.');
         }
@@ -3064,6 +3373,7 @@ class MLService
         $report['augmented_candidate'] = ['path' => $candidatePath, 'algorithm' => $algorithm, 'evaluation' => $evaluation, 'activation' => $promotion['policy']];
         $report['active_model_changed'] = $promotion['activated'];
         $this->saveCandidateEvaluationReport($report);
+        // Run this step if the promotion activated check matches.
         if ($promotion['activated']) {
             $this->restoreStoredModel();
         }
@@ -3074,21 +3384,26 @@ class MLService
             'candidate_evaluation' => $evaluation, 'model_source' => $this->metadata['model_source'] ?? 'unknown', 'metrics' => $this->getModelMetrics()];
     }
 
+    // Get model saved details.
     public function getModelMetadata(): array
     {
         return $this->metadata;
     }
 
+    // Restore stored model.
     protected function restoreStoredModel(): bool
     {
+        // Try this action and handle any errors below.
         try {
             $pair = (new CostModelStore($this->modelPath, self::MODEL_SCHEMA_VERSION))->load();
+            // Return early if the pair is null.
             if ($pair === null) {
                 return false;
             }
             $this->model = $pair['model'];
             $this->metadata = $pair['metadata'];
             $this->modelRecoverySource = $pair['recovery_source'];
+            // Run this step if the model recovery source equals previous.
             if ($this->modelRecoverySource === 'previous') {
                 Log::warning('The active cost model pair is unavailable; serving the verified previous model.');
             }
@@ -3101,8 +3416,10 @@ class MLService
         }
     }
 
+    // Save model and saved details.
     protected function saveModelAndMetadata(): void
     {
+        // Stop if the model is missing or false.
         if (! $this->model) {
             throw new RuntimeException('Cannot save an empty model.');
         }
@@ -3111,8 +3428,10 @@ class MLService
         $this->modelRecoverySource = 'active';
     }
 
+    // Get the analyze budget variance.
     public function analyzeBudgetVariance(): Collection
     {
+        // Try this action and handle any errors below.
         try {
             $expenseTotals = $this->financeActualExpenseTotalsQuery();
             $allocationTotals = $this->allocationAggregateQuery(false);
@@ -3127,9 +3446,11 @@ class MLService
             $query = DB::table('budgets_tbl')
                 ->leftJoin('project_tbl', 'project_tbl.project_id', '=', 'budgets_tbl.project_id');
 
+            // Run this step if the expense totals is not null.
             if ($expenseTotals !== null) {
                 $query->leftJoinSub($expenseTotals, 'expense_totals', fn ($join) => $join->on('project_tbl.project_id', '=', 'expense_totals.project_id'));
             }
+            // Run this step if the allocation totals is not null.
             if ($allocationTotals !== null) {
                 $query->leftJoinSub($allocationTotals, 'allocation_totals', fn ($join) => $join->on('project_tbl.project_id', '=', 'allocation_totals.project_id'));
             }
@@ -3152,8 +3473,10 @@ class MLService
         }
     }
 
+    // Get the finance actual expense totals query.
     protected function financeActualExpenseTotalsQuery(): mixed
     {
+        // Return early if the input checks match.
         if (! Schema::hasTable('fin_expense_tbl')
             || ! Schema::hasColumn('fin_expense_tbl', 'project_id')) {
             return null;
@@ -3161,6 +3484,7 @@ class MLService
 
         $amountColumn = Schema::hasColumn('fin_expense_tbl', 'amount') ? 'amount'
             : (Schema::hasColumn('fin_expense_tbl', 'actual_amount') ? 'actual_amount' : null);
+        // Return early if the amount column is null.
         if ($amountColumn === null) {
             return null;
         }

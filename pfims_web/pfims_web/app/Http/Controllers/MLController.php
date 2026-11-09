@@ -9,15 +9,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
+// Group the ml actions.
 class MLController extends Controller
 {
     protected $ml;
 
+    // Set up the values this class needs.
     public function __construct(MLService $ml)
     {
         $this->ml = $ml;
     }
 
+    // Get the test.
     public function test()
     {
         return response()->json([
@@ -27,8 +30,10 @@ class MLController extends Controller
         ]);
     }
 
+    // Get the test service.
     public function testService()
     {
+        // Try this action and handle any errors below.
         try {
             $metrics = $this->ml->getModelMetrics();
 
@@ -46,12 +51,15 @@ class MLController extends Controller
         }
     }
 
+    // Get the predict project cost.
     public function predictProjectCost(Request $request)
     {
         $selectedProject = null;
+        // Run this step if the filled check matches.
         if ($request->filled('project_id')) {
             $selectedProject = $this->ml->getPredictionProjects()
                 ->firstWhere('project_id', (int) $request->input('project_id'));
+            // Return early if the selected project is null.
             if ($selectedProject === null) {
                 return response()->json([
                     'success' => false,
@@ -107,11 +115,13 @@ class MLController extends Controller
             $input['fin_other_expense'],
         ])->contains(fn ($value) => is_numeric($value) && (float) $value > 0);
         $validator->after(function ($validator) use ($hasFinanceInputs, $input) {
+            // Run this step if the has finance inputs and input finance as of date checks match.
             if ($hasFinanceInputs && blank($input['finance_as_of_date'])) {
                 $validator->errors()->add('finance_as_of_date', 'Provide the date through which the finance totals have accumulated.');
             }
         });
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -120,6 +130,7 @@ class MLController extends Controller
             ], 422);
         }
 
+        // Try this action and handle any errors below.
         try {
             $validated = $validator->validated();
             $prediction = $this->ml->predictProjectCost(
@@ -162,7 +173,7 @@ class MLController extends Controller
             };
             $modelMetrics = $this->ml->getModelMetrics();
             $predictionSource = $this->ml->getLastPredictionSource();
-            // Reliability is a service-owned decision. Missing/invalid support metadata fails closed.
+            // Reliability is a service-owned decision. Missing/invalid support saved details fails closed.
             $support = method_exists($this->ml, 'getLastPredictionSupport')
                 ? $this->ml->getLastPredictionSupport()
                 : [];
@@ -182,10 +193,12 @@ class MLController extends Controller
             $contextExplanation = $forecastContext === 'planning_estimate'
                 ? 'This is a planning estimate based on manually supplied inputs.'
                 : 'This is an ongoing-project snapshot based on current project and finance records; it is not a completed-project outcome.';
+            // Run this step if the prediction usable and support checks match.
             if (! $predictionUsable && (! is_array($support) || ! isset($support['status_reason']))) {
                 $statusReason = $contextExplanation.' '.$statusReason;
             }
             $sampleEstimate = $predictionSource === 'sample_trained_model';
+            // Run this step if the prediction usable and sample estimate checks match.
             if (! $predictionUsable && ! $sampleEstimate) {
                 $riskLevel = 'Insufficient evidence';
             }
@@ -253,6 +266,7 @@ class MLController extends Controller
         }
     }
 
+    // Get the prediction projects.
     public function predictionProjects()
     {
         return response()->json([
@@ -261,8 +275,10 @@ class MLController extends Controller
         ]);
     }
 
+    // Get the predict material demand.
     public function predictMaterialDemand(Request $request)
     {
+        // Try this action and handle any errors below.
         try {
             $predictions = $this->ml->predictMaterialDemand();
 
@@ -280,8 +296,10 @@ class MLController extends Controller
         }
     }
 
+    // Get the retrain.
     public function retrain(Request $request)
     {
+        // Return early if the user checks match.
         if (! $request->user() || strtolower((string) $request->user()->role) !== 'admin') {
             return response()->json([
                 'success' => false,
@@ -289,6 +307,7 @@ class MLController extends Controller
             ], 403);
         }
 
+        // Try this action and handle any errors below.
         try {
             $result = $this->ml->retrain();
 
@@ -310,8 +329,10 @@ class MLController extends Controller
         }
     }
 
+    // Get the status.
     public function status()
     {
+        // Try this action and handle any errors below.
         try {
             $metrics = $this->ml->getModelMetrics();
 
@@ -328,8 +349,10 @@ class MLController extends Controller
         }
     }
 
+    // Get the budget variance.
     public function budgetVariance()
     {
+        // Try this action and handle any errors below.
         try {
             // The comparison is intentionally not restricted by project
             // lifecycle status: the Budgets module exposes every recorded
@@ -350,8 +373,10 @@ class MLController extends Controller
         }
     }
 
+    // Get the dashboard analytics.
     public function dashboardAnalytics()
     {
+        // Try this action and handle any errors below.
         try {
             // Descriptive analytics
             $totalProjects = DB::table('project_tbl')->count();
@@ -434,6 +459,7 @@ class MLController extends Controller
         }
     }
 
+    // Get monthly expense history.
     protected function getMonthlyExpenseHistory()
     {
         $monthExpression = DB::connection()->getDriverName() === 'sqlite'

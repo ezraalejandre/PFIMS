@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // Set up the checks that run before page requests.
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['role.portal' => EnsureRoleAccess::class]);
         $middleware->append(HandleCors::class);
@@ -27,19 +28,24 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', \App\Http\Middleware\RejectUnsafeInput::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\ArchiveDeletedRecords::class);
     })
+    // Set how the app handles request errors.
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (HttpException $exception, Request $request) {
+            // Return early if the get status code does not equal 419.
             if ($exception->getStatusCode() !== 419) {
                 return null;
             }
 
+            // Return early if the is check matches.
             if ($request->is('logout')) {
                 return redirect()->route('login');
             }
 
+            // Run this step if the is check matches.
             if ($request->is('login')) {
                 $message = 'This sign-in page has been open too long. Refresh the page, then try signing in again.';
 
+                // Return early if the expects json and ajax checks match.
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json(['message' => $message], 419);
                 }

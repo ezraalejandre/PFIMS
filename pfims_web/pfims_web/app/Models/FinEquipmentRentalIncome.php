@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Link records to the fin equipment rental income table.
 class FinEquipmentRentalIncome extends Model
 {
     protected $table = 'fin_equipment_rental_income_tbl';
@@ -26,11 +27,13 @@ class FinEquipmentRentalIncome extends Model
         'period_month' => 'date',
     ];
 
+    // Link this record to its asset.
     public function asset(): BelongsTo
     {
         return $this->belongsTo(CompanyAsset::class, 'asset_id', 'asset_id');
     }
 
+    // Link this record to its project.
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');

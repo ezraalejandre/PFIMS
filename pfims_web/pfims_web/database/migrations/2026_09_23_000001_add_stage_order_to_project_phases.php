@@ -7,15 +7,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Run this step if the value check matches.
         if (! Schema::hasColumn('project_phase_tbl', 'stage_order')) {
+            // Update this part of the database structure.
             Schema::table('project_phase_tbl', function (Blueprint $table) {
                 $table->unsignedInteger('stage_order')->nullable()->index();
             });
         }
 
         $canonical = ['Planning', 'Foundation', 'Structure', 'Finishing', 'Complete'];
+        // Process each name.
         foreach ($canonical as $name) {
             DB::table('project_phase_tbl')->insertOrIgnore(['phase_name' => $name]);
         }
@@ -27,13 +31,16 @@ return new class extends Migration
             return isset($rank[$key]) ? sprintf('0-%03d', $rank[$key]) : '1-'.str_pad((string) $phase->phase_id, 10, '0', STR_PAD_LEFT);
         })->values();
 
+        // Process each phase.
         foreach ($ordered as $index => $phase) {
             DB::table('project_phase_tbl')->where('phase_id', $phase->phase_id)
                 ->update(['stage_order' => $index + 1]);
         }
 
+        // Run this step if the value check matches.
         if (Schema::hasTable('project_tbl')) {
             $total = $ordered->count();
+            // Process each phase.
             foreach ($ordered as $index => $phase) {
                 DB::table('project_tbl')
                     ->whereRaw('LOWER(TRIM(phase)) = ?', [strtolower(trim((string) $phase->phase_name))])
@@ -42,9 +49,12 @@ return new class extends Migration
         }
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Run this step if the value check matches.
         if (Schema::hasColumn('project_phase_tbl', 'stage_order')) {
+            // Update this part of the database structure.
             Schema::table('project_phase_tbl', function (Blueprint $table) {
                 $table->dropColumn('stage_order');
             });

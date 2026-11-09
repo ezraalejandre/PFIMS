@@ -1,3 +1,4 @@
+{{-- Prepare the values used by this page section. --}}
 @php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -8,7 +9,9 @@
     <title>Inventory - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/inventory.css') }}">
     <link rel="stylesheet" href="{{ asset('css/module-analytics.css') }}">
+    {{-- Set the styles used by this page section. --}}
     <style>
+        /* Style the delete confirm modal. */
         #deleteConfirmModal { z-index: 9999 !important; }
         
         /* Add Item Modal specific styles */
@@ -21,6 +24,7 @@
             max-width: 700px;
         }
         
+        /* Style the view details grid. */
         .view-details-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -31,11 +35,13 @@
             margin-bottom: 25px;
         }
         
+        /* Style the view item. */
         .view-item {
             display: flex;
             flex-direction: column;
         }
         
+        /* Style the view item. */
         .view-item label {
             font-size: 0.7rem;
             text-transform: uppercase;
@@ -44,6 +50,7 @@
             margin-bottom: 2px;
         }
         
+        /* Style the view item view value. */
         .view-item .view-value {
             font-size: 1rem;
             font-weight: 500;
@@ -51,6 +58,7 @@
             padding: 4px 0;
         }
         
+        /* Style the view item view input. */
         .view-item .view-input {
             padding: 6px 10px;
             border: 1px solid #ddd;
@@ -60,12 +68,14 @@
             transition: 0.3s;
         }
         
+        /* Style the view item view input when focused. */
         .view-item .view-input:focus {
             outline: none;
             border-color: #c9a96e;
             box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
         }
         
+        /* Style the view item status badge. */
         .view-item .status-badge {
             font-size: 0.9rem;
         }
@@ -76,8 +86,10 @@
             gap: 10px;
         }
 
+        /* Style the inventory page btn group. */
         body.inventory-page .btn-group > button[hidden] { display: none !important; }
         
+        /* Style the btn add item. */
         .btn-add-item {
             background: #c9a96e;
             color: #fff;
@@ -91,12 +103,14 @@
             white-space: nowrap;
         }
         
+        /* Style the btn add item on hover. */
         .btn-add-item:hover {
             background: #b8975a;
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(201, 169, 110, 0.3);
         }
         
+        /* Style the btn add transaction. */
         .btn-add-transaction {
             background: #1a2b3c;
             color: #fff;
@@ -110,22 +124,26 @@
             white-space: nowrap;
         }
         
+                /* Style the btn add transaction on hover. */
                 .btn-add-transaction:hover {
             background: #2a3f54;
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(26, 43, 60, 0.3);
         }
         
+        /* Style the btn confirm expense on hover. */
         .btn-confirm-expense:hover {
             background: #cf8735;
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(225, 154, 69, 0.3);
         }
         
+        /* Style the tab content. */
         .tab-content {
             display: none;
         }
         
+        /* Style the tab content active. */
         .tab-content.active {
             display: block;
         }
@@ -139,6 +157,7 @@
             overflow-x: auto;
         }
         
+        /* Style the items table wrapper. */
         .items-table-wrapper table {
             width: 100%;
             border-collapse: collapse;
@@ -146,6 +165,7 @@
             min-width: 800px;
         }
         
+        /* Style the items table wrapper. */
         .items-table-wrapper table thead th {
             text-align: left;
             padding: 12px 16px;
@@ -158,6 +178,7 @@
             white-space: nowrap;
         }
         
+        /* Style the items table wrapper. */
         .items-table-wrapper table tbody td {
             padding: 10px 16px;
             border-bottom: 1px solid #f5f5f5;
@@ -165,14 +186,17 @@
             white-space: nowrap;
         }
         
+        /* Style the items table wrapper on hover. */
         .items-table-wrapper table tbody tr:hover {
     background: #faf8f5;
 }
         
+        /* Style the items table wrapper. */
         .items-table-wrapper table tbody tr:last-child td {
             border-bottom: none;
         }
         
+        /* Style the items table wrapper action cell. */
         .items-table-wrapper .action-cell {
             display: flex;
             gap: 6px;
@@ -180,6 +204,7 @@
             justify-content: center;
         }
         
+        /* Style the items table wrapper action cell. */
         .items-table-wrapper .action-cell button {
             background: transparent;
             border: none;
@@ -192,14 +217,17 @@
             justify-content: center;
         }
         
+                /* Style the items table wrapper action cell on hover. */
                 .items-table-wrapper .action-cell button:hover {
             background: rgba(225, 154, 69, 0.12);
         }
         
+        /* Style the table wrapper action cell on hover. */
         .table-wrapper .action-cell button:hover {
             background: rgba(225, 154, 69, 0.12);
         }
         
+        /* Style the items table wrapper action cell. */
         .items-table-wrapper .action-cell button img {
             width: 18px;
             height: 18px;
@@ -208,13 +236,16 @@
             transition: 0.2s;
         }
         
+        /* Style the items table wrapper action cell on hover. */
         .items-table-wrapper .action-cell button:hover img {
             opacity: 1;
         }
         
+        /* Style the action cell expense btn. */
         .action-cell .expense-btn {
             color: #2e7d32;
         }
+        /* Style the action cell expense btn on hover. */
         .action-cell .expense-btn:hover {
             background: rgba(46, 125, 50, 0.1);
         }
@@ -224,30 +255,37 @@
             max-width: 550px;
         }
         
+        /* Style the modal expense form row. */
         .modal-expense .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
         
+        /* Adjust these styles for this screen size or display setting. */
         @media (max-width: 650px) {
+            /* Style the btn group. */
             .btn-group {
                 flex-direction: column;
                 width: 100%;
             }
+            /* Style the btn group. */
             .btn-group button {
                 width: 100%;
                 justify-content: center;
                 text-align: center;
             }
+            /* Style the view details grid. */
             .view-details-grid {
                 grid-template-columns: 1fr;
                 gap: 12px;
                 padding: 15px;
             }
+            /* Style the modal add item modal container. */
             .modal-add-item .modal-container {
                 padding: 20px;
             }
+            /* Style the modal expense form row. */
             .modal-expense .form-row {
                 grid-template-columns: 1fr;
             }
@@ -255,9 +293,13 @@
     </style>
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    {{-- Set the styles used by this page section. --}}
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    {{-- Set up the actions used by this page section. --}}
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="inventory-page" data-portal="{{ $portal }}">
@@ -347,6 +389,7 @@
 
     <!-- Sidebar -->
     <aside class="sidebar">
+                {{-- Show the page navigation. --}}
                 <nav>
             <ul>
                 <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
@@ -365,6 +408,7 @@
                     </a>
                 </li>
                 <li class="logout">
+                    {{-- Collect the details entered in this form. --}}
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
@@ -414,24 +458,34 @@
             <!-- Stats Cards -->
             <div class="stats-grid-inv" aria-label="Inventory stock KPIs">
                 <div class="stat-card-inv">
+                    {{-- Show the total items label section. --}}
                     <div class="stat-label" id="totalItemsLabel">Total Items</div>
+                    {{-- Show the total items count section. --}}
                     <div class="stat-value" id="totalItemsCount">0</div>
+                    {{-- Show the total items sub section. --}}
                     <div class="stat-sub" id="totalItemsSub">Matching current item filters</div>
                 </div>
                 <div class="stat-card-inv">
+                    {{-- Show the low stock label section. --}}
                     <div class="stat-label" id="lowStockLabel">Low Stock</div>
+                    {{-- Show the low stock count section. --}}
                     <div class="stat-value" id="lowStockCount">0</div>
+                    {{-- Show the low stock sub section. --}}
                     <div class="stat-sub" id="lowStockSub">At or below reorder level</div>
                 </div>
                 <div class="stat-card-inv">
+                    {{-- Show the categories label section. --}}
                     <div class="stat-label" id="categoriesLabel">Out of Stock</div>
+                    {{-- Show the categories count section. --}}
                     <div class="stat-value" id="categoriesCount">0</div>
+                    {{-- Show the categories sub section. --}}
                     <div class="stat-sub" id="categoriesSub">No stock remaining</div>
                 </div>
             </div>
 
             <!-- Items Table -->
             <div class="items-table-wrapper">
+                {{-- Show the records in a table. --}}
                 <table>
                     <thead>
                         <tr>
@@ -463,6 +517,7 @@
                     </select>
                     <span id="itemsTotalCount" class="pagination-total">Total: 0</span>
                 </div>
+                {{-- Show the items pagination links section. --}}
                 <div class="pagination-links" id="itemsPaginationLinks">
                     <!-- Generated by JavaScript -->
                 </div>
@@ -487,6 +542,7 @@
             </div>
             <!-- Transactions Table -->
             <div class="table-wrapper">
+                {{-- Show the records in a table. --}}
                 <table>
                     <thead>
                         <tr>
@@ -521,6 +577,7 @@
                     </select>
                     <span id="transactionsTotalCount" class="pagination-total">Total: 0</span>
                 </div>
+                {{-- Show the transaction pagination links section. --}}
                 <div class="pagination-links" id="transactionPaginationLinks">
                     <!-- Generated by JavaScript -->
                 </div>
@@ -546,6 +603,7 @@
                 </span>
             </div>
 
+            {{-- Show the add item step1 section. --}}
             <div class="modal-step" id="addItemStep1">
                 <div class="form-group">
                     <label>Item Name <span class="required">*</span></label>
@@ -587,14 +645,21 @@
                 </div>
             </div>
 
+            {{-- Show the add item step2 section. --}}
             <div class="modal-step" id="addItemStep2" style="display: none;">
                 <h3>Review item details</h3>
                 <div class="summary-list">
+                    {{-- Show the review item name section. --}}
                     <div class="summary-item"><strong>Item Name</strong><span class="summary-value" id="reviewItemName">—</span></div>
+                    {{-- Show the review item category section. --}}
                     <div class="summary-item"><strong>Category</strong><span class="summary-value" id="reviewItemCategory">—</span></div>
+                    {{-- Show the review item unit section. --}}
                     <div class="summary-item"><strong>Unit</strong><span class="summary-value" id="reviewItemUnit">—</span></div>
+                    {{-- Show the review item unit price section. --}}
                     <div class="summary-item"><strong>Unit Price</strong><span class="summary-value" id="reviewItemUnitPrice">—</span></div>
+                    {{-- Show the review item supplier section. --}}
                     <div class="summary-item"><strong>Supplier</strong><span class="summary-value" id="reviewItemSupplier">—</span></div>
+                    {{-- Show the review item reorder section. --}}
                     <div class="summary-item"><strong>Reorder Level</strong><span class="summary-value" id="reviewItemReorder">—</span></div>
                 </div>
                 <div class="modal-footer">
@@ -774,6 +839,7 @@
                     <span id="viewProofDisplay" class="view-value">No proof attached</span>
                     <input type="file" id="viewProofInput" class="view-input" accept=".jpg,.jpeg,.png,.pdf" style="display:none;">
                 </div>
+                {{-- Show the view project row section. --}}
                 <div class="view-item" id="viewProjectRow" style="display: none;">
                     <label>Project</label>
                     <span id="viewProjectDisplay" class="view-value">—</span>
@@ -890,6 +956,7 @@
                     <span id="transactionProjectError" class="field-error" style="display:none;"></span>
                 </div>
 
+                {{-- Show the transaction stock in group section. --}}
                 <div class="form-group" id="transactionStockInGroup">
                     <div class="form-group">
                         <label>Stock-in purpose <span class="required">*</span></label>
@@ -966,6 +1033,7 @@
                         <strong>Transaction Date</strong>
                         <span class="summary-value" id="reviewTransDate">—</span>
                     </div>
+                    {{-- Show the review trans project row section. --}}
                     <div class="summary-item" id="reviewTransProjectRow" style="display: none;">
                         <strong>Project</strong>
                         <span class="summary-value" id="reviewTransProject">—</span>
@@ -985,11 +1053,14 @@
         </div>
     </div>
 
+    {{-- Set up the actions used by this page section. --}}
     <script>
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         var lookupData = { categories: [], suppliers: [], units: [] };
 
+        // Format inventory unit price.
         function formatInventoryUnitPrice(value) {
+            // Return early if the value equals null or the value equals the undefined or the value equals an empty value.
             if (value === null || value === undefined || value === '') return '—';
             var price = Number(value);
             return Number.isFinite(price) ? '₱' + price.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
@@ -997,7 +1068,9 @@
 
         // Button loading state (prevents double-click / double-submit)
         function setButtonLoading(button, isLoading, loadingText) {
+            // Return early if the button is missing or false.
             if (!button) return;
+            // Run this step if the is loading is set.
             if (isLoading) {
                 button.dataset.originalText = button.textContent;
                 button.textContent = loadingText || 'Loading...';
@@ -1025,7 +1098,9 @@
         var currentItemDetailRow = null;
         var currentItemEditRow = null;
 
+        // Escape text so it can be shown safely in HTML.
         function escapeHtml(value) {
+            // Run the replace action.
             return String(value).replace(/[&<>'"]/g, function(character) {
                 return { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[character];
             });
@@ -1034,23 +1109,29 @@
                 // Notification functions
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
+            // Run this step if the badge is set.
             if (badge) {
                 badge.style.display = 'none';
             }
         }
 
+        // Load notif badge.
         function fetchNotifBadge() {
+            // Use the result when this request finishes.
             fetch('/api/notifications/unread-count', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Failed to load unread count.');
                 return response.json();
             })
             .then(function(data) {
                 var badge = document.getElementById('notifBadge');
+                // Return early if the badge is missing or false.
                 if (!badge) return;
                 var count = data.unread_count || 0;
+                // Run this step if the count is above 0.
                 if (count > 0) {
                     badge.textContent = count;
                     badge.style.display = 'inline-block';
@@ -1063,42 +1144,54 @@
             });
         }
 
+        // Show error.
         function showError(message) {
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
+            // Run this step if the msg span is set.
             if (msgSpan) {
                 msgSpan.textContent = message || 'An error occurred. Please try again.';
             }
             notif.style.display = 'block';
+            // Run this step if the error timeout is set.
             if (window.errorTimeout) clearTimeout(window.errorTimeout);
+            // Run this action after the delay.
             window.errorTimeout = setTimeout(function() {
                 closeError();
             }, 5000);
         }
 
+        // Close error.
         function closeError() {
             document.getElementById('errorNotification').style.display = 'none';
+            // Run this step if the error timeout is set.
             if (window.errorTimeout) {
                 clearTimeout(window.errorTimeout);
                 window.errorTimeout = null;
             }
         }
 
+        // Show success.
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
+            // Run this step if the msg span is set.
             if (msgSpan) {
                 msgSpan.textContent = message || 'Action completed successfully!';
             }
             notif.style.display = 'block';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) clearTimeout(window.successTimeout);
+            // Run this action after the delay.
             window.successTimeout = setTimeout(function() {
                 closeSuccess();
             }, 5000);
         }
 
+        // Close success.
         function closeSuccess() {
             document.getElementById('successNotification').style.display = 'none';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) {
                 clearTimeout(window.successTimeout);
                 window.successTimeout = null;
@@ -1108,6 +1201,7 @@
         var deleteCallback = null;
         var expenseConfirmCallback = null;
 
+        // Open delete modal.
         function openDeleteModal(message, callback) {
             document.getElementById('deleteConfirmMessage').textContent = message || 'Are you sure you want to move this transaction to Trash Bin?';
             deleteCallback = callback;
@@ -1115,20 +1209,25 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // Close delete modal.
         function closeDeleteModal() {
             document.getElementById('deleteConfirmModal').style.display = 'none';
             document.body.style.overflow = '';
             deleteCallback = null;
         }
 
+        // Get the confirm delete.
         function confirmDelete() {
+            // Run this step if the delete callback equals function.
             if (typeof deleteCallback === 'function') {
                 deleteCallback();
             }
             closeDeleteModal();
         }
 
+        // Handle the click event.
         document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) {
                 closeDeleteModal();
             }
@@ -1142,20 +1241,25 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // Close expense confirm modal.
         function closeExpenseConfirmModal() {
             document.getElementById('expenseConfirmModal').style.display = 'none';
             document.body.style.overflow = '';
             expenseConfirmCallback = null;
         }
 
+        // Get the confirm expense.
         function confirmExpense() {
+            // Run this step if the expense confirm callback equals function.
             if (typeof expenseConfirmCallback === 'function') {
                 expenseConfirmCallback();
             }
             closeExpenseConfirmModal();
         }
 
+        // Handle the click event.
         document.getElementById('expenseConfirmModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) {
                 closeExpenseConfirmModal();
             }
@@ -1172,6 +1276,7 @@
             document.getElementById('importTransactionsButton').hidden = itemsTab;
             document.getElementById('addTransactionButton').hidden = itemsTab;
 
+            // Run this step if the tab equals items.
             if (tab === 'items') {
                 document.getElementById('tabItems').classList.add('active');
                 renderItemsPage(1);
@@ -1184,7 +1289,9 @@
         // Update stats cards
         function updateStats(transactions, items, categories) {
             var uniqueItems = new Set();
+            // Process each t.
             transactions.forEach(function(t) {
+                // Run this step if the item name is set.
                 if (t.item_name) {
                     uniqueItems.add(t.item_name + '|' + t.category);
                 }
@@ -1195,8 +1302,10 @@
 
             var lowStockItems = 0;
             var lowStockList = [];
+            // Process each item.
             items.forEach(function(item) {
                 var stock = parseFloat(item.current_stock) || 0;
+                // Run this step if the stock is at most 5 and the stock is above 0.
                 if (stock <= 5 && stock > 0) {
                     lowStockItems++;
                     lowStockList.push(item.item_name);
@@ -1208,6 +1317,7 @@
                 'All items well stocked';
 
             var uniqueCategories = new Set();
+            // Process each c.
             categories.forEach(function(c) {
                 uniqueCategories.add(c.inventory_category_name);
             });
@@ -1217,6 +1327,7 @@
             
             // Update badge count
             var badge = document.getElementById('transactionBadge');
+            // Run this step if the badge is set.
             if (badge) {
                 badge.textContent = transactions.length;
             }
@@ -1224,6 +1335,7 @@
 
         // Load lookup data
         function loadLookupData() {
+            // Use the result when this request finishes.
             return fetch('/api/inventory/lookup-data', {
                 headers: { 
                     'X-Requested-With': 'XMLHttpRequest',
@@ -1232,6 +1344,7 @@
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {
+                // Run this step if the success is set and the data is set.
                 if (data.success && data.data) {
                     lookupData = data.data;
                     populateAllDropdowns();
@@ -1254,13 +1367,16 @@
             populateFilterDropdowns();
         }
 
+        // Get the populate filter dropdowns.
         function populateFilterDropdowns() {
             var categoryFilter = document.getElementById('itemsCategoryFilter');
             var supplierFilter = document.getElementById('itemsSupplierFilter');
             
             // Categories
             categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+            // Run this step if the categories is set.
             if (lookupData.categories) {
+                // Process each cat.
                 lookupData.categories.forEach(function(cat) {
                     var opt = document.createElement('option');
                     opt.value = cat.inventory_category_id;
@@ -1271,7 +1387,9 @@
             
             // Suppliers
             supplierFilter.innerHTML = '<option value="all">All Suppliers</option>';
+            // Run this step if the suppliers is set.
             if (lookupData.suppliers) {
+                // Process each sup.
                 lookupData.suppliers.forEach(function(sup) {
                     var opt = document.createElement('option');
                     opt.value = sup.supplier_id;
@@ -1288,7 +1406,9 @@
             var supplierSelect = document.getElementById('newItemSupplier');
 
             categorySelect.innerHTML = '<option value="">Select Category...</option>';
+            // Run this step if the categories is set.
             if (lookupData.categories) {
+                // Process each cat.
                 lookupData.categories.forEach(function(cat) {
                     var opt = document.createElement('option');
                     opt.value = cat.inventory_category_id;
@@ -1298,7 +1418,9 @@
             }
 
             unitSelect.innerHTML = '<option value="">Select Unit...</option>';
+            // Run this step if the units is set.
             if (lookupData.units) {
+                // Process each unit.
                 lookupData.units.forEach(function(unit) {
                     var opt = document.createElement('option');
                     opt.value = unit.unit_id;
@@ -1308,7 +1430,9 @@
             }
 
             supplierSelect.innerHTML = '<option value="">Select Supplier...</option>';
+            // Run this step if the suppliers is set.
             if (lookupData.suppliers) {
+                // Process each sup.
                 lookupData.suppliers.forEach(function(sup) {
                     var opt = document.createElement('option');
                     opt.value = sup.supplier_id;
@@ -1324,8 +1448,10 @@
             select.innerHTML = '<option value="">Select Item...</option>';
             
             var uniqueItems = {};
+            // Process each item.
             inventoryItems.forEach(function(item) {
                 var key = item.item_name + '|' + item.category + '|' + item.unit + '|' + item.supplier;
+                // Run this step if the key is missing or false.
                 if (!uniqueItems[key]) {
                     uniqueItems[key] = {
                         item_id: item.item_id,
@@ -1339,6 +1465,7 @@
                 }
             });
             
+            // Process each item.
             Object.values(uniqueItems).forEach(function(item) {
                 var opt = document.createElement('option');
                 opt.value = item.item_id;
@@ -1357,6 +1484,7 @@
             var select = document.getElementById('transactionItemSelect');
             var selectedOption = select.options[select.selectedIndex];
             
+            // Run this step if the select value is set and the selected option is set.
             if (select.value && selectedOption) {
                 document.getElementById('transactionItemCategory').value = selectedOption.dataset.category || '';
                 document.getElementById('transactionItemUnit').value = selectedOption.dataset.unit || '';
@@ -1376,10 +1504,13 @@
             var unitSelect = document.getElementById('viewUnitInput');
             var supplierSelect = document.getElementById('viewSupplierInput');
             
+            // Return early if the value checks match.
             if (!categorySelect || !unitSelect || !supplierSelect) return;
 
             categorySelect.innerHTML = '<option value="">Select Category...</option>';
+            // Run this step if the categories is set.
             if (lookupData.categories) {
+                // Process each cat.
                 lookupData.categories.forEach(function(cat) {
                     var opt = document.createElement('option');
                     opt.value = cat.inventory_category_name;
@@ -1389,7 +1520,9 @@
             }
 
             unitSelect.innerHTML = '<option value="">Select Unit...</option>';
+            // Run this step if the units is set.
             if (lookupData.units) {
+                // Process each unit.
                 lookupData.units.forEach(function(unit) {
                     var opt = document.createElement('option');
                     opt.value = unit.unit_name;
@@ -1399,7 +1532,9 @@
             }
 
             supplierSelect.innerHTML = '<option value="">Select Supplier...</option>';
+            // Run this step if the suppliers is set.
             if (lookupData.suppliers) {
+                // Process each sup.
                 lookupData.suppliers.forEach(function(sup) {
                     var opt = document.createElement('option');
                     opt.value = sup.supplier_id;
@@ -1416,7 +1551,9 @@
             var supplierSelect = document.getElementById('editItemSupplier');
 
             categorySelect.innerHTML = '<option value="">Select Category...</option>';
+            // Run this step if the categories is set.
             if (lookupData.categories) {
+                // Process each cat.
                 lookupData.categories.forEach(function(cat) {
                     var opt = document.createElement('option');
                     opt.value = cat.inventory_category_id;
@@ -1426,7 +1563,9 @@
             }
 
             unitSelect.innerHTML = '<option value="">Select Unit...</option>';
+            // Run this step if the units is set.
             if (lookupData.units) {
+                // Process each unit.
                 lookupData.units.forEach(function(unit) {
                     var opt = document.createElement('option');
                     opt.value = unit.unit_id;
@@ -1436,7 +1575,9 @@
             }
 
             supplierSelect.innerHTML = '<option value="">Select Supplier...</option>';
+            // Run this step if the suppliers is set.
             if (lookupData.suppliers) {
+                // Process each sup.
                 lookupData.suppliers.forEach(function(sup) {
                     var opt = document.createElement('option');
                     opt.value = sup.supplier_id;
@@ -1453,6 +1594,7 @@
             select.innerHTML = '<option value="">Loading projects...</option>';
             clearTransactionProjectError();
 
+            // Use the result when this request finishes.
             return fetch('/api/projects/list', {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -1460,13 +1602,16 @@
                 }
             })
             .then(function(res) {
+                // Run this step if the res ok is missing or false.
                 if (!res.ok) throw new Error('Unable to load projects');
                 return res.json();
             })
             .then(function(projects) {
                 select.disabled = false;
                 select.innerHTML = '<option value="">Select Project...</option>';
+                // Run this step if the is array check matches.
                 if (Array.isArray(projects)) {
+                    // Process each project.
                     projects.forEach(function(project) {
                         var opt = document.createElement('option');
                         opt.value = project.project_id;
@@ -1474,6 +1619,7 @@
                         select.appendChild(opt);
                     });
                 }
+                // Run this step if the is array is missing or false or the projects length equals 0.
                 if (!Array.isArray(projects) || projects.length === 0) {
                     showTransactionProjectError('No projects are available for a Stock Out transaction.');
                 }
@@ -1488,6 +1634,7 @@
 
         // Load inventory items and transactions
         function loadInventoryItems() {
+            // Use the result when this request finishes.
             return Promise.all([
                 fetch('/api/inventory', {
                     headers: { 
@@ -1528,20 +1675,26 @@
             });
         }
 
+        // Open requested transaction details.
         function openRequestedTransactionDetails() {
             var transactionId = new URLSearchParams(window.location.search).get('transaction_id');
+            // Run this step if the transaction id is missing or false.
             if (!transactionId) {
+                // Try this action and handle any errors below.
                 try {
                     transactionId = window.sessionStorage.getItem('pfims_inventory_transaction_to_open');
                 } catch (storageError) {
                     console.warn('Unable to restore the linked inventory transaction handoff.', storageError);
                 }
             }
+            // Return early if the transaction id is missing or false.
             if (!transactionId) return;
 
+            // Run the find index action.
             var matchIndex = allTransactions.findIndex(function(transaction) {
                 return String(transaction.inventory_transaction_id) === String(transactionId);
             });
+            // Run this step if the match index equals the value.
             if (matchIndex === -1) {
                 showError('The linked inventory transaction could not be found.');
                 return;
@@ -1550,18 +1703,22 @@
             switchInventoryTab(null, 'transactions');
             filteredData = allTransactions;
             renderTransactionPage(Math.floor(matchIndex / inventoryPageSize) + 1);
+            // Run the find action.
             var row = Array.from(document.querySelectorAll('#inventoryTableBody tr[data-id]')).find(function(candidate) {
                 return candidate.dataset.id === String(transactionId);
             });
+            // Run this step if the row is missing or false.
             if (!row) {
                 showError('The linked inventory transaction details could not be opened.');
                 return;
             }
             openViewModal(row);
+            // Run this step if the contains is missing or false or the get element by id value does not equal the string.
             if (!document.getElementById('viewModal').classList.contains('active') || document.getElementById('viewTransactionId').value !== String(transactionId)) {
                 showError('The linked inventory transaction details could not be opened.');
                 return;
             }
+            // Try this action and handle any errors below.
             try {
                 window.sessionStorage.removeItem('pfims_inventory_transaction_to_open');
             } catch (storageError) {
@@ -1579,12 +1736,14 @@
             var tbody = document.getElementById('itemsTableBody');
             tbody.innerHTML = '';
             
+            // Run this step if the page data length is missing or false.
             if (!pageData.length) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #888;">No items found.</td></tr>';
                 renderItemsPagination();
                 return;
             }
             
+            // Process each item.
             pageData.forEach(function(item) {
                 var tr = document.createElement('tr');
                 var stock = parseFloat(item.current_stock) || 0;
@@ -1627,19 +1786,24 @@
             });
             
                         renderItemsPagination();
+            // Run this step if the refresh table scroll fade is set.
             if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
+        // Show items pagination.
         function renderItemsPagination() {
             var container = document.getElementById('itemsPaginationLinks');
+            // Return early if the container is missing or false.
             if (!container) return;
             
             var total = itemsFilteredData.length;
             var totalEl = document.getElementById('itemsTotalCount');
+            // Run this step if the total el is set.
             if (totalEl) totalEl.textContent = 'Total: ' + total;
             var totalPages = Math.ceil(total / itemsPageSize);
             var current = itemsCurrentPage;
             
+            // Run this step if the total pages is at most 1.
             if (totalPages <= 1) {
                 container.innerHTML = `<span class="pagination-info">Showing all ${total} items</span>`;
                 return;
@@ -1648,26 +1812,34 @@
             var html = '';
             html += `<a href="#" onclick="renderItemsPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
             
+            // Run this step if the total pages is at most 7.
             if (totalPages <= 7) {
+                // Repeat for each step in this range.
                 for (var i = 1; i <= totalPages; i++) {
                     html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
             } else {
+                // Repeat for each step in this range.
                 for (var i = 1; i <= 3; i++) {
                     html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
+                // Run this step if the current is above 4.
                 if (current > 4) {
                     html += `<span class="dots">...</span>`;
                 }
                 var startPage = Math.max(4, current - 1);
                 var endPage = Math.min(totalPages - 2, current + 1);
+                // Repeat for each step in this range.
                 for (var i = startPage; i <= endPage; i++) {
                     html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
+                // Run this step if the current is below the value.
                 if (current < totalPages - 3) {
                     html += `<span class="dots">...</span>`;
                 }
+                // Repeat for each step in this range.
                 for (var i = totalPages - 1; i <= totalPages; i++) {
+                    // Run this step if the i is above 3.
                     if (i > 3) {
                         html += `<a href="#" onclick="renderItemsPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                     }
@@ -1677,6 +1849,7 @@
             container.innerHTML = html;
         }
 
+        // Get the change items page size.
         function changeItemsPageSize() {
             var select = document.getElementById('itemsRowsPerPage');
             itemsPageSize = parseInt(select.value) || 10;
@@ -1684,13 +1857,16 @@
             renderItemsPage(1);
         }
 
+        // Filter items table.
         function filterItemsTable() {
             var searchTerm = document.getElementById('itemsSearchInput').value.toLowerCase().trim();
             var categoryFilter = document.getElementById('itemsCategoryFilter').value;
             var supplierFilter = document.getElementById('itemsSupplierFilter').value;
             
+            // Keep the matching item items.
             itemsFilteredData = itemsData.filter(function(item) {
                 var matchesSearch = true;
+                // Run this step if the search term is set.
                 if (searchTerm) {
                     matchesSearch = (item.item_name || '').toLowerCase().includes(searchTerm) ||
                                    (item.category || '').toLowerCase().includes(searchTerm) ||
@@ -1698,11 +1874,13 @@
                 }
                 
                 var matchesCategory = true;
+                // Run this step if the category filter does not equal all.
                 if (categoryFilter !== 'all') {
                     matchesCategory = String(item.inventory_category_id) === categoryFilter;
                 }
                 
                 var matchesSupplier = true;
+                // Run this step if the supplier filter does not equal all.
                 if (supplierFilter !== 'all') {
                     matchesSupplier = String(item.supplier_id) === supplierFilter;
                 }
@@ -1721,11 +1899,13 @@
             renderItemsPage(1);
         }
 
+                // Apply items filters.
                 function applyItemsFilters() {
             filterItemsTable();
             showSuccess('Filters applied!');
         }
 
+        // Clear items filters.
         function clearItemsFilters() {
             document.getElementById('itemsSearchInput').value = '';
             document.getElementById('itemsCategoryFilter').value = 'all';
@@ -1744,12 +1924,14 @@
             var tbody = document.getElementById('inventoryTableBody');
             tbody.innerHTML = '';
             
+            // Run this step if the page data length is missing or false.
             if (!pageData.length) {
                 tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 20px; color: #888;">No transactions found.</td></tr>';
                 renderTransactionPagination();
                 return;
             }
             
+            // Process each row.
             pageData.forEach(function(row) {
                 var tr = document.createElement('tr');
                 var stock = parseFloat(row.current_stock) || 0;
@@ -1804,19 +1986,24 @@
             });
             
                         renderTransactionPagination();
+            // Run this step if the refresh table scroll fade is set.
             if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
+        // Show transaction pagination.
         function renderTransactionPagination() {
             var container = document.getElementById('transactionPaginationLinks');
+            // Return early if the container is missing or false.
             if (!container) return;
             
             var total = filteredData.length;
             var totalEl = document.getElementById('transactionsTotalCount');
+            // Run this step if the total el is set.
             if (totalEl) totalEl.textContent = 'Total: ' + total;
             var totalPages = Math.ceil(total / inventoryPageSize);
             var current = inventoryCurrentPage;
             
+            // Run this step if the total pages is at most 1.
             if (totalPages <= 1) {
                 container.innerHTML = `<span class="pagination-info">Showing all ${total} transactions</span>`;
                 return;
@@ -1825,26 +2012,34 @@
             var html = '';
             html += `<a href="#" onclick="renderTransactionPage(${current - 1}); return false;" class="${current <= 1 ? 'disabled' : ''}">«</a>`;
             
+            // Run this step if the total pages is at most 7.
             if (totalPages <= 7) {
+                // Repeat for each step in this range.
                 for (var i = 1; i <= totalPages; i++) {
                     html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
             } else {
+                // Repeat for each step in this range.
                 for (var i = 1; i <= 3; i++) {
                     html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
+                // Run this step if the current is above 4.
                 if (current > 4) {
                     html += `<span class="dots">...</span>`;
                 }
                 var startPage = Math.max(4, current - 1);
                 var endPage = Math.min(totalPages - 2, current + 1);
+                // Repeat for each step in this range.
                 for (var i = startPage; i <= endPage; i++) {
                     html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
+                // Run this step if the current is below the value.
                 if (current < totalPages - 3) {
                     html += `<span class="dots">...</span>`;
                 }
+                // Repeat for each step in this range.
                 for (var i = totalPages - 1; i <= totalPages; i++) {
+                    // Run this step if the i is above 3.
                     if (i > 3) {
                         html += `<a href="#" onclick="renderTransactionPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                     }
@@ -1854,6 +2049,7 @@
             container.innerHTML = html;
         }
 
+        // Get the change transaction page size.
         function changeTransactionPageSize() {
             var select = document.getElementById('transactionRowsPerPage');
             inventoryPageSize = parseInt(select.value) || 10;
@@ -1868,8 +2064,10 @@
             var startDate = document.getElementById('startDate').value;
             var endDate = document.getElementById('endDate').value;
             
+            // Keep the matching row items.
             filteredData = allTransactions.filter(function(row) {
                 var matchesSearch = true;
+                // Run this step if the search term is set.
                 if (searchTerm) {
                     matchesSearch = (row.item_name || '').toLowerCase().includes(searchTerm) ||
                                    (row.category || '').toLowerCase().includes(searchTerm) ||
@@ -1877,11 +2075,13 @@
                 }
                 
                 var matchesType = true;
+                // Run this step if the type filter does not equal all.
                 if (typeFilter !== 'all') {
                     matchesType = row.transaction_type === typeFilter;
                 }
                 
                 var matchesDate = true;
+                // Run this step if the start date is set and the end date is set.
                 if (startDate && endDate) {
                     var rowDate = row.transaction_date || '';
                     matchesDate = rowDate >= startDate && rowDate <= endDate;
@@ -1893,11 +2093,13 @@
             renderTransactionPage(1);
         }
 
+                // Apply filters.
                 function applyFilters() {
             filterTable();
             showSuccess('Filters applied!');
         }
 
+        // Clear transaction filters.
         function clearTransactionFilters() {
             document.getElementById('searchInput').value = '';
             document.getElementById('typeFilter').value = 'all';
@@ -1922,22 +2124,27 @@
             addItemGoToStep(1);
         }
 
+        // Close add item modal.
         function closeAddItemModal() {
             document.getElementById('addItemModal').classList.remove('active');
             document.body.style.overflow = '';
         }
 
+        // Get the add item go to step.
         function addItemGoToStep(step) {
+            // Process each el.
             document.querySelectorAll('#addItemModal .modal-step').forEach(function(el) {
                 el.style.display = 'none';
             });
             document.getElementById('addItemStep' + step).style.display = 'block';
+            // Process each el.
             document.querySelectorAll('#addItemModal .step-indicator .step').forEach(function(el, index) {
                 el.classList.toggle('active', index + 1 === step);
                 el.classList.toggle('completed', index + 1 < step);
             });
         }
 
+        // Get the add item next step.
         function addItemNextStep() {
             var name = document.getElementById('newItemName').value.trim();
             var categoryId = document.getElementById('newItemCategory').value;
@@ -1946,10 +2153,15 @@
             var reorderLevel = document.getElementById('newItemReorderLevel').value;
             var unitPrice = document.getElementById('newItemUnitPrice').value;
 
+            // Run this step if the name is missing or false.
             if (!name) { showError('Please enter an item name.'); return; }
+            // Run this step if the category id is missing or false.
             if (!categoryId) { showError('Please select a category.'); return; }
+            // Run this step if the unit id is missing or false.
             if (!unitId) { showError('Please select a unit.'); return; }
+            // Run this step if the supplier id is missing or false.
             if (!supplierId) { showError('Please select a supplier.'); return; }
+            // Run this step if the value checks match.
             if (unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || Number(unitPrice) > 9999999999.99)) { showError('Please enter a valid unit price.'); return; }
 
             document.getElementById('reviewItemName').textContent = name;
@@ -1962,12 +2174,15 @@
             addItemGoToStep(2);
         }
 
+        // Get the add item prev step.
         function addItemPrevStep() {
             addItemGoToStep(1);
         }
 
+        // Save new item.
         function saveNewItem() {
             var saveBtn = document.getElementById('saveNewItemBtn');
+            // Return early if the save btn is set and the save btn disabled is set.
             if (saveBtn && saveBtn.disabled) return;
             var name = document.getElementById('newItemName').value.trim();
             var categoryId = document.getElementById('newItemCategory').value;
@@ -1976,10 +2191,15 @@
             var reorderLevel = parseFloat(document.getElementById('newItemReorderLevel').value) || 0;
             var unitPrice = document.getElementById('newItemUnitPrice').value;
 
+            // Run this step if the name is missing or false.
             if (!name) { showError('Please enter an item name.'); return; }
+            // Run this step if the category id is missing or false.
             if (!categoryId) { showError('Please select a category.'); return; }
+            // Run this step if the unit id is missing or false.
             if (!unitId) { showError('Please select a unit.'); return; }
+            // Run this step if the supplier id is missing or false.
             if (!supplierId) { showError('Please select a supplier.'); return; }
+            // Run this step if the value checks match.
             if (unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || Number(unitPrice) > 9999999999.99)) { showError('Please enter a valid unit price.'); return; }
 
             var payload = {
@@ -1993,6 +2213,7 @@
             };
 
             setButtonLoading(saveBtn, true, 'Adding...');
+            // Use the result when this request finishes.
             fetch('/api/inventory/item', {
                 method: 'POST',
                 headers: {
@@ -2005,6 +2226,7 @@
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {
+                // Run this step if the success is set.
                 if (data.success) {
                     closeAddItemModal();
                     showSuccess('Item "' + name + '" added successfully!');
@@ -2052,6 +2274,7 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // Close item detail modal.
         function closeItemDetailModal() {
             document.getElementById('itemDetailModal').classList.remove('active');
             document.body.style.overflow = '';
@@ -2060,6 +2283,7 @@
 
         // Edit item modal functions
         function openItemEditModal() {
+            // Return early if the current item detail row is missing or false.
             if (!currentItemDetailRow) return;
 
             // Keep a stable reference after the details modal is closed.
@@ -2095,6 +2319,7 @@
             } else {
                 // Try to match by name
                 for (var i = 0; i < categorySelect.options.length; i++) {
+                    // Run this step if the text equals the category.
                     if (categorySelect.options[i].text === category) {
                         categorySelect.selectedIndex = i;
                         break;
@@ -2102,10 +2327,13 @@
                 }
             }
             
+            // Run this step if the unit id is set.
             if (unitId) {
                 unitSelect.value = unitId;
             } else {
+                // Repeat for each step in this range.
                 for (var i = 0; i < unitSelect.options.length; i++) {
+                    // Run this step if the text equals the unit.
                     if (unitSelect.options[i].text === unit) {
                         unitSelect.selectedIndex = i;
                         break;
@@ -2113,10 +2341,13 @@
                 }
             }
             
+            // Run this step if the supplier id is set.
             if (supplierId) {
                 supplierSelect.value = supplierId;
             } else {
+                // Repeat for each step in this range.
                 for (var i = 0; i < supplierSelect.options.length; i++) {
+                    // Run this step if the text equals the supplier.
                     if (supplierSelect.options[i].text === supplier) {
                         supplierSelect.selectedIndex = i;
                         break;
@@ -2129,13 +2360,16 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // Close edit item modal.
         function closeEditItemModal() {
             document.getElementById('editItemModal').classList.remove('active');
             document.body.style.overflow = '';
         }
 
+        // Save edit item.
         function saveEditItem() {
             var saveBtn = document.querySelector('#editItemModal .btn-save');
+            // Return early if the save btn is set and the save btn disabled is set.
             if (saveBtn && saveBtn.disabled) return;
             var itemId = document.getElementById('editItemId').value;
             var name = document.getElementById('editItemName').value.trim();
@@ -2145,10 +2379,15 @@
             var reorderLevel = parseFloat(document.getElementById('editItemReorderLevel').value) || 0;
             var unitPrice = document.getElementById('editItemUnitPrice').value;
 
+            // Run this step if the name is missing or false.
             if (!name) { showError('Please enter an item name.'); return; }
+            // Run this step if the category id is missing or false.
             if (!categoryId) { showError('Please select a category.'); return; }
+            // Run this step if the unit id is missing or false.
             if (!unitId) { showError('Please select a unit.'); return; }
+            // Run this step if the supplier id is missing or false.
             if (!supplierId) { showError('Please select a supplier.'); return; }
+            // Run this step if the value checks match.
             if (unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0 || Number(unitPrice) > 9999999999.99)) { showError('Please enter a valid unit price.'); return; }
 
             var payload = {
@@ -2161,6 +2400,7 @@
             };
 
             setButtonLoading(saveBtn, true, 'Saving...');
+            // Use the result when this request finishes.
             fetch('/api/inventory/item/' + itemId, {
                 method: 'PATCH',
                 headers: {
@@ -2173,6 +2413,7 @@
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {
+                // Run this step if the success is set.
                 if (data.success) {
                     closeEditItemModal();
                     showSuccess('Item updated successfully!');
@@ -2188,16 +2429,21 @@
             .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
+        // Delete item.
         function deleteItem(skipConfirmation) {
             var targetRow = currentItemDetailRow || currentItemEditRow;
+            // Return early if the target row is missing or false.
             if (!targetRow) return;
             currentItemEditRow = targetRow;
             var itemId = targetRow.dataset.itemId || '';
+            // Run this step if the item id is missing or false.
             if (!itemId) { showError('Item ID missing.'); return; }
 
+            // Get the perform delete.
             var performDelete = function() {
                 var deleteBtn = document.getElementById('confirmDeleteBtn');
                 setButtonLoading(deleteBtn, true, 'Deleting...');
+                // Use the result when this request finishes.
                 fetch('/api/inventory/item/' + itemId, {
                     method: 'DELETE',
                     headers: {
@@ -2208,6 +2454,7 @@
                 })
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
+                    // Run this step if the success is set.
                     if (data.success) {
                         closeItemDetailModal();
                         closeEditItemModal();
@@ -2223,6 +2470,7 @@
                 })
                 .finally(function() { setButtonLoading(deleteBtn, false); });
             };
+            // Run this step if the skip confirmation is set.
             if (skipConfirmation) {
                 performDelete();
             } else {
@@ -2230,26 +2478,33 @@
             }
         }
 
+        // Open item delete modal.
         function openItemDeleteModal(row) {
             currentItemDetailRow = row;
             currentItemEditRow = row;
             var itemName = row && row.dataset.itemName ? row.dataset.itemName : 'this item';
+            // Run the open delete modal action.
             openDeleteModal('Are you sure you want to move this item to Trash Bin?', function() {
                 deleteItem(true);
             });
         }
 
+        // Handle the click event.
         document.getElementById('itemDetailModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeItemDetailModal(); }
         });
 
+        // Handle the click event.
         document.getElementById('editItemModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeEditItemModal(); }
         });
 
         // Transaction modal
         var transactionCurrentStep = 1;
 
+        // Open transaction modal.
         function openTransactionModal() {
             document.getElementById('transactionModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -2288,17 +2543,21 @@
             populateProjectDropdown();
         }
 
+        // Close transaction modal.
         function closeTransactionModal() {
             document.getElementById('transactionModal').classList.remove('active');
             document.body.style.overflow = '';
         }
 
+        // Get the transaction go to step.
         function transactionGoToStep(step) {
+            // Process each el.
             document.querySelectorAll('#transactionModal .modal-step').forEach(function(el) {
                 el.style.display = 'none';
             });
             document.getElementById('step' + step).style.display = 'block';
 
+            // Process each el.
             document.querySelectorAll('#transactionModal .step-indicator .step').forEach(function(el, index) {
                 el.classList.toggle('active', index + 1 === step);
                 el.classList.toggle('completed', index + 1 < step);
@@ -2306,6 +2565,7 @@
             transactionCurrentStep = step;
         }
 
+        // Get the transaction next step.
         function transactionNextStep(step) {
             var itemId = document.getElementById('transactionItemSelect').value;
             var quantity = document.getElementById('transactionQuantity').value;
@@ -2314,21 +2574,31 @@
             var type = document.querySelector('input[name="transactionType"]:checked');
             var proofFile = document.getElementById('transactionProofFile').files[0];
 
+            // Run this step if the item id is missing or false.
             if (!itemId) { showError('Please select an item.'); return; }
+            // Run this step if the quantity is missing or false or the quantity is below 1.
             if (!quantity || quantity < 1) { showError('Please enter a valid quantity (minimum 1).'); return; }
+            // Run this step if the bar code does not equal an empty value and the test is missing or false.
             if (barCode !== '' && !/^\d+$/.test(barCode)) { showError('Barcode must contain numbers only.'); return; }
+            // Run this step if the date is missing or false.
             if (!date) { showError('Please select a transaction date.'); return; }
+            // Run this step if the date is above the max.
             if (date > document.getElementById('transactionDate').max) { showError('Transaction date cannot be in the future.'); return; }
+            // Run this step if the proof file is set and the includes is missing or false.
             if (proofFile && !['application/pdf', 'image/jpeg', 'image/png'].includes(proofFile.type)) { showError('Proof must be a PDF, JPG, or PNG file.'); return; }
+            // Run this step if the proof file is set and the size is above the value.
             if (proofFile && proofFile.size > 10 * 1024 * 1024) { showError('Proof file must not exceed 10MB.'); return; }
 
             var typeLabel = type ? type.value : 'IN';
             var movementReason = document.getElementById('transactionMovementReason').value;
+            // Run this step if the type label equals IN and the movement reason equals purchase and the number is at most 0.
             if (typeLabel === 'IN' && movementReason === 'purchase' && Number(document.getElementById('transactionItemSelect').selectedOptions[0].dataset.unitPrice || 0) <= 0) {
                 showError('Set a positive Unit Price on this item before recording a purchase stock-in.'); return;
             }
+            // Run this step if the type label equals OUT.
             if (typeLabel === 'OUT') {
                 var projectId = document.getElementById('transactionProject').value;
+                // Run this step if the project id is missing or false.
                 if (!projectId) {
                     showTransactionProjectError('Please select a project for the Stock Out transaction.');
                     return;
@@ -2365,10 +2635,12 @@
             transactionGoToStep(step);
         }
 
+        // Get the transaction prev step.
         function transactionPrevStep(step) {
             transactionGoToStep(step);
         }
 
+        // Get the change transaction quantity.
         function changeTransactionQuantity(delta) {
             var input = document.getElementById('transactionQuantity');
             var val = parseInt(input.value) || 1;
@@ -2376,6 +2648,7 @@
             input.value = val;
         }
 
+        // Switch transaction project field.
         function toggleTransactionProjectField() {
             var typeRadios = document.querySelectorAll('input[name="transactionType"]');
             var selected = Array.from(typeRadios).find(r => r.checked);
@@ -2383,6 +2656,7 @@
             var projectRequired = document.getElementById('transactionProjectRequired');
             var stockInGroup = document.getElementById('transactionStockInGroup');
             stockInGroup.style.display = selected && selected.value === 'OUT' ? 'none' : 'flex';
+            // Run this step if the selected is set and the selected value equals OUT.
             if (selected && selected.value === 'OUT') {
                 projectGroup.style.display = 'block';
                 projectRequired.style.display = 'inline';
@@ -2394,6 +2668,7 @@
             }
         }
 
+        // Show transaction project error.
         function showTransactionProjectError(message) {
             var select = document.getElementById('transactionProject');
             var error = document.getElementById('transactionProjectError');
@@ -2404,6 +2679,7 @@
             select.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
+        // Clear transaction project error.
         function clearTransactionProjectError() {
             var select = document.getElementById('transactionProject');
             var error = document.getElementById('transactionProjectError');
@@ -2415,6 +2691,7 @@
         // Save transaction
         function saveTransaction() {
             var saveBtn = document.querySelector('#step2 .btn-save');
+            // Return early if the save btn is set and the save btn disabled is set.
             if (saveBtn && saveBtn.disabled) return;
             var itemId = document.getElementById('transactionItemSelect').value;
             var quantity = parseFloat(document.getElementById('transactionQuantity').value);
@@ -2424,8 +2701,10 @@
             var projectId = null;
             var proofFile = document.getElementById('transactionProofFile').files[0];
             
+            // Run this step if the type equals OUT.
             if (type === 'OUT') {
                 projectId = document.getElementById('transactionProject').value;
+                // Run this step if the project id is missing or false.
                 if (!projectId) {
                     showTransactionProjectError('Please select a project for the Stock Out transaction.');
                     return;
@@ -2434,18 +2713,23 @@
 
             var payload = new FormData();
             payload.append('item_id', parseInt(itemId));
+            // Run this step if the project id is set.
             if (projectId) payload.append('project_id', projectId);
             payload.append('transaction_type', type);
+            // Run this step if the type equals IN.
             if (type === 'IN') {
                 var movementReason = document.getElementById('transactionMovementReason').value;
                 payload.append('movement_reason', movementReason);
             }
             payload.append('quantity', quantity);
+            // Run this step if the bar code does not equal an empty value.
             if (barCode !== '') payload.append('bar_code', barCode);
             payload.append('transaction_date', date);
+            // Run this step if the proof file is set.
             if (proofFile) payload.append('proof_file', proofFile);
 
             setButtonLoading(saveBtn, true, 'Saving...');
+            // Use the result when this request finishes.
             fetch('/api/inventory/transaction', {
                 method: 'POST',
                 headers: {
@@ -2457,6 +2741,7 @@
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {
+                // Run this step if the success is set.
                 if (data.success) {
                     closeTransactionModal();
                     showSuccess('Transaction added successfully!');
@@ -2476,6 +2761,7 @@
         var currentRow = null;
         var isEditMode = false;
 
+        // Open view modal.
         function openViewModal(row) {
             currentRow = row;
             isEditMode = false;
@@ -2492,10 +2778,12 @@
             var date = row.dataset.date || '';
             var project = row.dataset.project || '';
 
+            // Run the find action.
             var selectedItem = inventoryItems.find(function(i) {
                 return i.item_id == itemId;
             });
 
+            // Run this step if the selected item is set.
             if (selectedItem) {
                 category = category || selectedItem.category || '';
                 unit = unit || selectedItem.unit || '';
@@ -2503,7 +2791,9 @@
                 supplierId = supplierId || selectedItem.supplier_id || '';
             }
 
+            // Run this step if the supplier id is missing or false and the supplier is set.
             if (!supplierId && supplier) {
+                // Run the find action.
                 var supplierRow = lookupData.suppliers.find(function(s) {
                     return s.supplier_name === supplier;
                 });
@@ -2527,6 +2817,7 @@
             document.getElementById('viewProofInput').value = '';
             var proofDisplay = document.getElementById('viewProofDisplay');
             proofDisplay.replaceChildren();
+            // Run this step if the proof path is set.
             if (row.dataset.proofPath) {
                 var proofLink = document.createElement('a');
                 proofLink.href = '/storage/' + row.dataset.proofPath.split('/').map(encodeURIComponent).join('/');
@@ -2536,6 +2827,7 @@
                 proofDisplay.appendChild(proofLink);
             } else proofDisplay.textContent = 'No proof attached';
             var projectRow = document.getElementById('viewProjectRow');
+            // Run this step if the type equals OUT and the project is set.
             if (type === 'OUT' && project) {
                 projectRow.style.display = 'flex';
                 document.getElementById('viewProjectDisplay').textContent = project;
@@ -2549,18 +2841,22 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // Close view modal.
         function closeViewModal() {
             document.getElementById('viewModal').classList.remove('active');
             document.body.style.overflow = '';
             currentRow = null;
         }
 
+        // Get the enable edit mode.
         function enableEditMode() {
             isEditMode = true;
             document.getElementById('viewModalTitle').textContent = 'Edit Transaction';
             document.getElementById('viewCancelBtn').textContent = 'Cancel';
             document.getElementById('viewCancelBtn').style.display = 'inline-block';
+            // Process each button.
             Array.from(document.querySelectorAll('#viewModal .modal-footer button')).forEach(function(button) {
+                // Run this step if the test check matches.
                 if (/^(Edit|Delete)$/.test((button.textContent || '').trim())) button.style.display = 'none';
             });
             // Only show edit for Quantity and Date fields
@@ -2587,6 +2883,7 @@
             document.getElementById('viewTypeDisplay').style.display = 'block';
             // Project row handling
             var projectRow = document.getElementById('viewProjectRow');
+            // Run this step if the style display does not equal none.
             if (projectRow.style.display !== 'none') {
                 document.getElementById('viewProjectDisplay').style.display = 'block';
                 document.getElementById('viewProjectInput').style.display = 'none';
@@ -2595,22 +2892,28 @@
             document.getElementById('viewSaveBtn').style.display = 'inline-block';
         }
 
+        // Get the disable edit mode.
         function disableEditMode() {
             isEditMode = false;
             document.getElementById('viewModalTitle').textContent = 'Transaction Details';
             document.getElementById('viewCancelBtn').textContent = 'Close';
             document.getElementById('viewCancelBtn').style.display = 'inline-block';
+            // Process each el.
             document.querySelectorAll('#viewModal .view-value').forEach(function(el) { el.style.display = 'block'; });
+            // Process each el.
             document.querySelectorAll('#viewModal .view-input').forEach(function(el) { el.style.display = 'none'; });
             document.getElementById('viewSaveBtn').style.display = 'none';
             var projectRow = document.getElementById('viewProjectRow');
+            // Run this step if the style display does not equal none.
             if (projectRow.style.display !== 'none') {
                 document.getElementById('viewProjectDisplay').style.display = 'block';
                 document.getElementById('viewProjectInput').style.display = 'none';
             }
         }
 
+        // Save edit.
         function saveEdit() {
+            // Return early if the current row is missing or false.
             if (!currentRow) return;
             var saveBtn = document.getElementById('viewSaveBtn');
             var transactionId = currentRow.dataset.id || '';
@@ -2618,21 +2921,26 @@
             var barCode = document.getElementById('viewBarCodeInput').value.trim();
             var date = document.getElementById('viewDateInput').value;
 
+            // Run this step if the transaction id is missing or false.
             if (!transactionId) { showError('Transaction ID missing.'); return; }
+            // Run this step if the quantity is missing or false or the quantity is below 0.01.
             if (!quantity || quantity < 0.01) {
                 showError('Please enter a valid quantity.');
                 return;
             }
+            // Run this step if the date is missing or false.
             if (!date) {
                 showError('Please select a date.');
                 return;
             }
+            // Run this step if the bar code does not equal an empty value and the test is missing or false.
             if (barCode !== '' && !/^\d+$/.test(barCode)) {
                 showError('Barcode must contain numbers only.');
                 return;
             }
 
             var proof = document.getElementById('viewProofInput').files[0];
+            // Run this step if the proof is set and the includes is missing or false or the size is above the value.
             if (proof && (!['application/pdf', 'image/jpeg', 'image/png'].includes(proof.type) || proof.size > 10 * 1024 * 1024)) {
                 showError('Proof must be a PDF, JPG, or PNG file no larger than 10MB.');
                 return;
@@ -2642,9 +2950,11 @@
             payload.append('quantity', quantity);
             payload.append('bar_code', barCode);
             payload.append('transaction_date', date);
+            // Run this step if the proof is set.
             if (proof) payload.append('proof_file', proof);
 
             setButtonLoading(saveBtn, true, 'Saving...');
+            // Use the result when this request finishes.
             fetch('/api/inventory/transaction/' + transactionId, {
                 method: 'POST',
                 headers: {
@@ -2656,6 +2966,7 @@
             })
             .then(function(res) { return res.json(); })
             .then(function(data) {
+                // Run this step if the success is set.
                 if (data.success) {
                     // Update the row data
                     currentRow.dataset.quantity = quantity;
@@ -2664,6 +2975,7 @@
                     
                     // Update display cells
                     var cells = currentRow.querySelectorAll('td');
+                    // Run this step if the cells length is at least 10.
                     if (cells.length >= 10) {
                         cells[8].textContent = quantity;
                         cells[4].textContent = barCode || '-';
@@ -2684,17 +2996,22 @@
             .finally(function() { setButtonLoading(saveBtn, false); });
         }
 
+        // Delete transaction.
         function deleteTransaction(skipConfirmation) {
+            // Return early if the current row is missing or false.
             if (!currentRow) return;
             var transactionId = currentRow.dataset.id || '';
+            // Run this step if the transaction id is missing or false.
             if (!transactionId) {
                 showError('Transaction ID missing.');
                 return;
             }
 
+            // Get the perform delete.
             var performDelete = function() {
                 var deleteBtn = document.getElementById('confirmDeleteBtn');
                 setButtonLoading(deleteBtn, true, 'Deleting...');
+                // Use the result when this request finishes.
                 fetch('/api/inventory/transaction/' + transactionId, {
                     method: 'DELETE',
                     headers: {
@@ -2705,6 +3022,7 @@
                 })
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
+                    // Run this step if the success is set.
                     if (data.success) {
                         closeViewModal();
                         showSuccess(data.message || 'Transaction deleted successfully!');
@@ -2719,6 +3037,7 @@
                 })
                 .finally(function() { setButtonLoading(deleteBtn, false); });
             };
+            // Run this step if the skip confirmation is set.
             if (skipConfirmation) {
                 performDelete();
             } else {
@@ -2726,13 +3045,16 @@
             }
         }
 
+        // Open transaction delete modal.
         function openTransactionDeleteModal(row) {
             currentRow = row;
             var transactionId = row && row.dataset.id ? row.dataset.id : '';
+            // Run this step if the transaction id is missing or false.
             if (!transactionId) {
                 showError('Transaction ID missing.');
                 return;
             }
+            // Run the open delete modal action.
             openDeleteModal('Are you sure you want to move this transaction to Trash Bin?', function() {
                 deleteTransaction(true);
             });
@@ -2740,30 +3062,44 @@
 
         // Close modals on backdrop click
         document.getElementById('addItemModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeAddItemModal(); }
         });
 
+        // Handle the click event.
         document.getElementById('viewModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeViewModal(); }
         });
 
+        // Handle the click event.
         document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeDeleteModal(); }
         });
 
+        // Handle the click event.
         document.getElementById('transactionModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeTransactionModal(); }
         });
 
+        // Handle the click event.
         document.getElementById('expenseConfirmModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeExpenseConfirmModal(); }
         });
 
+        // Handle the click event.
         document.addEventListener('click', function(e) {
+            // Run this step if the style display equals block.
             if (document.getElementById('errorNotification').style.display === 'block') {
+                // Run this step if the closest is missing or false.
                 if (!e.target.closest('.error-notification')) { closeError(); }
             }
+            // Run this step if the style display equals block.
             if (document.getElementById('successNotification').style.display === 'block') {
+                // Run this step if the closest is missing or false.
                 if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
         });
@@ -2778,9 +3114,13 @@
     </script>
 
         @include('partials.data-import', ['importModule' => 'inventory'])
+    {{-- Set up the actions used by this page section. --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/inventory-analytics.js') }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
     @include('partials.validation-alert')
 </body>

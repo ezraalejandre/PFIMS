@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('system_settings', function (Blueprint $table) {
             $table->id();
             $table->string('setting_key', 80)->unique();
@@ -24,8 +26,10 @@ return new class extends Migration
         ]);
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('system_settings');
     }
 };

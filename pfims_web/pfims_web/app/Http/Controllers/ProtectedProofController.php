@@ -4,7 +4,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+// Group the protected proof actions.
 class ProtectedProofController extends Controller {
+    // Return the requested protected proof details.
     public function show(Request $request, string $folder, string $file) {
         abort_unless(in_array($folder,['proofs','inventory-transaction-proofs'],true) && preg_match('/\A[a-zA-Z0-9_.-]+\z/',$file) && !str_contains($file,'..'),404);
         $path=$folder.'/'.$file;$role=strtolower($request->user()->role);

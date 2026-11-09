@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Link records to the fin expense table.
 class FinExpense extends Model
 {
     protected $table = 'fin_expense_tbl';
@@ -35,16 +36,19 @@ class FinExpense extends Model
         'expense_date' => 'date',
     ];
 
+    // Link this record to its project.
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');
     }
 
+    // Link this record to its category.
     public function category(): BelongsTo
     {
         return $this->belongsTo(FinExpenseCategory::class, 'fin_category_id', 'fin_category_id');
     }
 
+    // Link this record to its source expense.
     public function sourceExpense(): BelongsTo
     {
         return $this->belongsTo(Expense::class, 'source_expense_id', 'expense_id');

@@ -10,10 +10,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
+// Group the inventory transaction actions.
 class InventoryTransactionController extends Controller
 {
+    // Set up the values this class needs.
     public function __construct(private NotificationService $notifications, private AuditLogService $audit) {}
 
+    // Save a new inventory transaction record.
     public function store(Request $request)
     {
 
@@ -36,13 +39,16 @@ class InventoryTransactionController extends Controller
             ->whereDate('transaction_date', $validated['transaction_date']);
         $duplicate = empty($validated['project_id']) ? $duplicate->whereNull('project_id') : $duplicate->where('project_id', $validated['project_id']);
         $duplicate = ($validated['bar_code'] ?? null) === null ? $duplicate->whereNull('bar_code') : $duplicate->where('bar_code', $validated['bar_code']);
+        // Return early if the exists check matches.
         if ($duplicate->exists()) {
             return response()->json(['message' => 'This inventory transaction already exists.'], 409);
         }
 
         $proofFile = $request->file('proof_file');
         $proofPath = $proofFile?->store('inventory-transaction-proofs', 'protected');
+        // Try this action and handle any errors below.
         try {
+            // Run these database steps together. Undo changes if a step fails.
             $result = DB::transaction(function () use ($validated, $proofFile, $proofPath) {
 
                 // Lock the item row for the duration of this transaction so
@@ -53,6 +59,7 @@ class InventoryTransactionController extends Controller
                     ->lockForUpdate()
                     ->first();
 
+                // Run this step if the item is missing or false.
                 if (! $item) {
                     abort(404, 'Item not found');
                 }
@@ -63,6 +70,7 @@ class InventoryTransactionController extends Controller
 
                 $newStock = (float) $item->current_stock + $delta;
 
+                // Run this step if the new stock is below 0.
                 if ($newStock < 0) {
                     abort(422, 'Not enough stock for this OUT transaction.');
                 }
@@ -95,6 +103,7 @@ class InventoryTransactionController extends Controller
                 ];
             });
         } catch (\Throwable $e) {
+            // Run this step if the proof path is not null.
             if ($proofPath !== null) {
                 app(\App\Services\TrashService::class)->retainFile($proofPath);
             }
@@ -106,6 +115,7 @@ class InventoryTransactionController extends Controller
 
         $quantity = rtrim(rtrim(number_format((float) $request->quantity, 2), '0'), '.');
 
+        // Run this step if the transaction type equals in.
         if ($request->transaction_type === 'IN') {
             $this->notifications->notify(
                 title: 'New Stock-In Expense',
@@ -118,10 +128,12 @@ class InventoryTransactionController extends Controller
             );
         }
 
+        // Run this step if the result inventory transaction id check matches.
         if ($transaction = InventoryTransaction::find($result['inventory_transaction_id'])) {
             $this->audit->record($transaction, 'CREATE', [], $transaction->getAttributes());
         }
 
+        // Run this step if the result current stock and result reorder level checks match.
         if (
             $result['current_stock'] <= $result['reorder_level'] &&
             ! $this->notifications->alreadyNotified('item_low_stock', 'item', $result['item_id'])

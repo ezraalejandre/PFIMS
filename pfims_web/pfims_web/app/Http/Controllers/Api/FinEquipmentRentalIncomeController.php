@@ -7,13 +7,16 @@ use App\Models\FinEquipmentRentalIncome;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
+// Group the fin equipment rental income actions.
 class FinEquipmentRentalIncomeController extends Controller
 {
+    // List the fin equipment rental income records.
     public function index()
     {
         return response()->json(FinEquipmentRentalIncome::with(['asset:asset_id,asset_name', 'project:project_id,project_name'])->get());
     }
 
+    // Save a new fin equipment rental income record.
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -24,6 +27,7 @@ class FinEquipmentRentalIncomeController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
@@ -35,6 +39,7 @@ class FinEquipmentRentalIncomeController extends Controller
             ->where('period_month', $data['period_month'])
             ->first();
 
+        // Return early if the existing is set.
         if ($existing) {
             return response()->json(['message' => 'Rental income already exists for this asset, project, and month. Edit the existing record instead.'], 409);
         }
@@ -44,9 +49,11 @@ class FinEquipmentRentalIncomeController extends Controller
         return response()->json($rental, 201);
     }
 
+    // Save changes to the fin equipment rental income record.
     public function update(Request $request, $id)
     {
         $rental = FinEquipmentRentalIncome::find($id);
+        // Return early if the rental is missing or false.
         if (! $rental) {
             return response()->json(['message' => 'Rental income not found'], 404);
         }
@@ -58,10 +65,12 @@ class FinEquipmentRentalIncomeController extends Controller
             'amount' => 'sometimes|required|numeric|gt:0|max:999999999999.99',
             'remarks' => 'nullable|string|max:255',
         ]);
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
         $data = $validator->validated();
+        // Run this step if the data check matches.
         if (array_key_exists('remarks', $data)) {
             $data['remarks'] = blank($data['remarks']) ? null : trim($data['remarks']);
         }
@@ -71,6 +80,7 @@ class FinEquipmentRentalIncomeController extends Controller
             ->where('period_month', $candidate['period_month'])
             ->where('rental_income_id', '!=', $id)
             ->exists();
+        // Return early if the duplicate is set.
         if ($duplicate) {
             return response()->json(['message' => 'Rental income already exists for this asset, project, and month.'], 409);
         }
@@ -79,9 +89,11 @@ class FinEquipmentRentalIncomeController extends Controller
         return response()->json($rental);
     }
 
+    // Delete the selected fin equipment rental income record.
     public function destroy($id)
     {
         $rental = FinEquipmentRentalIncome::find($id);
+        // Return early if the rental is missing or false.
         if (! $rental) {
             return response()->json(['message' => 'Rental income not found'], 404);
         }

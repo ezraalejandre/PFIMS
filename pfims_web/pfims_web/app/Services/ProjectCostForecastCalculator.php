@@ -4,14 +4,18 @@ namespace App\Services;
 
 use RuntimeException;
 
+// Group the project cost forecast calculator actions.
 class ProjectCostForecastCalculator
 {
+    // Get the calculate.
     public function calculate(float $estimate, float $recordedSpend, bool $remainingCost): array
     {
+        // Stop if the estimate and recorded spend checks match.
         if (! is_finite($estimate) || ! is_finite($recordedSpend) || $recordedSpend < 0) {
             throw new RuntimeException('Forecast inputs must be finite and recorded spending non-negative.');
         }
         $rawFinalCost = $remainingCost ? $estimate + $recordedSpend : $estimate;
+        // Stop if the raw final cost is not a finite number.
         if (! is_finite($rawFinalCost)) {
             throw new RuntimeException('Final-cost conversion exceeded the supported numeric range.');
         }

@@ -22,6 +22,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('fin_project_contract_tbl', function (Blueprint $table) {
             $table->increments('contract_id');
             $table->integer('project_id');
@@ -44,6 +45,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('fin_project_contract_tbl');
     }
 };

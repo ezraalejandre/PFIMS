@@ -6,19 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('inventory_transaction_tbl', function (Blueprint $table) {
             // Historical movements remain unclassified until explicitly reconciled.
             $table->string('movement_reason', 32)->nullable();
             $table->dateTime('recorded_at', 6)->nullable();
         });
 
+        // Update this part of the database structure.
         Schema::table('fin_expense_tbl', function (Blueprint $table) {
             // The linked Finance amount is the sole purchase price, not a second inventory price.
             $table->string('entry_kind', 32)->nullable();
         });
 
+        // Update this part of the database structure.
         Schema::create('inventory_cost_allocation_tbl', function (Blueprint $table) {
             $table->bigIncrements('allocation_id');
             $table->integer('in_transaction_id');
@@ -42,14 +46,18 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('inventory_cost_allocation_tbl');
 
+        // Update this part of the database structure.
         Schema::table('fin_expense_tbl', function (Blueprint $table) {
             $table->dropColumn('entry_kind');
         });
 
+        // Update this part of the database structure.
         Schema::table('inventory_transaction_tbl', function (Blueprint $table) {
             $table->dropColumn(['movement_reason', 'recorded_at']);
         });

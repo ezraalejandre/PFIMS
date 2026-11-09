@@ -7,9 +7,12 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Run this step if the value check matches.
         if (! Schema::hasTable('project_budget_history')) {
+            // Update this part of the database structure.
             Schema::create('project_budget_history', function (Blueprint $table) {
                 $table->bigIncrements('history_id');
                 $table->integer('project_id');
@@ -28,8 +31,11 @@ return new class extends Migration
         }
 
         $recordedAt = now();
+        // Process the records in smaller groups.
         DB::table('budgets_tbl')->orderBy('budget_id')->chunkById(200, function ($budgets) use ($recordedAt) {
+            // Process each budget.
             foreach ($budgets as $budget) {
+                // Skip this item if the project id and budget id checks match.
                 if (! DB::table('project_tbl')->where('project_id', $budget->project_id)->exists()
                     || DB::table('project_budget_history')->where('budget_id', $budget->budget_id)
                         ->where('project_id', $budget->project_id)->exists()) {
@@ -48,7 +54,9 @@ return new class extends Migration
             }
         }, 'budget_id');
 
+        // Run this step if the input checks match.
         if (Schema::hasTable('ml_project_cost_snapshots') && ! Schema::hasColumn('ml_project_cost_snapshots', 'budget_history_id')) {
+            // Update this part of the database structure.
             Schema::table('ml_project_cost_snapshots', function (Blueprint $table) {
                 $table->unsignedBigInteger('budget_history_id')->nullable();
                 $table->decimal('original_budget_amount', 14, 2)->nullable();
@@ -57,11 +65,15 @@ return new class extends Migration
         }
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Run this step if the input checks match.
         if (Schema::hasTable('ml_project_cost_snapshots') && Schema::hasColumn('ml_project_cost_snapshots', 'budget_history_id')) {
+            // Update this part of the database structure.
             Schema::table('ml_project_cost_snapshots', fn (Blueprint $table) => $table->dropColumn(['budget_history_id', 'original_budget_amount', 'budget_basis']));
         }
+        // Update this part of the database structure.
         Schema::dropIfExists('project_budget_history');
     }
 };

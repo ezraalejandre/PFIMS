@@ -17,6 +17,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('users', function (Blueprint $table) {
             $table->longText('profile_photo_data')->nullable()->after('profile_photo');
             $table->string('profile_photo_mime', 100)->nullable()->after('profile_photo_data');
@@ -28,6 +29,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn(['profile_photo_data', 'profile_photo_mime']);
         });

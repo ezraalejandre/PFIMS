@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
+// Link records to the login history table.
 class LoginHistory extends Model
 {
     public $timestamps = false;
@@ -20,16 +21,19 @@ class LoginHistory extends Model
         'logged_in_at',
     ];
 
+    // Set the data type for each saved field.
     protected function casts(): array
     {
         return ['logged_in_at' => 'datetime'];
     }
 
+    // Link this record to its user.
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    // Get the record.
     public static function record(User $user, Request $request): self
     {
         $userAgent = (string) $request->userAgent();
@@ -46,8 +50,10 @@ class LoginHistory extends Model
         ]);
     }
 
+    // Find location.
     private static function resolveLocation(?string $ipAddress): string
     {
+        // Return early if the ip address checks match.
         if (!$ipAddress || !filter_var(
             $ipAddress,
             FILTER_VALIDATE_IP,
@@ -56,6 +62,7 @@ class LoginHistory extends Model
             return 'Local or private network';
         }
 
+        // Try this action and handle any errors below.
         try {
             $response = Http::acceptJson()
                 ->timeout(2)
@@ -63,6 +70,7 @@ class LoginHistory extends Model
                     'fields' => 'success,city,region,country',
                 ]);
 
+            // Return early if the successful and json checks match.
             if (!$response->successful() || !$response->json('success')) {
                 return 'Location unavailable';
             }
@@ -79,6 +87,7 @@ class LoginHistory extends Model
         }
     }
 
+    // Get the detect device.
     private static function detectDevice(string $userAgent): string
     {
         return match (true) {
@@ -91,6 +100,7 @@ class LoginHistory extends Model
         };
     }
 
+    // Get the detect browser.
     private static function detectBrowser(string $userAgent): string
     {
         return match (true) {

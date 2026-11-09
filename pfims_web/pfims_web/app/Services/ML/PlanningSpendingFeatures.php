@@ -4,7 +4,7 @@ namespace App\Services\ML;
 
 use RuntimeException;
 
-/** Planning and recorded spending only; physical completion is never an input. */
+/** Use plans and recorded costs as inputs. Do not use physical progress. */
 class PlanningSpendingFeatures
 {
     public const STRATEGY = 'planning_spending_model';
@@ -15,17 +15,23 @@ class PlanningSpendingFeatures
         'cost_burn_rate_30d', 'burn_rate_acceleration', 'inventory_cost_burn_rate_30d',
         'expense_frequency_7d', 'stock_out_frequency_7d'];
 
+    // Check that the supplied values are valid.
     public static function validate(array $cohort): array
     {
+        // Stop if the project group strategy and project group feature names checks match.
         if (($cohort['strategy'] ?? null) !== self::STRATEGY || array_diff(self::FEATURES, $cohort['feature_names'] ?? []) !== []) {
             throw new RuntimeException('Planning and spending evaluation requires dated spending observations; planning-only fallback is disabled.');
         }
+        // Process each row.
         foreach ($cohort['records'] as $row) {
+            // Process each name.
             foreach (self::FEATURES as $name) {
+                // Stop if the row and name checks match.
                 if (! isset($row->{$name}) || ! is_numeric($row->{$name}) || ! is_finite((float) $row->{$name})) {
                     throw new RuntimeException('Missing or invalid planning/spending input: '.$name);
                 }
             }
+            // Stop if the snapshot id is missing.
             if (! isset($row->snapshot_id)) {
                 throw new RuntimeException('Historical spending observation identity is required.');
             }
@@ -34,6 +40,7 @@ class PlanningSpendingFeatures
         return self::FEATURES;
     }
 
+    // Build the planning spending features output.
     public static function build(array $input): array
     {
         $n = static fn ($key) => (float) ($input[$key] ?? 0);

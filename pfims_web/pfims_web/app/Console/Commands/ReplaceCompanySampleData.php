@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
+// Group the replace company sample data actions.
 class ReplaceCompanySampleData extends Command
 {
     protected $signature = 'pfims:replace-company-sample-data {--file=database/data/evc-sample/dataset.json} {--apply : Commit the replacement (default is dry-run)}';
@@ -15,14 +16,17 @@ class ReplaceCompanySampleData extends Command
 
     private array $tables = ['expense_category_tbl', 'inventory_category_tbl', 'supplier_tbl', 'unit_tbl', 'project_tbl', 'company_asset_tbl', 'company_bank_account_tbl', 'fin_expense_category_tbl', 'inventory_item_tbl', 'budgets_tbl', 'inventory_transaction_tbl', 'expense_tbl', 'fin_expense_tbl', 'fin_construction_bond_tbl', 'fin_receivable_payable_tbl', 'fin_equipment_expense_tbl', 'fin_equipment_rental_income_tbl', 'fin_cash_position_tbl', 'fin_project_contract_tbl'];
 
+    // Run the replace company sample data checks or action.
     public function handle(): int
     {
+        // Run this step if the environment does not equal local.
         if (app()->environment() !== 'local') {
             $this->error('This command is restricted to the local environment.');
 
             return self::FAILURE;
         }
         $path = base_path($this->option('file'));
+        // Run this step if the path file is missing.
         if (! is_file($path)) {
             $this->error("Dataset not found: {$path}");
 
@@ -30,11 +34,13 @@ class ReplaceCompanySampleData extends Command
         }
         $doc = json_decode(file_get_contents($path), true);
         $rows = $doc['tables'] ?? null;
+        // Run this step if the rows is not a list.
         if (! is_array($rows)) {
             $this->error('Dataset must contain tables object.');
 
             return self::FAILURE;
         }
+        // Try this action and handle any errors below.
         try {
             $this->validate($rows);
         } catch (\Throwable $e) {
@@ -42,9 +48,11 @@ class ReplaceCompanySampleData extends Command
 
             return self::FAILURE;
         }
+        // Process each t.
         foreach ($this->tables as $t) {
             $this->line(sprintf('%-38s %d rows', $t, count($rows[$t] ?? [])));
         }
+        // Run this step if the option check matches.
         if (! $this->option('apply')) {
             $this->info('Dry run only. Re-run with --apply to mutate data.');
 
@@ -54,50 +62,63 @@ class ReplaceCompanySampleData extends Command
         $dir = "sample-backups/{$stamp}";
         Storage::makeDirectory($dir);
         $manifest = ['created_at' => now()->toIso8601String(), 'dataset' => hash_file('sha256', $path), 'tables' => []];
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function () use ($rows, $dir, &$manifest) {
             $snapshotProjectIds = Schema::hasTable('ml_project_cost_snapshots')
                 ? DB::table('project_tbl')->pluck('project_id')->all()
                 : [];
+            // Process each t.
             foreach ($this->tables as $t) {
                 $old = DB::table($t)->lockForUpdate()->get()->map(fn ($r) => (array) $r)->all();
                 $json = json_encode($old, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+                // Stop if the json check matches.
                 if (! Storage::put("{$dir}/{$t}.json", $json)) {
                     throw new \RuntimeException('Backup failed: '.$t);
                 }
                 $manifest['tables'][$t] = ['count' => count($old), 'sha256' => hash('sha256', $json)];
             }
+            // Run this step if the value check matches.
             if (Schema::hasTable('ml_project_cost_snapshots')) {
                 $snapshots = DB::table('ml_project_cost_snapshots')
                     ->whereIn('project_id', $snapshotProjectIds)
                     ->lockForUpdate()->get()->map(fn ($r) => (array) $r)->all();
                 $json = json_encode($snapshots, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+                // Stop if the json check matches.
                 if (! Storage::put("{$dir}/ml_project_cost_snapshots.json", $json)) {
                     throw new \RuntimeException('Snapshot backup failed');
                 }
                 $manifest['tables']['ml_project_cost_snapshots'] = ['count' => count($snapshots), 'sha256' => hash('sha256', $json), 'scope' => 'project_ids_replaced_by_this_command'];
             }
             $notifications = DB::table('notifications_tbl')->whereIn('reference_type', ['project', 'item', 'fin_expense', 'inventory', 'inventory_transaction', 'expense', 'supplier', 'budget']);
+            // Stop if the get check matches.
             if (! Storage::put("{$dir}/notifications_tbl.json", json_encode($notifications->get(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR))) {
                 throw new \RuntimeException('Notification backup failed');
             }
+            // Process each file.
             foreach (['ml_model.phpml', 'ml_model.phpml.meta.json'] as $file) {
+                // Stop if the file and dir checks match.
                 if (is_file(storage_path('app/'.$file)) && ! Storage::put("{$dir}/{$file}", file_get_contents(storage_path('app/'.$file)))) {
                     throw new \RuntimeException('ML backup failed');
                 }
             }
             $manifest['status'] = 'backed_up';
+            // Stop if the manifest check matches.
             if (! Storage::put("{$dir}/manifest.json", json_encode($manifest, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR))) {
                 throw new \RuntimeException('Manifest backup failed');
             }
             $notifications->delete();
+            // Run this step if the snapshot project ids checks match.
             if (Schema::hasTable('ml_project_cost_snapshots') && $snapshotProjectIds !== []) {
                 DB::table('ml_project_cost_snapshots')->whereIn('project_id', $snapshotProjectIds)->delete();
             }
             $delete = array_reverse($this->tables);
+            // Process each t.
             foreach ($delete as $t) {
                 DB::table($t)->delete();
             }
+            // Process each t.
             foreach ($this->tables as $t) {
+                // Process each row.
                 foreach ($rows[$t] ?? [] as $row) {
                     DB::table($t)->insert($row);
                 }
@@ -112,23 +133,31 @@ class ReplaceCompanySampleData extends Command
         return self::SUCCESS;
     }
 
+    // Check that the supplied values are valid.
     private function validate(array $rows): void
     {
+        // Stop if the rows checks match.
         if (array_diff($this->tables, array_keys($rows)) || array_diff(array_keys($rows), $this->tables)) {
             throw new \RuntimeException('Dataset must explicitly contain exactly the scoped tables.');
         }
+        // Process each t.
         foreach ($this->tables as $t) {
+            // Process each index.
             foreach (Schema::getIndexes($t) as $index) {
+                // Skip this item if the index unique check matches.
                 if (! $index['unique']) {
                     continue;
                 }
                 $seen = [];
+                // Process each row.
                 foreach ($rows[$t] as $row) {
                     $values = array_map(fn ($key) => $row[$key] ?? null, $index['columns']);
+                    // Skip this item if the values check matches.
                     if (in_array(null, $values, true)) {
                         continue;
                     }
                     $key = json_encode($values);
+                    // Stop if the key is set.
                     if (isset($seen[$key])) {
                         throw new \RuntimeException('Duplicate key: '.$t.'.'.$index['name']);
                     }
@@ -137,44 +166,57 @@ class ReplaceCompanySampleData extends Command
             }
         }
         $fks = DB::select('SELECT TABLE_NAME child_table,COLUMN_NAME child_column,REFERENCED_TABLE_NAME parent_table,REFERENCED_COLUMN_NAME parent_column FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL');
+        // Process each fk.
         foreach ($fks as $fk) {
+            // Skip this item if the child table is missing.
             if (! isset($rows[$fk->child_table])) {
                 continue;
             }
             $ids = isset($rows[$fk->parent_table]) ? array_column($rows[$fk->parent_table], $fk->parent_column) : DB::table($fk->parent_table)->pluck($fk->parent_column)->all();
+            // Process each row.
             foreach ($rows[$fk->child_table] as $row) {
                 $v = $row[$fk->child_column] ?? null;
+                // Stop if the v and ids checks match.
                 if ($v !== null && ! in_array($v, $ids)) {
                     throw new \RuntimeException('Missing FK parent: '.$fk->child_table.'.'.$fk->child_column);
                 }
             }
         }
+        // Process each column.
         foreach (['project_tbl' => 'project_name', 'inventory_item_tbl' => 'item_name'] as $t => $column) {
             $names = array_map(fn ($row) => mb_strtolower(trim($row[$column])), $rows[$t]);
+            // Stop if the number of names does not equal names.
             if (count($names) !== count(array_unique($names))) {
                 throw new \RuntimeException('Duplicate names: '.$t);
             }
         }
         $this->validateTotals($rows);
+        // Process each records.
         foreach ($rows as $t => $records) {
+            // Stop if the tables check matches.
             if (! in_array($t, $this->tables, true)) {
                 throw new \RuntimeException("Unknown scoped table: {$t}");
             } if (! is_array($records)) {
                 throw new \RuntimeException("Rows for {$t} must be an array");
             } $cols = Schema::getColumnListing($t);
+            // Process each row.
             foreach ($records as $row) {
                 $unknown = array_diff(array_keys($row), $cols);
+                // Stop if the unknown is set.
                 if ($unknown) {
                     throw new \RuntimeException("{$t} has unknown columns: ".implode(',', $unknown));
                 }
             }
         }
+        // Process each t.
         foreach ($this->tables as $t) {
+            // Stop if the t check matches.
             if (! Schema::hasTable($t)) {
                 throw new \RuntimeException("Missing table: {$t}");
             }
         }
         $expenseRows = $rows['fin_expense_tbl'] ?? [];
+        // Stop if the number of expense rows is below 1000.
         if (count($expenseRows) < 1000) {
             throw new \RuntimeException('Dataset must contain at least 1,000 finance expense records.');
         }
@@ -183,15 +225,20 @@ class ReplaceCompanySampleData extends Command
             $expenseRows
         )));
         sort($expenseYears);
+        // Stop if the expense years does not equal range 2019 2026.
         if ($expenseYears !== range(2019, 2026)) {
             throw new \RuntimeException('Finance expenses must cover every year from 2019 through 2026.');
         }
+        // Process each supplier.
         foreach ($rows['supplier_tbl'] as $supplier) {
+            // Stop if the supplier supplier name and supplier address checks match.
             if (blank($supplier['supplier_name'] ?? null) || blank($supplier['address'] ?? null) || blank($supplier['contact_number'] ?? null)) {
                 throw new \RuntimeException('Supplier records must include name, address, and contact number.');
             }
         }
+        // Process each expense.
         foreach ($expenseRows as $expense) {
+            // Stop if the expense expense description and expense remarks checks match.
             if (blank($expense['expense_description'] ?? null) || blank($expense['remarks'] ?? null)) {
                 throw new \RuntimeException('Finance expenses must include a description and remarks.');
             }
@@ -201,10 +248,13 @@ class ReplaceCompanySampleData extends Command
             $expenseRows
         ), fn ($id) => $id !== null));
         $transactionsById = [];
+        // Process each transaction.
         foreach ($rows['inventory_transaction_tbl'] as $transaction) {
             $transactionsById[$transaction['inventory_transaction_id']] = $transaction;
         }
+        // Process each transaction.
         foreach ($transactionsById as $transaction) {
+            // Stop if the transaction transaction type and transaction project id checks match.
             if (($transaction['transaction_type'] ?? null) === 'IN' && ($transaction['project_id'] ?? null) !== null
                 && ! in_array($transaction['inventory_transaction_id'], $linkedExpenseTransactions, true)) {
                 throw new \RuntimeException('Every project-linked inventory stock-in must have a linked finance expense.');
@@ -216,6 +266,7 @@ class ReplaceCompanySampleData extends Command
             && $fk->COLUMN_NAME === 'project_id'
             && $fk->REFERENCED_TABLE_NAME === 'project_tbl'
         )));
+        // Stop if the inbound is set.
         if ($inbound) {
             throw new \RuntimeException('Unknown inbound FK outside scope: '.json_encode($inbound));
         }
@@ -224,14 +275,18 @@ class ReplaceCompanySampleData extends Command
         $this->checkRefs($rows, 'fin_expense_category_tbl', 'fin_category_id', ['fin_expense_tbl']);
     }
 
+    // Check refs.
     private function checkRefs(array $rows, string $parent, string $key, array $children): void
     {
         $ids = array_column($rows[$parent] ?? [], $key);
+        // Stop if the number of ids does not equal ids.
         if (count($ids) !== count(array_unique($ids))) {
             throw new \RuntimeException("Duplicate {$parent}.{$key}");
         } foreach ($children as $t) {
+            // Process each r.
             foreach ($rows[$t] ?? [] as $r) {
                 $v = $r[$key] ?? null;
+                // Stop if the v and ids checks match.
                 if ($v !== null && ! in_array($v, $ids, true)) {
                     throw new \RuntimeException("{$t}.{$key} references missing {$parent}: {$v}");
                 }
@@ -239,27 +294,35 @@ class ReplaceCompanySampleData extends Command
         }
     }
 
+    // Match the recorded values and fix missing links.
     private function reconcile(): void
     {
         $rows = [];
+        // Process each t.
         foreach ($this->tables as $t) {
             $rows[$t] = DB::table($t)->get()->map(fn ($r) => (array) $r)->all();
         }
         $this->validateTotals($rows);
     }
 
+    // Check totals.
     private function validateTotals(array $rows): void
     {
         $totals = [];
+        // Process each e.
         foreach ($rows['fin_expense_tbl'] as $e) {
+            // Stop if the e amount is at most 0.
             if ($e['amount'] <= 0) {
                 throw new \RuntimeException('Nonpositive expense');
             }
+            // Run this step if the e project id is not null.
             if ($e['project_id'] !== null) {
                 $totals[$e['project_id']] = ($totals[$e['project_id']] ?? 0) + (int) round($e['amount'] * 100);
             }
         }
+        // Process each b.
         foreach ($rows['budgets_tbl'] as $b) {
+            // Stop if the b budget amount and b actual amount checks match.
             if ($b['budget_amount'] <= 0 || (int) round($b['actual_amount'] * 100) !== ($totals[$b['project_id']] ?? 0)) {
                 throw new \RuntimeException('Budget/expense mismatch: '.$b['project_id']);
             }
@@ -267,25 +330,33 @@ class ReplaceCompanySampleData extends Command
         $transactions = $rows['inventory_transaction_tbl'];
         usort($transactions, fn ($a, $b) => [$a['transaction_date'], $a['inventory_transaction_id']] <=> [$b['transaction_date'], $b['inventory_transaction_id']]);
         $stock = [];
+        // Process each tx.
         foreach ($transactions as $tx) {
+            // Reject invalid stock transaction
             if ($tx['quantity'] <= 0 || ! in_array($tx['transaction_type'], ['IN', 'OUT'], true)) {
                 throw new \RuntimeException('Invalid stock transaction');
             }
             $id = $tx['item_id'];
             $stock[$id] = ($stock[$id] ?? 0) + (int) round($tx['quantity'] * 100) * ($tx['transaction_type'] === 'IN' ? 1 : -1);
+            // Stop if the id is below 0.
             if ($stock[$id] < 0) {
                 throw new \RuntimeException('Negative running stock: '.$id);
             }
         }
+        // Process each item.
         foreach ($rows['inventory_item_tbl'] as $item) {
+            // Stop if the item current stock does not equal item item id.
             if ((int) round($item['current_stock'] * 100) !== ($stock[$item['item_id']] ?? 0)) {
                 throw new \RuntimeException('Inventory balance mismatch: '.$item['item_id']);
             }
         }
+        // Process each p.
         foreach ($rows['project_tbl'] as $p) {
+            // Reject invalid project source/schedule
             if (($p['data_source'] ?? '') !== 'company_inspired_sample' || $p['start_date'] < '2019-01-01' || $p['estimated_end_date'] < $p['start_date']) {
                 throw new \RuntimeException('Invalid project source/schedule');
             }
+            // Reject invalid completed project
             if ($p['status'] === 'Completed' && ($p['completion_percentage'] != 100 || ! $p['actual_end_date'] || $p['actual_end_date'] > now()->toDateString())) {
                 throw new \RuntimeException('Invalid completed project');
             }

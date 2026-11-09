@@ -16,11 +16,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+// Group the expense actions.
 class ExpenseController extends Controller
 {
+    // Set up the values this class needs.
     public function __construct(private NotificationService $notifications, private AuditLogService $audit,
         private AutomaticModelRetraining $modelRetraining) {}
 
+    // List the expense records.
     public function index(Request $request): JsonResponse
     {
         $filters = $request->validate([
@@ -32,21 +35,26 @@ class ExpenseController extends Controller
         ]);
 
         $query = $this->baseQuery();
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(fn ($inner) => $inner->where('fin_expense_tbl.expense_description', 'like', "%{$search}%")
                 ->orWhere('fin_expense_tbl.remarks', 'like', "%{$search}%")
                 ->orWhere('fin_expense_category_tbl.category_name', 'like', "%{$search}%"));
         }
+        // Run this step if the filters project id has a value.
         if (! empty($filters['project_id'])) {
             $query->where('fin_expense_tbl.project_id', $filters['project_id']);
         }
+        // Run this step if the filters expense category id has a value.
         if (! empty($filters['expense_category_id'])) {
             $query->where('fin_expense_tbl.fin_category_id', $filters['expense_category_id']);
         }
+        // Run this step if the filters start date has a value.
         if (! empty($filters['start_date'])) {
             $query->whereDate('fin_expense_tbl.expense_date', '>=', $filters['start_date']);
         }
+        // Run this step if the filters end date has a value.
         if (! empty($filters['end_date'])) {
             $query->whereDate('fin_expense_tbl.expense_date', '<=', $filters['end_date']);
         }
@@ -55,8 +63,10 @@ class ExpenseController extends Controller
             ->map(fn (object $expense) => $this->present($expense)));
     }
 
+    // Save a new expense record.
     public function store(Request $request): JsonResponse
     {
+        // Return early if the filled check matches.
         if ($request->filled('inventory_transaction_id')) {
             return response()->json(['message' => 'Record inventory purchases through Stock In, then assign project usage through Stock Out.'], 422);
         }
@@ -69,10 +79,13 @@ class ExpenseController extends Controller
         $this->assertNotDuplicate($data);
 
         $path = null;
+        // Try this action and handle any errors below.
         try {
+            // Run this step if the has file check matches.
             if ($request->hasFile('proof_file')) {
                 $path = $request->file('proof_file')->store('proofs', 'protected');
             }
+            // Run these database steps together. Undo changes if a step fails.
             $expense = DB::transaction(function () use ($data, $request, $path) {
                 $this->assertNotDuplicate($data);
                 $id = DB::table('fin_expense_tbl')->insertGetId([
@@ -89,6 +102,7 @@ class ExpenseController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                // Run this step if the data project id has a value.
                 if (! empty($data['project_id'])) {
                     $this->recalcBudgetActual((int) $data['project_id']);
                 }
@@ -96,6 +110,7 @@ class ExpenseController extends Controller
                 return $this->find($id);
             });
         } catch (\Throwable $exception) {
+            // Run this step if the path is set.
             if ($path) {
                 app(\App\Services\TrashService::class)->retainFile($path);
             }
@@ -108,7 +123,9 @@ class ExpenseController extends Controller
             type: 'new_expense', kind: 'info', filter: 'alerts',
             referenceType: 'fin_expense', referenceId: (int) $expense->fin_expense_id,
         );
+        // Run this step if the fin expense id check matches.
         if ($audited = FinExpense::find($expense->fin_expense_id)) $this->audit->record($audited, 'CREATE', [], $audited->getAttributes());
+        // Run this step if the project id is not null.
         if ($expense->project_id !== null) {
             $this->modelRetraining->afterDataChange([(int) $expense->project_id]);
         }
@@ -116,12 +133,15 @@ class ExpenseController extends Controller
         return response()->json($this->present($expense), 201);
     }
 
+    // Save changes to the expense record.
     public function update(Request $request, int $id): JsonResponse
     {
         $expense = DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->first();
+        // Return early if the expense is missing or false.
         if (! $expense) {
             return response()->json(['message' => 'Expense not found'], 404);
         }
+        // Return early if the inventory transaction id is not null.
         if (($expense->inventory_transaction_id ?? null) !== null) {
             return response()->json(['message' => 'Linked inventory purchases cannot be edited here.'], 422);
         }
@@ -137,10 +157,13 @@ class ExpenseController extends Controller
         $oldProjectId = $expense->project_id;
         $oldPath = $expense->proof_file_path;
         $newPath = null;
+        // Try this action and handle any errors below.
         try {
+            // Run this step if the has file check matches.
             if ($request->hasFile('proof_file')) {
                 $newPath = $request->file('proof_file')->store('proofs', 'protected');
             }
+            // Run these database steps together. Undo changes if a step fails.
             DB::transaction(function () use ($expense, $data, $request, $newPath, $oldProjectId, $id) {
                 $this->assertNotDuplicate($data, (int) $expense->fin_expense_id);
                 $changes = [
@@ -154,6 +177,7 @@ class ExpenseController extends Controller
                     'inventory_transaction_id' => $data['inventory_transaction_id'] ?? null,
                     'updated_at' => now(),
                 ];
+                // Run this step if the new path is set.
                 if ($newPath) {
                     $changes['proof_file_path'] = $newPath;
                     $changes['proof_file_name'] = mb_substr($request->file('proof_file')->getClientOriginalName(), 0, 255);
@@ -162,41 +186,50 @@ class ExpenseController extends Controller
                     $changes['proof_file_name'] = null;
                 }
                 DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->update($changes);
+                // Process each project id.
                 foreach (array_filter(array_unique([$oldProjectId, $data['project_id'] ?? null])) as $projectId) {
                     $this->recalcBudgetActual((int) $projectId);
                 }
             });
         } catch (\Throwable $exception) {
+            // Run this step if the new path is set.
             if ($newPath) {
                 app(\App\Services\TrashService::class)->retainFile($newPath);
             }
             throw $exception;
         }
 
+        // Run this step if the old path and new path checks match.
         if ($oldPath && ($newPath || $request->boolean('remove_proof_file'))) {
             app(\App\Services\TrashService::class)->retainFile($oldPath);
         }
 
         $updatedExpense = FinExpense::find($id);
+        // Run this step if the updated expense is set.
         if ($updatedExpense) $this->audit->record($updatedExpense, 'UPDATE', (array) $expense, $updatedExpense->getAttributes());
         $this->modelRetraining->afterDataChange(array_values(array_filter(array_unique([$oldProjectId, $data['project_id'] ?? null]))));
         return response()->json($this->present($this->find($id)));
     }
 
+    // Delete the selected expense record.
     public function destroy(int $id): JsonResponse
     {
         $expense = DB::table('fin_expense_tbl')->where('fin_expense_id', $id)->first();
+        // Return early if the expense is missing or false.
         if (! $expense) {
             return response()->json(['message' => 'Expense not found'], 404);
         }
+        // Return early if the inventory transaction id is not null.
         if (($expense->inventory_transaction_id ?? null) !== null) {
             return response()->json(['message' => 'Linked inventory purchases cannot be deleted here.'], 409);
         }
 
         $projectId = $expense->project_id;
         $path = $expense->proof_file_path;
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function () use ($expense, $projectId) {
             DB::table('fin_expense_tbl')->where('fin_expense_id', $expense->fin_expense_id)->delete();
+            // Run this step if the project id is set.
             if ($projectId) {
                 $this->recalcBudgetActual((int) $projectId);
             }
@@ -204,9 +237,11 @@ class ExpenseController extends Controller
         $deleted = new FinExpense();
         $deleted->setRawAttributes((array) $expense, true);
         $this->audit->record($deleted, 'DELETE', (array) $expense, []);
+        // Run this step if the project id is not null.
         if ($projectId !== null) {
             $this->modelRetraining->afterDataChange([(int) $projectId]);
         }
+        // Run this step if the path is set.
         if ($path) {
             app(\App\Services\TrashService::class)->retainFile($path);
         }
@@ -214,6 +249,7 @@ class ExpenseController extends Controller
         return response()->json(['message' => 'Expense deleted']);
     }
 
+    // Check expense.
     private function validateExpense(Request $request): array
     {
         $validator = Validator::make($request->all(), [
@@ -230,14 +266,17 @@ class ExpenseController extends Controller
         ]);
 
         $validator->after(function ($validator) use ($request) {
+            // Run this step if the filled checks match.
             if (! $request->filled('project_id') || ! $request->filled('expense_date')) {
                 return;
             }
             $project = DB::table('project_tbl')->where('project_id', $request->integer('project_id'))->first();
             $date = strtotime((string) $request->input('expense_date'));
+            // Run this step if the project and date checks match.
             if ($project?->start_date && $date < strtotime($project->start_date)) {
                 $validator->errors()->add('expense_date', 'The expense date cannot be before the project start date.');
             }
+            // Run this step if the project and date checks match.
             if ($project?->actual_end_date && $date > strtotime($project->actual_end_date)) {
                 $validator->errors()->add('expense_date', 'The expense date cannot be after the project actual end date.');
             }
@@ -246,6 +285,7 @@ class ExpenseController extends Controller
         return $validator->validate();
     }
 
+    // Check not duplicate.
     private function assertNotDuplicate(array $data, ?int $ignoreId = null): void
     {
         $query = DB::table('fin_expense_tbl')
@@ -254,9 +294,11 @@ class ExpenseController extends Controller
             ->where('amount', round((float) $data['amount'], 2));
         isset($data['project_id']) ? $query->where('project_id', $data['project_id']) : $query->whereNull('project_id');
         blank($data['project_cost_component'] ?? null) ? $query->whereNull('project_cost_component') : $query->where('project_cost_component', $data['project_cost_component']);
+        // Run this step if the data inventory transaction id has a value.
         if (! empty($data['inventory_transaction_id'])) {
             $query->where('inventory_transaction_id', $data['inventory_transaction_id']);
         }
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('fin_expense_id', '!=', $ignoreId);
         }
@@ -265,6 +307,7 @@ class ExpenseController extends Controller
         $duplicate = $query->lockForUpdate()->get(['expense_description'])->contains(
             fn ($expense) => $this->normalizeKey((string) $expense->expense_description) === $description
         );
+        // Stop if the duplicate is set.
         if ($duplicate) {
             throw ValidationException::withMessages([
                 'expense_description' => ['An identical expense already exists for this project, category, amount, and date.'],
@@ -272,11 +315,13 @@ class ExpenseController extends Controller
         }
     }
 
+    // Get the recalc budget actual.
     private function recalcBudgetActual(int $projectId): void
     {
         app(ProjectCostLedger::class)->syncBudget($projectId);
     }
 
+    // Get the present.
     private function present(object $expense): array
     {
         return [
@@ -302,6 +347,7 @@ class ExpenseController extends Controller
         ];
     }
 
+    // Get the expense notification message.
     private function expenseNotificationMessage(object $expense, float $amount): string
     {
         $category = $expense->category_name ?? 'Expense';
@@ -310,6 +356,7 @@ class ExpenseController extends Controller
         return "{$category}{$project}: {$expense->expense_description} (PHP ".number_format($amount, 2).').';
     }
 
+    // Get the base query.
     private function baseQuery(): Builder
     {
         return DB::table('fin_expense_tbl')
@@ -333,36 +380,44 @@ class ExpenseController extends Controller
             );
     }
 
+    // Get the find.
     private function find(int $id): object
     {
         return $this->baseQuery()->where('fin_expense_tbl.fin_expense_id', $id)->first();
     }
 
+    // Get the category.
     private function category(int $id): object
     {
         return DB::table('fin_expense_category_tbl')->where('fin_category_id', $id)->firstOrFail();
     }
 
+    // Check project component rules.
     private function assertProjectComponentRules(array $data, object $category): void
     {
         $errors = [];
         $isDirect = strtolower((string) $category->classification) === 'direct';
+        // Run this step if the is direct and data project id checks match.
         if ($isDirect && blank($data['project_id'] ?? null)) {
             $errors['project_id'][] = 'A direct project expense requires a valid project.';
         }
+        // Run this step if the classification and data project id checks match.
         if (in_array(strtolower((string) $category->classification), ['admin', 'office'], true) && ! blank($data['project_id'] ?? null)) {
             $errors['project_id'][] = 'Admin and office expenses cannot be linked to a project.';
         }
+        // Stop if the errors is not empty.
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
     }
 
+    // Clean up label.
     private function normalizeLabel(string $value): string
     {
         return preg_replace('/\s+/u', ' ', trim($value)) ?? trim($value);
     }
 
+    // Clean up key.
     private function normalizeKey(string $value): string
     {
         return mb_strtolower($this->normalizeLabel($value));

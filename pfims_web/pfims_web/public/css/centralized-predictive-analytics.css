@@ -1,3 +1,4 @@
+/* Style the page elements. */
 :root {
     --analytics-text: var(--ui-text, #172033);
     --analytics-muted: var(--ui-muted, #64748b);
@@ -7,16 +8,19 @@
     --analytics-primary: #1a2b3c;
 }
 
+/* Style the predictive analytics root. */
 .predictive-analytics-root {
     width: 100%;
     min-width: 0;
     max-width: 100%;
 }
 
+/* Style the analytics module page predictive analytics root. */
 .analytics-module-page .predictive-analytics-root {
     margin: 0;
 }
 
+/* Style the analytics module page analytics top spacer. */
 .analytics-module-page .analytics-top-spacer {
     display: block;
     width: 100%;
@@ -24,10 +28,12 @@
     flex: 0 0 32px;
 }
 
+/* Style the analytics module page page header. */
 .analytics-module-page :where(.page-header, .page-header-with-btn) {
     min-height: 44px;
 }
 
+/* Style the embedded ml document. */
 html.embedded-ml-document,
 body.embedded-ml-dashboard {
     width: 100% !important;
@@ -39,6 +45,7 @@ body.embedded-ml-dashboard {
     background: transparent !important;
 }
 
+/* Style the embedded ml dashboard analytics shell. */
 .embedded-ml-dashboard .analytics-shell {
     display: grid;
     width: 100% !important;
@@ -49,6 +56,7 @@ body.embedded-ml-dashboard {
     gap: 18px;
 }
 
+/* Style the embedded ml dashboard analytics toolbar. */
 .embedded-ml-dashboard .analytics-toolbar,
 .embedded-ml-dashboard .analytics-panel {
     width: 100% !important;
@@ -62,6 +70,7 @@ body.embedded-ml-dashboard {
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
 }
 
+/* Style the embedded ml dashboard analytics toolbar. */
 .embedded-ml-dashboard .analytics-toolbar {
     display: flex;
     align-items: center;
@@ -70,10 +79,12 @@ body.embedded-ml-dashboard {
     padding: 20px 22px !important;
 }
 
+/* Style the embedded ml dashboard analytics heading. */
 .embedded-ml-dashboard .analytics-heading {
     min-width: 0;
 }
 
+/* Style the embedded ml dashboard analytics eyebrow. */
 .embedded-ml-dashboard .analytics-eyebrow {
     display: block;
     margin-bottom: 4px;
@@ -83,6 +94,7 @@ body.embedded-ml-dashboard {
     letter-spacing: 0.12em;
 }
 
+/* Style the embedded ml dashboard analytics heading. */
 .embedded-ml-dashboard .analytics-heading h1 {
     margin: 0 !important;
     color: var(--analytics-text) !important;
@@ -90,6 +102,7 @@ body.embedded-ml-dashboard {
     font-weight: 650 !important;
 }
 
+/* Style the embedded ml dashboard analytics heading. */
 .embedded-ml-dashboard .analytics-heading p,
 .embedded-ml-dashboard .analytics-panel-description {
     margin: 5px 0 0;
@@ -98,12 +111,14 @@ body.embedded-ml-dashboard {
     line-height: 1.5;
 }
 
+/* Style the embedded ml dashboard header actions. */
 .embedded-ml-dashboard .header-actions {
     display: flex;
     flex: 0 0 auto;
     gap: 9px;
 }
 
+/* Style the embedded ml dashboard analytics button. */
 .embedded-ml-dashboard .analytics-button {
     display: inline-flex;
     min-height: 40px;
@@ -121,12 +136,14 @@ body.embedded-ml-dashboard {
     cursor: pointer;
 }
 
+/* Style the analytics button btn primary. */
 .embedded-ml-dashboard .analytics-button.btn-primary {
     border-color: var(--analytics-primary) !important;
     background: var(--analytics-primary) !important;
     color: #ffffff !important;
 }
 
+/* Style the embedded ml dashboard analytics button on hover. */
 .embedded-ml-dashboard .analytics-button:hover:not(:disabled) {
     border-color: #94a3b8 !important;
     background: #eef2f6 !important;
@@ -134,23 +151,27 @@ body.embedded-ml-dashboard {
     transform: none !important;
 }
 
+/* Style the analytics button btn primary on hover. */
 .embedded-ml-dashboard .analytics-button.btn-primary:hover:not(:disabled) {
     border-color: #253d54 !important;
     background: #253d54 !important;
     color: #ffffff !important;
 }
 
+/* Style the embedded ml dashboard analytics button. */
 .embedded-ml-dashboard .analytics-button:disabled {
     opacity: 0.48;
     cursor: not-allowed;
 }
 
+/* Style the embedded ml dashboard analytics button small. */
 .embedded-ml-dashboard .analytics-button-small {
     min-height: 34px;
     padding: 6px 12px !important;
     font-size: 0.78rem !important;
 }
 
+/* Style the embedded ml dashboard analytics tab content. */
 .embedded-ml-dashboard .analytics-tab-content {
     grid-column: 1 / -1;
     box-sizing: border-box;
@@ -178,20 +199,24 @@ body.embedded-ml-dashboard {
     margin: 0;
 }
 
+/* Style the embedded ml dashboard prediction row. */
 .embedded-ml-dashboard .prediction-row > div {
     display: flex;
     min-width: 0;
 }
 
+/* Style the prediction row prediction workspace. */
 .embedded-ml-dashboard .prediction-row .prediction-workspace {
     flex: 1 1 0;
     height: 100%;
 }
 
+/* Style the embedded ml dashboard analytics panel. */
 .embedded-ml-dashboard .analytics-panel {
     padding: 20px !important;
 }
 
+/* Style the analytics panel card header. */
 .embedded-ml-dashboard .analytics-panel .card-header {
     display: flex;
     align-items: flex-start;
@@ -202,12 +227,14 @@ body.embedded-ml-dashboard {
     border-bottom: 1px solid #e5eaf0 !important;
 }
 
+/* Style the analytics panel card title. */
 .embedded-ml-dashboard .analytics-panel .card-title {
     color: var(--analytics-text) !important;
     font-size: 1rem !important;
     font-weight: 700 !important;
 }
 
+/* Style the embedded ml dashboard badge. */
 .embedded-ml-dashboard .badge {
     flex: 0 0 auto;
     padding: 5px 9px;
@@ -218,11 +245,13 @@ body.embedded-ml-dashboard {
     font-weight: 700;
 }
 
+/* Style the embedded ml dashboard project selection. */
 .embedded-ml-dashboard .project-selection {
     display: grid;
     gap: 15px;
 }
 
+/* Style the embedded ml dashboard project selection note. */
 .embedded-ml-dashboard .project-selection-note {
     margin: 0;
     color: var(--analytics-muted) !important;
@@ -230,11 +259,13 @@ body.embedded-ml-dashboard {
     line-height: 1.5;
 }
 
+/* Style the embedded ml dashboard form group. */
 .embedded-ml-dashboard .form-group {
     display: flex;
     flex-direction: column;
 }
 
+/* Style the embedded ml dashboard form group. */
 .embedded-ml-dashboard .form-group label {
     margin-bottom: 6px;
     color: #334155 !important;
@@ -242,6 +273,7 @@ body.embedded-ml-dashboard {
     font-weight: 700;
 }
 
+/* Style the embedded ml dashboard project selection. */
 .embedded-ml-dashboard .project-selection select {
     min-height: 42px;
     border: 1px solid #cbd5e1 !important;
@@ -250,22 +282,26 @@ body.embedded-ml-dashboard {
     color: var(--analytics-text) !important;
 }
 
+/* Style the embedded ml dashboard project snapshot grid. */
 .embedded-ml-dashboard .project-snapshot-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
 }
 
+/* Style the embedded ml dashboard project snapshot grid. */
 .embedded-ml-dashboard .project-snapshot-grid[hidden],
 .embedded-ml-dashboard .ml-confirm-overlay[hidden] {
     display: none !important;
 }
 
+/* Style the embedded ml dashboard snapshot item. */
 .embedded-ml-dashboard .snapshot-item span,
 .embedded-ml-dashboard .snapshot-item strong {
     display: block;
 }
 
+/* Style the embedded ml dashboard snapshot item. */
 .embedded-ml-dashboard .snapshot-item,
 .embedded-ml-dashboard .metric-item {
     border: 1px solid #e2e8f0;
@@ -273,20 +309,24 @@ body.embedded-ml-dashboard {
     background: var(--analytics-soft) !important;
 }
 
+/* Style the embedded ml dashboard snapshot item. */
 .embedded-ml-dashboard .snapshot-item {
     padding: 12px 14px;
 }
 
+/* Style the embedded ml dashboard snapshot item. */
 .embedded-ml-dashboard .snapshot-item span,
 .embedded-ml-dashboard .metric-label {
     color: var(--analytics-muted) !important;
 }
 
+/* Style the embedded ml dashboard snapshot item. */
 .embedded-ml-dashboard .snapshot-item strong,
 .embedded-ml-dashboard .metric-value {
     color: var(--analytics-text) !important;
 }
 
+/* Style the embedded ml dashboard form actions. */
 .embedded-ml-dashboard .form-actions {
     display: flex;
     justify-content: flex-start;
@@ -294,6 +334,7 @@ body.embedded-ml-dashboard {
     margin-top: 2px;
 }
 
+/* Style the embedded ml dashboard prediction result. */
 .embedded-ml-dashboard .prediction-result {
     display: none;
     margin-top: 18px;
@@ -303,15 +344,18 @@ body.embedded-ml-dashboard {
     background: #f8fafc !important;
 }
 
+/* Style the prediction result show. */
 .embedded-ml-dashboard .prediction-result.show {
     display: block;
 }
 
+/* Style the embedded ml dashboard prediction result. */
 .embedded-ml-dashboard .prediction-result h4 {
     margin: 0 0 10px;
     color: var(--analytics-text);
 }
 
+/* Style the prediction result result row. */
 .embedded-ml-dashboard .prediction-result .result-row {
     display: flex;
     align-items: flex-start;
@@ -321,32 +365,38 @@ body.embedded-ml-dashboard {
     border-bottom: 1px solid rgba(148, 163, 184, .22);
 }
 
+/* Style the prediction result result label. */
 .embedded-ml-dashboard .prediction-result .result-label {
     color: var(--analytics-muted) !important;
     font-weight: 600;
 }
 
+/* Style the prediction result result value. */
 .embedded-ml-dashboard .prediction-result .result-value {
     color: var(--analytics-text) !important;
     font-weight: 700;
     text-align: right;
 }
 
+/* Style the prediction result success. */
 .embedded-ml-dashboard .prediction-result.success {
     border-color: #86cba9 !important;
     background: #f0fdf6 !important;
 }
 
+/* Style the prediction result warning. */
 .embedded-ml-dashboard .prediction-result.warning {
     border-color: #f5bd6d !important;
     background: #fffaf0 !important;
 }
 
+/* Style the prediction result danger. */
 .embedded-ml-dashboard .prediction-result.danger {
     border-color: #f0a0a0 !important;
     background: #fff5f5 !important;
 }
 
+/* Style the embedded ml dashboard table responsive. */
 .embedded-ml-dashboard .table-responsive,
 .embedded-ml-dashboard .table-wrapper {
     width: 100%;
@@ -357,28 +407,33 @@ body.embedded-ml-dashboard {
     border-radius: 8px;
 }
 
+/* Style the embedded ml dashboard analytics table. */
 .embedded-ml-dashboard .analytics-table {
     width: 100%;
     min-width: 0;
     flex: 1 1 auto;
 }
 
+/* Style the embedded ml dashboard analytics table. */
 .embedded-ml-dashboard .analytics-table th,
 .embedded-ml-dashboard .analytics-table td {
     padding: 11px 13px !important;
 }
 
+/* Style the metric section metric section. */
 .embedded-ml-dashboard .metric-section + .metric-section {
     margin-top: 20px;
     padding-top: 18px;
     border-top: 1px solid #e5eaf0;
 }
 
+/* Style the embedded ml dashboard pagination wrapper. */
 .embedded-ml-dashboard .pagination-wrapper {
     width: 100%;
     padding-inline: 0 !important;
 }
 
+/* Style the embedded ml dashboard modal overlay. */
 .embedded-ml-dashboard .modal-overlay {
     position: fixed;
     inset: 0;
@@ -390,10 +445,12 @@ body.embedded-ml-dashboard {
     background: rgba(15, 23, 42, .58);
 }
 
+/* Style the embedded ml dashboard modal overlay. */
 .embedded-ml-dashboard .modal-overlay[hidden] {
     display: none;
 }
 
+/* Style the embedded ml dashboard modal container. */
 .embedded-ml-dashboard .modal-container {
     width: min(460px, 100%);
     padding: 0;
@@ -404,6 +461,7 @@ body.embedded-ml-dashboard {
     box-shadow: 0 18px 45px rgba(15, 23, 42, .24);
 }
 
+/* Style the embedded ml dashboard modal header. */
 .embedded-ml-dashboard .modal-header,
 .embedded-ml-dashboard .modal-footer {
     display: flex;
@@ -413,31 +471,37 @@ body.embedded-ml-dashboard {
     padding: 16px 20px;
 }
 
+/* Style the embedded ml dashboard modal header. */
 .embedded-ml-dashboard .modal-header {
     border-bottom: 1px solid #e5eaf0;
 }
 
+/* Style the embedded ml dashboard modal header. */
 .embedded-ml-dashboard .modal-header h2 {
     margin: 0;
     color: var(--analytics-text);
     font-size: 1rem;
 }
 
+/* Style the embedded ml dashboard modal body. */
 .embedded-ml-dashboard .modal-body {
     padding: 20px;
     color: var(--analytics-muted);
     line-height: 1.55;
 }
 
+/* Style the embedded ml dashboard modal body. */
 .embedded-ml-dashboard .modal-body p {
     margin: 0;
 }
 
+/* Style the embedded ml dashboard modal footer. */
 .embedded-ml-dashboard .modal-footer {
     justify-content: flex-end;
     border-top: 1px solid #e5eaf0;
 }
 
+/* Style the embedded ml dashboard modal close. */
 .embedded-ml-dashboard .modal-close {
     border: 0;
     background: transparent;
@@ -447,6 +511,7 @@ body.embedded-ml-dashboard {
     cursor: pointer;
 }
 
+/* Style the modal footer btn cancel. */
 .embedded-ml-dashboard .modal-footer .btn-cancel,
 .embedded-ml-dashboard .modal-footer .btn-primary {
     min-height: 38px;
@@ -458,33 +523,39 @@ body.embedded-ml-dashboard {
     cursor: pointer;
 }
 
+/* Style the modal footer btn cancel. */
 .embedded-ml-dashboard .modal-footer .btn-cancel {
     border: 1px solid #cbd5e1;
     background: #fff;
     color: #334155;
 }
 
+/* Style the modal footer btn primary. */
 .embedded-ml-dashboard .modal-footer .btn-primary {
     border: 1px solid var(--analytics-primary);
     background: var(--analytics-primary);
     color: #fff;
 }
 
+/* Style the embedded ml dashboard metric section title. */
 .embedded-ml-dashboard .metric-section-title {
     color: #475569 !important;
     font-size: 0.72rem;
 }
 
+/* Style the embedded ml dashboard model status grid. */
 .embedded-ml-dashboard .model-status-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* Style the embedded ml dashboard model detail grid. */
 .embedded-ml-dashboard .model-detail-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Style the embedded ml dashboard metric item. */
 .embedded-ml-dashboard .metric-item {
     display: flex;
     align-items: flex-start;
@@ -493,6 +564,7 @@ body.embedded-ml-dashboard {
     padding: 13px 14px;
 }
 
+/* Style the model performance card metric item. */
 .embedded-ml-dashboard .model-performance-card .metric-item {
     min-width: 0;
     min-height: 76px;
@@ -500,35 +572,42 @@ body.embedded-ml-dashboard {
     justify-content: flex-start;
 }
 
+/* Style the embedded ml dashboard metric detail. */
 .embedded-ml-dashboard .metric-detail {
     min-height: 110px !important;
 }
 
+/* Style the embedded ml dashboard metric value. */
 .embedded-ml-dashboard .metric-value {
     max-width: 100%;
     line-height: 1.5;
     overflow-wrap: anywhere;
 }
 
+/* Style the embedded ml dashboard text center. */
 .embedded-ml-dashboard .text-center {
     text-align: center;
 }
 
+/* Style the embedded ml dashboard badge success. */
 .embedded-ml-dashboard :where(.badge-success, .status-badge.success) {
     background: #e8f7ef !important;
     color: #16784b !important;
 }
 
+/* Style the embedded ml dashboard badge warning. */
 .embedded-ml-dashboard :where(.badge-warning, .status-badge.warning) {
     background: #fff5df !important;
     color: #9a5a00 !important;
 }
 
+/* Style the embedded ml dashboard badge danger. */
 .embedded-ml-dashboard :where(.badge-danger, .status-badge.danger) {
     background: #feecec !important;
     color: #b4232d !important;
 }
 
+/* Style the embedded ml dashboard ml confirm overlay. */
 .embedded-ml-dashboard .ml-confirm-overlay {
     position: fixed;
     inset: 0;
@@ -541,6 +620,7 @@ body.embedded-ml-dashboard {
     backdrop-filter: blur(3px);
 }
 
+/* Style the embedded ml dashboard ml confirm dialog. */
 .embedded-ml-dashboard .ml-confirm-dialog {
     width: min(440px, 100%);
     padding: 24px;
@@ -550,12 +630,14 @@ body.embedded-ml-dashboard {
     box-shadow: 0 24px 60px rgba(15, 23, 42, .24);
 }
 
+/* Style the embedded ml dashboard ml confirm dialog. */
 .embedded-ml-dashboard .ml-confirm-dialog h2 {
     margin: 0 0 9px;
     color: var(--analytics-text) !important;
     font-size: 1.15rem;
 }
 
+/* Style the embedded ml dashboard ml confirm dialog. */
 .embedded-ml-dashboard .ml-confirm-dialog p {
     margin: 0;
     color: var(--analytics-muted) !important;
@@ -563,6 +645,7 @@ body.embedded-ml-dashboard {
     line-height: 1.55;
 }
 
+/* Style the embedded ml dashboard ml confirm actions. */
 .embedded-ml-dashboard .ml-confirm-actions {
     display: flex;
     justify-content: flex-end;
@@ -570,6 +653,7 @@ body.embedded-ml-dashboard {
     margin-top: 20px;
 }
 
+/* Style the embedded ml dashboard notification. */
 .embedded-ml-dashboard .notification {
     position: fixed;
     top: 88px;
@@ -585,6 +669,7 @@ body.embedded-ml-dashboard {
     box-shadow: 0 12px 30px rgba(15, 23, 42, .2);
 }
 
+/* Style the embedded ml dashboard notification close. */
 .embedded-ml-dashboard .notification-close {
     border: 0;
     background: transparent;
@@ -593,6 +678,7 @@ body.embedded-ml-dashboard {
     cursor: pointer;
 }
 
+/* Style the pfims prediction notice. */
 .pfims-prediction-notice {
     position: fixed;
     top: 88px;
@@ -610,8 +696,11 @@ body.embedded-ml-dashboard {
     box-shadow: 0 10px 25px rgba(15, 23, 42, .16);
 }
 
+/* Style the pfims prediction notice success. */
 .pfims-prediction-notice.success { background: linear-gradient(135deg, #22a06b, #147a48); }
+/* Style the pfims prediction notice error. */
 .pfims-prediction-notice.error { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+/* Style the pfims prediction notice notification close. */
 .pfims-prediction-notice .notification-close {
     flex: 0 0 auto;
     padding: 2px 7px;
@@ -622,6 +711,7 @@ body.embedded-ml-dashboard {
     cursor: pointer;
 }
 
+/* Style the embedded ml dashboard spinner. */
 .embedded-ml-dashboard .spinner {
     display: inline-block;
     width: 18px;
@@ -634,14 +724,18 @@ body.embedded-ml-dashboard {
     animation: analytics-spin .8s linear infinite;
 }
 
+/* Define the analytics spin animation. */
 @keyframes analytics-spin {
+    /* Style the to. */
     to { transform: rotate(360deg); }
 }
 
+/* Style the embedded ml dashboard metric interpretation. */
 .embedded-ml-dashboard .metric-interpretation {
     border-left: 3px solid var(--analytics-primary) !important;
 }
 
+/* Style the embedded ml dashboard analytics footer. */
 .embedded-ml-dashboard .analytics-footer {
     padding: 5px 2px 2px;
     color: var(--analytics-muted);
@@ -649,10 +743,12 @@ body.embedded-ml-dashboard {
     text-align: right;
 }
 
+/* Style the embedded ml dashboard ml confirm dialog. */
 .embedded-ml-dashboard .ml-confirm-dialog {
     border-radius: 10px;
 }
 
+/* Style the embedded ml dashboard. */
 html[data-theme="dark"] .embedded-ml-dashboard {
     --analytics-text: #edf2f7;
     --analytics-muted: #b7c3d4;
@@ -662,10 +758,12 @@ html[data-theme="dark"] .embedded-ml-dashboard {
     --analytics-primary: #f8fafc;
 }
 
+/* Style the embedded ml dashboard analytics toolbar. */
 html[data-theme="dark"] .embedded-ml-dashboard :where(.analytics-toolbar, .analytics-panel, .snapshot-item, .metric-item, .table-responsive) {
     border-color: #344258 !important;
 }
 
+/* Style the analytics button btn primary. */
 html[data-theme="dark"] .embedded-ml-dashboard .analytics-button:not(.btn-primary),
 html[data-theme="dark"] .embedded-ml-dashboard .project-selection select {
     border-color: #46546a !important;
@@ -673,56 +771,68 @@ html[data-theme="dark"] .embedded-ml-dashboard .project-selection select {
     color: #edf2f7 !important;
 }
 
+/* Style the analytics button btn primary. */
 html[data-theme="dark"] .embedded-ml-dashboard .analytics-button.btn-primary {
     border-color: #f8fafc !important;
     background: #f8fafc !important;
     color: #111827 !important;
 }
 
+/* Style the embedded ml dashboard prediction result. */
 html[data-theme="dark"] .embedded-ml-dashboard .prediction-result {
     background: #111827 !important;
     color: #edf2f7 !important;
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 760px) {
+    /* Style the embedded ml dashboard prediction row. */
     .embedded-ml-dashboard .prediction-row {
         grid-template-columns: minmax(0, 1fr) !important;
     }
 
+    /* Style the embedded ml dashboard analytics toolbar. */
     .embedded-ml-dashboard .analytics-toolbar,
     .embedded-ml-dashboard .analytics-panel .card-header {
         align-items: stretch;
         flex-direction: column;
     }
 
+    /* Style the embedded ml dashboard header actions. */
     .embedded-ml-dashboard .header-actions {
         width: 100%;
         flex-wrap: wrap;
     }
 
+    /* Style the header actions analytics button. */
     .embedded-ml-dashboard .header-actions .analytics-button {
         flex: 1 1 150px;
     }
 
+    /* Style the embedded ml dashboard project snapshot grid. */
     .embedded-ml-dashboard .project-snapshot-grid,
     .embedded-ml-dashboard .model-status-grid,
     .embedded-ml-dashboard .model-detail-grid {
         grid-template-columns: 1fr;
     }
 
+    /* Style the embedded ml dashboard form actions. */
     .embedded-ml-dashboard .form-actions {
         flex-direction: column;
     }
 
+    /* Style the prediction result result row. */
     .embedded-ml-dashboard .prediction-result .result-row {
         flex-direction: column;
         gap: 3px;
     }
 
+    /* Style the prediction result result value. */
     .embedded-ml-dashboard .prediction-result .result-value {
         text-align: left;
     }
 
+    /* Style the form actions analytics button. */
     .embedded-ml-dashboard .form-actions .analytics-button {
         width: 100%;
     }
@@ -736,10 +846,14 @@ html[data-theme="dark"] .embedded-ml-dashboard .prediction-result {
     align-items: end;
     margin-bottom: 16px;
 }
+/* Style the performance controls filter control. */
 .embedded-ml-dashboard .performance-controls .filter-control {
     flex: 1 1 220px;
     min-width: 0;
 }
+/* Style the embedded ml dashboard model metrics. */
 .embedded-ml-dashboard #modelMetrics p { overflow-wrap: anywhere; }
+/* Style the embedded ml dashboard model metrics. */
 .embedded-ml-dashboard #modelMetrics summary { cursor: pointer; font-weight: 600; }
+/* Style the model metrics metric label. */
 .embedded-ml-dashboard #modelMetrics .metric-label { white-space: normal; }

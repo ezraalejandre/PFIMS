@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+// Group the auth actions.
 class AuthController extends Controller
 {
 
+    // Get the login.
     public function login(Request $request)
     {
+        // Run this step if the input check matches.
         if (is_string($request->input('email'))) {
             $request->merge(['email' => mb_strtolower(trim($request->input('email')))]);
         }
@@ -18,9 +21,11 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'max:4096'],
         ]);
         $user = User::where('email', $credentials['email'])->first();
+        // Return early if the user and status checks match.
         if (! $user || $user->status !== 'Active' || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json(['success' => false, 'message' => 'Invalid email or password'], 401);
         }
+        // Return early if the first login verification required is set.
         if ($user->first_login_verification_required) {
             return response()->json(['success' => false, 'message' => 'Complete first-login verification through the sign-in page.'], 403);
         }
@@ -82,6 +87,7 @@ public function profile(Request $request)
     ]);
 }
 
+// Update field.
 public function updateField(Request $request)
 {
     $validated = $request->validate([
@@ -104,6 +110,7 @@ public function updateField(Request $request)
             ]]
         );
 
+        // Return early if the submitted fields fail validation.
         if ($emailValidator->fails()) {
             return response()->json([
                 "success" => false,
@@ -130,6 +137,7 @@ public function updateField(Request $request)
     ]);
 }
 
+// Get the upload profile photo.
 public function uploadProfilePhoto(Request $request)
 {
     $request->validate([
@@ -162,6 +170,7 @@ public function uploadProfilePhoto(Request $request)
 // Flutter decodes this directly into bytes for MemoryImage.
 private function photoDataUri(User $user): ?string
 {
+    // Return early if the profile photo data and profile photo mime checks match.
     if (!$user->profile_photo_data || !$user->profile_photo_mime) {
         return null;
     }
@@ -170,6 +179,7 @@ private function photoDataUri(User $user): ?string
 }
 
 
+// Get the change password.
 public function changePassword(Request $request)
 {
     $request->validate([
@@ -180,6 +190,7 @@ public function changePassword(Request $request)
     /** @var User $user */
     $user = $request->user();
 
+    // Return early if the password check matches.
     if (!Hash::check($request->current_password, $user->password)) {
         return response()->json([
             "success" => false,

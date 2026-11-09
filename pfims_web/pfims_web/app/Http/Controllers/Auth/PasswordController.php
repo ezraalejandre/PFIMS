@@ -11,8 +11,10 @@ use Illuminate\Validation\Rules\Password;
 use App\Models\AppNotification;
 use Illuminate\Validation\ValidationException;
 
+// Group the password actions.
 class PasswordController extends Controller
 {
+    // Save changes to the password record.
     public function update(Request $request)
     {
         $request->validate([
@@ -23,6 +25,7 @@ class PasswordController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
+        // Stop if the password check matches.
         if (Hash::check($request->new_password, $user->password)) {
             throw ValidationException::withMessages([
                 'new_password' => ['The new password must be different from your current password.'],

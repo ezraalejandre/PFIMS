@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the expense table.
 class Expense extends Model
 {
     protected $table = 'expense_tbl';
@@ -16,11 +17,13 @@ class Expense extends Model
         'proof_file_path', 'proof_file_name',
     ];
 
+    // Link this record to its project.
     public function project()
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');
     }
 
+    // Link this record to its category.
     public function category()
     {
         return $this->belongsTo(ExpenseCategory::class, 'expense_category_id', 'expense_category_id');

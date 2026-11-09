@@ -10,6 +10,7 @@ use ZipArchive;
 class ReportFileBuilder
 {
     private string $asOf;
+    // Build the report file builder output.
     public function build(string $format, string $title, string $scope, array $columns, array $rows, ?array $totals, array $design = []): string
     {
         $this->asOf = $design['as_of'] ?? now()->format('F j, Y');
@@ -20,12 +21,15 @@ class ReportFileBuilder
         };
     }
 
+    // Get the total rows.
     private function totalRows(?array $totals): array
     {
+        // Return early if the totals is null.
         if ($totals === null) return [];
         return array_is_list($totals) ? $totals : [$totals];
     }
 
+    // Get the csv.
     private function csv(string $title, string $scope, array $columns, array $rows, ?array $totals): string
     {
         $stream = fopen('php://temp', 'w+');
@@ -35,9 +39,11 @@ class ReportFileBuilder
         fputcsv($stream, [$scope]);
         fputcsv($stream, []);
         fputcsv($stream, array_map('mb_strtoupper', array_values($columns)));
+        // Process each row.
         foreach ($rows as $row) {
             fputcsv($stream, array_map(fn ($key) => $this->safeCsv($row[$key] ?? ''), array_keys($columns)));
         }
+        // Process each total row.
         foreach ($this->totalRows($totals) as $totalRow) {
             fputcsv($stream, array_map(fn ($key) => $this->safeCsv($totalRow[$key] ?? ''), array_keys($columns)));
         }
@@ -47,14 +53,17 @@ class ReportFileBuilder
         return $result;
     }
 
+    // Get the safe csv.
     private function safeCsv(mixed $value): mixed
     {
+        // Return early if the value checks match.
         if (is_string($value) && preg_match('/^[\s]*[=+\-@]/u', $value)) {
             return "'".$value;
         }
         return $value;
     }
 
+    // Get the pdf.
     private function pdf(string $title, string $scope, array $columns, array $rows, ?array $totals, array $design): string
     {
         $headerColor = match ($design['header_color'] ?? '') { 'orange' => '#c96c00', 'green' => '#176638', 'navy' => '#1a2b3c', default => '#f8fafc' };
@@ -64,9 +73,11 @@ class ReportFileBuilder
         $head = implode('', array_map(fn ($key, $label) => '<th'.($this->isTotalColumn($key) ? ' class="total-column"' : '').'>'.$this->html(mb_strtoupper($label)).'</th>', array_keys($columns), array_values($columns)));
         $body = '';
         $expenseSummary = count($this->totalRows($totals)) === 3 && isset($columns['project_name']);
+        // Process each row.
         foreach ($rows as $row) {
             $body .= $this->htmlRow($columns, $row, false, $expenseSummary ? 'project-row' : '');
         }
+        // Process each total row.
         foreach ($this->totalRows($totals) as $index => $totalRow) {
             $body .= $this->htmlRow($columns, $totalRow, true, $expenseSummary ? ['current', 'previous', 'month'][$index] : '');
         }
@@ -97,9 +108,11 @@ class ReportFileBuilder
         return $dompdf->output();
     }
 
+    // Get the html row.
     private function htmlRow(array $columns, array $row, bool $total = false, string $rowClass = ''): string
     {
         $cells = '';
+        // Process each key.
         foreach (array_keys($columns) as $key) {
             $value = $row[$key] ?? '';
             $number = is_numeric($value) && ! in_array($key, ['project_name', 'item_name', 'category_name', 'supplier_name', 'unit_name', 'stock_status'], true);
@@ -109,11 +122,13 @@ class ReportFileBuilder
         return '<tr'.($total || $rowClass !== '' ? ' class="'.trim(($total ? 'total ' : '').$rowClass).'"' : '').'>'.$cells.'</tr>';
     }
 
+    // Get the html.
     private function html(mixed $value): string
     {
         return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
+    // Get the xlsx.
     private function xlsx(string $title, string $scope, array $columns, array $rows, ?array $totals, array $design): string
     {
         $headerRgb = match ($design['header_color'] ?? '') { 'orange' => 'FFC96C00', 'green' => 'FF176638', 'navy' => 'FF1A2B3C', default => 'FFF8FAFC' };
@@ -121,9 +136,11 @@ class ReportFileBuilder
         $compact = ($design['table_spacing'] ?? 'standard') === 'compact';
         $file = tempnam(sys_get_temp_dir(), 'pfims-report-');
         $zip = new ZipArchive;
+        // Stop if the file is not true.
         if ($zip->open($file, ZipArchive::OVERWRITE) !== true) {
             throw new \RuntimeException('Could not create the Excel report.');
         }
+        // Try this action and handle any errors below.
         try {
             $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?>'
                 .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -193,6 +210,7 @@ class ReportFileBuilder
             $expenseSummary = count($this->totalRows($totals)) === 3 && isset($columns['project_name']);
             $headerCells = '';
             $index = 0;
+            // Process each label.
             foreach ($columns as $key => $label) {
                 $headerCells .= $this->xlsxCell($this->excelColumn($index + 1).'9', mb_strtoupper($label),
                     $this->isTotalColumn($key) ? ($expenseSummary ? 16 : 7) : 2);
@@ -200,14 +218,17 @@ class ReportFileBuilder
             }
             $xmlRows .= '<row r="9" ht="'.($compact ? '30' : '42').'" customHeight="1">'.$headerCells.'</row>';
             $rowNumber = 10;
+            // Process each row.
             foreach ($rows as $row) {
                 $xmlRows .= $this->xlsxRow($rowNumber++, $columns, $row, false, '', $expenseSummary);
             }
+            // Process each total row.
             foreach ($this->totalRows($totals) as $index => $totalRow) {
                 $xmlRows .= $this->xlsxRow($rowNumber++, $columns, $totalRow, true,
                     $expenseSummary ? ['current', 'previous', 'month'][$index] : '');
             }
             $widths = '<cols>';
+            // Process each key.
             foreach (array_keys($columns) as $index => $key) {
                 $widths .= '<col min="'.($index + 1).'" max="'.($index + 1).'" width="'.($index === 0 ? 32 : 20).'" customWidth="1"/>';
             }
@@ -241,13 +262,17 @@ class ReportFileBuilder
         return $data;
     }
 
+    // Get the xlsx row.
     private function xlsxRow(int $number, array $columns, array $row, bool $total = false, string $balanceType = '', bool $expenseSummary = false): string
     {
         $cells = '';
+        // Process each key.
         foreach (array_keys($columns) as $index => $key) {
             $value = $row[$key] ?? '';
+            // Run this step if the value and key checks match.
             if ($value !== '' && $value !== null && str_ends_with($key, '_date')) {
                 $date = \DateTimeImmutable::createFromFormat('!Y-m-d', substr((string) $value, 0, 10), new \DateTimeZone('UTC'));
+                // Run this step if the date is not false.
                 if ($date !== false) {
                     $value = ((int) $date->format('U') / 86400) + 25569;
                     $cells .= $this->xlsxCell($this->excelColumn($index + 1).$number, $value, 5);
@@ -269,8 +294,10 @@ class ReportFileBuilder
         return '<row r="'.$number.'">'.$cells.'</row>';
     }
 
+    // Get the xlsx cell.
     private function xlsxCell(string $reference, mixed $value, int $style = 0, bool $forceText = false): string
     {
+        // Return early if the force text and value checks match.
         if (! $forceText && is_numeric($value)) {
             return '<c r="'.$reference.'" s="'.$style.'"><v>'.(float) $value.'</v></c>';
         }
@@ -278,9 +305,11 @@ class ReportFileBuilder
             .$this->html($value).'</t></is></c>';
     }
 
+    // Get the excel column.
     private function excelColumn(int $index): string
     {
         $result = '';
+        // Repeat while the index is above 0.
         while ($index > 0) {
             $index--;
             $result = chr(65 + $index % 26).$result;
@@ -289,6 +318,7 @@ class ReportFileBuilder
         return $result;
     }
 
+    // Check the total column condition.
     private function isTotalColumn(string $key): bool
     {
         return $key === 'total' || str_starts_with($key, 'total_');

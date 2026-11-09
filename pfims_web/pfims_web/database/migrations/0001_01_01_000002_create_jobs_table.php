@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('jobs', function (Blueprint $table) {
             $table->id();
             $table->string('queue')->index();
@@ -21,6 +22,7 @@ return new class extends Migration
             $table->unsignedInteger('created_at');
         });
 
+        // Update this part of the database structure.
         Schema::create('job_batches', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->string('name');
@@ -34,6 +36,7 @@ return new class extends Migration
             $table->integer('finished_at')->nullable();
         });
 
+        // Update this part of the database structure.
         Schema::create('failed_jobs', function (Blueprint $table) {
             $table->id();
             $table->string('uuid')->unique();
@@ -50,8 +53,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('jobs');
+        // Update this part of the database structure.
         Schema::dropIfExists('job_batches');
+        // Update this part of the database structure.
         Schema::dropIfExists('failed_jobs');
     }
 };

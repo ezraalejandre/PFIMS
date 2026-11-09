@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+// Link records to the project phase table.
 class ProjectPhase extends Model
 {
     protected $table = 'project_phase_tbl';

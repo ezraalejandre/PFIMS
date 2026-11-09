@@ -2,13 +2,14 @@
 
 namespace App\Services\ML;
 
-/** Separate promotion requirements; evaluating this policy never writes model artifacts. */
+/** Check whether a model can be activated. This check does not save model files. */
 class ModelActivationPolicy
 {
     public const AGREED_MAE_MAX_PERCENT = 15.0;
 
     public const STRETCH_MAE_PERCENT = 10.0;
 
+    // Get the mae target.
     public function maeTarget(array $metrics): array
     {
         $median = $metrics['target_median'] ?? null;
@@ -23,6 +24,7 @@ class ModelActivationPolicy
             'actual_percent' => $valid && $this->finite($mae) ? round($mae / $median * 100, 4) : null];
     }
 
+    // Get the assess cost.
     public function assessCost(array $metrics, array $evidence = []): array
     {
         $checks = $this->evidenceChecks($evidence);
@@ -51,17 +53,20 @@ class ModelActivationPolicy
         ]);
     }
 
+    // Get the assess detector.
     public function assessDetector(array $metrics, array $evidence = []): array
     {
         $checks = $this->evidenceChecks($evidence);
         $minimum = ['classification_accuracy' => 80, 'precision' => 75, 'recall' => 80,
             'f1_score' => 80, 'balanced_accuracy' => 80];
+        // Process each limit.
         foreach ($minimum as $name => $limit) {
             $checks[$name.'_minimum'] = $this->atLeast($metrics[$name] ?? null, $limit);
         }
         $checks['both_outcome_classes_present'] = ($metrics['actual_overruns'] ?? 0) > 0
             && ($metrics['actual_non_overruns'] ?? 0) > 0;
         $active = $evidence['active_model_evaluation'] ?? [];
+        // Process each name.
         foreach (['f1_score', 'balanced_accuracy', 'recall'] as $name) {
             $checks['no_worse_than_active_'.$name] = $this->finite($active[$name] ?? null)
                 && $this->atLeast($metrics[$name] ?? null, $active[$name]);
@@ -74,6 +79,7 @@ class ModelActivationPolicy
         ]);
     }
 
+    // Get the evidence checks.
     private function evidenceChecks(array $evidence): array
     {
         $training = $evidence['training_project_ids'] ?? [];
@@ -89,6 +95,7 @@ class ModelActivationPolicy
         ];
     }
 
+    // Get the result.
     private function result(string $kind, array $checks, array $targets): array
     {
         $failed = array_keys(array_filter($checks, fn ($passed) => ! $passed));
@@ -99,16 +106,19 @@ class ModelActivationPolicy
             'activation_performed' => false];
     }
 
+    // Get the finite.
     private function finite(mixed $value): bool
     {
         return is_numeric($value) && is_finite((float) $value);
     }
 
+    // Get the at most.
     private function atMost(mixed $value, float $limit): bool
     {
         return $this->finite($value) && (float) $value >= 0 && (float) $value <= $limit;
     }
 
+    // Get the at least.
     private function atLeast(mixed $value, float $limit): bool
     {
         return $this->finite($value) && (float) $value >= $limit;

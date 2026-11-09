@@ -8,10 +8,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\AuditFeatureSchema;
 
+// Group the audit log actions.
 class AuditLogController extends Controller
 {
+    // Set up the values this class needs.
     public function __construct(private readonly AuditFeatureSchema $schema) {}
 
+    // Get the latest.
     public function latest(Request $request)
     {
         abort_unless(strtolower((string) $request->user()?->role) === 'admin', 403);
@@ -25,6 +28,7 @@ class AuditLogController extends Controller
         ]);
     }
 
+    // List the audit log records.
     public function index(Request $request)
     {
         abort_unless(strtolower((string) $request->user()?->role) === 'admin', 403);
@@ -42,6 +46,7 @@ class AuditLogController extends Controller
 
         $latestAuditId = (int) (AuditLog::query()->max('id') ?? 0);
         $query = AuditLog::query()->latest('created_at')->latest('id');
+        // Run this step if the filters search check matches.
         if ($search = trim((string) ($filters['search'] ?? ''))) {
             $escaped = addcslashes($search, '%_\\');
             $query->where(fn ($q) => $q->where('details', 'like', "%{$escaped}%")
@@ -49,11 +54,17 @@ class AuditLogController extends Controller
                 ->orWhere('user_email', 'like', "%{$escaped}%")
                 ->orWhere('subject_id', 'like', "%{$escaped}%"));
         }
+        // Run this step if the filters date from has a value.
         if (! empty($filters['date_from'])) $query->whereDate('created_at', '>=', $filters['date_from']);
+        // Run this step if the filters date to has a value.
         if (! empty($filters['date_to'])) $query->whereDate('created_at', '<=', $filters['date_to']);
+        // Run this step if the filters user id has a value.
         if (! empty($filters['user_id'])) $query->where('user_id', $filters['user_id']);
+        // Run this step if the filters role has a value.
         if (! empty($filters['role'])) $query->where('user_role', $filters['role']);
+        // Run this step if the filters action has a value.
         if (! empty($filters['action'])) $query->where('action_type', $filters['action']);
+        // Run this step if the filters module has a value.
         if (! empty($filters['module'])) $query->where('module', $filters['module']);
 
         $logs = $query->paginate((int) ($filters['per_page'] ?? 20))->withQueryString();

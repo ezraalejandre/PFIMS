@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-/** Identical formulas for observed training snapshots and current prediction inputs. */
+/** Use the same formulas for saved training records and new prediction inputs. */
 class ProjectCostFeatureBuilder
 {
     public const FEATURE_NAMES = [
@@ -20,6 +20,7 @@ class ProjectCostFeatureBuilder
         'recent_burn_remaining_budget_days', 'budget_runway_available',
     ];
 
+    // Get the catalog.
     public static function catalog(): array
     {
         return [
@@ -52,6 +53,7 @@ class ProjectCostFeatureBuilder
         ];
     }
 
+    // Build the project cost feature builder output.
     public function build(array $input): array
     {
         $number = static fn ($name) => isset($input[$name]) && is_numeric($input[$name])

@@ -24,8 +24,10 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+// Group the report actions.
 class ReportController extends Controller
 {
+    // Set up the values this class needs.
     public function __construct(private AuditLogService $audit) {}
 
     private const REPORT_TABS = ['expense_summary', 'inventory', 'contracts'];
@@ -118,6 +120,7 @@ class ReportController extends Controller
         ],
     ];
 
+    // List the report records.
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -130,12 +133,15 @@ class ReportController extends Controller
 
         $role = $this->role();
         $query = Report::query()->generated()->forRole($role);
+        // Run this step if the validated dataset has a value.
         if (! empty($validated['dataset'])) {
             $this->authorizeDataset($validated['dataset']);
             $query->where('dataset_key', $validated['dataset']);
         }
+        // Run this step if the validated search has a value.
         if (! empty($validated['search'])) {
             $search = $this->escapeLike($validated['search']);
+            // Group these checks when finding matching records.
             $query->where(function ($inner) use ($search) {
                 $inner->where('title', 'like', "%{$search}%")
                     ->orWhere('file_name', 'like', "%{$search}%")
@@ -143,9 +149,11 @@ class ReportController extends Controller
                     ->orWhere('uploaded_by', 'like', "%{$search}%");
             });
         }
+        // Run this step if the validated start date has a value.
         if (! empty($validated['start_date'])) {
             $query->whereDate('generated_at', '>=', $validated['start_date']);
         }
+        // Run this step if the validated end date has a value.
         if (! empty($validated['end_date'])) {
             $query->whereDate('generated_at', '<=', $validated['end_date']);
         }
@@ -153,6 +161,7 @@ class ReportController extends Controller
         return response()->json($query->latest('generated_at')->paginate((int) ($validated['per_page'] ?? 20)));
     }
 
+    // Get the page.
     public function page(): View
     {
         $role = $this->role();
@@ -163,11 +172,13 @@ class ReportController extends Controller
         ]);
     }
 
+    // Get the catalog.
     public function catalog(): JsonResponse
     {
         return response()->json($this->catalogPayload($this->role()));
     }
 
+    // Get the catalog payload.
     private function catalogPayload(string $role): array
     {
         $datasets = collect(self::REPORT_TABS)
@@ -203,6 +214,7 @@ class ReportController extends Controller
         ];
     }
 
+    // Get the data.
     public function data(Request $request, string $dataset): JsonResponse
     {
         $definition = $this->authorizeDataset($dataset);
@@ -237,6 +249,7 @@ class ReportController extends Controller
         ]);
     }
 
+    // Get the export.
     public function export(Request $request): StreamedResponse|JsonResponse
     {
         $validated = $request->validate([
@@ -254,13 +267,16 @@ class ReportController extends Controller
         ]);
 
         $definition = $this->authorizeDataset($validated['dataset']);
+        // Stop if the definition columns columns is not empty.
         if (array_diff($validated['columns'], array_keys($definition['columns'])) !== []) {
             throw ValidationException::withMessages(['columns' => 'One or more selected columns are unavailable.']);
         }
+        // Stop if the validated dataset and validated format checks match.
         if (! in_array($validated['dataset'], self::REPORT_TABS, true) && $validated['format'] !== 'csv') {
             throw ValidationException::withMessages(['format' => 'This legacy report is available only as CSV.']);
         }
 
+        // Return early if the validated dataset check matches.
         if (in_array($validated['dataset'], self::REPORT_TABS, true)) {
             return $this->exportCurrentReport($validated, $definition);
         }
@@ -277,6 +293,7 @@ class ReportController extends Controller
         $csv = $this->buildCsv($validated['title'], $definition, $validated['columns'], $validated['sections'] ?? ['summary', 'data'], $filters, $rows, $kpis, $chart);
         Storage::disk('protected')->put($filePath, $csv);
 
+        // Try this action and handle any errors below.
         try {
             $report = Report::create([
                 'report_id' => Report::generateReportId(), 'title' => $validated['title'],
@@ -302,6 +319,7 @@ class ReportController extends Controller
         return $publicDisk->download($report->file_path, $report->file_name, ['X-Report-Id' => $report->report_id]);
     }
 
+    // Get the preview.
     public function preview(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -315,17 +333,20 @@ class ReportController extends Controller
             'row_limit' => 'nullable|integer|min:1|max:10000',
         ]);
         $definition = $this->authorizeDataset($validated['dataset']);
+        // Stop if the definition columns columns is not empty.
         if (array_diff($validated['columns'], array_keys($definition['columns'])) !== []) {
             throw ValidationException::withMessages(['columns' => 'One or more selected columns are unavailable.']);
         }
         $filters = $this->validatedFilters(Request::create('/', 'GET', $validated['filters'] ?? []));
         $rows = $this->datasetRows($validated['dataset'], $filters);
+        // Run this step if the validated dataset equals expense summary.
         if ($validated['dataset'] === 'expense_summary') {
             $rows = $this->summaryRowsForColumns($rows, $validated['columns']);
         }
         $rows = $this->limitExportRows($rows, $validated['row_limit'] ?? null);
         $balances = $validated['dataset'] === 'expense_summary'
             ? $this->summaryBalances($rows, $filters, $validated['columns']) : [];
+        // Run this step if the validated dataset equals contracts.
         if ($validated['dataset'] === 'contracts') {
             $balances = ['totals' => $this->contractTotals($rows, $validated['columns'])];
         }
@@ -342,17 +363,20 @@ class ReportController extends Controller
         ]);
     }
 
+    // Export current report.
     private function exportCurrentReport(array $validated, array $definition): StreamedResponse
     {
         $filters = $this->validatedFilters(Request::create('/', 'GET', $validated['filters'] ?? []));
         $rows = $this->datasetRows($validated['dataset'], $filters);
         $columns = array_intersect_key($definition['columns'], array_flip($validated['columns']));
+        // Run this step if the validated dataset equals expense summary.
         if ($validated['dataset'] === 'expense_summary') {
             $rows = $this->summaryRowsForColumns($rows, array_keys($columns));
         }
         $rows = $this->limitExportRows($rows, $validated['row_limit'] ?? null);
         $balances = $validated['dataset'] === 'expense_summary'
             ? $this->summaryBalances($rows, $filters, array_keys($columns)) : [];
+        // Run this step if the validated dataset equals contracts.
         if ($validated['dataset'] === 'contracts') {
             $balances = ['totals' => $this->contractTotals($rows, array_keys($columns))];
         }
@@ -365,6 +389,7 @@ class ReportController extends Controller
             .'-'.strtolower(Str::random(4)).'.'.$format;
         $filePath = "reports/exports/{$role}/{$fileName}";
         Storage::disk('protected')->put($filePath, $file);
+        // Try this action and handle any errors below.
         try {
             $report = Report::create([
                 'report_id' => Report::generateReportId(), 'title' => $validated['title'],
@@ -388,6 +413,7 @@ class ReportController extends Controller
         return $publicDisk->download($report->file_path, $report->file_name, ['X-Report-Id' => $report->report_id]);
     }
 
+    // Get the report scope.
     private function reportScope(string $dataset, array $filters = []): string
     {
         return match ($dataset) {
@@ -398,10 +424,12 @@ class ReportController extends Controller
         };
     }
 
+    // Get the download.
     public function download(string $id): StreamedResponse|JsonResponse
     {
         $report = Report::query()->generated()->where('report_id', $id)->firstOrFail();
         $this->authorizeReport($report);
+        // Return early if the file path check matches.
         if (! Storage::disk('protected')->exists($report->file_path)) {
             return response()->json(['message' => 'The exported file is no longer available.'], 404);
         }
@@ -414,6 +442,7 @@ class ReportController extends Controller
         return $publicDisk->download($report->file_path, $report->file_name);
     }
 
+    // Delete the selected report record.
     public function destroy(string $id): JsonResponse
     {
         $report = Report::query()->generated()->where('report_id', $id)->firstOrFail();
@@ -424,10 +453,13 @@ class ReportController extends Controller
         return response()->json(['message' => 'Export history entry deleted.']);
     }
 
+    // Get the validated filters.
     private function validatedFilters(Request $request): array
     {
+        // Process each date part.
         foreach (['report_month', 'report_day', 'report_year'] as $datePart) {
             $value = $request->input($datePart);
+            // Run this step if the value checks match.
             if (is_string($value) && ctype_digit($value)) {
                 $request->merge([$datePart => (int) $value]);
             }
@@ -451,11 +483,14 @@ class ReportController extends Controller
         return array_filter($validated, fn ($value) => $value !== null && $value !== '');
     }
 
+    // Get the dataset rows.
     private function datasetRows(string $dataset, array $filters): Collection
     {
+        // Return early if the dataset equals expense summary.
         if ($dataset === 'expense_summary') {
             return $this->expenseSummaryRows($filters);
         }
+        // Return early if the dataset equals contracts.
         if ($dataset === 'contracts') {
             return $this->contractRows($filters);
         }
@@ -469,44 +504,53 @@ class ReportController extends Controller
             ->map(fn ($value) => is_numeric($value) ? (float) $value : $value)->all());
     }
 
+    // Get the expense summary rows.
     private function expenseSummaryRows(array $filters, ?string $cutoffDate = null): Collection
     {
         $cutoffDate ??= $this->summaryCutoffDate($filters)->toDateString();
         $projects = DB::table('project_tbl as p')
             ->select('p.project_id', 'p.project_name', 'p.status')
             ->where(fn ($query) => $query->whereDate('p.start_date', '<=', $cutoffDate)->orWhereNull('p.start_date'));
+        // Run this step if the filters project status equals completed.
         if (($filters['project_status'] ?? 'Ongoing') === 'Completed') {
             $projects->where('p.status', 'Completed');
         } else {
             $projects->whereNotIn('p.status', ['Completed', 'Pending']);
         }
+        // Run this step if the filters project id has a value.
         if (! empty($filters['project_id'])) {
             $projects->where('p.project_id', $filters['project_id']);
         }
+        // Run this step if the filters status has a value.
         if (! empty($filters['status'])) {
             $projects->where('p.status', $filters['status']);
         }
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $projects->where('p.project_name', 'like', '%'.$this->escapeLike($filters['search']).'%');
         }
         $projects = $projects->orderBy('p.project_name')->get();
         $ids = $projects->pluck('project_id')->all();
         $blank = array_fill_keys(array_keys(self::SUMMARY_COLUMNS), 0.0);
+        // Build a result for each record.
         $rows = $projects->map(function ($project) use ($blank) {
             return array_merge($blank, ['project_id' => (int) $project->project_id,
                 'project_name' => $project->project_name]);
         })->keyBy('project_id');
 
+        // Run this step if the ids is not empty.
         if ($ids !== []) {
             $expenses = DB::table('fin_expense_tbl as e')
                 ->join('fin_expense_category_tbl as c', 'c.fin_category_id', '=', 'e.fin_category_id')
                 ->whereIn('e.project_id', $ids)
                 ->select('e.project_id', 'e.amount', 'c.category_code', 'c.classification');
+            // Run this step if the value check matches.
             if (\Illuminate\Support\Facades\Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
                 $expenses->whereNull('e.inventory_transaction_id');
             }
             $this->applyDateFilters($expenses, $filters, 'e.expense_date');
             $expenses->whereDate('e.expense_date', '<=', $cutoffDate);
+            // Run this step if the filters expense type does not equal overall.
             if (($filters['expense_type'] ?? 'Overall') !== 'Overall') {
                 $expenses->where('c.classification', strtolower($filters['expense_type']));
             } else {
@@ -524,6 +568,7 @@ class ReportController extends Controller
                 'DELIVERY' => 'delivery_expense',
                 'DELIVERY_EXPENSE' => 'delivery_expense',
             ];
+            // Process each expense.
             foreach ($expenses->get() as $expense) {
                 $row = $rows->get((int) $expense->project_id);
                 $column = $expense->classification === 'admin' ? 'administrative_expenses'
@@ -533,6 +578,7 @@ class ReportController extends Controller
                 $rows->put((int) $expense->project_id, $row);
             }
 
+            // Run this step if the filters expense type checks match.
             if (($filters['expense_type'] ?? 'Overall') !== 'Admin'
                 && \Illuminate\Support\Facades\Schema::hasTable('inventory_cost_allocation_tbl')) {
                 $allocations = DB::table('inventory_cost_allocation_tbl as a')
@@ -541,6 +587,7 @@ class ReportController extends Controller
                     ->select('a.project_id', 'a.allocated_amount');
                 $this->applyDateFilters($allocations, $filters, 'movement.transaction_date');
                 $allocations->whereDate('movement.transaction_date', '<=', $cutoffDate);
+                // Process each allocation.
                 foreach ($allocations->get() as $allocation) {
                     $row = $rows->get((int) $allocation->project_id);
                     $row['construction_supply'] += (float) $allocation->allocated_amount;
@@ -550,18 +597,24 @@ class ReportController extends Controller
             }
         }
 
+        // Build a result for each record.
         return $rows->values()->map(function (array $row) {
+            // Process each label.
             foreach (self::SUMMARY_COLUMNS as $key => $label) {
+                // Run this step if the key does not equal project name.
                 if ($key !== 'project_name') $row[$key] = round((float) $row[$key], 2);
             }
             return $row;
         });
     }
 
+    // Get the contract totals.
     private function contractTotals(Collection $rows, array $columns): array
     {
         $totals = ['project_name' => 'TOTAL'];
+        // Process each key.
         foreach ($columns as $key) {
+            // Run this step if the key check matches.
             if (! in_array($key, ['project_name', 'start_date', 'actual_end_date'], true)) {
                 $totals[$key] = $rows->sum(fn ($row) => (int) round((float) ($row[$key] ?? 0) * 100)) / 100;
             }
@@ -569,6 +622,7 @@ class ReportController extends Controller
         return $totals;
     }
 
+    // Get the contract rows.
     private function contractRows(array $filters): Collection
     {
         $query = DB::table('fin_project_contract_tbl as c')
@@ -580,12 +634,14 @@ class ReportController extends Controller
         $query->whereDate('p.start_date', '<=', $cutoff);
         $ledger = app(ProjectCostLedger::class);
 
+        // Build a result for each record.
         return $query->orderByDesc('c.contract_id')->limit(10000)->get()->map(function ($contract) use ($ledger, $cutoff) {
             $price = (float) ($contract->budget_amount ?? $contract->original_contract_price ?? 0);
             $additional = (float) $contract->additional_works_contract;
             $payment = (float) $contract->original_payment_received;
             $additionalPayment = (float) $contract->additional_works_payment;
             $cost = (float) $ledger->directExpenses()->where('cost_expense.project_id', $contract->project_id)->whereDate('cost_expense.expense_date', '<=', $cutoff)->sum('cost_expense.amount');
+            // Run this step if the value check matches.
             if (Schema::hasTable('inventory_cost_allocation_tbl')) {
                 $cost += (float) DB::table('inventory_cost_allocation_tbl as allocation')
                     ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'allocation.out_transaction_id')
@@ -615,6 +671,7 @@ class ReportController extends Controller
         });
     }
 
+    // Get the project query.
     private function projectQuery(array $filters): Builder
     {
         $query = DB::table('project_tbl as p')->leftJoin('budgets_tbl as b', 'b.project_id', '=', 'p.project_id');
@@ -633,24 +690,29 @@ class ReportController extends Controller
         return $query->orderByDesc('p.start_date')->orderBy('p.project_name');
     }
 
+    // Get the finance query.
     private function financeQuery(array $filters): Builder
     {
         $query = DB::table('fin_expense_tbl as fe')->join('fin_expense_category_tbl as fc', 'fc.fin_category_id', '=', 'fe.fin_category_id')
             ->leftJoin('project_tbl as p', 'p.project_id', '=', 'fe.project_id')
             ->select(['fe.fin_expense_id', 'fe.expense_date', DB::raw("COALESCE(p.project_name, 'OFFICE') as project_name"),
                 'fc.category_name', 'fc.classification', 'fe.expense_description', 'fe.amount', 'fe.remarks']);
+        // Run this step if the value check matches.
         if (\Illuminate\Support\Facades\Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
             $query->addSelect(DB::raw("CASE WHEN fe.inventory_transaction_id IS NOT NULL THEN 'Storage Purchase' WHEN fe.project_id IS NOT NULL THEN 'Direct Project Expense' ELSE 'Other Expense' END as cost_role"));
         } else {
             $query->addSelect(DB::raw("CASE WHEN fe.project_id IS NOT NULL THEN 'Direct Project Expense' ELSE 'Other Expense' END as cost_role"));
         }
+        // Run this step if the filters project id has a value.
         if (! empty($filters['project_id'])) {
             $query->where('fe.project_id', $filters['project_id']);
         }
+        // Run this step if the filters classification has a value.
         if (! empty($filters['classification'])) {
             $query->where('fc.classification', $filters['classification']);
         }
         $this->applyDateFilters($query, $filters, 'fe.expense_date');
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = $this->escapeLike($filters['search']);
             $query->where(fn ($inner) => $inner->where('p.project_name', 'like', "%{$search}%")
@@ -661,6 +723,7 @@ class ReportController extends Controller
         return $query->orderByDesc('fe.expense_date')->orderByDesc('fe.fin_expense_id');
     }
 
+    // Get the budget query.
     private function budgetQuery(array $filters): Builder
     {
         $query = DB::table('budgets_tbl as b')->join('project_tbl as p', 'p.project_id', '=', 'b.project_id');
@@ -678,11 +741,13 @@ class ReportController extends Controller
         return $query->orderByDesc('p.start_date')->orderBy('p.project_name');
     }
 
+    // Get the join project costs.
     private function joinProjectCosts(Builder $query, string $projectColumn): string
     {
         $ledger = app(ProjectCostLedger::class);
         $query->leftJoinSub($ledger->directTotals(), 'project_direct_cost',
             fn ($join) => $join->on('project_direct_cost.project_id', '=', $projectColumn));
+        // Run this step if the allocated totals check matches.
         if ($allocated = $ledger->allocatedTotals()) {
             $query->leftJoinSub($allocated, 'project_allocated_cost',
                 fn ($join) => $join->on('project_allocated_cost.project_id', '=', $projectColumn));
@@ -693,12 +758,14 @@ class ReportController extends Controller
         return 'COALESCE(project_direct_cost.direct_cost, 0)';
     }
 
+    // Get the allocation column.
     private function allocationColumn(string $column): string
     {
         return \Illuminate\Support\Facades\Schema::hasTable('inventory_cost_allocation_tbl')
             ? "COALESCE(project_allocated_cost.{$column}, 0)" : '0';
     }
 
+    // Get the inventory query.
     private function inventoryQuery(array $filters): Builder
     {
         $lastMovement = DB::table('inventory_transaction_tbl')
@@ -724,21 +791,26 @@ class ReportController extends Controller
                 DB::raw("{$stockSql} as current_stock"),
                 DB::raw("{$effectiveThresholdSql} as reorder_level"), DB::raw("{$statusSql} as stock_status"),
                 'movement.last_transaction_date']);
+        // Run this step if the filters category id has a value.
         if (! empty($filters['category_id'])) {
             $query->where('i.inventory_category_id', $filters['category_id']);
         }
+        // Run this step if the filters supplier id has a value.
         if (! empty($filters['supplier_id'])) {
             $query->where('i.supplier_id', $filters['supplier_id']);
         }
+        // Run this step if the filters stock status has a value.
         if (! empty($filters['stock_status'])) {
             $query->whereRaw("{$statusSql} = ?", [$filters['stock_status']]);
         }
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = $this->escapeLike($filters['search']);
             $query->where(fn ($inner) => $inner->where('i.item_name', 'like', "%{$search}%")
                 ->orWhere('c.inventory_category_name', 'like', "%{$search}%")->orWhere('s.supplier_name', 'like', "%{$search}%"));
         }
 
+        // Group these checks when finding matching records.
         $query->where(function ($inner) {
             $inner->whereNotNull('movement.last_transaction_date')->orWhereNotExists(function ($transactions) {
                 $transactions->selectRaw('1')->from('inventory_transaction_tbl as dated_movement')->whereColumn('dated_movement.item_id', 'i.item_id');
@@ -747,6 +819,7 @@ class ReportController extends Controller
         return $query->orderBy('stock_status')->orderBy('i.item_name');
     }
 
+    // Get the supplier query.
     private function supplierQuery(array $filters): Builder
     {
         $lastDelivery = DB::table('inventory_transaction_tbl as it')->join('inventory_item_tbl as ii', 'ii.item_id', '=', 'it.item_id')
@@ -759,9 +832,11 @@ class ReportController extends Controller
                 DB::raw('COUNT(i.item_id) as item_count'), DB::raw('COALESCE(SUM(i.current_stock), 0) as total_stock'),
                 DB::raw('SUM(CASE WHEN i.item_id IS NOT NULL AND COALESCE(i.current_stock, 0) <= COALESCE(i.reorder_level, 0) THEN 1 ELSE 0 END) as low_stock_items'),
                 'delivery.last_delivery_date']);
+        // Run this step if the filters supplier id has a value.
         if (! empty($filters['supplier_id'])) {
             $query->where('s.supplier_id', $filters['supplier_id']);
         }
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = $this->escapeLike($filters['search']);
             $query->where(fn ($inner) => $inner->where('s.supplier_name', 'like', "%{$search}%")
@@ -771,15 +846,19 @@ class ReportController extends Controller
         return $query->orderBy('s.supplier_name');
     }
 
+    // Apply project filters.
     private function applyProjectFilters(Builder $query, array $filters, string $alias): void
     {
+        // Run this step if the filters project id has a value.
         if (! empty($filters['project_id'])) {
             $query->where("{$alias}.project_id", $filters['project_id']);
         }
+        // Run this step if the filters status has a value.
         if (! empty($filters['status'])) {
             $query->where("{$alias}.status", $filters['status']);
         }
         $this->applyDateFilters($query, $filters, "{$alias}.start_date");
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = $this->escapeLike($filters['search']);
             $query->where(fn ($inner) => $inner->where("{$alias}.project_name", 'like', "%{$search}%")
@@ -789,19 +868,24 @@ class ReportController extends Controller
         }
     }
 
+    // Apply date filters.
     private function applyDateFilters(Builder $query, array $filters, string $column): void
     {
+        // Run this step if the filters start date has a value.
         if (! empty($filters['start_date'])) {
             $query->whereDate($column, '>=', $filters['start_date']);
         }
+        // Run this step if the filters end date has a value.
         if (! empty($filters['end_date'])) {
             $query->whereDate($column, '<=', $filters['end_date']);
         }
     }
 
+    // Get the summary cutoff date.
     private function summaryCutoffDate(array $filters): CarbonImmutable
     {
         $today = CarbonImmutable::now('Asia/Manila');
+        // Try this action and handle any errors below.
         try {
             return CarbonImmutable::createSafe(
                 (int) ($filters['report_year'] ?? $today->year),
@@ -814,6 +898,7 @@ class ReportController extends Controller
         }
     }
 
+    // Get the dataset kpis.
     private function datasetKpis(string $dataset, Collection $rows): array
     {
         $money = fn (float $value) => '₱'.number_format($value, 2);
@@ -864,6 +949,7 @@ class ReportController extends Controller
         };
     }
 
+    // Get the dataset chart.
     private function datasetChart(string $dataset, Collection $rows): array
     {
         return match ($dataset) {
@@ -877,40 +963,50 @@ class ReportController extends Controller
         };
     }
 
+    // Get the summary totals.
     private function summaryTotals(Collection $rows, string $label = 'TOTAL'): array
     {
         $totals = ['project_name' => $label];
+        // Process each label.
         foreach (self::SUMMARY_COLUMNS as $key => $label) {
+            // Run this step if the key does not equal project name.
             if ($key !== 'project_name') $totals[$key] = round((float) $rows->sum($key), 2);
         }
         return $totals;
     }
 
+    // Get the summary balances.
     private function summaryBalances(Collection $rows, array $filters, ?array $columns = null): array
     {
         $previousCutoff = $this->summaryCutoffDate($filters)->startOfMonth()->subDay()->toDateString();
         $previousRows = $this->expenseSummaryRows($filters, $previousCutoff);
         $previousRows = $previousRows->whereIn('project_id', $rows->pluck('project_id')->all());
+        // Run this step if the columns is not null.
         if ($columns !== null) $previousRows = $this->summaryRowsForColumns($previousRows, $columns);
         $current = $this->summaryTotals($rows, 'TOTAL(As of Current Month)');
         $previous = $this->summaryTotals($previousRows, 'TOTAL BALANCE(As of Previous Month)');
         $month = ['project_name' => 'TOTAL(This Month)'];
+        // Process each label.
         foreach (self::SUMMARY_COLUMNS as $key => $label) {
+            // Run this step if the key does not equal project name.
             if ($key !== 'project_name') $month[$key] = round($current[$key] - $previous[$key], 2);
         }
         return ['totals' => $current, 'previous_totals' => $previous, 'month_totals' => $month];
     }
 
+    // Get the limit export rows.
     private function limitExportRows(Collection $rows, ?int $limit): Collection
     {
         return $limit === null ? $rows : $rows->take($limit)->values();
     }
 
+    // Get the summary rows for columns.
     private function summaryRowsForColumns(Collection $rows, array $columns): Collection
     {
         $categories = array_diff(array_keys(self::SUMMARY_COLUMNS), ['project_name', 'total']);
         $selectedCategories = array_intersect($categories, $columns);
 
+        // Build a result for each record.
         return $rows->map(function (array $row) use ($selectedCategories): array {
             $row['total'] = round(array_sum(array_map(
                 fn (string $key): float => (float) ($row[$key] ?? 0),
@@ -921,6 +1017,7 @@ class ReportController extends Controller
         });
     }
 
+    // Get the grouped chart.
     private function groupedChart(Collection $rows, string $group, ?string $sum, string $title, string $type = 'bar'): array
     {
         $grouped = $rows->groupBy(fn ($row) => $row[$group] ?: 'Unspecified')
@@ -930,12 +1027,16 @@ class ReportController extends Controller
             'series' => [['label' => $sum ? 'Amount' : 'Count', 'values' => $grouped->values()]]];
     }
 
+    // Get the budget status chart.
     private function budgetStatusChart(Collection $rows): array
     {
+        // Build a result for each record.
         $statuses = $rows->map(function (array $row): string {
             $budget = (float) ($row['budget_amount'] ?? 0);
             $actual = (float) ($row['actual_amount'] ?? 0);
+            // Return early if the budget is at most 0.
             if ($budget <= 0) return 'No Budget';
+            // Return early if the actual is above budget.
             if ($actual > $budget) return 'Over Budget';
             return ($actual / $budget) >= 0.8 ? 'Near Limit' : 'On Track';
         })->countBy();
@@ -946,6 +1047,7 @@ class ReportController extends Controller
             'series' => [['label' => 'Projects', 'values' => $labels->map(fn (string $status) => $statuses[$status])]]];
     }
 
+    // Get the inventory movement chart.
     private function inventoryMovementChart(Collection $rows): array
     {
         $movements = DB::table('inventory_transaction_tbl')
@@ -962,37 +1064,46 @@ class ReportController extends Controller
             ]];
     }
 
+    // Build csv.
     private function buildCsv(string $title, array $definition, array $columns, array $sections, array $filters, Collection $rows, array $kpis, array $chart): string
     {
         $stream = fopen('php://temp', 'r+');
         fwrite($stream, "\xEF\xBB\xBF");
+        // Run this step if the sections check matches.
         if (in_array('summary', $sections, true)) {
             fputcsv($stream, [$title]);
             fputcsv($stream, ['Report Type', $definition['title']]);
             fputcsv($stream, ['Generated At', now()->format('Y-m-d H:i:s')]);
             fputcsv($stream, ['Generated By', Auth::user()->name]);
+            // Process each value.
             foreach ($filters as $key => $value) {
                 fputcsv($stream, ['Filter: '.Str::headline($key), $value]);
             }
             fputcsv($stream, []);
         }
+        // Run this step if the sections check matches.
         if (in_array('kpis', $sections, true)) {
             fputcsv($stream, ['KPI', 'Value']);
+            // Process each kpi.
             foreach ($kpis as $kpi) {
                 fputcsv($stream, [$kpi['label'], $kpi['value']]);
             }
             fputcsv($stream, []);
         }
+        // Run this step if the sections check matches.
         if (in_array('chart', $sections, true)) {
             fputcsv($stream, [$chart['title']]);
             fputcsv($stream, array_merge(['Series'], $chart['labels']->all()));
+            // Process each series.
             foreach ($chart['series'] as $series) {
                 fputcsv($stream, array_merge([$series['label']], $series['values']->all()));
             }
             fputcsv($stream, []);
         }
+        // Run this step if the sections check matches.
         if (in_array('data', $sections, true)) {
             fputcsv($stream, array_map(fn ($column) => $definition['columns'][$column], $columns));
+            // Process each row.
             foreach ($rows as $row) {
                 fputcsv($stream, array_map(fn ($column) => $row[$column] ?? '', $columns));
             }
@@ -1004,6 +1115,7 @@ class ReportController extends Controller
         return $csv;
     }
 
+    // Get the authorize dataset.
     private function authorizeDataset(string $dataset): array
     {
         abort_unless(isset(self::DATASETS[$dataset]), 404);
@@ -1013,6 +1125,7 @@ class ReportController extends Controller
         return $definition;
     }
 
+    // Get the authorize report.
     private function authorizeReport(Report $report, bool $delete = false): void
     {
         $role = $this->role();
@@ -1020,11 +1133,13 @@ class ReportController extends Controller
         abort_if($delete && $role !== 'admin' && $report->user_id !== Auth::id(), 403);
     }
 
+    // Get the role.
     private function role(): string
     {
         return strtolower((string) Auth::user()->role);
     }
 
+    // Get the escape like.
     private function escapeLike(string $value): string
     {
         return addcslashes(trim($value), '%_\\');

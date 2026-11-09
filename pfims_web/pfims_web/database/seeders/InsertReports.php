@@ -6,8 +6,10 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
+// Group the insert reports actions.
 class InsertReports extends Seeder
 {
+    // Run the insert reports task.
     public function run()
     {
         // Get user IDs

@@ -15,6 +15,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('fin_equipment_rental_income_tbl', function (Blueprint $table) {
             $table->increments('rental_income_id');
             $table->unsignedInteger('asset_id');
@@ -37,6 +38,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('fin_equipment_rental_income_tbl');
     }
 };

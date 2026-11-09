@@ -7,17 +7,20 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-/** Record-date reconstruction. Never writes business tables or backdates physical progress. */
+/** Build project details as they were on each record date. Leave saved data and progress dates unchanged. */
 class PlanningSpendingCohort
 {
+    // Get the tables.
     public static function tables(): array
     {
         return ['project_tbl', 'budgets_tbl', 'project_budget_history', 'fin_expense_tbl', 'fin_expense_category_tbl', 'inventory_item_tbl', 'inventory_transaction_tbl', 'inventory_cost_allocation_tbl'];
     }
 
+    // Get the database.
     public function database(): array
     {
         $source = [];
+        // Process each table.
         foreach (self::tables() as $table) {
             $source[$table] = Schema::hasTable($table) ? DB::table($table)->orderByRaw('1')->get()->map(fn ($r) => (array) $r)->all() : [];
         }
@@ -25,12 +28,13 @@ class PlanningSpendingCohort
         return $this->build($source);
     }
 
-    /** The same record-date accounting used in training, limited to today's information. */
+    /** Use the same cost rules as training, with only the information available today. */
     public function forecastInputs(int $projectId, Carbon $start, Carbon $plannedEnd): array
     {
         $at = today()->toDateString();
         $categories = DB::table('fin_expense_category_tbl')->get()->map(fn ($r) => (array) $r)->keyBy('fin_category_id')->all();
         $events = [];
+        // Process each expense.
         foreach (DB::table('fin_expense_tbl')->where('project_id', $projectId)->whereNull('inventory_transaction_id')
             ->whereDate('expense_date', '<=', $at)->get() as $expense) {
             $events[] = ['date' => substr($expense->expense_date, 0, 10), 'amount' => (float) $expense->amount,
@@ -41,8 +45,10 @@ class PlanningSpendingCohort
         $allocations = DB::table('inventory_cost_allocation_tbl')->whereIn('out_transaction_id', $movements->pluck('inventory_transaction_id'))->get()->groupBy('out_transaction_id');
         $complete = true;
         $unvaluedCount = 0;
+        // Process each movement.
         foreach ($movements as $movement) {
             $valuation = $allocations->get($movement->inventory_transaction_id, collect());
+            // Run this step if the is empty and contains checks match.
             if ($valuation->isEmpty() || $valuation->contains(fn ($a) => $a->valuation_status !== 'valued')) {
                 $complete = false;
                 $unvaluedCount++;
@@ -61,8 +67,10 @@ class PlanningSpendingCohort
             'finance_as_of_date' => collect($events)->max('date')];
     }
 
+    // Get the date.
     private function date(mixed $value): ?CarbonImmutable
     {
+        // Try this action and handle any errors below.
         try {
             return $value ? CarbonImmutable::parse($value)->startOfDay() : null;
         } catch (\Throwable) {
@@ -70,16 +78,21 @@ class PlanningSpendingCohort
         }
     }
 
+    // Get the component.
     private function component(array $expense, array $categories): string
     {
         $component = $expense['project_cost_component'] ?? null;
+        // Return early if the component check matches.
         if (in_array($component, ['material', 'labor', 'equipment', 'other'], true)) {
             return $component;
         }
         $category = $categories[$expense['fin_category_id'] ?? 0] ?? [];
         $text = strtolower(($category['category_name'] ?? '').' '.($category['category_code'] ?? ''));
+        // Process each words.
         foreach (['material' => ['material', 'supply'], 'labor' => ['labor', 'salary', 'wage', 'payroll'], 'equipment' => ['equipment', 'rental', 'fuel']] as $key => $words) {
+            // Process each word.
             foreach ($words as $word) {
+                // Return early if the word check matches.
                 if (str_contains($text, $word)) {
                     return $key;
                 }
@@ -89,6 +102,7 @@ class PlanningSpendingCohort
         return 'other';
     }
 
+    // Build the planning spending project group output.
     public function build(array $source): array
     {
         $records = [];
@@ -101,7 +115,9 @@ class PlanningSpendingCohort
         $movements = collect($source['inventory_transaction_tbl'] ?? [])->where('transaction_type', 'OUT')->groupBy('project_id');
         $allocations = collect($source['inventory_cost_allocation_tbl'] ?? [])->groupBy('out_transaction_id');
         $categories = array_column($source['fin_expense_category_tbl'] ?? [], null, 'fin_category_id');
+        // Process each project.
         foreach ($source['project_tbl'] ?? [] as $project) {
+            // Skip this item if the project status does not equal completed.
             if (($project['status'] ?? '') !== 'Completed') {
                 continue;
             }
@@ -110,6 +126,7 @@ class PlanningSpendingCohort
             $planned = $this->date($project['estimated_end_date'] ?? null);
             $end = $this->date($project['actual_end_date'] ?? null);
             $budgetRow = $budgets->get($id, collect())->sortByDesc('budget_id')->first();
+            // Run this step if the start and planned checks match.
             if (! $start || ! $planned || ! $end || $end->lte($start) || $planned->lte($start) || $end->gt(today()) || ! $budgetRow || (float) $budgetRow['budget_amount'] <= 0) {
                 $excluded[$id] = 'invalid_dates_or_budget';
 
@@ -117,23 +134,28 @@ class PlanningSpendingCohort
             }
             $events = [];
             $invalid = false;
+            // Process each expense.
             foreach ($expenses->get($id, collect()) as $expense) {
                 $date = $this->date($expense['expense_date'] ?? null);
                 $amount = (float) $expense['amount'];
+                // Run this step if the date and lt checks match.
                 if (! $date || $date->lt($start) || $date->gt($end) || ! is_finite($amount) || $amount < 0) {
                     $invalid = true;
                     break;
                 }
                 $events[] = ['date' => $date->toDateString(), 'amount' => $amount, 'component' => $this->component($expense, $categories), 'inventory' => false];
             }
+            // Process each movement.
             foreach ($movements->get($id, collect()) as $movement) {
                 $date = $this->date($movement['transaction_date'] ?? null);
                 $valuation = $allocations->get($movement['inventory_transaction_id'], collect());
+                // Run this step if the date and lt checks match.
                 if (! $date || $date->lt($start) || $date->gt($end) || $valuation->isEmpty() || $valuation->contains(fn ($a) => ($a['valuation_status'] ?? '') !== 'valued')) {
                     $invalid = true;
                     break;
                 }
                 $amount = (float) $valuation->sum('allocated_amount');
+                // Run this step if the amount checks match.
                 if (! is_finite($amount) || $amount < 0) {
                     $invalid = true;
                     break;
@@ -141,6 +163,7 @@ class PlanningSpendingCohort
                 $events[] = ['date' => $date->toDateString(), 'amount' => $amount, 'component' => 'material', 'inventory' => true];
             }
             $final = round(array_sum(array_column($events, 'amount')), 2);
+            // Run this step if the invalid and final checks match.
             if ($invalid || $final <= 0 || ! isset($budgetRow['actual_amount']) || abs((float) $budgetRow['actual_amount'] - $final) > .01) {
                 $excluded[$id] = 'invalid_record_dates_unvalued_inventory_or_unreconciled_cost';
 
@@ -152,6 +175,7 @@ class PlanningSpendingCohort
             // Observation dates follow planned elapsed time, never the eventual actual duration.
             foreach ([.25, .5, .75] as $fraction) {
                 $at = $start->addDays(max(1, (int) floor($plannedDays * $fraction)));
+                // Skip this item if the gte and end checks match.
                 if ($at->gte($end) || isset($seen[$at->toDateString()])) {
                     continue;
                 }
@@ -159,6 +183,7 @@ class PlanningSpendingCohort
                 $version = $history->get($id, collect())->filter(fn ($h) => ! empty($h['effective_at']) && substr($h['effective_at'], 0, 10) <= $at->toDateString())
                     ->sortBy([['effective_at', 'desc'], ['history_id', 'desc']])->first();
                 $budget = $version ? (float) $version['budget_amount'] : (float) $budgetRow['budget_amount'];
+                // Skip this item if the budget is at most 0.
                 if ($budget <= 0) {
                     continue;
                 }
@@ -174,6 +199,7 @@ class PlanningSpendingCohort
                 $row = array_replace($row, PlanningSpendingFeatures::build($row));
                 $projectRows[] = (object) $row;
             }
+            // Run this step if the number of project rows equals 3.
             if (count($projectRows) === 3) {
                 $records = [...$records, ...$projectRows];
                 $budgetFallback += count(array_filter($projectRows, fn ($row) => $row->budget_basis === 'latest_recorded_budget_no_effective_history'));
@@ -189,6 +215,7 @@ class PlanningSpendingCohort
                 'note' => 'Expenses and withdrawals use business record dates, not posting timestamps. Historical valuations use recorded allocations; backdated entries and latest-budget fallback may differ from what was known then. Physical progress is not used.']];
     }
 
+    // Get the summarize.
     public static function summarize(array $events, string $at): array
     {
         $day = CarbonImmutable::parse($at);
@@ -197,22 +224,28 @@ class PlanningSpendingCohort
         $v = ['fin_total_expense' => 0., 'fin_material_expense' => 0., 'fin_labor_expense' => 0., 'fin_equipment_expense' => 0., 'fin_other_expense' => 0.,
             'direct_expense_amount_7d' => 0., 'direct_expense_amount_30d' => 0., 'valued_stock_out_cost_7d' => 0., 'valued_stock_out_cost_30d' => 0.,
             'direct_expense_count_7d' => 0, 'stock_out_count_7d' => 0];
+        // Process each event.
         foreach ($events as $event) {
+            // Skip this item if the event date is above at.
             if ($event['date'] > $at) {
                 continue;
             }
             $v['fin_total_expense'] += $event['amount'];
             $v['fin_'.$event['component'].'_expense'] += $event['amount'];
             $key = $event['inventory'] ? 'valued_stock_out_cost' : 'direct_expense_amount';
+            // Run this step if the event date is at least from30.
             if ($event['date'] >= $from30) {
                 $v[$key.'_30d'] += $event['amount'];
             }
+            // Run this step if the event date is at least from7.
             if ($event['date'] >= $from7) {
                 $v[$key.'_7d'] += $event['amount'];
                 $v[$event['inventory'] ? 'stock_out_count_7d' : 'direct_expense_count_7d']++;
             }
         }
+        // Process each amount.
         foreach ($v as $key => $amount) {
+            // Run this step if the key checks match.
             if (str_contains($key, 'expense') || str_contains($key, 'cost')) {
                 $v[$key] = round($amount, 2);
             }

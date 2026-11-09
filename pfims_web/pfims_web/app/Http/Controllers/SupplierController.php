@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+// Group the supplier actions.
 class SupplierController extends Controller
 {
     /**
@@ -33,6 +34,7 @@ class SupplierController extends Controller
             'contact_number' => ['required', 'string', 'max:20', 'regex:/^(?=.*\d)[0-9+().\s-]+$/'],
         ]);
         $validated = array_map(fn ($value) => trim((string) $value), $validated);
+        // Return early if the validated supplier name check matches.
         if ($this->duplicateName($validated['supplier_name'])) {
             return response()->json(['success' => false, 'message' => 'Supplier name already exists.'], 409);
         }
@@ -59,6 +61,7 @@ class SupplierController extends Controller
             'contact_number' => ['required', 'string', 'max:20', 'regex:/^(?=.*\d)[0-9+().\s-]+$/'],
         ]);
         $validated = array_map(fn ($value) => trim((string) $value), $validated);
+        // Return early if the id supplier name check matches.
         if ($this->duplicateName($validated['supplier_name'], (int) $id)) {
             return response()->json(['success' => false, 'message' => 'Supplier name already exists.'], 409);
         }
@@ -93,6 +96,7 @@ class SupplierController extends Controller
         $supplier = Supplier::findOrFail($id);
 
         $hasItems = DB::table('inventory_item_tbl')->where('supplier_id', $id)->exists();
+        // Return early if the has items is set.
         if ($hasItems) {
             return response()->json([
                 'success' => false,
@@ -108,10 +112,12 @@ class SupplierController extends Controller
         ]);
     }
 
+    // Get the duplicate name.
     private function duplicateName(string $name, ?int $ignoreId = null): bool
     {
         $query = DB::table('supplier_tbl')
             ->whereRaw('LOWER(TRIM(supplier_name)) = ?', [Str::lower(trim($name))]);
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('supplier_id', '!=', $ignoreId);
         }

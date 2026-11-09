@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 
+// Group the forgot password controller web actions.
 class ForgotPasswordControllerWeb extends Controller
 {
     /**
@@ -27,6 +28,7 @@ class ForgotPasswordControllerWeb extends Controller
             'email' => ['required', 'email'],
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -46,6 +48,7 @@ class ForgotPasswordControllerWeb extends Controller
 
         // Simple throttle: 1 request per 60 seconds per email.
         $recent = DB::table('password_reset_otps')->where('email', $request->email)->first();
+        // Return early if the recent and updated at checks match.
         if ($recent && Carbon::parse($recent->updated_at)->diffInSeconds(now()) < 60) {
             return response()->json([
                 'success' => false,
@@ -85,6 +88,7 @@ class ForgotPasswordControllerWeb extends Controller
             'otp' => ['required', 'digits:6'],
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -94,6 +98,7 @@ class ForgotPasswordControllerWeb extends Controller
 
         $record = DB::table('password_reset_otps')->where('email', $request->email)->first();
 
+        // Return early if the record is missing or false.
         if (!$record) {
             return response()->json([
                 'success' => false,
@@ -101,6 +106,7 @@ class ForgotPasswordControllerWeb extends Controller
             ], 404);
         }
 
+        // Run this step if the is past check matches.
         if (Carbon::parse($record->expires_at)->isPast()) {
             DB::table('password_reset_otps')->where('email', $request->email)->delete();
             return response()->json([
@@ -109,6 +115,7 @@ class ForgotPasswordControllerWeb extends Controller
             ], 410);
         }
 
+        // Return early if the otp check matches.
         if (!Hash::check($request->otp, $record->otp)) {
             return response()->json([
                 'success' => false,
@@ -145,6 +152,7 @@ class ForgotPasswordControllerWeb extends Controller
             'password' => ['required', 'string', 'max:72', 'confirmed', Password::min(8)],
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -154,6 +162,7 @@ class ForgotPasswordControllerWeb extends Controller
 
         $record = DB::table('password_reset_otps')->where('email', $request->email)->first();
 
+        // Return early if the record and expires at checks match.
         if (!$record || Carbon::parse($record->expires_at)->isPast()) {
             return response()->json([
                 'success' => false,
@@ -161,6 +170,7 @@ class ForgotPasswordControllerWeb extends Controller
             ], 410);
         }
 
+        // Return early if the otp check matches.
         if (!Hash::check($request->reset_token, $record->otp)) {
             return response()->json([
                 'success' => false,
@@ -170,6 +180,7 @@ class ForgotPasswordControllerWeb extends Controller
 
         $user = User::where('email', $request->email)->first();
 
+        // Return early if the user is missing or false.
         if (!$user) {
             return response()->json([
                 'success' => false,

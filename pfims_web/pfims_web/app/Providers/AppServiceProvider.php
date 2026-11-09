@@ -15,8 +15,10 @@ use App\Observers\AuditLogObserver;
 use App\Services\MLService;
 use Illuminate\Support\ServiceProvider;
 
+// Group the app service provider actions.
 class AppServiceProvider extends ServiceProvider
 {
+    // Register the services the app needs.
     public function register(): void
     {
         $this->app->singleton(MLService::class, function ($app) {
@@ -24,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
+    // Set up app service provider when the app starts.
     public function boot(): void
     {
         InventoryItem::observe(ItemObserver::class);

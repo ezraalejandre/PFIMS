@@ -1,3 +1,4 @@
+/* Style the pfims alert popup. */
 .pfims-alert-popup {
     position: fixed;
     top: 88px;
@@ -19,17 +20,24 @@
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+/* Style the pfims alert popup. */
 .pfims-alert-popup[data-visible="true"] {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
 }
 
+/* Style the pfims alert popup success. */
 .pfims-alert-popup.success { background: linear-gradient(135deg, var(--ui-success, #16a34a), #147a48); }
+/* Style the pfims alert popup error. */
 .pfims-alert-popup.error { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+/* Style the pfims alert popup info. */
 .pfims-alert-popup.info { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+/* Style the pfims alert popup pfims alert icon. */
 .pfims-alert-popup .pfims-alert-icon { font-size: 1.05rem; font-weight: 900; }
+/* Style the pfims alert popup pfims alert message. */
 .pfims-alert-popup .pfims-alert-message { flex: 1 1 auto; font-size: 0.9rem; font-weight: 650; }
+/* Style the pfims alert popup pfims alert close. */
 .pfims-alert-popup .pfims-alert-close {
     min-height: 0 !important;
     padding: 2px 7px !important;

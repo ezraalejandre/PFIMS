@@ -5,6 +5,7 @@
     box-sizing: border-box;
 }
 
+/* Style the body. */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f4f6f9;
@@ -30,17 +31,20 @@ body {
     height: 70px;
 }
 
+/* Style the top header left. */
 .top-header .left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
+/* Style the top header left. */
 .top-header .left img {
     height: 40px;
     width: auto;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text {
     font-weight: 600;
     font-size: 1.1rem;
@@ -48,6 +52,7 @@ body {
     color: #172033;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text small {
     display: block;
     font-weight: 300;
@@ -56,6 +61,7 @@ body {
     color: #6b7280;
 }
 
+/* Style the top header right. */
 .top-header .right {
     display: flex;
     align-items: center;
@@ -63,6 +69,7 @@ body {
     font-size: 0.95rem;
 }
 
+/* Style the top header right. */
 .top-header .right a {
     display: flex;
     align-items: center;
@@ -72,10 +79,12 @@ body {
     position: relative;
 }
 
+/* Style the top header right on hover. */
 .top-header .right a:hover {
     opacity: 0.7;
 }
 
+/* Style the top header right. */
 .top-header .right span {
     cursor: pointer;
     opacity: 0.8;
@@ -86,6 +95,7 @@ body {
     color: #333;
 }
 
+/* Style the top header right on hover. */
 .top-header .right span:hover {
     opacity: 1;
 }
@@ -122,15 +132,18 @@ body {
     z-index: 100;
 }
 
+/* Style the sidebar. */
 .sidebar nav {
     flex: 1;
     margin-top: 20px;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul {
     list-style: none;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li {
     padding: 12px 16px;
     margin-bottom: 4px;
@@ -141,32 +154,38 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li a {
     color: inherit;
     text-decoration: none;
     display: block;
 }
 
+/* Style the sidebar active. */
 .sidebar nav ul li.active {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
 }
 
+/* Style the sidebar on hover. */
 .sidebar nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 20px;
     margin-top: 20px;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul {
     list-style: none;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li {
     display: flex;
     align-items: center;
@@ -178,25 +197,30 @@ body {
     transition: 0.2s;
 }
 
+/* Style the bottom nav nav icon. */
 .sidebar .bottom-nav ul li .nav-icon {
     width: 20px;
     height: 20px;
     object-fit: contain;
 }
 
+/* Style the sidebar bottom nav on hover. */
 .sidebar .bottom-nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout {
     color: #fff;
 }
 
+/* Style the bottom nav logout on hover. */
 .sidebar .bottom-nav ul li.logout:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li a {
     display: flex;
     align-items: center;
@@ -232,6 +256,7 @@ body {
     gap: 15px;
 }
 
+/* Style the page header. */
 .page-header h1 {
     font-size: 1.8rem;
     font-weight: 600;
@@ -253,20 +278,24 @@ body {
     box-shadow: 0 6px 14px rgba(240, 138, 26, 0.18);
 }
 
+/* Style the btn add data on hover. */
 .btn-add-data:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(240, 138, 26, 0.3);
 }
 
+/* Style the btn add data gold. */
 .btn-add-data.gold {
     background: linear-gradient(135deg, #f08a1a, #d97508);
     box-shadow: 0 6px 14px rgba(240, 138, 26, 0.18);
 }
 
+/* Style the btn add data gold on hover. */
 .btn-add-data.gold:hover {
     box-shadow: 0 8px 20px rgba(240, 138, 26, 0.3);
 }
 
+/* Style the btn add expense. */
 .btn-add-expense {
     background: linear-gradient(135deg, #172033, #2a3f54);
     color: #fff;
@@ -281,11 +310,13 @@ body {
     box-shadow: 0 6px 14px rgba(23, 32, 51, 0.18);
 }
 
+/* Style the btn add expense on hover. */
 .btn-add-expense:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(23, 32, 51, 0.3);
 }
 
+/* Style the btn add budget. */
 .btn-add-budget {
     background: linear-gradient(135deg, #f08a1a, #d97508);
     color: #fff;
@@ -300,6 +331,7 @@ body {
     box-shadow: 0 6px 14px rgba(240, 138, 26, 0.18);
 }
 
+/* Style the btn add budget on hover. */
 .btn-add-budget:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(240, 138, 26, 0.3);
@@ -312,11 +344,13 @@ body {
     color: #172033;
 }
 
+/* Style the report dropdown toggle on hover. */
 .report-dropdown-toggle:hover {
     border-color: #d97508;
     box-shadow: 0 0 0 3px rgba(240, 138, 26, 0.15);
 }
 
+/* Style the report dropdown item active. */
 .report-dropdown-item.active {
     background: #f08a1a;
     color: #fff;
@@ -331,6 +365,7 @@ body {
     max-width: 700px;
 }
 
+/* Style the stat mini. */
 .stat-mini {
     background: #fff;
     border-radius: 18px;
@@ -342,6 +377,7 @@ body {
     overflow: hidden;
 }
 
+/* Style the stat mini before content. */
 .stat-mini::before {
     position: absolute;
     top: 0;
@@ -352,6 +388,7 @@ body {
     content: "";
 }
 
+/* Style the stat mini stat label. */
 .stat-mini .stat-label {
     font-size: 0.75rem;
     font-weight: 800;
@@ -361,16 +398,21 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the stat mini stat value. */
 .stat-mini .stat-value {
     font-size: 1.55rem;
     font-weight: 700;
     color: #172033;
 }
 
+/* Style the stat value blue. */
 .stat-mini .stat-value.blue { color: #f08a1a; }
+/* Style the stat value red. */
 .stat-mini .stat-value.red { color: #d93636; }
+/* Style the stat value green. */
 .stat-mini .stat-value.green { color: #1f9d61; }
 
+/* Style the stat description. */
 .stat-description {
     margin-top: 6px;
     color: #64748b;
@@ -390,6 +432,7 @@ body {
     background: #fff;
 }
 
+/* Style the filter tabs tab. */
 .filter-tabs .tab, .budget-contract-tabs .tab {
     padding: 8px 18px;
     border-radius: 7px;
@@ -402,18 +445,23 @@ body {
     transition: 0.2s;
 }
 
+/* Style the filter tabs tab on hover. */
 .filter-tabs .tab:hover, .budget-contract-tabs .tab:hover {
     background: #eef2f6;
     color: #172033;
 }
 
+/* Style the tab active. */
 .filter-tabs .tab.active, .budget-contract-tabs .tab.active {
     background: #172033;
     color: #fff;
     border-color: transparent;
 }
+/* Style the budget contract tabs when focused. */
 .budget-contract-tabs [role="tab"]:focus-visible { outline: 2px solid #e19a45; outline-offset: 2px; }
+/* Style the budgets subpanel. */
 #budgetsSubpanel[hidden], #contractsSubpanel[hidden] { display: none !important; }
+/* Style the add budget header button. */
 #addBudgetHeaderButton[hidden], #addContractHeaderButton[hidden] { display: none !important; }
 
 /* Filter row */
@@ -425,6 +473,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the project filter. */
 .project-filter {
     padding: 8px 16px;
     border: 1px solid #d1d5db;
@@ -438,11 +487,13 @@ body {
     transition: 0.3s;
 }
 
+/* Style the project filter when focused. */
 .project-filter:focus {
     border-color: #f08a1a;
     box-shadow: 0 0 0 3px rgba(240, 138, 26, 0.15);
 }
 
+/* Style the project search. */
 #projectSearch,
 #profitSearch,
 #receivableSearch,
@@ -460,6 +511,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the project search. */
 #projectSearch::placeholder,
 #profitSearch::placeholder,
 #receivableSearch::placeholder,
@@ -467,6 +519,7 @@ body {
     color: #aaa;
 }
 
+/* Style the project search when focused. */
 #projectSearch:focus,
 #profitSearch:focus,
 #receivableSearch:focus,
@@ -475,6 +528,7 @@ body {
     box-shadow: 0 0 0 3px rgba(240, 138, 26, 0.15);
 }
 
+/* Style the btn clear search. */
 .btn-clear-search {
     padding: 8px 16px;
     border: 1px solid #d1d5db;
@@ -487,6 +541,7 @@ body {
     font-weight: 600;
 }
 
+/* Style the btn clear search on hover. */
 .btn-clear-search:hover {
     background: #f5f5f5;
     border-color: #f08a1a;
@@ -504,6 +559,7 @@ body {
     margin-top: 10px;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table {
     width: 100%;
     border-collapse: collapse;
@@ -511,14 +567,17 @@ body {
     min-width: 800px;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody tr {
     cursor: pointer;
 }
 
+/* Style the table wrapper on hover. */
 .table-wrapper table tbody tr:hover {
     background: #fff8f0;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table thead th {
     text-align: left;
     padding: 12px 16px;
@@ -532,6 +591,7 @@ body {
     white-space: nowrap;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody td {
     padding: 10px 16px;
     border-bottom: 1px solid #eef2f6;
@@ -539,6 +599,7 @@ body {
     white-space: nowrap;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody tr:last-child td {
     border-bottom: none;
 }
@@ -552,31 +613,37 @@ body {
     font-weight: 600;
 }
 
+/* Style the category badge admin. */
 .category-badge.admin {
     background: #e3f2fd;
     color: #1565c0;
 }
 
+/* Style the category badge direct. */
 .category-badge.direct {
     background: #e8f5e9;
     color: #2e7d32;
 }
 
+/* Style the category badge labor. */
 .category-badge.labor {
     background: #fff3e0;
     color: #f08a1a;
 }
 
+/* Style the category badge material. */
 .category-badge.material {
     background: #e6f7e6;
     color: #2e7d32;
 }
 
+/* Style the category badge equipment. */
 .category-badge.equipment {
     background: #e8eaf6;
     color: #3949ab;
 }
 
+/* Style the category badge other. */
 .category-badge.other {
     background: #f5f5f5;
     color: #666;
@@ -592,11 +659,13 @@ body {
     gap: 15px;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info {
     font-size: 0.85rem;
     color: #6b7280;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info select {
     padding: 4px 8px;
     border: 1px solid #d1d5db;
@@ -606,12 +675,14 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links {
     display: flex;
     gap: 4px;
     align-items: center;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links a,
 .pagination-wrapper .pagination-links span {
     padding: 6px 12px;
@@ -623,16 +694,19 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links on hover. */
 .pagination-wrapper .pagination-links a:hover {
     background: #eef2f6;
     color: #172033;
 }
 
+/* Style the pagination links active. */
 .pagination-wrapper .pagination-links .active {
     background: #172033;
     color: #fff;
 }
 
+/* Style the pagination links dots. */
 .pagination-wrapper .pagination-links .dots {
     color: #aaa;
     cursor: default;
@@ -645,6 +719,7 @@ body {
     gap: 11px;
 }
 
+/* Style the chart group. */
 .chart-group {
     display: grid;
     grid-template-columns: minmax(90px, 130px) minmax(0, 1fr);
@@ -652,12 +727,14 @@ body {
     gap: 12px;
 }
 
+/* Style the chart label. */
 .chart-label {
     color: #172033;
     font-size: 0.8rem;
     font-weight: 700;
 }
 
+/* Style the bar row. */
 .bar-row {
     display: grid;
     grid-template-columns: 78px minmax(0, 1fr) 82px;
@@ -666,15 +743,18 @@ body {
     font-size: 0.72rem;
 }
 
+/* Style the bar row. */
 .bar-row span {
     color: #6b7280;
 }
 
+/* Style the bar row. */
 .bar-row b {
     color: #172033;
     text-align: right;
 }
 
+/* Style the track. */
 .track {
     height: 12px;
     overflow: hidden;
@@ -682,6 +762,7 @@ body {
     background: #edf1f5;
 }
 
+/* Style the track. */
 .track i {
     display: block;
     height: 100%;
@@ -689,6 +770,7 @@ body {
     background: linear-gradient(90deg, #f08a1a, #f4bd62);
 }
 
+/* Style the track tone 1. */
 .track i.tone-1 {
     background: linear-gradient(90deg, #1f9d61, #57c98e);
 }
@@ -698,6 +780,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the module insight card. */
 .module-insight-card {
     background: #fff;
     border-radius: 18px;
@@ -706,12 +789,14 @@ body {
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
 }
 
+/* Style the module insight card. */
 .module-insight-card h3 {
     margin: 0 0 4px;
     color: #172033;
     font-size: 1.05rem;
 }
 
+/* Style the module insight card insight caption. */
 .module-insight-card .insight-caption {
     margin: 5px 0 17px;
     color: #6b7280;
@@ -729,11 +814,13 @@ body {
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
 }
 
+/* Style the report section. */
 .report-section > div[style*="display:flex"] label {
     color: #475569;
     font-weight: 700;
 }
 
+/* Style the report section. */
 .report-section > div[style*="display:flex"] select,
 .report-section > div[style*="display:flex"] input {
     border: 1px solid #cbd5e1 !important;
@@ -742,6 +829,7 @@ body {
     color: #172033;
 }
 
+/* Style the report section. */
 .report-section > div[style*="display:flex"] button[onclick^="load"] {
     padding: 9px 16px !important;
     border: 1px solid #172033 !important;
@@ -753,12 +841,14 @@ body {
     transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
 }
 
+/* Style the report section on hover. */
 .report-section > div[style*="display:flex"] button[onclick^="load"]:hover {
     background: #2a3f54 !important;
     box-shadow: 0 5px 12px rgba(23, 32, 51, 0.2);
     transform: translateY(-1px);
 }
 
+/* Style the insight pie layout. */
 .insight-pie-layout {
     display: grid;
     grid-template-columns: minmax(140px, 210px) minmax(0, 1fr);
@@ -766,6 +856,7 @@ body {
     align-items: center;
 }
 
+/* Style the insight pie. */
 .insight-pie {
     position: relative;
     width: min(190px, 100%);
@@ -773,19 +864,32 @@ body {
     margin: 0 auto;
 }
 
+/* Style the insight pie. */
 .insight-pie svg { width: 100%; height: 100%; transform: rotate(0deg); }
+/* Style the insight pie slice. */
 .insight-pie-slice { cursor: pointer; stroke: #fff; stroke-width: .7; transition: opacity .2s ease, stroke-width .2s ease; }
+/* Style the insight pie slice on hover. */
 .insight-pie-slice:hover, .insight-pie-slice:focus { opacity: .78; stroke-width: 1.3; outline: none; }
+/* Style the insight pie tooltip. */
 .insight-pie-tooltip { position: absolute; left: 50%; bottom: -4px; transform: translate(-50%, 100%); z-index: 2; min-width: 150px; padding: 6px 9px; border-radius: 7px; background: #172033; color: #fff; font-size: .72rem; text-align: center; pointer-events: none; opacity: 0; transition: opacity .15s ease; }
+/* Style the insight pie tooltip is visible. */
 .insight-pie-tooltip.is-visible { opacity: 1; }
+/* Style the insight pie legend. */
 .insight-pie-legend { display: grid; gap: 8px; }
+/* Style the insight pie legend row. */
 .insight-pie-legend-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: .78rem; }
+/* Style the insight pie swatch. */
 .insight-pie-swatch { width: 10px; height: 10px; border-radius: 3px; }
+/* Style the insight pie label. */
 .insight-pie-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #475569; }
+/* Style the insight pie value. */
 .insight-pie-value { color: #172033; font-weight: 700; white-space: nowrap; }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the insight pie layout. */
     .insight-pie-layout { grid-template-columns: 1fr; }
+    /* Style the insight pie. */
     .insight-pie { width: 170px; }
 }
 
@@ -804,6 +908,7 @@ body {
     backdrop-filter: blur(3px);
 }
 
+/* Style the modal overlay active. */
 .modal-overlay.active {
     display: flex;
 }
@@ -829,17 +934,20 @@ body {
     padding: 30px 35px;
 }
 
+/* Style the finance edit modal modal footer. */
 .finance-edit-modal .modal-footer {
     justify-content: space-between;
     gap: 12px;
 }
 
+/* Style the expense detail modal expense detail footer. */
 #expenseDetailModal .expense-detail-footer {
     flex-direction: row;
     align-items: center;
     flex-wrap: nowrap;
 }
 
+/* Style the expense detail modal expense detail footer actions. */
 #expenseDetailModal .expense-detail-footer-actions {
     display: flex;
     align-items: center;
@@ -849,22 +957,26 @@ body {
     margin-left: auto;
 }
 
+/* Style the expense detail modal expense detail footer. */
 #expenseDetailModal .expense-detail-footer > button,
 #expenseDetailModal .expense-detail-footer-actions > button {
     flex: 0 0 auto;
     width: auto;
 }
 
+/* Style the is editing detail grid. */
 .finance-edit-modal.is-editing .detail-grid,
 .finance-edit-modal.is-editing .budget-detail-grid {
     grid-template-columns: 1fr;
 }
 
+/* Style the is editing detail item. */
 .finance-edit-modal.is-editing .detail-item,
 .finance-edit-modal.is-editing .budget-detail-item {
     margin-bottom: 0;
 }
 
+/* Style the is editing detail edit. */
 .finance-edit-modal.is-editing .detail-edit,
 .finance-edit-modal.is-editing .budget-detail-edit {
     min-height: 42px;
@@ -875,6 +987,7 @@ body {
     font: inherit;
 }
 
+/* Style the pfims add modal modal body. */
 .pfims-add-modal .modal-body {
     padding: 0 2px;
 }
@@ -887,11 +1000,13 @@ body {
     border-bottom: 2px solid #e9ecef;
 }
 
+/* Style the pfims add modal pfims finance stepper. */
 .pfims-add-modal .pfims-finance-stepper[hidden],
 .pfims-add-modal .pfims-review-back[hidden] {
     display: none !important;
 }
 
+/* Style the step indicator step. */
 .pfims-add-modal .step-indicator .step {
     flex: 1;
     padding: 10px 0;
@@ -903,6 +1018,7 @@ body {
     transition: .3s;
 }
 
+/* Style the step indicator step number. */
 .pfims-add-modal .step-indicator .step-number {
     display: inline-block;
     width: 22px;
@@ -918,24 +1034,29 @@ body {
     transition: .3s;
 }
 
+/* Style the step active. */
 .pfims-add-modal .step-indicator .step.active {
     border-bottom-color: #c9a96e;
     color: #1a2b3c;
 }
 
+/* Style the active step number. */
 .pfims-add-modal .step-indicator .step.active .step-number {
     background: #c9a96e;
 }
 
+/* Style the step completed. */
 .pfims-add-modal .step-indicator .step.completed {
     border-bottom-color: #2e7d32;
     color: #2e7d32;
 }
 
+/* Style the completed step number. */
 .pfims-add-modal .step-indicator .step.completed .step-number {
     background: #2e7d32;
 }
 
+/* Style the pfims add modal pfims review panel. */
 .pfims-add-modal .pfims-review-panel h3 {
     margin: 0 0 12px;
     color: #888;
@@ -945,6 +1066,7 @@ body {
     text-transform: uppercase;
 }
 
+/* Style the pfims add modal pfims review list. */
 .pfims-add-modal .pfims-review-list {
     display: grid;
     gap: 0;
@@ -953,6 +1075,7 @@ body {
     background: #faf8f5;
 }
 
+/* Style the pfims add modal pfims review item. */
 .pfims-add-modal .pfims-review-item {
     display: flex;
     justify-content: space-between;
@@ -961,14 +1084,17 @@ body {
     border-bottom: 1px solid #e4e8ef;
 }
 
+/* Style the pfims add modal pfims review item. */
 .pfims-add-modal .pfims-review-item:last-child {
     border-bottom: 0;
 }
 
+/* Style the pfims add modal pfims review back. */
 .pfims-add-modal .pfims-review-back {
     margin-right: auto;
 }
 
+/* Style the pfims add modal form group. */
 .pfims-add-modal .form-group input,
 .pfims-add-modal .form-group select,
 .pfims-add-modal .form-group textarea {
@@ -976,13 +1102,16 @@ body {
     border-radius: 8px;
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the pfims add modal modal container. */
     .pfims-add-modal .modal-container {
         width: 95%;
         padding: 20px;
     }
 }
 
+/* Style the modal container. */
 .modal-container {
     background: #fff;
     width: 600px;
@@ -998,17 +1127,21 @@ body {
     flex-direction: column;
 }
 
+/* Define the fade in scale animation. */
 @keyframes fadeInScale {
+    /* Style the from. */
     from {
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
+    /* Style the to. */
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
     }
 }
 
+/* Style the modal header. */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -1018,6 +1151,7 @@ body {
     padding-bottom: 16px;
 }
 
+/* Style the modal header. */
 .modal-header h2 {
     font-size: 1.25rem;
     font-weight: 600;
@@ -1025,6 +1159,7 @@ body {
     margin: 0;
 }
 
+/* Style the modal close. */
 .modal-close {
     background: none;
     border: none;
@@ -1036,18 +1171,22 @@ body {
     line-height: 1;
 }
 
+/* Style the modal close on hover. */
 .modal-close:hover {
     color: #172033;
 }
 
+/* Style the modal body. */
 .modal-body {
     padding: 0 2px;
 }
 
+/* Style the form group. */
 .form-group {
     margin-bottom: 18px;
 }
 
+/* Style the form group. */
 .form-group label {
     display: block;
     font-size: 0.85rem;
@@ -1056,10 +1195,12 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the form group required. */
 .form-group label .required {
     color: #d93636;
 }
 
+/* Style the form group. */
 .form-group input,
 .form-group select {
     width: 100%;
@@ -1071,6 +1212,7 @@ body {
     background: #fbfcfe;
 }
 
+/* Style the form group when focused. */
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
@@ -1079,16 +1221,19 @@ body {
     background: #fff;
 }
 
+/* Style the form row. */
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
 }
 
+/* Style the form row form group. */
 .form-row .form-group {
     margin-bottom: 18px;
 }
 
+/* Style the modal footer. */
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -1098,6 +1243,7 @@ body {
     border-top: 1px solid #e4e8ef;
 }
 
+/* Style the modal footer. */
 .modal-footer button {
     padding: 10px 24px;
     border-radius: 8px;
@@ -1108,37 +1254,44 @@ body {
     border: none;
 }
 
+/* Style the btn cancel. */
 .btn-cancel {
     background: transparent;
     color: #6b7280;
 }
 
+/* Style the btn cancel on hover. */
 .btn-cancel:hover {
     color: #172033;
     background: #f5f5f5;
 }
 
+/* Style the btn save. */
 .btn-save {
     background: linear-gradient(135deg, #f08a1a, #d97508);
     color: #fff;
     box-shadow: 0 6px 14px rgba(240, 138, 26, 0.18);
 }
 
+/* Style the btn save on hover. */
 .btn-save:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(240, 138, 26, 0.3);
 }
 
+/* Style the btn delete. */
 .btn-delete {
     background: #d93636;
     color: #fff;
 }
 
+/* Style the btn delete on hover. */
 .btn-delete:hover {
     background: #b91c1c;
     transform: translateY(-2px);
 }
 
+/* Style the btn edit project. */
 .btn-edit-project {
     background: linear-gradient(135deg, #f08a1a, #d97508);
     color: #fff;
@@ -1152,6 +1305,7 @@ body {
     box-shadow: 0 6px 14px rgba(240, 138, 26, 0.18);
 }
 
+/* Style the btn edit project on hover. */
 .btn-edit-project:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(240, 138, 26, 0.3);
@@ -1170,12 +1324,14 @@ body {
     border: 1px solid #e4e8ef;
 }
 
+/* Style the detail item. */
 .detail-item,
 .budget-detail-item {
     display: flex;
     flex-direction: column;
 }
 
+/* Style the detail item. */
 .detail-item label,
 .budget-detail-item label {
     font-size: 0.68rem;
@@ -1186,6 +1342,7 @@ body {
     margin-bottom: 2px;
 }
 
+/* Style the detail value. */
 .detail-value,
 .budget-detail-value {
     display: block;
@@ -1194,6 +1351,7 @@ body {
     font-weight: 500;
 }
 
+/* Style the detail edit. */
 .detail-edit,
 .budget-detail-edit {
     width: 100%;
@@ -1204,6 +1362,7 @@ body {
     background: #fbfcfe;
 }
 
+/* Style the detail edit when focused. */
 .detail-edit:focus,
 .budget-detail-edit:focus {
     outline: none;
@@ -1224,10 +1383,12 @@ body {
     display: none;
 }
 
+/* Style the budget table wrapper visible. */
 .budget-table-wrapper.visible {
     display: block;
 }
 
+/* Style the budget table wrapper. */
 .budget-table-wrapper table {
     width: 100%;
     border-collapse: collapse;
@@ -1235,6 +1396,7 @@ body {
     min-width: 500px;
 }
 
+/* Style the budget table wrapper. */
 .budget-table-wrapper table thead th {
     text-align: left;
     padding: 12px 16px;
@@ -1248,6 +1410,7 @@ body {
     white-space: nowrap;
 }
 
+/* Style the budget table wrapper. */
 .budget-table-wrapper table tbody td {
     padding: 10px 16px;
     border-bottom: 1px solid #eef2f6;
@@ -1255,14 +1418,17 @@ body {
     white-space: nowrap;
 }
 
+/* Style the budget table wrapper. */
 .budget-table-wrapper table tbody tr {
     cursor: pointer;
 }
 
+/* Style the budget table wrapper on hover. */
 .budget-table-wrapper table tbody tr:hover {
     background: #fff8f0;
 }
 
+/* Style the budget table wrapper. */
 .budget-table-wrapper table tbody tr:last-child td {
     border-bottom: none;
 }
@@ -1276,6 +1442,7 @@ body {
     max-width: 700px;
 }
 
+/* Style the stats row budget stat mini. */
 .stats-row-budget .stat-mini {
     background: #fff;
     border-radius: 18px;
@@ -1287,6 +1454,7 @@ body {
     overflow: hidden;
 }
 
+/* Style the stats row budget stat mini before content. */
 .stats-row-budget .stat-mini::before {
     position: absolute;
     top: 0;
@@ -1297,6 +1465,7 @@ body {
     content: "";
 }
 
+/* Style the stat mini stat label. */
 .stats-row-budget .stat-mini .stat-label {
     font-size: 0.75rem;
     font-weight: 800;
@@ -1306,30 +1475,40 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the stat mini stat value. */
 .stats-row-budget .stat-mini .stat-value {
     font-size: 1.55rem;
     font-weight: 700;
     color: #172033;
 }
 
+/* Style the stat value blue. */
 .stats-row-budget .stat-mini .stat-value.blue { color: #f08a1a; }
+/* Style the stat value red. */
 .stats-row-budget .stat-mini .stat-value.red { color: #d93636; }
+/* Style the stat value green. */
 .stats-row-budget .stat-mini .stat-value.green { color: #1f9d61; }
 
+/* Style the budget stats. */
 .budget-stats {
     display: none;
 }
 
+/* Style the budget stats visible. */
 .budget-stats.visible {
     display: grid;
 }
 
 /* Budget row states */
 .budget-overrun { background: #fee2e2 !important; }
+/* Style the budget warning. */
 .budget-warning { background: #fff3d6 !important; }
 
+/* Style the status active. */
 .status-active { color: #1f9d61; }
+/* Style the status released. */
 .status-released { color: #f08a1a; }
+/* Style the status forfeited. */
 .status-forfeited { color: #d93636; }
 
 /* Badges */
@@ -1341,10 +1520,15 @@ body {
     font-weight: 600;
 }
 
+/* Style the badge success. */
 .badge-success { background: #dcfce7; color: #157a49; }
+/* Style the badge warning. */
 .badge-warning { background: #fff3d6; color: #a35105; }
+/* Style the badge danger. */
 .badge-danger { background: #fee2e2; color: #b4232d; }
+/* Style the badge secondary. */
 .badge-secondary { background: #edf2f7; color: #475569; }
+/* Style the badge info. */
 .badge-info { background: #e3f2fd; color: #1565c0; }
 
 /* Budget filter row */
@@ -1356,6 +1540,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the budget search. */
 #budgetSearch {
     cursor: text;
     flex: 1;
@@ -1373,6 +1558,7 @@ body {
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
 }
 
+/* Style the report table wrapper. */
 .report-table-wrapper table {
     width: 100%;
     border-collapse: collapse;
@@ -1380,6 +1566,7 @@ body {
     min-width: 600px;
 }
 
+/* Style the report table wrapper. */
 .report-table-wrapper table th {
     background: #f8fafc;
     padding: 8px 10px;
@@ -1393,6 +1580,7 @@ body {
     letter-spacing: 0.04em;
 }
 
+/* Style the report table wrapper. */
 .report-table-wrapper table td {
     padding: 6px 10px;
     border-bottom: 1px solid #eef2f6;
@@ -1400,10 +1588,12 @@ body {
     color: #172033;
 }
 
+/* Style the report table wrapper on hover. */
 .report-table-wrapper table tr:hover {
     background: #fff8f0;
 }
 
+/* Style the report table wrapper total row. */
 .report-table-wrapper table .total-row {
     font-weight: 700;
     background: #f8fafc;
@@ -1418,6 +1608,7 @@ body {
     width: 100%;
 }
 
+/* Style the file upload button. */
 .file-upload-button {
     display: inline-flex;
     align-items: center;
@@ -1434,10 +1625,12 @@ body {
     white-space: nowrap;
 }
 
+/* Style the file upload button on hover. */
 .file-upload-button:hover {
     background: #e9edf2;
 }
 
+/* Style the file upload name. */
 .file-upload-name {
     color: #6b7280;
     font-size: 0.9rem;
@@ -1447,6 +1640,7 @@ body {
     max-width: 250px;
 }
 
+/* Style the file upload hint. */
 .file-upload-hint {
     display: block;
     margin-top: 6px;
@@ -1461,11 +1655,13 @@ body {
     border-top: 1px solid #e4e8ef;
 }
 
+/* Style the detail grid expense file section. */
 .detail-grid .expense-file-section,
 .budget-detail-grid .expense-file-section {
     grid-column: 1 / -1;
 }
 
+/* Style the expense file section. */
 .expense-file-section > label {
     display: block;
     margin-bottom: 10px;
@@ -1473,6 +1669,7 @@ body {
     color: #172033;
 }
 
+/* Style the expense file display. */
 .expense-file-display {
     display: flex;
     align-items: center;
@@ -1484,6 +1681,7 @@ body {
     border-radius: 8px;
 }
 
+/* Style the expense file info. */
 .expense-file-info {
     display: flex;
     align-items: center;
@@ -1491,11 +1689,13 @@ body {
     min-width: 0;
 }
 
+/* Style the expense file icon. */
 .expense-file-icon {
     font-size: 20px;
     flex-shrink: 0;
 }
 
+/* Style the expense file name. */
 .expense-file-name {
     color: #172033;
     font-size: 0.9rem;
@@ -1504,6 +1704,7 @@ body {
     white-space: nowrap;
 }
 
+/* Style the expense file actions. */
 .expense-file-actions {
     display: flex;
     align-items: center;
@@ -1511,6 +1712,7 @@ body {
     flex-shrink: 0;
 }
 
+/* Style the btn view file. */
 .btn-view-file,
 .btn-change-file {
     padding: 8px 13px;
@@ -1524,11 +1726,13 @@ body {
     transition: 0.2s ease;
 }
 
+/* Style the btn view file on hover. */
 .btn-view-file:hover,
 .btn-change-file:hover {
     background: #f0f3f6;
 }
 
+/* Style the btn delete file. */
 .btn-delete-file {
     padding: 8px 13px;
     border-radius: 7px;
@@ -1541,16 +1745,19 @@ body {
     transition: 0.2s ease;
 }
 
+/* Style the btn delete file on hover. */
 .btn-delete-file:hover {
     background: #fdeceb;
 }
 
+/* Style the file preview container. */
 .file-preview-container {
     margin-top: 12px;
     display: none;
     text-align: center;
 }
 
+/* Style the file preview container. */
 .file-preview-container img {
     max-width: 100%;
     max-height: 250px;
@@ -1559,6 +1766,7 @@ body {
     object-fit: contain;
 }
 
+/* Style the file input hidden. */
 .file-input-hidden {
     display: none;
 }
@@ -1575,10 +1783,12 @@ body {
     margin-bottom: 10px;
 }
 
+/* Style the dynamic amount fields form group. */
 .dynamic-amount-fields .form-group {
     margin-bottom: 0;
 }
 
+/* Style the dynamic amount fields form group. */
 .dynamic-amount-fields .form-group label {
     font-size: 0.75rem;
     color: #6b7280;
@@ -1601,6 +1811,7 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the error notification error content. */
 .error-notification .error-content {
     display: flex;
     align-items: center;
@@ -1608,12 +1819,14 @@ body {
     justify-content: space-between;
 }
 
+/* Style the error notification error icon. */
 .error-notification .error-icon {
     font-size: 1.2rem;
     font-weight: 700;
     color: #fff;
 }
 
+/* Style the error notification error close. */
 .error-notification .error-close {
     background: transparent;
     border: none;
@@ -1624,10 +1837,12 @@ body {
     padding: 0 8px;
 }
 
+/* Style the error notification error close on hover. */
 .error-notification .error-close:hover {
     opacity: 1;
 }
 
+/* Style the success notification. */
 .success-notification {
     position: fixed;
     top: 80px;
@@ -1644,6 +1859,7 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the success notification success content. */
 .success-notification .success-content {
     display: flex;
     align-items: center;
@@ -1651,12 +1867,14 @@ body {
     justify-content: space-between;
 }
 
+/* Style the success notification success icon. */
 .success-notification .success-icon {
     font-size: 1.2rem;
     font-weight: 700;
     color: #fff;
 }
 
+/* Style the success notification success close. */
 .success-notification .success-close {
     background: transparent;
     border: none;
@@ -1667,6 +1885,7 @@ body {
     padding: 0 8px;
 }
 
+/* Style the success notification success close on hover. */
 .success-notification .success-close:hover {
     opacity: 1;
 }
@@ -1678,6 +1897,7 @@ body {
     padding: 0;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout form button {
     display: flex;
     align-items: center;
@@ -1693,11 +1913,13 @@ body {
     border-radius: 8px;
 }
 
+/* Style the bottom nav logout on hover. */
 .sidebar .bottom-nav ul li.logout form button:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout form button img {
     width: 20px;
     height: 20px;
@@ -1709,11 +1931,14 @@ body {
     padding: 0;
 }
 
+/* Define the slide down animation. */
 @keyframes slideDown {
+    /* Style the from. */
     from {
         transform: translateX(-50%) translateY(-30px);
         opacity: 0;
     }
+    /* Style the to. */
     to {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
@@ -1722,17 +1947,21 @@ body {
 
 /* Responsive */
 @media (max-width: 900px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 200px;
         padding: 20px 15px;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 200px;
         padding: 20px;
     }
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 100%;
         height: auto;
@@ -1743,54 +1972,66 @@ body {
         padding: 15px;
         gap: 10px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul li {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    /* Style the sidebar bottom nav. */
     .sidebar .bottom-nav {
         border-top: none;
         padding-top: 0;
         margin-top: 0;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 0;
         padding: 20px 15px;
     }
+    /* Style the top header. */
     .top-header {
         flex-wrap: wrap;
         height: auto;
         padding: 10px 15px;
         gap: 8px;
     }
+    /* Style the left brand text. */
     .top-header .left .brand-text small {
         display: none;
     }
+    /* Style the top header right. */
     .top-header .right {
         gap: 12px;
         font-size: 0.8rem;
     }
+    /* Style the body. */
     body {
         padding-top: 90px;
     }
+    /* Style the sidebar. */
     .sidebar {
         top: 90px;
         height: auto;
         min-height: 60px;
     }
 
+    /* Style the page header. */
     .page-header {
         flex-direction: column;
         align-items: flex-start;
     }
+    /* Style the page header finance header actions. */
     .page-header #financeHeaderActions,
     .page-header .finance-header-action-group {
         width: 100%;
     }
+    /* Style the btn add expense. */
     .btn-add-expense,
     .btn-add-budget,
     .btn-add-data {
@@ -1798,33 +2039,40 @@ body {
         justify-content: center;
         text-align: center;
     }
+    /* Style the stats row. */
     .stats-row,
     .stats-row-budget {
         grid-template-columns: 1fr;
         max-width: 100%;
     }
+    /* Style the filter tabs. */
     .filter-tabs {
         justify-content: center;
         flex-wrap: wrap;
     }
+    /* Style the filter tabs tab. */
     .filter-tabs .tab {
         padding: 6px 14px;
         font-size: 0.8rem;
     }
+    /* Style the filter row. */
     .filter-row {
         flex-direction: column;
         align-items: stretch;
     }
+    /* Style the project filter. */
     .project-filter {
         width: 100%;
         min-width: auto;
     }
+    /* Style the table wrapper. */
     .table-wrapper table,
     .budget-table-wrapper table,
     .report-table-wrapper table {
         font-size: 0.75rem;
         min-width: 650px;
     }
+    /* Style the table wrapper. */
     .table-wrapper table thead th,
     .table-wrapper table tbody td,
     .budget-table-wrapper table thead th,
@@ -1833,29 +2081,35 @@ body {
     .report-table-wrapper table tbody td {
         padding: 6px 10px;
     }
+    /* Style the pagination wrapper. */
     .pagination-wrapper {
         flex-direction: column;
         align-items: center;
         text-align: center;
     }
 
+    /* Style the modal container. */
     .modal-container {
         padding: 20px;
         max-height: 95vh;
         width: 95%;
     }
+    /* Style the form row. */
     .form-row {
         grid-template-columns: 1fr;
         gap: 0;
     }
+    /* Style the modal footer. */
     .modal-footer {
         flex-direction: column;
         align-items: stretch;
     }
+    /* Style the modal footer. */
     .modal-footer button {
         width: 100%;
         text-align: center;
     }
+    /* Style the error notification. */
     .error-notification,
     .success-notification {
         min-width: auto;
@@ -1863,11 +2117,13 @@ body {
         top: 75px;
         padding: 12px 18px;
     }
+    /* Style the error notification error content. */
     .error-notification .error-content,
     .success-notification .success-content {
         font-size: 0.9rem;
     }
 
+    /* Style the detail grid. */
     .detail-grid,
     .budget-detail-grid {
         grid-template-columns: 1fr;
@@ -1875,6 +2131,7 @@ body {
         padding: 15px;
     }
 
+    /* Style the stats row budget. */
     .stats-row-budget {
         grid-template-columns: 1fr;
     }

@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('budgets_tbl', function (Blueprint $table) {
             $table->string('proof_file_path')->nullable()->after('actual_amount');
             $table->string('proof_file_name')->nullable()->after('proof_file_path');
@@ -22,6 +23,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('budgets_tbl', function (Blueprint $table) {
             $table->dropColumn(['proof_file_path', 'proof_file_name']);
         });

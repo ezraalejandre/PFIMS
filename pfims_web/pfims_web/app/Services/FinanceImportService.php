@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
+// Group the finance import actions.
 class FinanceImportService
 {
     private const PROJECT_COST_COMPONENTS = ['material', 'labor', 'equipment', 'other'];
@@ -17,8 +18,10 @@ class FinanceImportService
 
     private const ALLOWED_HEADERS = ['project_name', 'category_code', 'project_cost_component', 'expense_description', 'amount', 'expense_date', 'remarks'];
 
+    // Set up the values this class needs.
     public function __construct(private TabularImportReader $reader) {}
 
+    // Get the import.
     public function import(UploadedFile $file): array
     {
         $sheet = $this->reader->read($file);
@@ -37,6 +40,7 @@ class FinanceImportService
         $errors = [];
         $fileKeys = [];
 
+        // Process each row.
         foreach ($sheet['rows'] as $row) {
             $values = $row['values'];
             $values['project_name'] = $values['project_name'] ?? null;
@@ -54,6 +58,7 @@ class FinanceImportService
                 'remarks' => ['required', 'string', 'max:255'],
             ]);
 
+            // Run this step if the submitted fields fail validation.
             if ($validator->fails()) {
                 $this->appendValidationErrors($errors, $row['row'], $validator->errors()->toArray());
 
@@ -62,8 +67,10 @@ class FinanceImportService
 
             $data = $validator->validated();
             $projectId = null;
+            // Run this step if the data project name checks match.
             if (! blank($data['project_name'] ?? null) && ! in_array($this->key($data['project_name']), [$this->key('Office'), $this->key('Office Expenses'), $this->key('Admin Expenses')], true)) {
                 $matches = $projects->get($this->key($data['project_name']), collect());
+                // Run this step if the count does not equal 1.
                 if ($matches->count() !== 1) {
                     $errors[] = $this->rowError($row['row'], 'project_name', $matches->isEmpty()
                         ? 'Project not found. Use a project name already configured in PFIMS.'
@@ -95,9 +102,11 @@ class FinanceImportService
             ];
             $requestedCode = strtoupper(trim((string) $data['category_code']));
             $categoryMatches = $categoriesByCode->get($this->key($categoryCodeAliases[$requestedCode] ?? $requestedCode), collect());
+            // Run this step if the is empty check matches.
             if ($categoryMatches->isEmpty()) {
                 $categoryMatches = $categoriesByName->get($this->key($data['category_code']), collect());
             }
+            // Run this step if the count does not equal 1.
             if ($categoryMatches->count() !== 1) {
                 $errors[] = $this->rowError($row['row'], 'category_code', $categoryMatches->isEmpty()
                     ? 'Active finance category not found. Use a category code from Settings > Configurations.'
@@ -110,21 +119,25 @@ class FinanceImportService
             $isDirect = $classification === 'direct';
             $projectLabel = $classification === 'admin' ? 'Office' : 'Office Expenses';
             $allowedLabels = $classification === 'admin' ? ['Office', 'Admin Expenses'] : ['Office Expenses'];
+            // Run this step if the classification and data project name checks match.
             if (in_array($classification, ['admin', 'office'], true) && ! in_array($this->key($data['project_name']), array_map(fn ($label) => $this->key($label), $allowedLabels), true)) {
                 $errors[] = $this->rowError($row['row'], 'project_name', "Use {$projectLabel} for the project name of {$classification} expenses.");
 
                 continue;
             }
+            // Run this step if the classification and project id checks match.
             if (in_array($classification, ['admin', 'office'], true) && $projectId !== null) {
                 $errors[] = $this->rowError($row['row'], 'project_name', "{$projectLabel} records cannot be linked to a project.");
 
                 continue;
             }
+            // Run this step if the is direct and project id checks match.
             if ($isDirect && $projectId === null) {
                 $errors[] = $this->rowError($row['row'], 'project_name', 'A direct project expense requires a valid project.');
 
                 continue;
             }
+            // Run this step if the is direct and project id checks match.
             if (($isDirect || $projectId !== null) && blank($data['project_cost_component'] ?? null)) {
                 $errors[] = $this->rowError($row['row'], 'project_cost_component', 'Select a project cost component for project expenses.');
 
@@ -141,6 +154,7 @@ class FinanceImportService
                 'remarks' => blank($data['remarks'] ?? null) ? null : trim($data['remarks']),
             ];
             $naturalKey = $this->naturalKey($record);
+            // Run this step if the natural key is set.
             if (isset($fileKeys[$naturalKey])) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'Duplicates row '.$fileKeys[$naturalKey].' in this file.');
 
@@ -148,6 +162,7 @@ class FinanceImportService
             }
             $fileKeys[$naturalKey] = $row['row'];
 
+            // Run this step if the exists check matches.
             if ($this->duplicateQuery($record)->exists()) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'This expense already exists in PFIMS.');
 
@@ -157,12 +172,16 @@ class FinanceImportService
             $prepared[] = ['row' => $row['row'], 'data' => $record];
         }
 
+        // Stop if the errors is not empty.
         if ($errors !== []) {
             throw new ImportValidationException('No rows were imported. Correct the listed row errors and upload the file again.', $errors);
         }
 
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function () use ($prepared) {
+            // Process each row.
             foreach ($prepared as $row) {
+                // Stop if the exists data check matches.
                 if ($this->duplicateQuery($row['data'])->lockForUpdate()->exists()) {
                     throw new ImportValidationException('No rows were imported because a duplicate was created while the file was being checked.', [
                         $this->rowError($row['row'], 'duplicate', 'This expense now already exists in PFIMS.'),
@@ -173,6 +192,7 @@ class FinanceImportService
                     'updated_at' => now(),
                 ]);
             }
+            // Process each project id.
             foreach (collect($prepared)->pluck('data.project_id')->filter()->unique() as $projectId) {
                 app(ProjectCostLedger::class)->syncBudget((int) $projectId);
             }
@@ -185,15 +205,19 @@ class FinanceImportService
         ];
     }
 
+    // Check headers.
     private function validateHeaders(array $headers): void
     {
         $missing = array_values(array_diff(self::REQUIRED_HEADERS, $headers));
         $unexpected = array_values(array_diff($headers, self::ALLOWED_HEADERS));
+        // Run this step if the missing and unexpected checks match.
         if ($missing !== [] || $unexpected !== []) {
             $parts = [];
+            // Run this step if the missing is not empty.
             if ($missing !== []) {
                 $parts[] = 'Missing: '.implode(', ', $missing).'.';
             }
+            // Run this step if the unexpected is not empty.
             if ($unexpected !== []) {
                 $parts[] = 'Unexpected: '.implode(', ', $unexpected).'.';
             }
@@ -201,17 +225,23 @@ class FinanceImportService
         }
     }
 
+    // Clean up date.
     private function normalizeDate(mixed $value): mixed
     {
+        // Return early if the value checks match.
         if (is_numeric($value) && (float) $value >= 1 && (float) $value < 100000) {
             return Carbon::create(1899, 12, 30)->addDays((int) floor((float) $value))->format('Y-m-d');
         }
+        // Return early if the value checks match.
         if (! is_string($value) || trim($value) === '') {
             return $value;
         }
+        // Process each format.
         foreach (['Y-m-d', 'm/d/Y', 'd/m/Y', 'm-d-Y'] as $format) {
+            // Try this action and handle any errors below.
             try {
                 $date = Carbon::createFromFormat('!'.$format, trim($value));
+                // Return early if the date and format checks match.
                 if ($date !== false && $date->format($format) === trim($value)) {
                     return $date->format('Y-m-d');
                 }
@@ -222,6 +252,7 @@ class FinanceImportService
         return $value;
     }
 
+    // Get the duplicate query.
     private function duplicateQuery(array $record)
     {
         $query = DB::table('fin_expense_tbl')
@@ -238,11 +269,13 @@ class FinanceImportService
             : $query->whereRaw('TRIM(remarks) = ?', [trim($record['remarks'])]);
     }
 
+    // Get the natural key.
     private function naturalKey(array $record): string
     {
         return implode('|', [$record['project_id'] ?? 'office', $record['fin_category_id'], $record['project_cost_component'] ?? 'none', $record['expense_date'], number_format($record['amount'], 2, '.', ''), $this->key($record['expense_description']), trim((string) ($record['remarks'] ?? ''))]);
     }
 
+    // Clean up cost component.
     private function normalizeCostComponent(mixed $value): ?string
     {
         $component = $this->key($value);
@@ -250,20 +283,25 @@ class FinanceImportService
         return $component === '' ? null : $component;
     }
 
+    // Get the key.
     private function key(mixed $value): string
     {
         return Str::lower(trim((string) $value));
     }
 
+    // Get the append validation errors.
     private function appendValidationErrors(array &$errors, int $row, array $messages): void
     {
+        // Process each field messages.
         foreach ($messages as $field => $fieldMessages) {
+            // Process each message.
             foreach ($fieldMessages as $message) {
                 $errors[] = $this->rowError($row, $field, $message);
             }
         }
     }
 
+    // Get the row error.
     private function rowError(int $row, string $field, string $message): array
     {
         return compact('row', 'field', 'message');

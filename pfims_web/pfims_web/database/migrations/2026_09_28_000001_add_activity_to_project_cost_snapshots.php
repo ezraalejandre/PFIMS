@@ -12,8 +12,10 @@ return new class extends Migration
         'unvalued_stock_out_count',
     ];
 
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('ml_project_cost_snapshots', function (Blueprint $table) {
             $table->unsignedInteger('direct_expense_count_7d')->nullable();
             $table->unsignedInteger('direct_expense_count_30d')->nullable();
@@ -26,8 +28,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('ml_project_cost_snapshots', function (Blueprint $table) {
             $table->dropColumn([...self::COLUMNS,
                 'direct_expense_amount_30d', 'stock_out_quantity_30d', 'valued_stock_out_cost',

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the audit log table.
 class AuditLog extends Model
 {
     protected $fillable = [
@@ -14,6 +15,7 @@ class AuditLog extends Model
 
     protected $casts = ['changes' => 'array'];
 
+    // Link this record to its user.
     public function user()
     {
         return $this->belongsTo(User::class);

@@ -6,7 +6,9 @@
         </div>
     </div>
 
+    {{-- Show each login. --}}
     @forelse ($loginHistories as $login)
+        {{-- Prepare the values used by this page section. --}}
         @php($loggedInAt = $login->logged_in_at->copy()->timezone('Asia/Manila'))
         <div class="login-history-row">
             <div class="login-history-device">
@@ -22,6 +24,7 @@
                 <span>{{ $loggedInAt->format('g:i A') }} PHT</span>
             </time>
         </div>
+    {{-- Show this section when its display check passes. --}}
     @empty
         <div class="login-history-empty">No login history is available yet. Your next successful login will appear here.</div>
     @endforelse

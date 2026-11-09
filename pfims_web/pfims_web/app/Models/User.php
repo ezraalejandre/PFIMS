@@ -9,13 +9,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Notifications\ApiResetPasswordNotification;
 
+// Link records to the user table.
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
-     * The table associated with the model.
+     * Database table used by this model.
      *
      * @var string
      */
@@ -23,7 +24,7 @@ class User extends Authenticatable
     protected $attributes = ['status' => 'Active'];
 
     /**
-     * The attributes that are mass assignable.
+     * Fields that can be saved together.
      *
      * @var list<string>
      */
@@ -42,7 +43,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Fields to hide when returning this record.
      *
      * @var list<string>
      */
@@ -53,7 +54,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Set the data type for each field.
      *
      * @return array<string, string>
      */
@@ -75,11 +76,13 @@ class User extends Authenticatable
         return isset($this->role) && $this->role === $role;
     }
 
+    // Link this record to its login histories.
     public function loginHistories()
     {
         return $this->hasMany(LoginHistory::class)->latest('logged_in_at');
     }
 
+    // Link this record to its default filters.
     public function defaultFilters()
     {
         return $this->hasMany(UserDefaultFilter::class);

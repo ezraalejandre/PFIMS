@@ -9,9 +9,11 @@ use Illuminate\Support\Facades\Schema;
 /** Project usage is direct spending plus valued stock withdrawals, never storage purchases. */
 class ProjectCostLedger
 {
+    // Get the direct expenses.
     public function directExpenses(): Builder
     {
         $query = DB::table('fin_expense_tbl as cost_expense')->whereNotNull('cost_expense.project_id');
+        // Run this step if the value check matches.
         if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
             $query->whereNull('cost_expense.inventory_transaction_id');
         }
@@ -19,6 +21,7 @@ class ProjectCostLedger
         return $query;
     }
 
+    // Get the direct totals.
     public function directTotals(): Builder
     {
         return $this->directExpenses()
@@ -27,8 +30,10 @@ class ProjectCostLedger
             ->groupBy('cost_expense.project_id');
     }
 
+    // Get the allocated totals.
     public function allocatedTotals(): ?Builder
     {
+        // Return early if the value check matches.
         if (! Schema::hasTable('inventory_cost_allocation_tbl')) {
             return null;
         }
@@ -40,20 +45,24 @@ class ProjectCostLedger
             ->groupBy('cost_allocation.project_id');
     }
 
+    // Get the for project.
     public function forProject(int $projectId): array
     {
         $direct = (float) $this->directExpenses()->where('cost_expense.project_id', $projectId)->sum('cost_expense.amount');
         $allocated = 0.0;
         $unvalued = 0;
+        // Run this step if the value check matches.
         if (Schema::hasTable('inventory_cost_allocation_tbl')) {
             $rows = DB::table('inventory_cost_allocation_tbl')->where('project_id', $projectId);
             $allocated = (float) (clone $rows)->where('valuation_status', 'valued')->sum('allocated_amount');
             $unvalued = (clone $rows)->where('valuation_status', 'unvalued')->count();
         }
+        // Run this step if the input checks match.
         if (Schema::hasTable('inventory_transaction_tbl')
             && Schema::hasColumn('inventory_transaction_tbl', 'project_id')) {
             $unallocated = DB::table('inventory_transaction_tbl as withdrawal')
                 ->where('withdrawal.project_id', $projectId)->where('withdrawal.transaction_type', 'OUT');
+            // Run this step if the value check matches.
             if (Schema::hasTable('inventory_cost_allocation_tbl')) {
                 $unallocated->whereNotExists(function ($query) {
                     $query->selectRaw('1')->from('inventory_cost_allocation_tbl as allocation')
@@ -63,6 +72,7 @@ class ProjectCostLedger
             $unvalued += $unallocated->count();
             $projectReceipts = DB::table('inventory_transaction_tbl as receipt')
                 ->where('receipt.project_id', $projectId)->where('receipt.transaction_type', 'IN');
+            // Run this step if the input checks match.
             if (Schema::hasTable('fin_expense_tbl') && Schema::hasColumns('fin_expense_tbl',
                 ['inventory_transaction_id', 'project_id', 'entry_kind', 'amount'])) {
                 $projectReceipts->whereNotExists(function ($query) {
@@ -78,8 +88,10 @@ class ProjectCostLedger
         return ['direct' => $direct, 'allocated' => $allocated, 'total' => round($direct + $allocated, 2), 'unvalued_count' => $unvalued];
     }
 
+    // Match budget.
     public function syncBudget(int $projectId): void
     {
+        // Run this step if the value check matches.
         if (! Schema::hasTable('budgets_tbl')) {
             return;
         }

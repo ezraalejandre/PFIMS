@@ -5,6 +5,7 @@
     box-sizing: border-box;
 }
 
+/* Style the body. */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f4f6f9;
@@ -13,6 +14,7 @@ body {
     min-height: 100vh;
 }
 
+/* Style the password control. */
 .password-control {
     position: relative;
 }
@@ -23,6 +25,7 @@ body {
     display: none;
 }
 
+/* Style the password toggle. */
 .password-toggle {
     position: absolute;
     top: 50%;
@@ -41,11 +44,13 @@ body {
     transition: color 0.2s ease, background 0.2s ease;
 }
 
+/* Style the password toggle on hover. */
 .password-toggle:hover {
     color: #1a2b3c;
     background: #f4efe6;
 }
 
+/* Style the password toggle. */
 .password-toggle svg {
     width: 18px;
     height: 18px;
@@ -69,17 +74,20 @@ body {
     height: 70px;
 }
 
+/* Style the top header left. */
 .top-header .left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
+/* Style the top header left. */
 .top-header .left img {
     height: 40px;
     width: auto;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text {
     font-weight: 600;
     font-size: 1.1rem;
@@ -87,6 +95,7 @@ body {
     color: #1a2b3c;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text small {
     display: block;
     font-weight: 300;
@@ -95,6 +104,7 @@ body {
     color: #555;
 }
 
+/* Style the top header right. */
 .top-header .right {
     display: flex;
     align-items: center;
@@ -102,6 +112,7 @@ body {
     font-size: 0.95rem;
 }
 
+/* Style the top header right. */
 .top-header .right a {
     display: flex;
     align-items: center;
@@ -111,10 +122,12 @@ body {
     position: relative;
 }
 
+/* Style the top header right on hover. */
 .top-header .right a:hover {
     opacity: 0.7;
 }
 
+/* Style the top header right. */
 .top-header .right span {
     cursor: pointer;
     opacity: 0.8;
@@ -125,6 +138,7 @@ body {
     color: #333;
 }
 
+/* Style the top header right on hover. */
 .top-header .right span:hover {
     opacity: 1;
 }
@@ -162,6 +176,7 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the success notification success content. */
 .success-notification .success-content {
     display: flex;
     align-items: center;
@@ -169,12 +184,14 @@ body {
     justify-content: space-between;
 }
 
+/* Style the success notification success icon. */
 .success-notification .success-icon {
     font-size: 1.2rem;
     font-weight: 700;
     color: #fff;
 }
 
+/* Style the success notification success close. */
 .success-notification .success-close {
     background: transparent;
     border: none;
@@ -185,15 +202,19 @@ body {
     padding: 0 8px;
 }
 
+/* Style the success notification success close on hover. */
 .success-notification .success-close:hover {
     opacity: 1;
 }
 
+/* Define the slide down animation. */
 @keyframes slideDown {
+    /* Style the from. */
     from {
         transform: translateX(-50%) translateY(-30px);
         opacity: 0;
     }
+    /* Style the to. */
     to {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
@@ -216,15 +237,18 @@ body {
     z-index: 100;
 }
 
+/* Style the sidebar. */
 .sidebar nav {
     flex: 1;
     margin-top: 20px;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul {
     list-style: none;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li {
     padding: 12px 16px;
     margin-bottom: 4px;
@@ -235,32 +259,38 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li a {
     color: inherit;
     text-decoration: none;
     display: block;
 }
 
+/* Style the sidebar active. */
 .sidebar nav ul li.active {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
 }
 
+/* Style the sidebar on hover. */
 .sidebar nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 20px;
     margin-top: 20px;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul {
     list-style: none;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li {
     display: flex;
     align-items: center;
@@ -272,25 +302,30 @@ body {
     transition: 0.2s;
 }
 
+/* Style the bottom nav nav icon. */
 .sidebar .bottom-nav ul li .nav-icon {
     width: 20px;
     height: 20px;
     object-fit: contain;
 }
 
+/* Style the sidebar bottom nav on hover. */
 .sidebar .bottom-nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout {
     color: #fff;
 }
 
+/* Style the bottom nav logout on hover. */
 .sidebar .bottom-nav ul li.logout:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li a {
     display: flex;
     align-items: center;
@@ -319,6 +354,7 @@ body {
     gap: 15px;
 }
 
+/* Style the page header. */
 .page-header h1 {
     font-size: 1.8rem;
     font-weight: 600;
@@ -345,12 +381,14 @@ body {
     border-right: 1px solid #f0ebe2;
 }
 
+/* Style the settings nav. */
 .settings-nav {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
+/* Style the settings nav. */
 .settings-nav li {
     padding: 12px 24px;
     font-size: 0.9rem;
@@ -361,11 +399,13 @@ body {
     border-left: 3px solid transparent;
 }
 
+/* Style the settings nav on hover. */
 .settings-nav li:hover {
     background: #f0ebe2;
     color: #1a2b3c;
 }
 
+/* Style the settings nav active. */
 .settings-nav li.active {
     background: #f0ebe2;
     color: #1a2b3c;
@@ -378,10 +418,12 @@ body {
     padding: 25px 35px;
 }
 
+/* Style the settings section. */
 .settings-section {
     display: block;
 }
 
+/* Style the settings section section title. */
 .settings-section .section-title {
     font-size: 1.2rem;
     font-weight: 600;
@@ -389,6 +431,7 @@ body {
     margin-bottom: 6px;
 }
 
+/* Style the settings section section desc. */
 .settings-section .section-desc {
     font-size: 0.9rem;
     color: #888;
@@ -407,6 +450,7 @@ body {
     flex-wrap: wrap;
 }
 
+/* Style the profile preview avatar. */
 .profile-preview .avatar {
     width: 60px;
     height: 60px;
@@ -421,17 +465,20 @@ body {
     flex-shrink: 0;
 }
 
+/* Style the info name. */
 .profile-preview .info .name {
     font-weight: 600;
     font-size: 1rem;
     color: #1a2b3c;
 }
 
+/* Style the info role. */
 .profile-preview .info .role {
     font-size: 0.85rem;
     color: #888;
 }
 
+/* Style the btn go profile. */
 .btn-go-profile {
     background: #1a2b3c;
     color: #fff;
@@ -445,6 +492,7 @@ body {
     margin-left: auto;
 }
 
+/* Style the btn go profile on hover. */
 .btn-go-profile:hover {
     background: #2a3f54;
     transform: translateY(-2px);
@@ -459,20 +507,24 @@ body {
     border-bottom: 1px solid #f0ebe2;
 }
 
+/* Style the security item. */
 .security-item:last-child {
     border-bottom: none;
 }
 
+/* Style the left label. */
 .security-item .left .label {
     font-weight: 500;
     color: #1a2b3c;
 }
 
+/* Style the left desc. */
 .security-item .left .desc {
     font-size: 0.8rem;
     color: #888;
 }
 
+/* Style the btn change. */
 .btn-change {
     background: transparent;
     color: #1a2b3c;
@@ -484,6 +536,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn change on hover. */
 .btn-change:hover {
     background: #f0ebe2;
     border-color: #c9a96e;
@@ -494,15 +547,18 @@ body {
     border-top: 1px solid #f0ebe2;
 }
 
+/* Style the login history heading. */
 .login-history-heading {
     padding: 18px 0 10px;
 }
 
+/* Style the login history heading label. */
 .login-history-heading .label {
     font-weight: 600;
     color: #1a2b3c;
 }
 
+/* Style the login history heading desc. */
 .login-history-heading .desc,
 .login-history-meta {
     margin-top: 3px;
@@ -510,6 +566,7 @@ body {
     color: #888;
 }
 
+/* Style the login history row. */
 .login-history-row {
     display: flex;
     align-items: center;
@@ -519,6 +576,7 @@ body {
     border-bottom: 1px solid #f0ebe2;
 }
 
+/* Style the login history device. */
 .login-history-device {
     display: flex;
     align-items: center;
@@ -526,6 +584,7 @@ body {
     min-width: 0;
 }
 
+/* Style the login history icon. */
 .login-history-icon {
     display: grid;
     place-items: center;
@@ -537,12 +596,14 @@ body {
     color: #9a7136;
 }
 
+/* Style the login history name. */
 .login-history-name {
     color: #1a2b3c;
     font-size: 0.9rem;
     font-weight: 500;
 }
 
+/* Style the login history row. */
 .login-history-row time {
     flex: 0 0 auto;
     color: #44515d;
@@ -551,21 +612,26 @@ body {
     text-align: right;
 }
 
+/* Style the login history row. */
 .login-history-row time span {
     color: #888;
 }
 
+/* Style the login history empty. */
 .login-history-empty {
     padding: 18px 0;
     color: #888;
     font-size: 0.85rem;
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 560px) {
+    /* Style the login history row. */
     .login-history-row {
         align-items: flex-start;
     }
 
+    /* Style the login history row. */
     .login-history-row time {
         font-size: 0.76rem;
     }
@@ -581,20 +647,24 @@ body {
     border-bottom: 1px solid #f0ebe2;
 }
 
+/* Style the preference item. */
 .preference-item:last-child {
     border-bottom: none;
 }
 
+/* Style the left label. */
 .preference-item .left .label {
     font-weight: 500;
     color: #1a2b3c;
 }
 
+/* Style the left desc. */
 .preference-item .left .desc {
     font-size: 0.8rem;
     color: #888;
 }
 
+/* Style the preference item. */
 .preference-item select {
     padding: 6px 14px;
     border: 1px solid #ddd;
@@ -604,6 +674,7 @@ body {
     cursor: pointer;
 }
 
+/* Style the preference item when focused. */
 .preference-item select:focus {
     outline: none;
     border-color: #c9a96e;
@@ -621,10 +692,12 @@ body {
     flex-shrink: 0;
 }
 
+/* Style the toggle active. */
 .toggle.active {
     background: #c9a96e;
 }
 
+/* Style the toggle toggle slider. */
 .toggle .toggle-slider {
     width: 20px;
     height: 20px;
@@ -637,6 +710,7 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Style the active toggle slider. */
 .toggle.active .toggle-slider {
     left: 22px;
 }
@@ -649,6 +723,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the config tab. */
 .config-tab {
     padding: 8px 20px;
     border-radius: 20px;
@@ -661,11 +736,13 @@ body {
     transition: 0.3s;
 }
 
+/* Style the config tab on hover. */
 .config-tab:hover {
     border-color: #c9a96e;
     color: #333;
 }
 
+/* Style the config tab active. */
 .config-tab.active {
     background: #1a2b3c;
     color: #fff;
@@ -681,15 +758,18 @@ body {
     border-bottom: 1px solid #f0ebe2;
 }
 
+/* Style the config item. */
 .config-item:last-child {
     border-bottom: none;
 }
 
+/* Style the left role name. */
 .config-item .left .role-name {
     font-weight: 500;
     color: #1a2b3c;
 }
 
+/* Style the left role desc. */
 .config-item .left .role-desc {
     font-size: 0.8rem;
     color: #888;
@@ -702,6 +782,7 @@ body {
     font-size: 0.85rem;
 }
 
+/* Style the user table. */
 .user-table thead th {
     text-align: left;
     padding: 10px 12px;
@@ -713,16 +794,19 @@ body {
     border-bottom: 2px solid #f0f0f0;
 }
 
+/* Style the user table. */
 .user-table tbody td {
     padding: 10px 12px;
     border-bottom: 1px solid #f5f5f5;
     color: #333;
 }
 
+/* Style the user table on hover. */
 .user-table tbody tr:hover {
     background: #faf8f5;
 }
 
+/* Style the role badge. */
 .role-badge {
     display: inline-block;
     padding: 2px 12px;
@@ -731,21 +815,25 @@ body {
     font-weight: 600;
 }
 
+/* Style the role badge admin. */
 .role-badge.admin {
     background: #fde8e8;
     color: #d32f2f;
 }
 
+/* Style the role badge manager. */
 .role-badge.manager {
     background: #fff3e0;
     color: #e65100;
 }
 
+/* Style the role badge staff. */
 .role-badge.staff {
     background: #e6f7e6;
     color: #2e7d32;
 }
 
+/* Style the btn edit user. */
 .btn-edit-user {
     background: transparent;
     border: none;
@@ -754,22 +842,26 @@ body {
     transition: 0.2s;
 }
 
+/* Style the btn edit user. */
 .btn-edit-user img {
     width: 18px;
     height: 18px;
     object-fit: contain;
 }
 
+/* Style the btn edit user on hover. */
 .btn-edit-user:hover img {
     transform: scale(1.15);
     filter: brightness(0.7);
 }
 
+/* Style the settings actions cell. */
 .settings-actions-cell {
     text-align: center;
     white-space: nowrap;
 }
 
+/* Style the settings action group. */
 .settings-action-group {
     display: inline-flex;
     align-items: center;
@@ -778,6 +870,7 @@ body {
     gap: 6px;
 }
 
+/* Style the btn config action. */
 .btn-config-action {
     border: 1px solid #d9dee5;
     border-radius: 6px;
@@ -792,11 +885,13 @@ body {
     transition: background .2s ease, border-color .2s ease, color .2s ease;
 }
 
+/* Style the btn config action on hover. */
 .btn-config-action:hover {
     background: #f5efe6;
     border-color: #c9a96e;
 }
 
+/* Style the btn delete config. */
 .btn-delete-config {
     background: #d32f2f;
     color: #fff;
@@ -808,22 +903,26 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn delete config on hover. */
 .btn-delete-config:hover {
     background: #b71c1c;
     transform: translateY(-2px);
 }
 
+/* Style the btn config action btn delete config. */
 .btn-config-action.btn-delete-config {
     border: 1px solid #d32f2f;
     border-radius: 6px;
     padding: 5px 9px;
 }
 
+/* Style the btn config action btn delete config on hover. */
 .btn-config-action.btn-delete-config:hover {
     border-color: #b71c1c;
     transform: none;
 }
 
+/* Style the btn add user. */
 .btn-add-user {
     background: #1a2b3c;
     color: #fff;
@@ -837,11 +936,13 @@ body {
     margin-bottom: 15px;
 }
 
+/* Style the btn add user on hover. */
 .btn-add-user:hover {
     background: #2a3f54;
     transform: translateY(-2px);
 }
 
+/* Style the btn save config. */
 .btn-save-config {
     background: #c9a96e;
     color: #fff;
@@ -853,11 +954,13 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn save config on hover. */
 .btn-save-config:hover {
     background: #b8975a;
     transform: translateY(-2px);
 }
 
+/* Style the btn cancel config. */
 .btn-cancel-config {
     background: transparent;
     color: #888;
@@ -869,11 +972,13 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn cancel config on hover. */
 .btn-cancel-config:hover {
     background: #f5f5f5;
     color: #333;
 }
 
+/* Style the btn close config. */
 .btn-close-config {
     background: transparent;
     border: none;
@@ -883,6 +988,7 @@ body {
     transition: 0.2s;
 }
 
+/* Style the btn close config on hover. */
 .btn-close-config:hover {
     color: #333;
 }
@@ -899,6 +1005,7 @@ body {
     backdrop-filter: blur(4px);
 }
 
+/* Style the settings modal overlay. */
 .settings-modal-overlay {
     inset: 0;
     width: auto;
@@ -916,11 +1023,13 @@ body {
     z-index: 3200;
 }
 
+/* Style the settings modal dialog. */
 .settings-modal-dialog {
     width: 500px;
     max-width: min(95%, 500px);
 }
 
+/* Style the settings modal footer. */
 .settings-modal-footer,
 .settings-confirm-actions {
     display: flex;
@@ -932,12 +1041,14 @@ body {
     padding-top: 20px;
 }
 
+/* Style the settings modal footer. */
 .settings-modal-footer > button,
 .settings-confirm-actions > button {
     min-height: 42px;
     padding: 10px 20px;
 }
 
+/* Style the settings detail row. */
 .settings-detail-row {
     display: flex;
     justify-content: space-between;
@@ -947,26 +1058,31 @@ body {
     border-bottom: 1px solid #f0ebe2;
 }
 
+/* Style the settings detail row. */
 .settings-detail-row span {
     color: #4b5563;
     text-align: right;
     overflow-wrap: anywhere;
 }
 
+/* Style the settings confirm modal. */
 .settings-confirm-modal {
     z-index: 3400;
 }
 
+/* Style the settings confirm dialog. */
 .settings-confirm-dialog {
     width: 440px;
     max-width: min(95%, 440px);
     padding: 28px 32px;
 }
 
+/* Style the settings confirm content. */
 .settings-confirm-content {
     text-align: center;
 }
 
+/* Style the settings confirm icon. */
 .settings-confirm-icon {
     display: flex;
     align-items: center;
@@ -981,23 +1097,27 @@ body {
     font-weight: 700;
 }
 
+/* Style the settings confirm content. */
 .settings-confirm-content h2 {
     margin: 0 0 10px;
     color: #1a2b3c;
     font-size: 1.35rem;
 }
 
+/* Style the settings confirm content. */
 .settings-confirm-content p {
     margin: 0;
     color: #667085;
     line-height: 1.5;
 }
 
+/* Style the settings confirm actions. */
 .settings-confirm-actions {
     justify-content: center;
     margin-top: 26px;
 }
 
+/* Style the settings confirm actions btn delete config. */
 .settings-confirm-actions .btn-delete-config,
 .settings-modal-footer .btn-delete-config {
     border: 0;
@@ -1006,54 +1126,66 @@ body {
     font-weight: 700;
 }
 
+/* Style the settings detail row. */
 html[data-theme="dark"] .settings-detail-row {
     border-bottom-color: #2c3749;
 }
 
+/* Style the settings detail row. */
 html[data-theme="dark"] .settings-detail-row span,
 html[data-theme="dark"] .settings-confirm-content p {
     color: #b7c3d4;
 }
 
+/* Style the settings confirm content. */
 html[data-theme="dark"] .settings-confirm-content h2 {
     color: #f8fafc;
 }
 
+/* Style the settings confirm icon. */
 html[data-theme="dark"] .settings-confirm-icon {
     background: rgba(239, 68, 68, 0.16);
     color: #f87171;
 }
 
+/* Style the settings user fields. */
 .settings-user-fields {
     display: flex;
     gap: 12px;
 }
 
+/* Style the settings user fields form group. */
 .settings-user-fields > .form-group {
     flex: 1;
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 560px) {
+    /* Style the settings user fields. */
     .settings-user-fields {
         flex-direction: column;
         gap: 0;
     }
 
+    /* Style the settings modal overlay. */
     .settings-modal-overlay {
         align-items: flex-start;
         padding: 12px;
         overflow-y: auto;
     }
 
+    /* Style the settings modal footer. */
     .settings-modal-footer {
         flex-wrap: wrap;
     }
 
+    /* Style the settings modal footer. */
     .settings-modal-footer > button {
         flex: 1 1 120px;
     }
 }
 
+/* Style the modal container. */
 .modal-container {
     background: #fff;
     width: 500px;
@@ -1065,6 +1197,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     overflow-y: auto;
 }
 
+/* Style the modal header. */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -1072,6 +1205,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     margin-bottom: 20px;
 }
 
+/* Style the modal header. */
 .modal-header h2 {
     font-size: 1.4rem;
     font-weight: 600;
@@ -1079,6 +1213,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     margin: 0;
 }
 
+/* Style the modal close. */
 .modal-close {
     background: none;
     border: none;
@@ -1090,18 +1225,22 @@ html[data-theme="dark"] .settings-confirm-icon {
     line-height: 1;
 }
 
+/* Style the modal close on hover. */
 .modal-close:hover {
     color: #333;
 }
 
+/* Style the modal body. */
 .modal-body {
     padding: 0 2px;
 }
 
+/* Style the form group. */
 .form-group {
     margin-bottom: 18px;
 }
 
+/* Style the form group. */
 .form-group label {
     display: block;
     font-size: 0.85rem;
@@ -1110,6 +1249,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     margin-bottom: 4px;
 }
 
+/* Style the form group. */
 .form-group input,
 .form-group select {
     width: 100%;
@@ -1121,6 +1261,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     background: #fafafa;
 }
 
+/* Style the form group when focused. */
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
@@ -1129,6 +1270,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     background: #fff;
 }
 
+/* Style the btn delete user. */
 .btn-delete-user {
     background: #d32f2f;
     color: #fff;
@@ -1140,11 +1282,13 @@ html[data-theme="dark"] .settings-confirm-icon {
     transition: 0.3s;
 }
 
+/* Style the btn delete user on hover. */
 .btn-delete-user:hover {
     background: #b71c1c;
     transform: translateY(-2px);
 }
 
+/* Style the btn save. */
 .btn-save {
     background: #c9a96e;
     color: #fff;
@@ -1156,11 +1300,13 @@ html[data-theme="dark"] .settings-confirm-icon {
     transition: 0.3s;
 }
 
+/* Style the btn save on hover. */
 .btn-save:hover {
     background: #b8975a;
     transform: translateY(-2px);
 }
 
+/* Style the btn cancel. */
 .btn-cancel {
     background: transparent;
     color: #888;
@@ -1172,6 +1318,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     transition: 0.3s;
 }
 
+/* Style the btn cancel on hover. */
 .btn-cancel:hover {
     background: #f5f5f5;
     color: #333;
@@ -1179,20 +1326,25 @@ html[data-theme="dark"] .settings-confirm-icon {
 
 /* Responsive */
 @media (max-width: 900px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 200px;
         padding: 20px 15px;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 200px;
         padding: 20px;
     }
+    /* Style the settings sidebar. */
     .settings-sidebar {
         width: 200px;
     }
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 100%;
         height: auto;
@@ -1203,108 +1355,131 @@ html[data-theme="dark"] .settings-confirm-icon {
         padding: 15px;
         gap: 10px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul li {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    /* Style the sidebar bottom nav. */
     .sidebar .bottom-nav {
         border-top: none;
         padding-top: 0;
         margin-top: 0;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 0;
         padding: 20px 15px;
     }
+    /* Style the top header. */
     .top-header {
         flex-wrap: wrap;
         height: auto;
         padding: 10px 15px;
         gap: 8px;
     }
+    /* Style the left brand text. */
     .top-header .left .brand-text small {
         display: none;
     }
+    /* Style the top header right. */
     .top-header .right {
         gap: 12px;
         font-size: 0.8rem;
     }
+    /* Style the body. */
     body {
         padding-top: 90px;
     }
+    /* Style the sidebar. */
     .sidebar {
         top: 90px;
         height: auto;
         min-height: 60px;
     }
 
+    /* Style the settings wrapper. */
     .settings-wrapper {
         flex-direction: column;
         border-radius: 12px;
     }
+    /* Style the settings sidebar. */
     .settings-sidebar {
         width: 100%;
         border-right: none;
         border-bottom: 1px solid #f0ebe2;
         padding: 10px 0;
     }
+    /* Style the settings nav. */
     .settings-nav {
         display: flex;
         flex-wrap: wrap;
         gap: 4px;
         padding: 0 10px;
     }
+    /* Style the settings nav. */
     .settings-nav li {
         padding: 8px 14px;
         font-size: 0.8rem;
         border-left: none;
         border-bottom: 2px solid transparent;
     }
+    /* Style the settings nav active. */
     .settings-nav li.active {
         border-left: none;
         border-bottom-color: #c9a96e;
     }
+    /* Style the settings content. */
     .settings-content {
         padding: 20px;
     }
+    /* Style the profile preview. */
     .profile-preview {
         flex-direction: column;
         text-align: center;
     }
+    /* Style the btn go profile. */
     .btn-go-profile {
         margin-left: 0;
         width: 100%;
         text-align: center;
     }
+    /* Style the security item. */
     .security-item,
     .preference-item,
     .config-item {
         flex-wrap: wrap;
         gap: 10px;
     }
+    /* Style the user table. */
     .user-table {
         font-size: 0.75rem;
         min-width: 600px;
     }
+    /* Style the page header. */
     .page-header h1 {
         font-size: 1.4rem;
     }
 
+    /* Style the modal container. */
     .modal-container {
         padding: 20px;
         width: 95%;
     }
+    /* Style the success notification. */
     .success-notification {
         min-width: auto;
         width: 90%;
         top: 75px;
         padding: 12px 18px;
     }
+    /* Style the success notification success content. */
     .success-notification .success-content {
         font-size: 0.9rem;
     }
@@ -1313,6 +1488,7 @@ html[data-theme="dark"] .settings-confirm-icon {
     .config-tabs {
         justify-content: center;
     }
+    /* Style the config tab. */
     .config-tab {
         padding: 6px 14px;
         font-size: 0.8rem;

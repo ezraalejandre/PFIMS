@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\File;
 use RuntimeException;
 use Throwable;
 
-/** Training-only model selection; real outcomes and the held-out partition are immutable. */
+/** Choose a model using training data only. Keep real results and test data unchanged. */
 class ProjectCostOptimizationService extends MLService
 {
     /** Keep detailed tuning evidence off the prediction page's request path. */
@@ -20,10 +20,13 @@ class ProjectCostOptimizationService extends MLService
         $compact['evaluation'] = array_intersect_key($report['evaluation'], array_flip(['mean_absolute_error',
             'mean_absolute_percentage_error', 'r_squared', 'target_median', 'target_mean', 'mae_target', 'evaluation_projects', 'evaluation_observations']));
         $costFields = array_flip(['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared', 'mae_target']);
+        // Run this step if the report evaluation latest observation per project is set.
         if (isset($report['evaluation']['latest_observation_per_project'])) {
             $compact['evaluation']['latest_observation_per_project'] = array_intersect_key($report['evaluation']['latest_observation_per_project'], $costFields);
         }
+        // Run this step if the report evaluation monitoring segments by elapsed stage is set.
         if (isset($report['evaluation']['monitoring_segments']['by_elapsed_stage'])) {
+            // Process each metrics.
             foreach ($report['evaluation']['monitoring_segments']['by_elapsed_stage'] as $stage => $metrics) {
                 $compact['evaluation']['monitoring_segments']['by_elapsed_stage'][$stage] = array_intersect_key($metrics, $costFields);
             }
@@ -37,17 +40,21 @@ class ProjectCostOptimizationService extends MLService
 
     private ?float $ratio = null;
 
+    // Set up the values this class needs.
     public function __construct(?string $modelPath = null)
     {
         parent::__construct($modelPath, false);
     }
 
+    // Run the project cost optimization task.
     public function run(?string $sourcePath = null, ?callable $progress = null): array
     {
         $lock = fopen($this->modelPath.'.optimization.lock', 'c');
+        // Stop if the lock checks match.
         if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
             throw new RuntimeException('Another optimization is running.');
         }
+        // Try this action and handle any errors below.
         try {
             return $this->optimize($sourcePath, $progress ?? static fn ($message) => null);
         } finally {
@@ -56,12 +63,15 @@ class ProjectCostOptimizationService extends MLService
         }
     }
 
+    // Load the source projects used for training.
     protected function sourceCohort(?string $path): array
     {
+        // Return early if the path is null.
         if ($path === null) {
             return $this->databaseTrainingCohort();
         }
         $source = json_decode(gzdecode(file_get_contents($path)), true, 512, JSON_THROW_ON_ERROR);
+        // Stop if the source source checks match.
         if (($source['source']['database'] ?? null) !== 'u822802132_pfims'
             || ($source['source']['host'] ?? null) !== 'srv603.hstgr.io') {
             throw new RuntimeException('A verified live PFIMS source export is required.');
@@ -74,22 +84,27 @@ class ProjectCostOptimizationService extends MLService
         return $cohort;
     }
 
+    // Set influence.
     private function setInfluence(?float $ratio): void
     {
         $this->ratio = $ratio;
         $this->augmentation = new ProjectCostAugmentationDataset(config('ml.augmentation_directory'), $ratio);
     }
 
+    // Train and score one model option.
     private function trial(Collection $training, array $features, string $algorithm, array $parameters = []): array
     {
         $key = json_encode([$this->ratio, $this->useBudgetRatioTarget, $features, $algorithm, $parameters]);
+        // Return early if the key is set.
         if (isset($this->validationCache[$key])) {
             return $this->validationCache[$key];
         }
         $trial = ['algorithm' => $algorithm, 'parameters' => $parameters, 'feature_names' => $features,
             'dummy_to_real_ratio' => $this->ratio, 'budget_ratio_target' => $this->useBudgetRatioTarget];
+        // Try this action and handle any errors below.
         try {
             $cv = $this->kFoldCrossValidation($training, $features, $algorithm, $parameters);
+            // Stop if the cv folds run and cv average mean absolute error checks match.
             if ($cv['folds_run'] < 2 || ! is_numeric($cv['average_mean_absolute_error'] ?? null)) {
                 throw new RuntimeException('At least two usable training validation windows are required.');
             }
@@ -102,11 +117,13 @@ class ProjectCostOptimizationService extends MLService
         return $this->validationCache[$key] = $trial;
     }
 
+    // Choose the result with the best score.
     private function best(array $trials): array
     {
         $usable = array_values(array_filter($trials, fn ($trial) => $trial['status'] === 'evaluated'));
         usort($usable, fn ($a, $b) => [$a['cv_mae'], $a['cv_mape'], count($a['feature_names'])]
             <=> [$b['cv_mae'], $b['cv_mape'], count($b['feature_names'])]);
+        // Stop if the usable is empty.
         if ($usable === []) {
             throw new RuntimeException('No candidate passed training-only validation.');
         }
@@ -114,11 +131,13 @@ class ProjectCostOptimizationService extends MLService
         return $usable[0];
     }
 
+    // Compare model options and choose the best result.
     private function optimize(?string $sourcePath, callable $progress): array
     {
         $this->validationCache = [];
         $this->useBudgetRatioTarget = false;
         $cohort = $this->sourceCohort($sourcePath);
+        // Run this step if the value check matches.
         if (config('ml.planning_spending_enabled')) {
             $cohort['feature_names'] = PlanningSpendingFeatures::validate($cohort);
         }
@@ -140,6 +159,7 @@ class ProjectCostOptimizationService extends MLService
             'feature_names' => $features, 'data_audit' => $cohort['snapshot_readiness'], 'steps' => []];
         $progress('Step 1: compare real-only, reduced ingested-data influence, and the full ingested dataset.');
         $trials = [];
+        // Process each ratio.
         foreach ([0.0, 0.5, 1.0, 3.0, null] as $ratio) {
             $this->setInfluence($ratio);
             $trials[] = config('ml.planning_spending_enabled')
@@ -153,11 +173,15 @@ class ProjectCostOptimizationService extends MLService
         $progress('Step 2: compare linear, regularized linear, and locally trained SVR.');
         $models = [$best];
         $models[] = $this->trial($training, $features, 'least_squares_linear_regression');
+        // Process each alpha.
         foreach ([0.01, 0.1, 1.0, 10.0] as $alpha) {
             $models[] = $this->trial($training, $features, 'ridge_linear_regression', compact('alpha'));
         }
+        // Process each cost.
         foreach ([1.0, 10.0, 100.0] as $cost) {
+            // Process each gamma.
             foreach ([0.1, 1.0] as $gamma) {
+                // Process each epsilon.
                 foreach ([0.01, 0.1] as $epsilon) {
                     $models[] = $this->trial($training, $features, 'support_vector_regression_rbf', compact('cost', 'gamma', 'epsilon'));
                 }
@@ -168,6 +192,7 @@ class ProjectCostOptimizationService extends MLService
 
         $progress('Step 3: validate available features and currency versus budget-normalized targets.');
         $sets = ['existing' => $features];
+        // Run this step if the project group strategy checks match.
         if (! config('ml.planning_spending_enabled') && $cohort['strategy'] === 'planning_only_baseline') {
             $sets['budget_only'] = ['budget'];
             $sets['planning_engineered'] = ['budget', 'duration_months', 'log_budget', 'planned_budget_per_month', 'planned_duration_squared'];
@@ -177,10 +202,13 @@ class ProjectCostOptimizationService extends MLService
         }
         $featureTrials = [];
         $finalists = collect($models)->where('status', 'evaluated')->groupBy('algorithm')->map(fn ($items) => $this->best($items->all()));
+        // Process each names.
         foreach ($sets as $setName => $names) {
+            // Process each budget ratio.
             foreach ([false, true] as $budgetRatio) {
                 $this->useBudgetRatioTarget = $budgetRatio;
                 $progress('Validating '.$setName.' inputs with '.($budgetRatio ? 'budget-normalized' : 'currency').' targets.');
+                // Process each candidate.
                 foreach ($finalists as $candidate) {
                     $featureTrials[] = $this->trial($training, $names, $candidate['algorithm'], $candidate['parameters']);
                 }
@@ -202,9 +230,11 @@ class ProjectCostOptimizationService extends MLService
 
         $progress('Step 4: tune any-overrun classifier influence and alert threshold on training validation.');
         $detectorTrials = [];
+        // Process each ratio.
         foreach ([0.0, 0.5, 1.0, 3.0] as $ratio) {
             $this->setInfluence($ratio);
             $tuning = $this->tuneOverrunClassifier($training, $best['feature_names'], $best['cross_validation']['folds']);
+            // Run this step if the tuning status equals tuned.
             if ($tuning['status'] === 'tuned') {
                 $detectorTrials[] = ['ratio' => $ratio, 'tuning' => $tuning];
             }
@@ -220,7 +250,9 @@ class ProjectCostOptimizationService extends MLService
         $report['steps']['4_detection'] = ['selected_ratio' => $detectorRatio, 'trials' => $detectorTrials];
 
         $progress('Step 5: freeze selected settings and verify disjoint temporal validation windows.');
+        // Process each fold.
         foreach ($best['cross_validation']['folds'] as $fold) {
+            // Reject invalid project-grouped temporal fold.
             if (array_intersect($fold['training_project_ids'], $fold['test_project_ids']) !== []
                 || array_diff([...$fold['training_project_ids'], ...$fold['test_project_ids']], $split['training']) !== []
                 || $fold['latest_training_completion'] >= $fold['earliest_test_completion']) {
@@ -256,10 +288,12 @@ class ProjectCostOptimizationService extends MLService
         $store = new CostModelStore($candidatePath, 10);
         $store->save($model, $metadata);
         $restored = $store->load();
+        // Stop if the restored is null.
         if ($restored === null) {
             throw new RuntimeException('Optimized candidate could not be restored.');
         }
         $restoredEvaluation = $this->evaluateModel($restored['model'], $restored['metadata']['transformer'], $test);
+        // Stop if the restored evaluation mean absolute error and evaluation mean absolute error checks match.
         if (abs($restoredEvaluation['mean_absolute_error'] - $evaluation['mean_absolute_error']) > 0.01
             || $restoredEvaluation['overrun_detection'] !== $evaluation['overrun_detection']) {
             throw new RuntimeException('Restored candidate does not reproduce evaluation.');

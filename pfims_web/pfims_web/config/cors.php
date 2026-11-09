@@ -1,5 +1,6 @@
 <?php
 
+// Set the cors options for the app.
 return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],

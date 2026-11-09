@@ -5,19 +5,25 @@ namespace App\Services;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Group the audit feature schema actions.
 class AuditFeatureSchema
 {
+    // Get the ensure.
     public function ensure(): void
     {
         $this->createAuditLogsTable();
         $this->createDefaultFiltersTable();
     }
 
+    // Create audit logs table.
     private function createAuditLogsTable(): void
     {
+        // Run this step if the value check matches.
         if (Schema::hasTable('audit_logs')) return;
 
+        // Try this action and handle any errors below.
         try {
+            // Update this part of the database structure.
             Schema::create('audit_logs', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
@@ -46,11 +52,15 @@ class AuditFeatureSchema
         }
     }
 
+    // Create default filters table.
     private function createDefaultFiltersTable(): void
     {
+        // Run this step if the value check matches.
         if (Schema::hasTable('user_default_filters')) return;
 
+        // Try this action and handle any errors below.
         try {
+            // Update this part of the database structure.
             Schema::create('user_default_filters', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -60,6 +70,7 @@ class AuditFeatureSchema
                 $table->unique(['user_id', 'module']);
             });
         } catch (\Throwable $exception) {
+            // Stop if the value check matches.
             if (! Schema::hasTable('user_default_filters')) throw $exception;
         }
     }

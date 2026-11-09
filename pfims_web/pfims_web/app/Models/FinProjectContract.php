@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Link records to the fin project contract table.
 class FinProjectContract extends Model
 {
     protected $table = 'fin_project_contract_tbl';
@@ -29,16 +30,19 @@ class FinProjectContract extends Model
         'additional_works_payment' => 'decimal:2',
     ];
 
+    // Link this record to its project.
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');
     }
 
+    // Get total contract price attribute.
     public function getTotalContractPriceAttribute(): float
     {
         return (float) $this->original_contract_price + (float) $this->additional_works_contract;
     }
 
+    // Get total payment attribute.
     public function getTotalPaymentAttribute(): float
     {
         return (float) $this->original_payment_received + (float) $this->additional_works_payment;

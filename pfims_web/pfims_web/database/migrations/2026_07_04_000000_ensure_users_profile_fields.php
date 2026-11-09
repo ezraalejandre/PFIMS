@@ -13,6 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Run this step if the value check matches.
         if (! Schema::hasTable('users')) {
             return;
         }
@@ -24,8 +25,11 @@ return new class extends Migration
             'status' => static fn (Blueprint $table) => $table->string('status')->default('Active'),
         ];
 
+        // Process each definition.
         foreach ($columns as $column => $definition) {
+            // Run this step if the column check matches.
             if (! Schema::hasColumn('users', $column)) {
+                // Update this part of the database structure.
                 Schema::table('users', $definition);
             }
         }

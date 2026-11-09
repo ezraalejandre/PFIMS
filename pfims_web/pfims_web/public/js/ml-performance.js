@@ -1,15 +1,21 @@
+// Set up the ml performance page actions.
 (() => {
     const root = document.getElementById('modelMetrics');
+    // Run this step if the root is missing or false.
     if (!root) { window.pfimsPerformance = { update() {} }; return; }
     let active = {};
     const element = id => document.getElementById(id);
+    // Get the put.
     const put = (id, value) => { const node = element(id); if (node) node.textContent = value; };
     const number = value => value !== null && value !== undefined && Number.isFinite(Number(value));
     const percent = value => number(value) ? `${Number(value).toFixed(2)}%` : 'Unavailable';
     const currency = value => number(value) ? `₱${Number(value).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Unavailable';
+    // Get the scope note.
     function scopeNote(titleId, noteId, text) {
         const title = element(titleId);
+        // Return early if the title is missing or false or the create element is missing or false.
         if (!title || !document.createElement) return;
+        // Run this step if the element is missing or false.
         if (!element(noteId)) {
             const note = document.createElement('p');
             note.id = noteId;
@@ -32,15 +38,19 @@
     // Keep every saved detail, but present individual facts instead of dense paragraphs.
     function facts(id, chips = false) {
         const node = element(id);
+        // Return early if the value is missing or false or the create element is missing or false.
         if (!node?.replaceChildren || !document.createElement) return;
         const text = node.textContent.trim();
+        // Return early if the text is missing or false.
         if (!text) return;
         const list = document.createElement('ul');
         list.className = chips ? 'performance-chips' : 'performance-facts';
         const values = chips ? text.replace(/^Inputs evaluated \(\d+\): /, '').replace(/\.$/, '').split(', ') : text.split(/(?<=[.!?])\s+(?=[A-Z“0-9])| · /);
+        // Process each value.
         values.forEach(value => { const item = document.createElement('li'); item.textContent = value; list.appendChild(item); });
         node.replaceChildren(list);
     }
+    // Get the render.
     function render() {
         const candidate = false;
         const report = null;
@@ -102,6 +112,7 @@
             : 'Detailed detection counts are unavailable for this saved evaluation. A zero recall means no actual overruns were detected; an unavailable score cannot be treated as zero.');
         const cv = candidate ? report?.cross_validation : active.cross_validation;
         put('performanceValidation', cv ? `${active.training_projects ?? 'Unknown'} training projects · ${projects ?? 'Unknown'} reserved test projects. Training-only temporal cross-validation: average percentage error ${percent(cv.average_mean_absolute_percentage_error)}. Cost errors use ${observations ?? 'Unknown'} stage observations; overrun detection uses ${useProjectDetection ? 'one latest observation per test project' : 'the stated evaluation observations'}.` : 'Training cross-validation is unavailable for this saved model.');
+        // Run this step if the augmentation is set.
         if (augmentation) {
             const databaseTraining = augmentation.database_training_project_ids?.length;
             const used = number(active.training_projects) && number(databaseTraining) ? Number(active.training_projects) - databaseTraining : augmentation.dummy_projects;
@@ -115,6 +126,7 @@
         const date = candidate ? report?.generated_at : active.trained_at;
         put('performanceUpdated', date && !Number.isNaN(Date.parse(date)) ? `${candidate ? 'Evaluated' : 'Model trained'}: ${new Date(date).toLocaleString('en-PH')}.` : 'Evaluation date unavailable.');
         const improvement = active.latest_optimization;
+        // Run this step if the improvement is missing or false.
         if (!improvement) {
             put('performanceCandidateStatus', 'No optimization evaluation available. The metrics above describe the active model.');
             put('performanceCandidateResults', '');
@@ -124,23 +136,31 @@
             const detector = improvement.detector_evaluation || {};
             const failures = [...(improvement.cost_failed_requirements || []), ...(improvement.detector_failed_requirements || [])];
             const reasons = [];
+            // Run this step if the includes check matches.
             if (failures.includes('agreed_mae_tolerance')) reasons.push('cost error does not meet the 15%-of-median MAE requirement');
+            // Run this step if the includes check matches or the includes check matches.
             if (failures.includes('recall_minimum') || failures.includes('f1_score_minimum')) reasons.push('overrun detection is below the activation requirements');
+            // Run this step if the includes check matches.
             if (failures.includes('fresh_independent_holdout')) reasons.push('a fresh independent real-project test is still required');
+            // Run this step if the includes check matches.
             if (failures.includes('same_holdout_active_comparison')) reasons.push('a reliable comparison with the active model on the same observations is unavailable');
+            // Run this step if the reasons length equals 0 and the failures length is set.
             if (reasons.length === 0 && failures.length) reasons.push('other activation evidence or performance requirements were not met');
             put('performanceCandidateStatus', improvement.active_model_changed
                 ? `Latest evaluated model is now active: ${algorithmNames[improvement.algorithm] || 'Unknown model'}.`
                 : `Latest candidate: ${algorithmNames[improvement.algorithm] || 'Unknown model'}. Not activated${reasons.length ? `: ${reasons.join('; ')}` : '; evaluation alone does not activate a model'}.`);
             put('performanceCandidateResults', `Candidate cost evaluation: MAE ${currency(cost.mean_absolute_error)}, MAPE ${percent(cost.mean_absolute_percentage_error)}, R² ${number(cost.r_squared) ? Number(cost.r_squared).toFixed(4) : 'Unavailable'}. Separate candidate overrun detector: accuracy ${percent(detector.classification_accuracy)}, precision ${percent(detector.precision)}, recall ${percent(detector.recall)}, F1 ${percent(detector.f1_score)}. ${number(detector.actual_overruns) ? `${detector.actual_overruns} actual test overruns.` : ''}`);
+            // Run this step if the number check matches and the number is above 0.
             if (number(cost.mae_target?.reference_pesos) && Number(cost.mae_target.reference_pesos) > 0) {
                 put('performanceCandidateResults', element('performanceCandidateResults').textContent + ` Candidate MAE is ${percent(cost.mae_target.actual_percent)} of its median actual final cost (${currency(cost.mae_target.reference_pesos)}); 15% ceiling ${currency(cost.mae_target.maximum_pesos)}, 10% preferred target ${currency(cost.mae_target.stretch_pesos)}.`);
             }
             const primary = cost.latest_observation_per_project;
+            // Run this step if the primary is set.
             if (primary) {
                 put('performanceCandidateResults', element('performanceCandidateResults').textContent + ` Using one latest checkpoint per project (the activation check): MAE ${currency(primary.mean_absolute_error)}, MAPE ${percent(primary.mean_absolute_percentage_error)}, R² ${number(primary.r_squared) ? Number(primary.r_squared).toFixed(4) : 'Unavailable'}; MAE is ${percent(primary.mae_target?.actual_percent)} of the same median cost.`);
             }
             const stages = cost.monitoring_segments?.by_elapsed_stage;
+            // Run this step if the stages is set.
             if (stages) {
                 put('performanceCandidateResults', element('performanceCandidateResults').textContent + ` MAE by planned time checkpoint: ${['early', 'middle', 'late'].filter(stage => stages[stage]).map(stage => `${stage} ${currency(stages[stage].mean_absolute_error)}`).join(', ')}.`);
             }
@@ -149,6 +169,7 @@
             const eventCounts = number(split.ingested_expenses_per_project) && number(split.ingested_inventory_transactions_per_project) ? ` Each ingested project has ${split.ingested_expenses_per_project} expenses and ${split.ingested_inventory_transactions_per_project} inventory transactions.` : '';
             const generation = split.ingested_data_method === 'rule_based_construction_ledgers_v1' ? ` Ingested data uses rule-based construction ledgers spanning ${split.ingested_data_year_range?.join('–') ?? '2019–present'}, with projects lasting at most seven months.${eventCounts}` : '';
             put('performanceCandidateTraining', `Candidate training: ${split.database_projects ?? 'Unknown'} database projects + ${split.dummy_projects_used ?? 'Unknown'} ingested projects used (${split.dummy_projects_available ?? 'Unknown'} available). Testing: ${split.test_database_projects ?? 'Unknown'} database projects only.${number(split.database_test_ratio) ? ` Database split: earlier ${Math.round((1 - split.database_test_ratio) * 100)}% for training, newest ${Math.round(split.database_test_ratio * 100)}% for testing.` : ''}${generation} Settings selected using training-only temporal validation. The same saved test projects are reused for model comparisons. Evaluated: ${updated}.`);
+            // Run this step if the prediction strategy equals planning_spending_model.
             if (improvement.prediction_strategy === 'planning_spending_model') {
                 const audit = improvement.data_audit || {};
                 const excluded = Object.keys(audit.excluded_projects || {}).length;

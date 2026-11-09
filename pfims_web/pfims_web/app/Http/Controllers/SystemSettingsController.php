@@ -6,6 +6,7 @@ use App\Models\SystemSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+// Group the system settings actions.
 class SystemSettingsController extends Controller
 {
     private const DEFAULTS = [
@@ -14,9 +15,11 @@ class SystemSettingsController extends Controller
         'inventory_max_transaction_quantity' => '999999999.99',
     ];
 
+    // Return the requested system settings details.
     public function show(): JsonResponse
     {
         $values = [];
+        // Process each default.
         foreach (self::DEFAULTS as $key => $default) {
             $values[$key] = SystemSetting::value($key, $default);
         }
@@ -24,6 +27,7 @@ class SystemSettingsController extends Controller
         return response()->json(['success' => true, 'data' => $values]);
     }
 
+    // Save changes to the system settings record.
     public function update(Request $request): JsonResponse
     {
         abort_unless(strtolower((string) $request->user()?->role) === 'admin', 403, 'Only administrators can update system settings.');
@@ -34,6 +38,7 @@ class SystemSettingsController extends Controller
             'inventory_max_transaction_quantity' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
         ]);
 
+        // Process each value.
         foreach ($validated as $key => $value) {
             SystemSetting::query()->updateOrCreate(
                 ['setting_key' => $key],

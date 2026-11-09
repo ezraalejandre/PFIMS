@@ -46,16 +46,20 @@ Route::get('/odashboard', function () {
 
 // Accounting routes
 Route::get('/afinance', function () {
+    // Return early if the query equals contracts.
     if (request()->query('section') === 'contracts') return redirect('/afinance?section=budgets&subtab=contracts');
     return view('finance', ['portal' => 'accounting']);
 })->middleware(['auth', 'role.portal:admin,accounting']);
 
+// Load requests for /areports.
 Route::get('/areports', [ReportController::class, 'page'])->middleware(['auth', 'role.portal:admin,accounting']);
 
+// Load requests for /anotifications.
 Route::get('/anotifications', function () {
     return view('notifications', ['portal' => 'accounting']);
 })->middleware(['auth', 'role.portal:admin,accounting']);
 
+// Load requests for /aprofile.
 Route::get('/aprofile', function () {
     return view('profile', [
         'portal' => 'accounting',
@@ -63,10 +67,12 @@ Route::get('/aprofile', function () {
     ]);
 })->middleware(['auth', 'role.portal:admin,accounting']);
 
+// Load requests for /asettings.
 Route::get('/asettings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
     $role = strtolower((string) $currentUser->role);
+    // Return early if the role does not equal accounting.
     if ($role !== 'accounting') {
         return redirect($role === 'operations' ? '/osettings' : '/settings');
     }
@@ -84,20 +90,25 @@ Route::get('/oprojects', function () {
     return view('projtracking', ['portal' => 'operations']);
 })->middleware(['auth', 'role.portal:admin,operations']);
 
+// Load requests for /oinventory.
 Route::get('/oinventory', function () {
     return view('inventory', ['portal' => 'operations']);
 })->middleware(['auth', 'role.portal:admin,operations']);
 
+// Load requests for /osuppliers.
 Route::get('/osuppliers', function () {
     return view('suppliers', ['portal' => 'operations']);
 })->middleware(['auth', 'role.portal:admin,operations']);
 
+// Load requests for /oreports.
 Route::get('/oreports', [ReportController::class, 'page'])->middleware(['auth', 'role.portal:admin,operations']);
 
+// Load requests for /onotifications.
 Route::get('/onotifications', function () {
     return view('notifications', ['portal' => 'operations']);
 })->middleware(['auth', 'role.portal:admin,operations']);
 
+// Load requests for /oprofile.
 Route::get('/oprofile', function () {
     return view('profile', [
         'portal' => 'operations',
@@ -105,10 +116,12 @@ Route::get('/oprofile', function () {
     ]);
 })->middleware(['auth', 'role.portal:admin,operations']);
 
+// Load requests for /osettings.
 Route::get('/osettings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
     $role = strtolower((string) $currentUser->role);
+    // Return early if the role does not equal operations.
     if ($role !== 'operations') {
         return redirect($role === 'accounting' ? '/asettings' : '/settings');
     }
@@ -138,6 +151,7 @@ Route::get('/projects', function () {
 
 // Finance page
 Route::get('/finance', function () {
+    // Return early if the query equals contracts.
     if (request()->query('section') === 'contracts') return redirect('/finance?section=budgets&subtab=contracts');
     return view('finance', ['portal' => 'admin']);
 })->middleware(['auth', 'role.portal:admin']);
@@ -165,33 +179,46 @@ Route::get('/suppliers', function () {
 
 // Authenticated web-only API endpoints
 Route::middleware('auth')->group(function () {
+    // Load requests for /api/default-filters.
     Route::get('/api/default-filters', [UserDefaultFilterController::class, 'index']);
+    // Update requests for /api/default-filters/{module}.
     Route::put('/api/default-filters/{module}', [UserDefaultFilterController::class, 'update']);
+    // Delete requests for /api/default-filters/{module}.
     Route::delete('/api/default-filters/{module}', [UserDefaultFilterController::class, 'destroy']);
     // Config API endpoints
     Route::get('/api/config/{type}', [ConfigController::class, 'index']);
+    // Submit requests for /api/config/{type}.
     Route::post('/api/config/{type}', [ConfigController::class, 'store']);
+    // Update requests for /api/config/{type}/{id}.
     Route::patch('/api/config/{type}/{id}', [ConfigController::class, 'update']);
+    // Delete requests for /api/config/{type}/{id}.
     Route::delete('/api/config/{type}/{id}', [ConfigController::class, 'destroy']);
 
+    // Submit requests for /api/finance-expenses/from-inventory/{transactionId}.
     Route::post('/api/finance-expenses/from-inventory/{transactionId}', [FinExpenseController::class, 'storeFromInventory'])
         ->middleware('role.portal:admin,accounting,operations');
 
     // Validated, transactional CSV/XLSX imports and downloadable CSV templates.
     Route::post('/api/imports/contracts', [DataImportController::class, 'contracts'])->middleware('throttle:10,1');
+    // Submit requests for /api/imports/finance-expenses.
     Route::post('/api/imports/finance-expenses', [DataImportController::class, 'finance'])
         ->middleware('throttle:10,1');
+    // Submit requests for /api/imports/inventory.
     Route::post('/api/imports/inventory', [DataImportController::class, 'inventory'])
         ->middleware('throttle:10,1');
+    // Submit requests for /api/imports/projects.
     Route::post('/api/imports/projects', [DataImportController::class, 'projects'])
         ->middleware('throttle:10,1');
+    // Load requests for /api/imports/templates/{type}.
     Route::get('/api/imports/templates/{type}', [DataImportController::class, 'template'])
         ->whereIn('type', ['projects', 'finance-expenses', 'contracts', 'inventory-items', 'inventory-transactions']);
 });
 
+// Load requests for /audit-logs.
 Route::get('/audit-logs', [AuditLogController::class, 'index'])
     ->middleware(['auth', 'role.portal:admin'])
     ->name('audit-logs.index');
+// Load requests for /audit-logs/latest.
 Route::get('/audit-logs/latest', [AuditLogController::class, 'latest'])
     ->middleware(['auth', 'role.portal:admin'])
     ->name('audit-logs.latest');
@@ -229,6 +256,7 @@ Route::patch('/profile', function (Request $request) {
     ]);
 
     $user->update($validated);
+    // Return early if the expects json check matches.
     if ($request->expectsJson()) return response()->json(['success'=>true,'user'=>$user->only(['name','email','phone','location'])]);
 
     $role = strtolower($user->role ?? '');
@@ -242,6 +270,7 @@ Route::get('/settings', function () {
     /** @var User $currentUser */
     $currentUser = Auth::user();
     $role = strtolower((string) $currentUser->role);
+    // Return early if the role does not equal admin.
     if ($role !== 'admin') {
         return redirect($role === 'accounting' ? '/asettings' : '/osettings');
     }
@@ -260,6 +289,7 @@ Route::get('/users', function () {
     return response()->json(['data' => User::orderBy('name')->get(['id','name','email','role','status'])]);
 })->middleware('auth');
 
+// Submit requests for /users.
 Route::post('/users', function (Request $request) {
     abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $request->validate(['name'=>['sometimes','string'],'email'=>['sometimes','string'],'role'=>['sometimes','string'],'status'=>['sometimes','string']]);
@@ -305,6 +335,7 @@ Route::post('/users', function (Request $request) {
     return response()->json(['success' => true, 'user' => $user, 'password' => $plainPassword]);
 })->middleware('auth');
 
+// Load requests for /users/{id}.
 Route::get('/users/{id}', function ($id) {
     abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
@@ -312,6 +343,7 @@ Route::get('/users/{id}', function ($id) {
     return response()->json($user);
 })->middleware('auth')->whereNumber('id');
 
+// Update requests for /users/{id}.
 Route::patch('/users/{id}', function (Request $request, $id) {
     abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
@@ -334,9 +366,11 @@ Route::patch('/users/{id}', function (Request $request, $id) {
         'status' => ['required', 'in:Active,Inactive'],
     ]);
 
+    // Return early if the id and validated status checks match.
     if ((int) Auth::id() === (int) $user->id && $validated['status'] === 'Inactive') {
         return response()->json(['message' => 'You cannot deactivate your own account.'], 422);
     }
+    // Return early if the role and validated role checks match.
     if ($user->role === 'admin' && ($validated['role'] !== 'admin' || $validated['status'] !== 'Active')
         && User::where('role', 'admin')->where('status', 'Active')->count() <= 1) {
         return response()->json(['message' => 'At least one active administrator is required.'], 422);
@@ -351,12 +385,15 @@ Route::patch('/users/{id}', function (Request $request, $id) {
     return response()->json(['success' => true, 'user' => $user]);
 })->middleware('auth')->whereNumber('id');
 
+// Delete requests for /users/{id}.
 Route::delete('/users/{id}', function ($id) {
     abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
     $user = User::findOrFail($id);
+    // Return early if the value equals id.
     if ((int) Auth::id() === (int) $user->id) {
         return response()->json(['message' => 'You cannot delete your own account.'], 422);
     }
+    // Return early if the role and status checks match.
     if ($user->role === 'admin' && $user->status === 'Active'
         && User::where('role', 'admin')->where('status', 'Active')->count() <= 1) {
         return response()->json(['message' => 'At least one active administrator is required.'], 422);
@@ -368,12 +405,14 @@ Route::delete('/users/{id}', function ($id) {
 
 // Redirect login form submission to dashboard
 Route::post('/login', function (Request $request) {
+    // Run this step if the value check matches.
     if (Auth::check()) {
         $message = 'This browser is already signed in. Sign out first, or use a separate browser profile or private window for another account.';
         return $request->expectsJson() || $request->ajax()
             ? response()->json(['success' => false, 'message' => $message], 409)
             : back()->withErrors(['email' => $message]);
     }
+    // Run this step if the input check matches.
     if (is_string($request->input('email'))) {
         $request->merge(['email' => mb_strtolower(trim($request->input('email')))]);
     }
@@ -387,9 +426,11 @@ Route::post('/login', function (Request $request) {
 
     $dashboardPath = function ($role) {
         $role = strtolower($role ?? '');
+        // Return early if the role equals accounting.
         if ($role === 'accounting') {
             return '/adashboard';
         }
+        // Return early if the role equals operations.
         if ($role === 'operations') {
             return '/odashboard';
         }
@@ -399,8 +440,11 @@ Route::post('/login', function (Request $request) {
 
     $user = User::where('email', $credentials['email'])->first();
 
+    // Run this step if the user and credentials password checks match.
     if ($user && Hash::check($credentials['password'], $user->password)) {
+        // Run this step if the status does not equal active.
         if ($user->status !== 'Active') {
+            // Return early if the wants json is set.
             if ($wantsJson) {
                 return response()->json([
                     'success' => false,
@@ -413,6 +457,7 @@ Route::post('/login', function (Request $request) {
             ]);
         }
 
+        // Run this step if the first login verification required is set.
         if ($user->first_login_verification_required) {
             Auth::logout();
             $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -425,6 +470,7 @@ Route::post('/login', function (Request $request) {
             $request->session()->put('first_login_user_id', $user->id);
             Mail::to($user->email)->send(new FirstLoginVerificationMail($otp, $user->name));
 
+            // Run this step if the wants json is set.
             if ($wantsJson) {
                 [$emailName, $emailDomain] = explode('@', $user->email, 2);
                 $maskedEmail = mb_substr($emailName, 0, min(2, mb_strlen($emailName))).'***@'.$emailDomain;
@@ -451,6 +497,7 @@ Route::post('/login', function (Request $request) {
         $redirectPath = $dashboardPath($user->role ?? '');
         app(\App\Services\NavigationGrantService::class)->allow($request,$redirectPath);
 
+        // Return early if the wants json is set.
         if ($wantsJson) {
             return response()->json([
                 'success' => true,
@@ -461,6 +508,7 @@ Route::post('/login', function (Request $request) {
         return redirect($redirectPath);
     }
 
+    // Return early if the wants json is set.
     if ($wantsJson) {
         return response()->json([
             'success' => false,
@@ -473,7 +521,9 @@ Route::post('/login', function (Request $request) {
     ]);
 })->middleware('throttle:6,1');
 
+// Submit requests for /login/verify-first-login.
 Route::post('/login/verify-first-login', function (Request $request) {
+    // Return early if the value check matches.
     if (Auth::check()) {
         return response()->json(['success' => false, 'message' => 'This browser is already signed in. Sign out first, or use a separate browser profile or private window for another account.'], 409);
     }
@@ -484,6 +534,7 @@ Route::post('/login/verify-first-login', function (Request $request) {
     $userId = $request->session()->get('first_login_user_id');
     $user = $userId ? User::find($userId) : null;
 
+    // Return early if the user and status checks match.
     if (! $user || $user->status !== 'Active' || ! $user->first_login_verification_required || ! $user->first_login_otp) {
         return response()->json([
             'success' => false,
@@ -491,6 +542,7 @@ Route::post('/login/verify-first-login', function (Request $request) {
         ], 401);
     }
 
+    // Return early if the first login otp expires at checks match.
     if (! $user->first_login_otp_expires_at || $user->first_login_otp_expires_at->isPast()) {
         return response()->json([
             'success' => false,
@@ -498,6 +550,7 @@ Route::post('/login/verify-first-login', function (Request $request) {
         ], 410);
     }
 
+    // Return early if the first login otp otp check matches.
     if (! Hash::check($validated['otp'], $user->first_login_otp)) {
         return response()->json([
             'success' => false,
@@ -530,10 +583,12 @@ Route::post('/login/verify-first-login', function (Request $request) {
     ]);
 })->middleware('throttle:6,1')->name('login.verify-first-login');
 
+// Submit requests for /login/resend-first-login.
 Route::post('/login/resend-first-login', function (Request $request) {
     $userId = $request->session()->get('first_login_user_id');
     $user = $userId ? User::find($userId) : null;
 
+    // Return early if the user and first login verification required checks match.
     if (! $user || ! $user->first_login_verification_required) {
         return response()->json([
             'success' => false,
@@ -541,8 +596,10 @@ Route::post('/login/resend-first-login', function (Request $request) {
         ], 401);
     }
 
+    // Run this step if the first login otp expires at is set.
     if ($user->first_login_otp_expires_at) {
         $nextResendAt = $user->first_login_otp_expires_at->copy()->subMinutes(9);
+        // Return early if the next resend at check matches.
         if (now()->lt($nextResendAt)) {
             return response()->json([
                 'success' => false,
@@ -567,6 +624,7 @@ Route::post('/login/resend-first-login', function (Request $request) {
     ]);
 })->middleware('throttle:6,1')->name('login.resend-first-login');
 
+// Submit requests for /logout.
 Route::post('/logout', function (Request $request) {
     app(\App\Services\AccountSessionService::class)->release($request->user(), $request->session()->get('account_session_token'));
 
@@ -586,6 +644,7 @@ Route::post('/change-password', [PasswordController::class, 'update'])->middlewa
 // Machine learning routes
 // Financial analytics and model details are available only to signed-in users.
 Route::middleware('auth')->group(function () {
+    // Load requests for /ml-dashboard-test.
     Route::get('/ml-dashboard-test', function (Request $request) {
         $user = Auth::user();
         $role = $user instanceof User ? strtolower((string) $user->role) : '';
@@ -598,24 +657,32 @@ Route::middleware('auth')->group(function () {
         return view('ml-dashboard-test', ['portal' => $role]);
     });
 
+    // Group routes that share these access rules or URL settings.
     Route::prefix('api/ml')->group(function () {
+        // Submit requests for /predict/cost.
         Route::post('/predict/cost', [MLController::class, 'predictProjectCost'])
             ->middleware(['role.portal:admin', 'throttle:60,1']);
+        // Load requests for /prediction-projects.
         Route::get('/prediction-projects', [MLController::class, 'predictionProjects'])
             ->middleware('role.portal:admin');
+        // Load requests for /predict/material-demand.
         Route::get('/predict/material-demand', [MLController::class, 'predictMaterialDemand'])
             ->middleware('role.portal:admin,operations');
+        // Load requests for /status.
         Route::get('/status', [MLController::class, 'status'])
             ->middleware('role.portal:admin');
+        // Load requests for /analytics/dashboard.
         Route::get('/analytics/dashboard', [MLController::class, 'dashboardAnalytics'])
             ->middleware('role.portal:admin');
+        // Load requests for /analytics/budget-variance.
         Route::get('/analytics/budget-variance', [MLController::class, 'budgetVariance'])
             ->middleware('role.portal:admin,accounting');
 
+        // Submit requests for /evaluate.
         Route::post('/evaluate', [MLCandidateEvaluationController::class, 'store'])
             ->middleware(['role.portal:admin', 'throttle:3,1']);
 
-        // The controller also enforces the administrator role. Retraining is POST-only.
+        // The controller also enforces the administrator role. Training again is POST-only.
         Route::post('/retrain', [MLController::class, 'retrain'])
             ->middleware(['role.portal:admin', 'throttle:3,1']);
     });
@@ -623,30 +690,43 @@ Route::middleware('auth')->group(function () {
 
 // Centralized reports: live datasets + system-generated export history.
 Route::middleware(['auth'])->group(function () {
+    // Load requests for /api/reports.
     Route::get('/api/reports', [ReportController::class, 'index'])->name('reports.index');
+    // Load requests for /api/reports/catalog.
     Route::get('/api/reports/catalog', [ReportController::class, 'catalog'])->name('reports.catalog');
+    // Load requests for /api/reports/data/{dataset}.
     Route::get('/api/reports/data/{dataset}', [ReportController::class, 'data'])->name('reports.data');
+    // Submit requests for /api/reports/preview.
     Route::post('/api/reports/preview', [ReportController::class, 'preview'])->name('reports.preview');
+    // Submit requests for /api/reports/export.
     Route::post('/api/reports/export', [ReportController::class, 'export'])->name('reports.export');
+    // Load requests for /api/reports/download/{id}.
     Route::get('/api/reports/download/{id}', [ReportController::class, 'download'])->name('reports.download');
+    // Delete requests for /api/reports/{id}.
     Route::delete('/api/reports/{id}', [ReportController::class, 'destroy'])->name('reports.destroy');
 });
 
+// Submit requests for /forgot-password/send-otp.
 Route::post('/forgot-password/send-otp', [ForgotPasswordControllerWeb::class, 'sendOtp'])
     ->middleware('throttle:5,1') // max 5 requests per minute per IP
     ->name('password.send-otp');
 
+// Submit requests for /forgot-password/verify-otp.
 Route::post('/forgot-password/verify-otp', [ForgotPasswordControllerWeb::class, 'verifyOtp'])
     ->middleware('throttle:10,1')
     ->name('password.verify-otp');
 
+// Submit requests for /forgot-password/reset.
 Route::post('/forgot-password/reset', [ForgotPasswordControllerWeb::class, 'resetPassword'])
     ->middleware('throttle:10,1')
     ->name('password.reset');
 
+// Load requests for /storage/{folder}/{file}.
 Route::get('/storage/{folder}/{file}', [\App\Http\Controllers\ProtectedProofController::class,'show'])->whereIn('folder',['proofs','inventory-transaction-proofs'])->middleware(['auth','role.portal']);
 
+// Group routes that share these access rules or URL settings.
 Route::middleware('auth')->group(function(){
+    // Submit requests for /session/navigate.
     Route::post('/session/navigate',function(Request $request, \App\Services\NavigationGrantService $navigation){
         $data=$request->validate(['target'=>['required','string','max:2048']]);
         $target=\Illuminate\Http\Request::create($data['target'],'GET');
@@ -654,18 +734,24 @@ Route::middleware('auth')->group(function(){
         abort_unless(in_array('auth',$route->gatherMiddleware(),true),422,'Select a protected page within PFIMS.');
         $navigation->allow($request,$data['target']);return response()->json(['ok'=>true]);
     });
+    // Submit requests for /session/resume.
     Route::post('/session/resume',function(Request $request){
         $data=$request->validate(['mode'=>['required','in:navigate,reload']]);
+        // Run this step if the data mode and session checks match.
         if($data['mode']!=='reload' && !$request->session()->get('_page_navigation_granted'))abort(401,'Reopened pages require signing in again.');
         $nonce=bin2hex(random_bytes(32));
         DB::table('account_sessions')->where('user_id',$request->user()->id)->where('token_hash',hash('sha256',$request->session()->get('account_session_token')))->update(['page_nonce'=>$nonce,'closing_at'=>null,'expires_at'=>now()->addSeconds((int)config('session.account_lease_seconds'))]);
         $request->session()->forget('_page_navigation_granted');
         return response()->json(['page_nonce'=>$nonce]);
     });
+    // Submit requests for /session/close.
     Route::post('/session/close',function(Request $request,\App\Services\AccountSessionService $sessions){
+        // Return early if the input and session checks match.
         if(!is_string($request->input('epoch')) || !hash_equals((string)$request->session()->get('navigation_epoch'),$request->input('epoch')))return response()->noContent();
+        // Run this step if the boolean check matches.
         if($request->boolean('closing')){
             $nonce=$request->input('page_nonce');
+            // Run this step if the nonce check matches.
             if(is_string($nonce))DB::table('account_sessions')->where('user_id',$request->user()->id)->where('page_nonce',$nonce)->update(['closing_at'=>now(),'expires_at'=>now()->addSeconds((int)config('session.close_grace_seconds'))]);
             return response()->noContent();
         }

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
+// Group the import data actions.
 class ImportData extends Command
 {
     protected $signature = 'data:import 
@@ -51,13 +52,16 @@ class ImportData extends Command
         $tables = ['project_tbl', 'budgets_tbl', 'fin_expense_category_tbl', 'fin_expense_tbl', 'inventory_item_tbl', 'inventory_transaction_tbl'];
         $missing = [];
 
+        // Process each table.
         foreach ($tables as $table) {
             $exists = DB::select("SHOW TABLES LIKE '{$table}'");
+            // Run this step if the exists is empty.
             if (empty($exists)) {
                 $missing[] = $table;
             }
         }
 
+        // Run this step if the missing has a value.
         if (! empty($missing)) {
             $this->error('Missing tables: '.implode(', ', $missing));
             exit(1);
@@ -71,6 +75,7 @@ class ImportData extends Command
      */
     protected function cleanDate($date)
     {
+        // Return early if the date checks match.
         if (empty($date) || $date === '' || $date === 'null' || $date === null) {
             return null;
         }
@@ -84,6 +89,7 @@ class ImportData extends Command
      */
     protected function cleanNumeric($value)
     {
+        // Return early if the value checks match.
         if (empty($value) || $value === '' || $value === 'null' || $value === null) {
             return null;
         }
@@ -97,15 +103,19 @@ class ImportData extends Command
     protected function calculateActualAmount($expense)
     {
         $amount = 0;
+        // Run this step if the expense labor amount checks match.
         if (isset($expense['labor_amount']) && is_numeric($expense['labor_amount'])) {
             $amount += $expense['labor_amount'];
         }
+        // Run this step if the expense material amount checks match.
         if (isset($expense['material_amount']) && is_numeric($expense['material_amount'])) {
             $amount += $expense['material_amount'];
         }
+        // Run this step if the expense equipment amount checks match.
         if (isset($expense['equipment_amount']) && is_numeric($expense['equipment_amount'])) {
             $amount += $expense['equipment_amount'];
         }
+        // Run this step if the expense other amount checks match.
         if (isset($expense['other_amount']) && is_numeric($expense['other_amount'])) {
             $amount += $expense['other_amount'];
         }
@@ -121,6 +131,7 @@ class ImportData extends Command
         $this->info("\nImporting projects from projects.json...");
 
         $data = $this->getData('projects');
+        // Run this step if the data is empty.
         if (empty($data)) {
             $this->warn('No projects data found');
 
@@ -128,6 +139,7 @@ class ImportData extends Command
         }
 
         $cleanData = [];
+        // Process each item.
         foreach ($data as $item) {
             $cleanData[] = [
                 'project_id' => $item['project_id'],
@@ -156,6 +168,7 @@ class ImportData extends Command
         $this->info("\nImporting budgets from budgets.json...");
 
         $data = $this->getData('budgets');
+        // Run this step if the data is empty.
         if (empty($data)) {
             $this->warn('No budgets data found');
 
@@ -163,6 +176,7 @@ class ImportData extends Command
         }
 
         $cleanData = [];
+        // Process each item.
         foreach ($data as $item) {
             $cleanData[] = [
                 'budget_id' => $item['budget_id'],
@@ -184,6 +198,7 @@ class ImportData extends Command
         $this->info("\nImporting expenses from expenses.json...");
 
         $data = $this->getData('expenses');
+        // Run this step if the data is empty.
         if (empty($data)) {
             $this->warn('No expenses data found');
 
@@ -191,6 +206,7 @@ class ImportData extends Command
         }
 
         $cleanData = [];
+        // Process each item.
         foreach ($data as $item) {
             $sourceId = $this->cleanNumeric($item['expense_id'] ?? null);
             $components = [
@@ -199,12 +215,15 @@ class ImportData extends Command
                 'equipment' => $this->cleanNumeric($item['equipment_amount'] ?? null),
                 'other' => $this->cleanNumeric($item['other_amount'] ?? null),
             ];
+            // Run this step if the amount is above 0.
             if (! collect($components)->contains(fn ($amount) => (float) $amount > 0)) {
                 $components['other'] = $this->calculateActualAmount($item);
             }
 
             $rowIndex = 1;
+            // Process each amount.
             foreach ($components as $component => $amount) {
+                // Skip this item if the amount is at most 0.
                 if ((float) $amount <= 0) {
                     continue;
                 }
@@ -230,6 +249,7 @@ class ImportData extends Command
         $this->info('Expenses imported');
     }
 
+    // Get the fin expense category id for component.
     protected function finExpenseCategoryIdForComponent(string $component): int
     {
         $terms = match ($component) {
@@ -240,7 +260,9 @@ class ImportData extends Command
         };
 
         $query = DB::table('fin_expense_category_tbl')->where('classification', 'direct');
+        // Group these checks when finding matching records.
         $query->where(function ($inner) use ($terms) {
+            // Process each term.
             foreach ($terms as $term) {
                 $inner->orWhere('category_code', 'like', '%'.$term.'%')
                     ->orWhere('category_name', 'like', '%'.$term.'%');
@@ -260,6 +282,7 @@ class ImportData extends Command
         $this->info("\nImporting inventory items from inventory_items.json...");
 
         $data = $this->getData('inventory_items');
+        // Run this step if the data is empty.
         if (empty($data)) {
             $this->warn('No inventory items data found');
 
@@ -267,6 +290,7 @@ class ImportData extends Command
         }
 
         $cleanData = [];
+        // Process each item.
         foreach ($data as $item) {
             $cleanData[] = [
                 'item_id' => $item['item_id'],
@@ -291,6 +315,7 @@ class ImportData extends Command
         $this->info("\nImporting inventory transactions from inventory_transactions.json...");
 
         $data = $this->getData('inventory_transactions');
+        // Run this step if the data is empty.
         if (empty($data)) {
             $this->warn('No inventory transactions data found');
 
@@ -298,6 +323,7 @@ class ImportData extends Command
         }
 
         $cleanData = [];
+        // Process each item.
         foreach ($data as $item) {
             $cleanData[] = [
                 'inventory_transaction_id' => $item['inventory_transaction_id'],
@@ -320,9 +346,11 @@ class ImportData extends Command
     {
         $filePath = storage_path("app/data/{$filename}.json");
 
+        // Run this step if the file path check matches.
         if (! file_exists($filePath)) {
             // Try looking in project root
             $filePath = base_path("{$filename}.txt");
+            // Return early if the file path check matches.
             if (! file_exists($filePath)) {
                 return [];
             }
@@ -331,6 +359,7 @@ class ImportData extends Command
         $content = file_get_contents($filePath);
         $data = json_decode($content, true);
 
+        // Run this step if the value does not equal json error none.
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->error("JSON error in {$filename}: ".json_last_error_msg());
 
@@ -345,15 +374,19 @@ class ImportData extends Command
      */
     protected function insertData($table, $data, $primaryKey, $mode)
     {
+        // Run this step if the data is empty.
         if (empty($data)) {
             $this->warn("No data to import into {$table}");
 
             return;
         }
 
+        // Choose the action that matches this value.
         switch ($mode) {
             case 'overwrite':
+                // Run this step if the option check matches.
                 if (! $this->option('force')) {
+                    // Run this step if the table check matches.
                     if (! $this->confirm("Warning: Truncate table {$table} and insert all data? (--force to skip)")) {
                         return;
                     }
@@ -372,9 +405,11 @@ class ImportData extends Command
 
             case 'skip':
                 $existingIds = DB::table($table)->pluck($primaryKey)->toArray();
+                // Keep the items that pass these checks.
                 $newData = array_filter($data, function ($item) use ($existingIds, $primaryKey) {
                     return ! in_array($item[$primaryKey], $existingIds);
                 });
+                // Run this step if the new data has a value.
                 if (! empty($newData)) {
                     $this->insertChunks($table, $newData);
                 } else {
@@ -397,7 +432,9 @@ class ImportData extends Command
         $chunks = array_chunk($data, 100);
         $inserted = 0;
 
+        // Process each chunk.
         foreach ($chunks as $chunk) {
+            // Try this action and handle any errors below.
             try {
                 DB::table($table)->insert($chunk);
                 $inserted += count($chunk);
@@ -405,6 +442,7 @@ class ImportData extends Command
                 $this->warn("Error inserting into {$table}: ".$e->getMessage());
                 // Try one by one
                 foreach ($chunk as $record) {
+                    // Try this action and handle any errors below.
                     try {
                         DB::table($table)->insert($record);
                         $inserted++;
@@ -435,6 +473,7 @@ class ImportData extends Command
             'Inventory Transactions' => DB::table('inventory_transaction_tbl')->count(),
         ];
 
+        // Process each count.
         foreach ($counts as $name => $count) {
             $this->info(sprintf('%-20s: %s', $name, number_format($count)));
         }

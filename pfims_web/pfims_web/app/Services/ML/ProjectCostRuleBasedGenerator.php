@@ -9,19 +9,23 @@ use Random\Randomizer;
 use RuntimeException;
 use Throwable;
 
-/** Rule-based construction ledgers; training-only donors anchor project scale and catalogue. */
+/** Create sample construction costs using rules. Use training projects to set project size and items. */
 class ProjectCostRuleBasedGenerator
 {
     private Randomizer $random;
 
+    // Get the generate.
     public function generate(array $source, string $directory, int $projects = 1000, int $expenses = 300, int $transactions = 500, int $seed = 20261009): array
     {
+        // Stop if the source source checks match.
         if (($source['source']['host'] ?? '') !== 'srv603.hstgr.io' || ($source['source']['database'] ?? '') !== 'u822802132_pfims') {
             throw new RuntimeException('A verified live PFIMS source export is required.');
         }
+        // Stop if the projects and expenses checks match.
         if ($projects < 1 || $expenses < 1 || $transactions < 2 || $transactions % 2 !== 0) {
             throw new RuntimeException('Positive counts and paired IN/OUT inventory movements are required.');
         }
+        // Stop if the directory folder exists.
         if (is_dir($directory)) {
             throw new RuntimeException('Dataset directory already exists; use a new version directory.');
         }
@@ -31,6 +35,7 @@ class ProjectCostRuleBasedGenerator
         $projectMap = array_column($source['project_tbl'], null, 'project_id');
         $items = array_column($source['inventory_item_tbl'], null, 'item_id');
         $pricedItems = array_filter($items, fn ($i) => (float) $i['unit_price'] > 0);
+        // Stop if the priced items is empty.
         if ($pricedItems === []) {
             throw new RuntimeException('The live catalogue has no valued items.');
         }
@@ -38,13 +43,17 @@ class ProjectCostRuleBasedGenerator
         $outGroups = collect($source['inventory_transaction_tbl'])->where('transaction_type', 'OUT')->groupBy('project_id');
         $this->random = new Randomizer(new Mt19937($seed));
         $temporary = $directory.'.building.'.bin2hex(random_bytes(6));
+        // Stop if the temporary check matches.
         if (! mkdir($temporary, 0700, true)) {
             throw new RuntimeException('Unable to create dataset directory.');
         }
         $handles = $counts = [];
+        // Try this action and handle any errors below.
         try {
+            // Process each name.
             foreach (['projects', 'expenses', 'inventory-transactions', 'items', 'training-observations'] as $name) {
                 $handles[$name] = gzopen($temporary.'/'.$name.'.jsonl.gz', 'wb6');
+                // Stop if the name is false.
                 if ($handles[$name] === false) {
                     throw new RuntimeException('Unable to open dataset output.');
                 }
@@ -52,14 +61,17 @@ class ProjectCostRuleBasedGenerator
             }
             $write = function (string $name, array $row) use (&$handles, &$counts): void {
                 $line = json_encode($row, JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR)."\n";
+                // Stop if the line does not equal line.
                 if (gzwrite($handles[$name], $line) !== strlen($line)) {
                     throw new RuntimeException('Incomplete dataset write.');
                 }
                 $counts[$name]++;
             };
+            // Process each item.
             foreach ($items as $item) {
                 $write('items', $item);
             }
+            // Repeat for each step in this range.
             for ($index = 1; $index <= $projects; $index++) {
                 $donorId = $this->pick($split['training']);
                 $donorRows = $training[$donorId];
@@ -71,6 +83,7 @@ class ProjectCostRuleBasedGenerator
                 $year = 2019 + (($index - 1) % (today()->year - 2019 + 1));
                 $earliest = CarbonImmutable::create($year, 1, 1);
                 $latest = CarbonImmutable::create($year, 12, 31)->min(CarbonImmutable::today()->subMonthsNoOverflow(7));
+                // Run this step if the earliest check matches.
                 if ($latest->lt($earliest)) {
                     $latest = CarbonImmutable::today()->subDays(45)->max($earliest);
                 }
@@ -99,6 +112,7 @@ class ProjectCostRuleBasedGenerator
                 $direct = $movements = [];
                 $weights = [];
                 $templates = [];
+                // Repeat for each step in this range.
                 for ($j = 0; $j < $expenses; $j++) {
                     $component = $j % 10 < 7 ? 'labor' : ($j % 10 < 9 ? 'equipment' : 'other');
                     $matching = array_values(array_filter($directDonor, fn ($e) => ($e['project_cost_component'] ?? '') === $component));
@@ -106,6 +120,7 @@ class ProjectCostRuleBasedGenerator
                     $weights[] = ($component === 'labor' ? 1 : ($component === 'equipment' ? 1.5 : .5)) * $this->draw(.8, 1.2);
                 }
                 $directWeights = $weights;
+                // Process each amount.
                 foreach ($this->apportion($directTotal, $weights) as $j => $amount) {
                     $template = $templates[$j];
                     $component = $j % 10 < 7 ? 'labor' : ($j % 10 < 9 ? 'equipment' : 'other');
@@ -124,6 +139,7 @@ class ProjectCostRuleBasedGenerator
                 // This keeps a controlled-delivery scenario from becoming an overrun
                 // solely because a requested event count forced package rounding.
                 $directTotal = $final - $materialCents;
+                // Process each amount.
                 foreach ($this->apportion($directTotal, $directWeights) as $j => $amount) {
                     $direct[$j]['amount'] = $amount / 100;
                 }
@@ -134,15 +150,19 @@ class ProjectCostRuleBasedGenerator
                     'estimated_end_date' => $plannedEnd->toDateString(), 'duration_months' => max(1, (int) $start->diffInMonths($plannedEnd)), 'worker_count' => $plannedCrew,
                     'budget' => $budget, 'actual_cost' => $final / 100, 'project_kind' => $kind, 'generation_rules' => $pricingScenario, 'data_source' => 'rule_based_ingested'];
                 $write('projects', $newProject);
+                // Process each event.
                 foreach ($direct as $event) {
                     $write('expenses', $event);
                 }
+                // Process each event.
                 foreach ($movements as $event) {
                     $write('inventory-transactions', $event);
                 }
+                // Process each donor row.
                 foreach ($donorRows as $donorRow) {
                     $row = (array) $donorRow;
                     $row = array_replace($row, $newProject, ['completed_at' => $end->toDateString(), 'planned_start_date' => $start->toDateString(), 'data_source' => 'rule_based_ingested']);
+                    // Run this step if the snapshot id is set.
                     if (isset($donorRow->snapshot_id)) {
                         $planningSpending = ($source['cohort']['strategy'] ?? '') === PlanningSpendingFeatures::STRATEGY;
                         $fraction = min(.99, max(0, (float) ($donorRow->elapsed_days ?? 0) / ($planningSpending ? max(1, (float) $donorRow->planned_duration_days) : $donorDays)));
@@ -152,9 +172,12 @@ class ProjectCostRuleBasedGenerator
                         $row['actual_cost'] = max(0, $final / 100 - $row['fin_total_expense']);
                         $row['reconciled_final_cost'] = $final / 100;
                         $row = array_replace($row, $planningSpending ? PlanningSpendingFeatures::build($row) : app(ProjectCostFeatureBuilder::class)->build($row)['values']);
+                        // Run this step if the planning spending is set.
                         if ($planningSpending) {
                             $row['observation_basis'] = 'record_dates';
+                            // Process each key.
                             foreach (ProjectCostFeatureBuilder::FEATURE_NAMES as $key) {
+                                // Run this step if the key check matches.
                                 if (! in_array($key, PlanningSpendingFeatures::FEATURES, true)) {
                                     unset($row[$key]);
                                 }
@@ -165,6 +188,7 @@ class ProjectCostRuleBasedGenerator
                     $write('training-observations', $row);
                 }
             }
+            // Process each handle.
             foreach ($handles as $handle) {
                 gzclose($handle);
             }
@@ -185,19 +209,23 @@ class ProjectCostRuleBasedGenerator
                 'limitations' => ['Requested fixed event counts are a presentation constraint, not observed transaction-frequency evidence.', 'Historical price factors are rule-based scenarios anchored to the live catalogue, not historical market observations.',
                     'A larger ingested dataset adds no independent company outcomes; performance must be evaluated on database projects.',
                     'Database provenance labels are preserved; they are not independently verified by this generator.'], 'files' => []];
+            // Process each count.
             foreach ($counts as $name => $count) {
                 $manifest['files'][$name.'.jsonl.gz'] = ['records' => $count, 'sha256' => hash_file('sha256', $temporary.'/'.$name.'.jsonl.gz')];
             }
             file_put_contents($temporary.'/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
             (new ProjectCostAugmentationDataset($temporary))->assertDatabaseMatches($records);
             (new ProjectCostAugmentationAudit)->audit($temporary);
+            // Stop if the directory check matches.
             if (! rename($temporary, $directory)) {
                 throw new RuntimeException('Unable to publish dataset directory.');
             }
 
             return $manifest;
         } catch (Throwable $error) {
+            // Process each handle.
             foreach ($handles as $handle) {
+                // Run this step if the handle check matches.
                 if (is_resource($handle)) {
                     gzclose($handle);
                 }
@@ -207,9 +235,10 @@ class ProjectCostRuleBasedGenerator
         }
     }
 
-    /** Allocate a bill of quantities first, then split it into delivery/withdrawal lots. */
+    /** Set the material amounts first. Then split them into deliveries and stock withdrawals. */
     private function materialLedger(array $catalogue, string $kind, float $budget, float $priceFactor, int $total, int $pairs, string $id, CarbonImmutable $start, int $days): array
     {
+        // Keep the items that pass these checks.
         $items = array_values(array_filter($catalogue, function ($item) use ($kind) {
             $name = $item['item_name'];
             // Durable site tools are covered by equipment costs, not consumed repeatedly.
@@ -223,10 +252,12 @@ class ProjectCostRuleBasedGenerator
         // A tiny requested test ledger may not have a lot for every catalogue item.
         $items = array_slice($items, 0, min(count($items), $pairs));
         $weights = [];
+        // Process each item.
         foreach ($items as $item) {
             $weights[] = (float) $item['unit_price'] * $this->quantityRate($item['item_name'], $kind) * $this->draw(.85, 1.15);
         }
         $plans = [];
+        // Process each allocation.
         foreach ($this->apportion($total, $weights) as $i => $allocation) {
             $item = $items[$i];
             $price = round((float) $item['unit_price'] * $priceFactor * $this->draw(.95, 1.05), 2);
@@ -234,6 +265,7 @@ class ProjectCostRuleBasedGenerator
             $units = max(1, (int) round($allocation / 100 / $price / $step));
             $plans[] = ['item' => $item, 'price' => $price, 'step' => $step, 'units' => $units, 'lots' => 1, 'phase' => $this->itemPhase($item['item_name'])];
         }
+        // Stop if the plans is below pairs.
         if (array_sum(array_column($plans, 'units')) < $pairs) {
             throw new RuntimeException('Realistic package quantities cannot support the requested number of withdrawals.');
         }
@@ -241,7 +273,9 @@ class ProjectCostRuleBasedGenerator
         for ($count = count($plans); $count < $pairs; $count++) {
             $chosen = null;
             $score = -1;
+            // Process each plan.
             foreach ($plans as $i => $plan) {
+                // Run this step if the plan lots and plan units checks match.
                 if ($plan['lots'] < $plan['units'] && $score < $plan['units'] / $plan['lots']) {
                     $chosen = $i;
                     $score = $plan['units'] / $plan['lots'];
@@ -250,7 +284,9 @@ class ProjectCostRuleBasedGenerator
             $plans[$chosen]['lots']++;
         }
         $lots = [];
+        // Process each plan.
         foreach ($plans as $plan) {
+            // Process each units.
             foreach ($this->apportion($plan['units'], array_fill(0, $plan['lots'], 1)) as $units) {
                 $lots[$plan['phase']][] = $plan + ['quantity' => $units * $plan['step']];
             }
@@ -258,10 +294,12 @@ class ProjectCostRuleBasedGenerator
         $boundaries = $kind === 'interior' ? [0, .25, .5, 1] : [0, $kind === 'warehouse' ? .65 : .55, .75, 1];
         $movements = [];
         $number = 0;
+        // Process each phase.
         foreach (['structure', 'services', 'finishing'] as $phaseIndex => $phase) {
             $phaseLots = $lots[$phase] ?? [];
             // Avoid grouping all withdrawals of one item on a single day.
             $phaseLots = $this->random->shuffleArray($phaseLots);
+            // Process each lot.
             foreach ($phaseLots as $i => $lot) {
                 $fraction = $boundaries[$phaseIndex] + ($boundaries[$phaseIndex + 1] - $boundaries[$phaseIndex]) * ($i + 1) / (count($phaseLots) + 1);
                 $day = (int) round($fraction * $days);
@@ -277,7 +315,7 @@ class ProjectCostRuleBasedGenerator
         return $movements;
     }
 
-    /** Relative bill-of-quantity rates; calibrated to the live catalogue, not invoices. */
+    /** Estimate material rates from the current item list. These are not invoice prices. */
     private function quantityRate(string $name, string $kind): float
     {
         $structure = $kind === 'interior' ? .35 : 1;
@@ -301,16 +339,20 @@ class ProjectCostRuleBasedGenerator
         };
     }
 
+    // Get the project kind.
     private function projectKind(string $name): string
     {
         return preg_match('/interior|renovation|roof replacement/i', $name) ? 'interior' : (preg_match('/warehouse|workshop|storage/i', $name) ? 'warehouse' : 'building');
     }
 
+    // Get the item phase.
     private function itemPhase(string $name): string
     {
+        // Return early if the name check matches.
         if (preg_match('/conduit|wire 2|wire 3|switch|outlet|junction|utility box|panel board|downlight|pipe|elbow|wye|trap|drain|faucet/i', $name)) {
             return 'services';
         }
+        // Return early if the name checks match.
         if (preg_match('/paint|latex|enamel|putty|thinner|adhesive|skimcoat|hinge|cabinet|drawer|quartz|ceiling|moulding|fluted|silicone|lockset|particle|mdf|suspension|flange|channel|furring|sandpaper|masking/i', $name)) {
             return 'finishing';
         }
@@ -318,20 +360,24 @@ class ProjectCostRuleBasedGenerator
         return 'structure';
     }
 
+    // Get the pick.
     private function pick(array $values): mixed
     {
         return $values[$this->random->getInt(0, count($values) - 1)];
     }
 
+    // Get the draw.
     private function draw(float $min, float $max): float
     {
         return $min + ($max - $min) * $this->random->getInt(0, 1000000) / 1000000;
     }
 
+    // Get the apportion.
     private function apportion(int $total, array $weights): array
     {
         $remaining = $total - count($weights);
         $sum = array_sum($weights);
+        // Stop if the remaining is below 0.
         if ($remaining < 0) {
             throw new RuntimeException('Requested events exceed available centavos.');
         }
@@ -341,6 +387,7 @@ class ProjectCostRuleBasedGenerator
         return $amounts;
     }
 
+    // Get the saved values for this point in time.
     private function snapshot(array $direct, array $movements, CarbonImmutable $asOf, CarbonImmutable $start, int $days, float $budget, float $progress): array
     {
         $date = $asOf->toDateString();
@@ -351,6 +398,7 @@ class ProjectCostRuleBasedGenerator
         $sum = fn ($rows) => round(array_sum(array_column($rows, 'amount')), 2);
         $last = fn ($rows, $key, $since) => array_filter($rows, fn ($e) => $e[$key] >= $since);
         $components = [];
+        // Process each component.
         foreach (['material', 'labor', 'equipment', 'other'] as $component) {
             $components[$component] = $sum(array_filter($known, fn ($e) => $e['project_cost_component'] === $component));
         }
@@ -364,6 +412,7 @@ class ProjectCostRuleBasedGenerator
             'stock_out_count_30d' => count($last($outs, 'transaction_date', $recent)), 'stock_out_count_7d' => count($last($outs, 'transaction_date', $week)),
             'valued_stock_out_cost' => $sum($outs), 'valued_stock_out_cost_30d' => $sum($last($outs, 'transaction_date', $recent)), 'valued_stock_out_cost_7d' => $sum($last($outs, 'transaction_date', $week)),
             'unvalued_stock_out_count' => 0, 'has_unvalued_stock_out' => 0];
+        // Process each amount.
         foreach ($components as $name => $amount) {
             $row['fin_'.$name.'_expense'] = $amount;
         }

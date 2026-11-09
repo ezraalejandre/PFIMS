@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// Link records to the company asset table.
 class CompanyAsset extends Model
 {
     protected $table = 'company_asset_tbl';
@@ -25,11 +26,13 @@ class CompanyAsset extends Model
         'acquisition_cost' => 'decimal:2',
     ];
 
+    // Link this record to its expenses.
     public function expenses(): HasMany
     {
         return $this->hasMany(FinEquipmentExpense::class, 'asset_id', 'asset_id');
     }
 
+    // Link this record to its rental income.
     public function rentalIncome(): HasMany
     {
         return $this->hasMany(FinEquipmentRentalIncome::class, 'asset_id', 'asset_id');

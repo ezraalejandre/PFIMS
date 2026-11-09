@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
         DB::table('fin_expense_category_tbl')->insertOrIgnore([
@@ -13,10 +14,13 @@ return new class extends Migration
         ]);
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Process each code.
         foreach (['OTHERS', 'ADMINISTRATIVE_EXPENSES'] as $code) {
             $category = DB::table('fin_expense_category_tbl')->where('category_code', $code)->first();
+            // Run this step if the category and fin category id checks match.
             if ($category && ! DB::table('fin_expense_tbl')->where('fin_category_id', $category->fin_category_id)->exists()) {
                 DB::table('fin_expense_category_tbl')->where('fin_category_id', $category->fin_category_id)->delete();
             }

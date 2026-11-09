@@ -6,10 +6,12 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('ml_project_cost_snapshots', function (Blueprint $table) {
-            // Leave historical observations unknown; do not reconstruct their schedules or quality.
+            // Leave historical observations unknown; do not rebuild their schedules or quality.
             $table->unsignedSmallInteger('capture_schema_version')->nullable();
             $table->date('planned_start_date')->nullable();
             $table->date('planned_end_date')->nullable();
@@ -21,8 +23,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('ml_project_cost_snapshots', function (Blueprint $table) {
             $table->dropColumn(['capture_schema_version', 'planned_start_date', 'planned_end_date',
                 'planned_duration_days', 'elapsed_days', 'remaining_planned_days',

@@ -4,10 +4,13 @@ namespace App\Services;
 
 use InvalidArgumentException;
 
+// Group the project overrun evaluation actions.
 class ProjectOverrunEvaluation
 {
+    // Get the evaluate.
     public function evaluate(array $predictions, array $actuals, array $budgets, string $definition): array
     {
+        // Stop if the definition and predictions checks match.
         if (! in_array($definition, ['any_overrun', 'material_overrun'], true)
             || count($predictions) !== count($actuals) || count($actuals) !== count($budgets)) {
             throw new InvalidArgumentException('Overrun evaluation requires aligned observations and a supported definition.');
@@ -16,9 +19,11 @@ class ProjectOverrunEvaluation
         $policy = new ProjectOverrunPolicy;
         $actuals = array_values($actuals);
         $budgets = array_values($budgets);
+        // Process each prediction.
         foreach (array_values($predictions) as $index => $prediction) {
             $actual = $policy->classify((float) $actuals[$index], $budgets[$index])[$definition];
             $predicted = $policy->classify((float) $prediction, $budgets[$index])[$definition];
+            // Run this step if the actual and predicted checks match.
             if ($actual === null || $predicted === null) {
                 $excluded++;
             } elseif ($actual && $predicted) {
@@ -36,18 +41,23 @@ class ProjectOverrunEvaluation
         return $this->fromCounts($tp, $fp, $tn, $fn, $excluded, $definition);
     }
 
+    // Check classes.
     public function evaluateClasses(array $predictions, array $actuals): array
     {
+        // Stop if the number of predictions does not equal actuals.
         if (count($predictions) !== count($actuals)) {
             throw new InvalidArgumentException('Classifier evaluation requires aligned outcomes.');
         }
         $tp = $fp = $tn = $fn = $excluded = 0;
         $actuals = array_values($actuals);
+        // Process each prediction.
         foreach (array_values($predictions) as $i => $prediction) {
             $actual = $actuals[$i];
+            // Stop if the prediction and actual checks match.
             if (($prediction !== null && ! is_bool($prediction)) || ($actual !== null && ! is_bool($actual))) {
                 throw new InvalidArgumentException('Classifier outcomes must be Boolean or unavailable.');
             }
+            // Run this step if the prediction and actual checks match.
             if ($prediction === null || $actual === null) {
                 $excluded++;
             } elseif ($prediction && $actual) {
@@ -64,6 +74,7 @@ class ProjectOverrunEvaluation
         return $this->fromCounts($tp, $fp, $tn, $fn, $excluded, 'any_overrun');
     }
 
+    // Get the from counts.
     private function fromCounts(int $tp, int $fp, int $tn, int $fn, int $excluded, string $definition): array
     {
         $count = $tp + $fp + $tn + $fn;
