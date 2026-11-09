@@ -1481,8 +1481,10 @@
                     <select id="cashAccount">
                         <option value="">Select Account...</option>
                     </select>
-                    <button type="button" class="btn-edit-project" onclick="editSelectedCashAccount()">Rename Account</button>
-                    <button type="button" class="btn-delete" onclick="deleteSelectedCashAccount()">Delete Account</button>
+                    <div class="cash-account-actions">
+                        <button type="button" class="btn-edit-project" onclick="editSelectedCashAccount()">Rename Account</button>
+                        <button type="button" class="btn-delete" onclick="deleteSelectedCashAccount()">Delete Account</button>
+                    </div>
                 </div>
                 {{-- Show the cash period section. --}}
                 <div class="form-group"><label>Month <span class="required">*</span></label><input type="month" id="cashPeriod" value="{{ date('Y-m') }}" max="{{ today()->format('Y-m') }}"></div>

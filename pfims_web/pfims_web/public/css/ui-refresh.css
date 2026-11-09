@@ -983,6 +983,30 @@ button,
     border: 1px solid var(--ui-border-strong) !important;
 }
 
+/* Keep cash account actions the same size. */
+#addCashModal .cash-account-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+
+#addCashModal .cash-account-actions > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 40px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1.25;
+    white-space: normal;
+}
+
 /* Style the btn delete. */
 .btn-delete,
 .btn-delete-user,
