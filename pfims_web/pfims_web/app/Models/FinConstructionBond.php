@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Link records to the fin construction bond table.
 class FinConstructionBond extends Model
 {
     protected $table = 'fin_construction_bond_tbl';
@@ -27,6 +28,7 @@ class FinConstructionBond extends Model
         'bond_date' => 'date',
     ];
 
+    // Link this record to its project.
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');

@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('user_default_filters', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -18,8 +20,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('user_default_filters');
     }
 };

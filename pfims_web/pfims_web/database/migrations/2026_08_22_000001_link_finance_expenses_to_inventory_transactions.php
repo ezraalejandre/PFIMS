@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('fin_expense_tbl', function (Blueprint $table) {
             $table->integer('inventory_transaction_id')->nullable()->unique()->after('source_expense_id');
             $table->foreign('inventory_transaction_id', 'fk_fin_expense_inventory_transaction')
@@ -17,8 +19,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('fin_expense_tbl', function (Blueprint $table) {
             $table->dropForeign('fk_fin_expense_inventory_transaction');
             $table->dropUnique(['inventory_transaction_id']);

@@ -5,15 +5,18 @@ namespace App\Services;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
-/** Logical presentation scenarios, never reconstructed operational observations. */
+/** Logical presentation scenarios, never rebuilt operational observations. */
 class ProjectCostPresentationPlan
 {
+    // Build the project cost presentation plan output.
     public function build(array $references, array $items, int $count = 48): array
     {
+        // Stop if the references and items checks match.
         if ($references === [] || $items === [] || $count < 6 || $count > 120 || $count % 6 !== 0) {
             throw new InvalidArgumentException('References, priced materials and a multiple of six scenarios are required.');
         }
         $projects = [];
+        // Repeat for each step in this range.
         for ($index = 0; $index < $count; $index++) {
             $reference = $references[($index * 7) % count($references)];
             $outcome = ['material', 'within', 'small', 'material', 'within', 'material'][$index % 6];
@@ -52,18 +55,22 @@ class ProjectCostPresentationPlan
             $waveCount = 14 + $index % 7;
             $weights = [];
             $alpha = 0.84 + (($index * 5) % 17) * 0.025;
+            // Repeat for each step in this range.
             for ($wave = 1; $wave <= $waveCount; $wave++) {
                 $weights[] = (($wave / $waveCount) ** $alpha - (($wave - 1) / $waveCount) ** $alpha)
                     * (0.82 + (($wave * 11 + $index * 7) % 31) / 100);
             }
             $distributed = [];
+            // Process each cents.
             foreach ($componentCents as $component => $cents) {
                 $distributed[$component] = $this->distribute($cents, $weights);
             }
             $waves = [];
+            // Repeat for each step in this range.
             for ($wave = 0; $wave < $waveCount; $wave++) {
                 $day = max(1, min($actualDays, (int) round($actualDays * ($wave + 1) / $waveCount)
                     + (($wave + $index) % 5 - 2)));
+                // Run this step if the wave equals wave count.
                 if ($wave === $waveCount - 1) {
                     $day = $actualDays;
                 }
@@ -72,6 +79,7 @@ class ProjectCostPresentationPlan
                 $price = round((float) $item['unit_price'] * (0.94 + (($index + $wave) % 17) / 100), 2);
                 $material = $distributed['material'][$wave] / 100;
                 $quantity = max(1, (int) floor($material * (0.48 + ($wave % 5) * 0.06) / $price));
+                // Stop if the price and quantity checks match.
                 if ($price <= 0 || $quantity * $price >= $material) {
                     throw new InvalidArgumentException('Reference prices are incompatible with the scenario material budget.');
                 }
@@ -89,6 +97,7 @@ class ProjectCostPresentationPlan
                 ];
             }
             $snapshots = [];
+            // Process each elapsed fraction.
             foreach ([0.22, 0.55, 0.88] as $stage => $elapsedFraction) {
                 $elapsed = (int) round($actualDays * $elapsedFraction);
                 $asOf = $start->addDays($elapsed);
@@ -113,6 +122,7 @@ class ProjectCostPresentationPlan
                     'remaining_planned_days' => max(0, $plannedDays - $elapsed), 'days_past_planned_end' => max(0, $elapsed - $plannedDays),
                     'cost_coverage_complete' => true, 'valued_stock_out_cost' => $stock, 'unvalued_stock_out_count' => 0,
                 ];
+                // Process each window.
                 foreach ([7, 30] as $window) {
                     $lower = $asOf->subDays($window - 1)->toDateString();
                     $recent = array_values(array_filter($observed, fn ($wave) => $wave['date'] >= $lower));
@@ -120,6 +130,7 @@ class ProjectCostPresentationPlan
                     $snapshot['direct_expense_amount_'.$window.'d'] = round(array_sum(array_map(fn ($wave) => array_sum($wave['direct']), $recent)), 2);
                     $snapshot['stock_out_count_'.$window.'d'] = count($recent);
                     $snapshot['valued_stock_out_cost_'.$window.'d'] = round(array_sum(array_column($recent, 'inventory_cost')), 2);
+                    // Run this step if the window equals 30.
                     if ($window === 30) {
                         $snapshot['stock_out_quantity_30d'] = array_sum(array_column($recent, 'quantity'));
                     }
@@ -143,6 +154,7 @@ class ProjectCostPresentationPlan
             'observation_policy' => 'Scenario dates and costs are logical presentation inputs; they are not observations captured from past operational activity. Posting timestamps remain the actual import time.'];
     }
 
+    // Get the distribute.
     private function distribute(int $cents, array $weights): array
     {
         $sum = array_sum($weights);

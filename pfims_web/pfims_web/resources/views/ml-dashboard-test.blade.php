@@ -1,3 +1,4 @@
+{{-- Prepare the values used by this page section. --}}
 @php
     $fragment = $fragment ?? false;
     $portal = $portal ?? 'admin';
@@ -23,6 +24,7 @@
         default => 'projects-page',
     };
 @endphp
+{{-- Show this section when its display check passes. --}}
 @unless($fragment)
 <!DOCTYPE html>
 <html lang="en" class="{{ request()->boolean('embedded') ? 'embedded-ml-document' : '' }}">
@@ -32,13 +34,16 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $browserTitle }} - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/'.$moduleStylesheet) }}">
+    {{-- Set the styles used by this page section. --}}
     <style>
+        /* Style the all page elements. */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        /* Style the body. */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f0f2f5;
@@ -46,6 +51,7 @@
             color: #333;
         }
 
+        /* Style the dashboard container. */
         .dashboard-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -63,11 +69,13 @@
             align-items: center;
         }
 
+        /* Style the header. */
         .header h1 {
             font-size: 24px;
             font-weight: 600;
         }
 
+        /* Style the header. */
         .header small {
             font-weight: 300;
             opacity: 0.8;
@@ -76,11 +84,13 @@
             margin-top: 4px;
         }
 
+        /* Style the header actions. */
         .header-actions {
             display: flex;
             gap: 12px;
         }
 
+        /* Style the btn. */
         .btn {
             padding: 10px 20px;
             border: none;
@@ -91,45 +101,53 @@
             transition: all 0.3s ease;
         }
 
+        /* Style the btn primary. */
         .btn-primary {
             background: #ffc107;
             color: #1a237e;
         }
 
+        /* Style the btn primary on hover. */
         .btn-primary:hover {
             background: #ffb300;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
         }
 
+        /* Style the btn success. */
         .btn-success {
             background: #4caf50;
             color: white;
         }
 
+        /* Style the btn success on hover. */
         .btn-success:hover {
             background: #43a047;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
         }
 
+        /* Style the btn danger. */
         .btn-danger {
             background: #f44336;
             color: white;
         }
 
+        /* Style the btn danger on hover. */
         .btn-danger:hover {
             background: #d32f2f;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
         }
 
+        /* Style the btn outline. */
         .btn-outline {
             background: transparent;
             color: white;
             border: 2px solid rgba(255,255,255,0.3);
         }
 
+        /* Style the btn outline on hover. */
         .btn-outline:hover {
             background: rgba(255,255,255,0.1);
             border-color: white;
@@ -143,6 +161,7 @@
             margin-bottom: 25px;
         }
 
+        /* Style the stat card. */
         .stat-card {
             background: white;
             padding: 20px 25px;
@@ -151,11 +170,13 @@
             transition: transform 0.2s ease;
         }
 
+        /* Style the stat card on hover. */
         .stat-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
 
+        /* Style the stat label. */
         .stat-label {
             font-size: 13px;
             color: #888;
@@ -164,6 +185,7 @@
             font-weight: 600;
         }
 
+        /* Style the stat value. */
         .stat-value {
             font-size: 28px;
             font-weight: 700;
@@ -171,11 +193,13 @@
             color: #1a237e;
         }
 
+        /* Style the stat sub. */
         .stat-sub {
             font-size: 13px;
             color: #666;
         }
 
+        /* Style the stat card status badge. */
         .stat-card .status-badge {
             display: inline-block;
             padding: 2px 10px;
@@ -185,21 +209,25 @@
             margin-top: 6px;
         }
 
+        /* Style the status badge success. */
         .status-badge.success {
             background: #e8f5e9;
             color: #2e7d32;
         }
 
+        /* Style the status badge warning. */
         .status-badge.warning {
             background: #fff3e0;
             color: #e65100;
         }
 
+        /* Style the status badge danger. */
         .status-badge.danger {
             background: #ffebee;
             color: #c62828;
         }
 
+        /* Style the status badge info. */
         .status-badge.info {
             background: #e3f2fd;
             color: #0d47a1;
@@ -213,6 +241,7 @@
             margin-bottom: 18px;
         }
 
+        /* Style the prediction row. */
         .prediction-row {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -221,22 +250,27 @@
             margin-bottom: 18px;
         }
 
+        /* Style the prediction row. */
         .prediction-row > div,
         .prediction-row .prediction-workspace {
             min-width: 0;
             height: 100%;
         }
 
+        /* Style the prediction row model performance card. */
         .prediction-row .model-performance-card {
             grid-column: 1 / -1;
             height: auto;
         }
 
+        /* Style the prediction row model performance card. */
         .prediction-row .model-performance-card[hidden] {
             display: none !important;
         }
 
+        /* Adjust these styles for this screen size or display setting. */
         @media (max-width: 1024px) {
+            /* Style the main grid. */
             .main-grid,
             .prediction-row {
                 grid-template-columns: 1fr;
@@ -252,6 +286,7 @@
             margin-bottom: 25px;
         }
 
+        /* Style the card header. */
         .card-header {
             display: flex;
             justify-content: space-between;
@@ -261,12 +296,14 @@
             border-bottom: 2px solid #f0f2f5;
         }
 
+        /* Style the card title. */
         .card-title {
             font-size: 18px;
             font-weight: 600;
             color: #1a237e;
         }
 
+        /* Style the card title. */
         .card-title small {
             font-weight: 400;
             font-size: 13px;
@@ -281,15 +318,18 @@
             gap: 15px;
         }
 
+        /* Style the form group. */
         .form-group {
             display: flex;
             flex-direction: column;
         }
 
+        /* Style the form group full width. */
         .form-group.full-width {
             grid-column: 1 / -1;
         }
 
+        /* Style the form group. */
         .form-group label {
             font-size: 13px;
             font-weight: 600;
@@ -297,6 +337,7 @@
             margin-bottom: 5px;
         }
 
+        /* Style the form group. */
         .form-group input, 
         .form-group select {
             padding: 10px 14px;
@@ -307,6 +348,7 @@
             background: #fafafa;
         }
 
+        /* Style the form group when focused. */
         .form-group input:focus,
         .form-group select:focus {
             outline: none;
@@ -314,11 +356,13 @@
             background: white;
         }
 
+        /* Style the form group. */
         .form-group input:disabled {
             background: #f5f5f5;
             cursor: not-allowed;
         }
 
+        /* Style the form actions. */
         .form-actions {
             grid-column: 1 / -1;
             display: flex;
@@ -326,11 +370,13 @@
             margin-top: 5px;
         }
 
+        /* Style the project selection. */
         .project-selection {
             display: grid;
             gap: 14px;
         }
 
+        /* Style the project selection. */
         .project-selection select {
             width: 100%;
             min-height: 44px;
@@ -342,6 +388,7 @@
             font: inherit;
         }
 
+        /* Style the project selection note. */
         .project-selection-note {
             margin: 0;
             color: #64748b;
@@ -349,16 +396,19 @@
             line-height: 1.5;
         }
 
+        /* Style the project snapshot grid. */
         .project-snapshot-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 10px;
         }
 
+        /* Style the project snapshot grid. */
         .project-snapshot-grid[hidden] {
             display: none;
         }
 
+        /* Style the snapshot item. */
         .snapshot-item {
             min-width: 0;
             padding: 11px 13px;
@@ -367,11 +417,13 @@
             background: #f8fafc;
         }
 
+        /* Style the snapshot item. */
         .snapshot-item span,
         .snapshot-item strong {
             display: block;
         }
 
+        /* Style the snapshot item. */
         .snapshot-item span {
             margin-bottom: 4px;
             color: #64748b;
@@ -381,6 +433,7 @@
             text-transform: uppercase;
         }
 
+        /* Style the snapshot item. */
         .snapshot-item strong {
             color: #172033;
             font-size: 14px;
@@ -396,31 +449,37 @@
             animation: fadeIn 0.4s ease;
         }
 
+        /* Style the prediction result show. */
         .prediction-result.show {
             display: block;
         }
 
+        /* Style the prediction result success. */
         .prediction-result.success {
             background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
             border: 2px solid #66bb6a;
         }
 
+        /* Style the prediction result warning. */
         .prediction-result.warning {
             background: linear-gradient(135deg, #fff3e0, #ffe0b2);
             border: 2px solid #ffa726;
         }
 
+        /* Style the prediction result danger. */
         .prediction-result.danger {
             background: linear-gradient(135deg, #ffebee, #ffcdd2);
             border: 2px solid #ef5350;
         }
 
+        /* Style the prediction result. */
         .prediction-result h4 {
             font-size: 16px;
             margin-bottom: 10px;
             color: #333;
         }
 
+        /* Style the prediction result result row. */
         .prediction-result .result-row {
             display: flex;
             justify-content: space-between;
@@ -430,15 +489,18 @@
             border-bottom: 1px solid rgba(0,0,0,0.06);
         }
 
+        /* Style the prediction result result row. */
         .prediction-result .result-row:last-child {
             border-bottom: none;
         }
 
+        /* Style the prediction result result label. */
         .prediction-result .result-label {
             font-weight: 500;
             color: #555;
         }
 
+        /* Style the prediction result result value. */
         .prediction-result .result-value {
             font-weight: 600;
             color: #1a237e;
@@ -446,6 +508,7 @@
             overflow-wrap: anywhere;
         }
 
+        /* Style the result value narrative. */
         .prediction-result .result-value.narrative {
             max-width: 72%;
             font-size: 13px;
@@ -453,6 +516,7 @@
             font-weight: 500;
         }
 
+        /* Style the prediction result result helper. */
         .prediction-result .result-helper {
             margin: 12px 0 4px;
             color: #475569;
@@ -460,16 +524,21 @@
             line-height: 1.5;
         }
 
+        /* Style the result value positive. */
         .prediction-result .result-value.positive {
             color: #2e7d32;
         }
 
+        /* Style the result value negative. */
         .prediction-result .result-value.negative {
             color: #c62828;
         }
 
+        /* Define the fade in animation. */
         @keyframes fadeIn {
+            /* Style the from. */
             from { opacity: 0; transform: translateY(-10px); }
+            /* Style the to. */
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -480,36 +549,60 @@
             gap: 12px;
         }
 
+        /* Style the metric section. */
         .metric-section {
             margin-top: 18px;
         }
 
+        /* Style the performance detail grid. */
         .performance-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+        /* Style the performance detail card. */
         .performance-detail-card { padding: 18px; border: 1px solid #dfe6ee; border-radius: 12px; background: #f8fafc; min-width: 0; }
+        /* Style the performance detail card. */
         .performance-detail-card h3 { margin: 0 0 12px; font-size: 15px; color: #26364a; }
+        /* Style the performance detail card. */
         .performance-detail-card h4 { margin: 18px 0 8px; font-size: 13px; color: #475569; }
+        /* Style the performance data card. */
         .performance-data-card { grid-column: 1 / -1; }
+        /* Style the performance data card performance facts. */
         .performance-data-card .performance-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; }
+        /* Style the performance facts. */
         .performance-facts { margin: 8px 0; padding-left: 20px; display: grid; gap: 9px; line-height: 1.55; }
+        /* Style the performance facts. */
         .performance-facts li { padding-left: 3px; overflow-wrap: anywhere; }
+        /* Style the performance chips. */
         .performance-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; }
+        /* Style the performance chips. */
         .performance-chips li { padding: 6px 10px; border-radius: 8px; background: #e8eef5; color: #334155; font-size: 12px; }
+        /* Style the performance overview. */
         .performance-overview { border-left: 3px solid #c87925; padding: 4px 14px; background: #fffaf4; border-radius: 6px; }
+        /* Style the performance goals. */
         .performance-goals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+        /* Style the performance goals. */
         .performance-goals div { background: white; border-radius: 8px; padding: 10px; }
+        /* Style the performance goals. */
         .performance-goals dt { font-size: 12px; color: #64748b; }
+        /* Style the performance goals. */
         .performance-goals dd { margin: 4px 0 0; font-weight: 600; color: #334155; }
+        /* Style the performance retrain. */
         .performance-retrain { border-top: 1px solid #dfe6ee; margin-top: 20px; padding-top: 18px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+        /* Style the performance retrain copy. */
         .performance-retrain-copy { flex: 1 1 260px; }
+        /* Style the performance retrain copy. */
         .performance-retrain-copy p { margin: 5px 0 0; }
+        /* Style the retrain status. */
         #retrainStatus { flex-basis: 100%; margin: 0; line-height: 1.5; }
+        /* Style the manual retrain button. */
         #manualRetrainButton:disabled { opacity: .65; cursor: wait; }
+        /* Adjust these styles for this screen size or display setting. */
         @media (max-width: 760px) { .performance-detail-grid, .performance-data-card .performance-facts { grid-template-columns: 1fr; } .performance-detail-card { padding: 14px; } }
 
+        /* Style the metric section. */
         .metric-section:first-child {
             margin-top: 0;
         }
 
+        /* Style the metric section title. */
         .metric-section-title {
             margin: 0 0 10px;
             color: #334155;
@@ -519,12 +612,14 @@
             text-transform: uppercase;
         }
 
+        /* Style the model detail grid. */
         .model-detail-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 12px;
         }
 
+        /* Style the metric item metric detail. */
         .metric-item.metric-detail {
             min-height: 110px;
             align-items: flex-start;
@@ -533,6 +628,7 @@
             gap: 8px;
         }
 
+        /* Style the metric detail metric value. */
         .metric-item.metric-detail .metric-value {
             font-size: 13px;
             font-weight: 400;
@@ -540,12 +636,14 @@
             overflow-wrap: anywhere;
         }
 
+        /* Style the metric item metric interpretation. */
         .metric-item.metric-interpretation {
             grid-column: 1 / -1;
             background: #f0f4ff;
             border-left: 4px solid #1a2b3c;
         }
 
+        /* Style the metric item. */
         .metric-item {
             background: #f8f9fa;
             padding: 12px 16px;
@@ -555,25 +653,30 @@
             align-items: center;
         }
 
+        /* Style the metric item metric label. */
         .metric-item .metric-label {
             font-size: 13px;
             color: #666;
         }
 
+        /* Style the metric item metric value. */
         .metric-item .metric-value {
             font-weight: 700;
             color: #1a237e;
             font-size: 16px;
         }
 
+        /* Style the metric value good. */
         .metric-item .metric-value.good {
             color: #2e7d32;
         }
 
+        /* Style the metric value average. */
         .metric-item .metric-value.average {
             color: #f57c00;
         }
 
+        /* Style the metric value poor. */
         .metric-item .metric-value.poor {
             color: #c62828;
         }
@@ -591,7 +694,9 @@
             margin-right: 8px;
         }
 
+        /* Define the spin animation. */
         @keyframes spin {
+            /* Style the to. */
             to { transform: rotate(360deg); }
         }
 
@@ -610,23 +715,30 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         }
 
+        /* Style the notification success. */
         .notification.success {
             background: linear-gradient(135deg, #43a047, #2e7d32);
         }
 
+        /* Style the notification error. */
         .notification.error {
             background: linear-gradient(135deg, #ef5350, #c62828);
         }
 
+        /* Style the notification info. */
         .notification.info {
             background: linear-gradient(135deg, #1e88e5, #0d47a1);
         }
 
+        /* Define the slide in animation. */
         @keyframes slideIn {
+            /* Style the from. */
             from { transform: translateX(100%); opacity: 0; }
+            /* Style the to. */
             to { transform: translateX(0); opacity: 1; }
         }
 
+        /* Style the notification close. */
         .notification-close {
             background: none;
             border: none;
@@ -637,10 +749,12 @@
             opacity: 0.7;
         }
 
+        /* Style the notification close on hover. */
         .notification-close:hover {
             opacity: 1;
         }
 
+        /* Style the ml confirm overlay. */
         .ml-confirm-overlay {
             position: fixed;
             inset: 0;
@@ -653,10 +767,12 @@
             backdrop-filter: blur(3px);
         }
 
+        /* Style the ml confirm overlay. */
         .ml-confirm-overlay[hidden] {
             display: none;
         }
 
+        /* Style the ml confirm dialog. */
         .ml-confirm-dialog {
             width: min(440px, 100%);
             padding: 24px;
@@ -666,12 +782,14 @@
             box-shadow: 0 24px 60px rgba(15, 23, 42, .24);
         }
 
+        /* Style the ml confirm dialog. */
         .ml-confirm-dialog h2 {
             margin: 0 0 9px;
             color: #172033;
             font-size: 19px;
         }
 
+        /* Style the ml confirm dialog. */
         .ml-confirm-dialog p {
             margin: 0;
             color: #64748b;
@@ -679,6 +797,7 @@
             line-height: 1.55;
         }
 
+        /* Style the ml confirm actions. */
         .ml-confirm-actions {
             display: flex;
             justify-content: flex-end;
@@ -686,15 +805,18 @@
             margin-top: 22px;
         }
 
+        /* Style the ml confirm dialog. */
         html[data-theme="dark"] .ml-confirm-dialog {
             border-color: #344258;
             background: #172033;
         }
 
+        /* Style the ml confirm dialog. */
         html[data-theme="dark"] .ml-confirm-dialog h2 {
             color: #edf2f7;
         }
 
+        /* Style the ml confirm dialog. */
         html[data-theme="dark"] .ml-confirm-dialog p {
             color: #b7c3d4;
         }
@@ -704,12 +826,14 @@
             overflow-x: auto;
         }
 
+        /* Style the table. */
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 14px;
         }
 
+        /* Style the table th. */
         table th {
             background: #f8f9fa;
             padding: 12px 15px;
@@ -719,15 +843,18 @@
             border-bottom: 2px solid #e0e0e0;
         }
 
+        /* Style the table td. */
         table td {
             padding: 10px 15px;
             border-bottom: 1px solid #f0f2f5;
         }
 
+        /* Style the table tr on hover. */
         table tr:hover {
             background: #f8f9fa;
         }
 
+        /* Style the badge. */
         .badge {
             display: inline-block;
             padding: 3px 12px;
@@ -736,38 +863,46 @@
             font-weight: 600;
         }
 
+        /* Style the badge success. */
         .badge-success {
             background: #e8f5e9;
             color: #2e7d32;
         }
 
+        /* Style the badge warning. */
         .badge-warning {
             background: #fff3e0;
             color: #e65100;
         }
 
+        /* Style the badge danger. */
         .badge-danger {
             background: #ffebee;
             color: #c62828;
         }
 
+        /* Style the badge info. */
         .badge-info {
             background: #e3f2fd;
             color: #0d47a1;
         }
 
+        /* Style the text center. */
         .text-center {
             text-align: center;
         }
 
+        /* Style the mt 20. */
         .mt-20 {
             margin-top: 20px;
         }
 
+        /* Style the mb 20. */
         .mb-20 {
             margin-bottom: 20px;
         }
 
+        /* Style the hidden. */
         .hidden {
             display: none;
         }
@@ -781,6 +916,7 @@
             padding-bottom: 10px;
         }
 
+        /* Style the tab btn. */
         .tab-btn {
             padding: 8px 20px;
             border: none;
@@ -792,56 +928,68 @@
             transition: all 0.3s ease;
         }
 
+        /* Style the tab btn on hover. */
         .tab-btn:hover {
             background: #f0f2f5;
         }
 
+        /* Style the tab btn active. */
         .tab-btn.active {
             color: #1a237e;
             background: #e8eaf6;
         }
 
+        /* Style the tab content. */
         .tab-content {
             display: none;
         }
 
+        /* Style the tab content active. */
         .tab-content.active {
             display: block;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
+            /* Style the header. */
             .header {
                 flex-direction: column;
                 text-align: center;
                 gap: 15px;
             }
 
+            /* Style the header actions. */
             .header-actions {
                 flex-wrap: wrap;
                 justify-content: center;
             }
 
+            /* Style the prediction form. */
             .prediction-form {
                 grid-template-columns: 1fr;
             }
 
+            /* Style the project snapshot grid. */
             .project-snapshot-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            /* Style the model status grid. */
             .model-status-grid {
                 grid-template-columns: 1fr;
             }
 
+            /* Style the model detail grid. */
             .model-detail-grid {
                 grid-template-columns: 1fr;
             }
 
+            /* Style the stats grid. */
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
             }
 
+            /* Style the notification. */
             .notification {
                 left: 20px;
                 right: 20px;
@@ -849,24 +997,30 @@
             }
         }
 
+        /* Adjust these styles for this screen size or display setting. */
         @media (max-width: 480px) {
+            /* Style the stats grid. */
             .stats-grid {
                 grid-template-columns: 1fr;
             }
 
+            /* Style the header. */
             .header h1 {
                 font-size: 20px;
             }
 
+            /* Style the stat value. */
             .stat-value {
                 font-size: 22px;
             }
 
+            /* Style the project snapshot grid. */
             .project-snapshot-grid {
                 grid-template-columns: 1fr;
             }
         }
 
+        /* Style the embedded ml document. */
         html.embedded-ml-document,
         body.embedded-ml-dashboard {
             width: 100%;
@@ -878,11 +1032,13 @@
             overflow-y: hidden;
         }
 
+        /* Style the embedded ml dashboard. */
         body.embedded-ml-dashboard {
             background: transparent;
             color: #172033;
         }
 
+        /* Style the embedded ml dashboard dashboard container. */
         .embedded-ml-dashboard .dashboard-container {
             width: 100%;
             min-width: 100%;
@@ -891,17 +1047,20 @@
             padding: 0;
         }
 
+        /* Style the embedded ml dashboard header. */
         .embedded-ml-dashboard :where(.header, .main-grid, .model-performance-card, .card, .table-responsive) {
             width: 100%;
             min-width: 0;
             max-width: 100%;
         }
 
+        /* Style the embedded ml dashboard main grid. */
         .embedded-ml-dashboard .main-grid > div {
             width: 100%;
             min-width: 0;
         }
 
+        /* Style the embedded ml dashboard header. */
         .embedded-ml-dashboard .header,
         .embedded-ml-dashboard .card,
         .embedded-ml-dashboard .stat-card {
@@ -912,43 +1071,51 @@
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
         }
 
+        /* Style the embedded ml dashboard header. */
         .embedded-ml-dashboard .header {
             padding: 20px 22px;
             margin-bottom: 18px;
         }
 
+        /* Style the embedded ml dashboard stats grid. */
         .embedded-ml-dashboard .stats-grid,
         .embedded-ml-dashboard .main-grid {
             gap: 18px;
             margin-bottom: 18px;
         }
 
+        /* Style the embedded ml dashboard card. */
         .embedded-ml-dashboard .card {
             margin-bottom: 18px;
             padding: 20px;
         }
 
+        /* Style the embedded ml dashboard card title. */
         .embedded-ml-dashboard .card-title {
             color: #172033;
             font-size: 16px;
         }
 
+        /* Style the embedded ml dashboard form group. */
         .embedded-ml-dashboard :where(.form-group input, .form-group select) {
             border: 1px solid #d7dde6;
             border-radius: 7px;
             background: #fff;
         }
 
+        /* Style the embedded ml dashboard form group. */
         .embedded-ml-dashboard :where(.form-group input, .form-group select):focus {
             border-color: #64748b;
             box-shadow: 0 0 0 3px rgba(100, 116, 139, .14);
         }
 
+        /* Style the embedded ml dashboard btn success. */
         .embedded-ml-dashboard .btn-success {
             background: #1a2b3c;
             color: #fff;
         }
 
+        /* Style the model performance card metric item. */
         .embedded-ml-dashboard .model-performance-card .metric-item {
             min-width: 0;
             align-items: flex-start;
@@ -957,49 +1124,59 @@
             gap: 7px;
         }
 
+        /* Style the model performance card metric value. */
         .embedded-ml-dashboard .model-performance-card .metric-value {
             max-width: 100%;
             overflow-wrap: anywhere;
         }
 
+        /* Style the embedded ml dashboard header. */
         .embedded-ml-dashboard .header h1,
         .embedded-ml-dashboard .header small {
             color: #172033;
         }
 
+        /* Style the embedded ml dashboard header. */
         .embedded-ml-dashboard .header small {
             opacity: 0.68;
         }
 
+        /* Style the embedded ml dashboard btn primary. */
         .embedded-ml-dashboard .btn-primary,
         .embedded-ml-dashboard .tab-btn.active {
             background: #1a2b3c;
             color: #fff;
         }
 
+        /* Style the embedded ml dashboard btn primary on hover. */
         .embedded-ml-dashboard .btn-primary:hover {
             background: #253d54;
             box-shadow: none;
         }
 
+        /* Style the embedded ml dashboard card header. */
         .embedded-ml-dashboard .card-header {
             border-bottom-color: #e5eaf0;
         }
 
+        /* Style the embedded ml dashboard stat card. */
         .embedded-ml-dashboard .stat-card {
             border-left: 1px solid #dfe5ed;
         }
 
+        /* Style the embedded ml dashboard. */
         html[data-theme="dark"] body.embedded-ml-dashboard {
             color: #edf2f7;
         }
 
+        /* Style the embedded ml dashboard header. */
         html[data-theme="dark"] .embedded-ml-dashboard :where(.header, .card, .stat-card) {
             border-color: #344258;
             background: #172033;
             color: #edf2f7;
         }
 
+        /* Style the embedded ml dashboard header. */
         html[data-theme="dark"] .embedded-ml-dashboard :where(.header h1, .header small, .card-title, .stat-value, .metric-value) {
             color: #edf2f7;
         }
@@ -1007,15 +1184,21 @@
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/centralized-predictive-analytics.css') }}?v={{ filemtime(public_path('css/centralized-predictive-analytics.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    {{-- Set the styles used by this page section. --}}
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    {{-- Set up the actions used by this page section. --}}
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="{{ $modulePageClass }} analytics-module-page" data-portal="{{ $portal }}" data-parent-module="{{ $parentModule }}">
 @endunless
 
+{{-- Show this section when its display check passes. --}}
 @unless($fragment)
+    {{-- Show the page header. --}}
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo">
@@ -1032,7 +1215,9 @@
         </div>
     </header>
 
+    {{-- Show the side panel. --}}
     <aside class="sidebar">
+        {{-- Show the page navigation. --}}
         <nav aria-label="Primary navigation">
             <ul>
                 <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
@@ -1046,6 +1231,7 @@
             <ul>
                 <li><a href="{{ url('/settings') }}"><img src="{{ asset('images/settings.png') }}" alt="" class="nav-icon">Settings</a></li>
                 <li class="logout">
+                    {{-- Collect the details entered in this form. --}}
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
@@ -1057,20 +1243,25 @@
         </div>
     </aside>
 
+    {{-- Show the main page content. --}}
     <main class="main-content">
 @endunless
 
+{{-- Show this section when its display check passes. --}}
 @unless($fragment)
     <div class="analytics-top-spacer" aria-hidden="true"></div>
 @endunless
 
+    {{-- Show the predictive analytics root section. --}}
     <div id="predictiveAnalyticsRoot" class="predictive-analytics-root embedded-ml-dashboard" data-api-base="{{ url('/api/ml') }}">
     <div class="dashboard-container analytics-shell">
         <!-- Main Grid -->
         @if($portal === 'admin')
+        {{-- Show the cost prediction section section. --}}
         <div class="prediction-row analytics-tab-content" id="costPredictionSection" data-analytics-content @if($analyticsSection !== 'predictive') hidden @endif>
             <!-- Left Column: Prediction -->
             <div>
+                {{-- Show the page section. --}}
                 <section class="card analytics-panel prediction-workspace">
                     <div class="card-header">
                         <div>
@@ -1078,6 +1269,7 @@
                             <p class="analytics-panel-description">Select an eligible project to forecast its final cost from current system records.</p>
                         </div>
                     </div>
+                    {{-- Collect the details entered in this form. --}}
                     <form id="predictionForm" onsubmit="return false;">
                         <div class="project-selection">
                             <div class="form-group">
@@ -1087,15 +1279,25 @@
                                 </select>
                             </div>
                             <p class="project-selection-note" id="predictionProjectNote">Choose an active project with complete budget and schedule details.</p>
+                            {{-- Show the prediction project snapshot section. --}}
                             <div class="project-snapshot-grid" id="predictionProjectSnapshot" hidden>
+                                {{-- Show the snapshot status section. --}}
                                 <div class="snapshot-item"><span>Status</span><strong id="snapshotStatus">-</strong></div>
+                                {{-- Show the snapshot budget section. --}}
                                 <div class="snapshot-item"><span>Budget</span><strong id="snapshotBudget">-</strong></div>
+                                {{-- Show the snapshot duration section. --}}
                                 <div class="snapshot-item"><span>Planned duration</span><strong id="snapshotDuration">-</strong></div>
+                                {{-- Show the snapshot workers section. --}}
                                 <div class="snapshot-item"><span>Workers</span><strong id="snapshotWorkers">-</strong></div>
+                                {{-- Show the snapshot completion section. --}}
                                 <div class="snapshot-item"><span>Completion</span><strong id="snapshotCompletion">-</strong></div>
+                                {{-- Show the snapshot finance total section. --}}
                                 <div class="snapshot-item"><span>Recorded expenses</span><strong id="snapshotFinanceTotal">-</strong></div>
+                                {{-- Show the snapshot material section. --}}
                                 <div class="snapshot-item"><span>Material</span><strong id="snapshotMaterial">-</strong></div>
+                                {{-- Show the snapshot labor section. --}}
                                 <div class="snapshot-item"><span>Labor</span><strong id="snapshotLabor">-</strong></div>
+                                {{-- Show the snapshot other section. --}}
                                 <div class="snapshot-item"><span>Equipment / Other</span><strong id="snapshotOther">-</strong></div>
                             </div>
                             <div class="form-actions">
@@ -1112,8 +1314,10 @@
                 </section>
             </div>
             <div>
+                {{-- Show the page section. --}}
                 <section class="card analytics-panel prediction-workspace">
                     <div class="card-header"><div class="card-title">Prediction Result</div></div>
+                    {{-- Show the prediction result section. --}}
                     <div id="predictionResult" class="prediction-result"><div id="resultContent"></div></div>
                 </section>
             </div>
@@ -1121,40 +1325,56 @@
             <section class="card analytics-panel model-performance-card" aria-labelledby="modelPerformanceTitle">
                 <div class="card-header">
                     <div>
+                        {{-- Show the model performance title section. --}}
                         <div class="card-title" id="modelPerformanceTitle">Model Performance</div>
                         <p class="analytics-panel-description">Understand cost errors, missed overruns, and the model used for forecasts.</p>
                     </div>
                     <span class="badge badge-info" id="samplesCount">0 samples</span>
                 </div>
+                {{-- Show the model metrics section. --}}
                 <div id="modelMetrics">
                     <p id="performanceStatus" role="status" aria-live="polite">Loading performance…</p>
                     <p id="performanceAlgorithm" class="analytics-panel-description"></p>
+                    {{-- Show the performance scope section. --}}
                     <div id="performanceScope" class="performance-overview"></div>
+                    {{-- Show the page section. --}}
                     <section class="metric-section" aria-labelledby="modelQualityTitle">
                         <h3 class="metric-section-title" id="modelQualityTitle">Final cost prediction error</h3>
                         <div class="model-status-grid">
+                            {{-- Show the metric mape section. --}}
                             <div class="metric-item"><span class="metric-label">Average percentage error (MAPE)</span><span class="metric-value" id="metricMAPE">—</span></div>
+                            {{-- Show the metric mae section. --}}
                             <div class="metric-item"><span class="metric-label">Average peso error (MAE)</span><span class="metric-value" id="metricMAE">—</span></div>
+                            {{-- Show the metric r squared section. --}}
                             <div class="metric-item"><span class="metric-label">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
                         </div>
+                        {{-- Show the performance mae target section. --}}
                         <div id="performanceMAETarget" class="analytics-panel-description"></div>
                     </section>
+                    {{-- Show the page section. --}}
                     <section class="metric-section" aria-labelledby="overrunDetectionTitle">
                         <h3 class="metric-section-title" id="overrunDetectionTitle">Budget overrun detection</h3>
                         <p class="analytics-panel-description">An overrun means final cost exceeds the recorded budget by any amount.</p>
                         <div class="model-status-grid">
+                            {{-- Show the metric precision section. --}}
                             <div class="metric-item"><span class="metric-label">Precision · alerts that were correct</span><span class="metric-value" id="metricPrecision">—</span></div>
+                            {{-- Show the metric recall section. --}}
                             <div class="metric-item"><span class="metric-label">Recall · actual overruns detected</span><span class="metric-value" id="metricRecall">—</span></div>
+                            {{-- Show the metric f1 section. --}}
                             <div class="metric-item"><span class="metric-label">F1 · balance of precision and recall</span><span class="metric-value" id="metricF1">—</span></div>
+                            {{-- Show the metric overrun accuracy section. --}}
                             <div class="metric-item"><span class="metric-label">Accuracy · all outcomes classified correctly</span><span class="metric-value" id="metricOverrunAccuracy">—</span></div>
                         </div>
+                        {{-- Show the performance counts section. --}}
                         <div id="performanceCounts"></div>
                         <ul class="performance-facts analytics-panel-description">
                             <li>“Unavailable” means there is not enough evidence to report that score.</li>
                         </ul>
                     </section>
                     <div class="performance-detail-grid">
+                        {{-- Show the page section. --}}
                         <section class="performance-detail-card"><h3>Training &amp; testing</h3>
+                            {{-- Show the performance validation section. --}}
                             <div id="performanceValidation"></div>
                             <h4>How the test stays separate</h4>
                             <ul class="performance-facts analytics-panel-description">
@@ -1163,7 +1383,9 @@
                                 <li>Repeated checkpoints from one project are related. Completed-project scores may differ from ongoing-project accuracy.</li>
                             </ul>
                         </section>
+                        {{-- Show the page section. --}}
                         <section class="performance-detail-card"><h3>Comparison &amp; goals</h3>
+                            {{-- Show the performance comparison section. --}}
                             <div id="performanceComparison"></div>
                             <h4>Preferred performance</h4>
                             <dl class="performance-goals">
@@ -1175,11 +1397,15 @@
                                 <div><dt>F1</dt><dd>≥85%</dd></div>
                             </dl>
                         </section>
+                        {{-- Show the performance features. --}}
                         <section class="performance-detail-card"><h3>What the model uses</h3><div id="performanceFeatures"></div><p id="performanceUpdated" class="analytics-panel-description"></p></section>
+                        {{-- Show the latest candidate title. --}}
                         <section class="performance-detail-card" aria-labelledby="latestCandidateTitle"><h3 id="latestCandidateTitle">Latest training result</h3>
+                            {{-- Show the performance candidate status section. --}}
                             <div id="performanceCandidateStatus" class="performance-overview">No optimization evaluation available.</div>
                             <h4>Evaluation results</h4><div id="performanceCandidateResults"></div>
                         </section>
+                        {{-- Show the performance candidate training. --}}
                         <section class="performance-detail-card performance-data-card"><h3>Latest training data</h3><div id="performanceCandidateTraining"></div></section>
                     </div>
                     <div class="performance-retrain">
@@ -1192,6 +1418,7 @@
         </div>
         @endif
 
+            {{-- Show the material projection section section. --}}
             <div class="analytics-tab-content" id="materialProjectionSection" data-analytics-content @if($analyticsSection !== 'material-projection') hidden @endif>
                 <!-- Material Forecast -->
                 <section class="card analytics-panel">
@@ -1207,6 +1434,7 @@
                         <button type="button" id="clearMaterialForecastFilters">Clear</button>
                     </div>
                     <div class="table-wrapper">
+                        {{-- Show the records in a table. --}}
                         <table class="analytics-table">
                             <thead>
                                 <tr>
@@ -1224,6 +1452,7 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- Show the material forecast pagination section. --}}
                     <div class="pagination-wrapper" id="materialForecastPagination">
                         <div class="rows-info">
                             <span>Rows per page</span>
@@ -1236,6 +1465,7 @@
                             </select>
                             <span id="materialForecastRange" class="pagination-info">Showing 0–0 of 0</span>
                         </div>
+                        {{-- Show the material forecast pagination links section. --}}
                         <div class="pagination-links" id="materialForecastPaginationLinks" aria-label="Material Projection pages"></div>
                     </div>
                 </section>
@@ -1258,6 +1488,7 @@
                         <label class="filter-control">Year<select id="budgetVarianceYear"><option value="">All years</option></select></label><button type="button" id="clearBudgetVarianceFilters">Clear</button>
                     </div>
                     <div class="table-wrapper">
+                        {{-- Show the records in a table. --}}
                         <table class="analytics-table">
                             <thead>
                                 <tr>
@@ -1274,6 +1505,7 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- Show the budget variance pagination section. --}}
                     <div class="pagination-wrapper" id="budgetVariancePagination">
                         <div class="rows-info">
                             <span>Rows per page</span>
@@ -1286,6 +1518,7 @@
                             </select>
                             <span id="budgetVarianceRange" class="pagination-info">Showing 0–0 of 0</span>
                         </div>
+                        {{-- Show the budget variance pagination links section. --}}
                         <div class="pagination-links" id="budgetVariancePaginationLinks" aria-label="Budget-Spending Comparison pages"></div>
                     </div>
                 </section>
@@ -1297,12 +1530,16 @@
 
     </div>
 
+{{-- Show this section when its display check passes. --}}
 @unless($fragment)
     </main>
 @endunless
 
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/ml-performance.js') }}?v={{ filemtime(public_path('js/ml-performance.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/ml-retrain.js') }}?v={{ filemtime(public_path('js/ml-retrain.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script>
     // Configuration
     const API_BASE = document.getElementById('predictiveAnalyticsRoot').dataset.apiBase;
@@ -1320,6 +1557,7 @@
 
     // Notification system
     function showNotification(message, type = 'info', duration = 5000) {
+        // Run this step if the show pfims alert equals function.
         if (typeof window.showPfimsAlert === 'function') {
             window.showPfimsAlert(message, type, duration);
             return;
@@ -1332,7 +1570,9 @@
         `;
         document.body.appendChild(notification);
 
+        // Run this action after the delay.
         setTimeout(() => {
+            // Run this step if the parent element is set.
             if (notification.parentElement) {
                 notification.remove();
             }
@@ -1341,6 +1581,7 @@
 
     // Load dashboard data
     async function loadDashboard() {
+        // Try this action and handle any errors below.
         try {
             const response = await fetch(`${API_BASE}/analytics/dashboard`, {
                 headers: {
@@ -1349,6 +1590,7 @@
             });
             const data = await response.json();
 
+            // Run this step if the success is set.
             if (data.success) {
                 updateModelMetrics(data.model_metrics);
                 updateMaterialForecast(data.predictive?.material_forecast || {});
@@ -1368,26 +1610,31 @@
         window.pfimsPerformance.update(metrics);
     }
 
+    // Get the metrics currency.
     function metricsCurrency(value) {
         return value === null || value === undefined || Number.isNaN(Number(value))
             ? '-' : `₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
+    // Load prediction projects.
     async function loadPredictionProjects(preserveSelection = true) {
         const select = document.getElementById('predictionProject');
         const previous = preserveSelection ? select.value : '';
         select.disabled = true;
         select.innerHTML = '<option value="">Loading eligible projects…</option>';
 
+        // Try this action and handle any errors below.
         try {
             const response = await fetch(`${API_BASE}/prediction-projects`, {
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN }
             });
             const data = await response.json();
+            // Run this step if the response ok is missing or false or the success is missing or false.
             if (!response.ok || !data.success) throw new Error(data.message || 'Unable to load projects');
 
             predictionProjects = Array.isArray(data.projects) ? data.projects : [];
             select.innerHTML = '<option value="">Select a project…</option>';
+            // Process each project.
             predictionProjects.forEach(project => {
                 const option = document.createElement('option');
                 option.value = String(project.project_id);
@@ -1395,6 +1642,7 @@
                 select.appendChild(option);
             });
             select.disabled = predictionProjects.length === 0;
+            // Run this step if the previous is set and the some check matches.
             if (previous && predictionProjects.some(project => String(project.project_id) === previous)) {
                 select.value = previous;
             }
@@ -1410,6 +1658,7 @@
         }
     }
 
+    // Update prediction project snapshot.
     function updatePredictionProjectSnapshot() {
         const select = document.getElementById('predictionProject');
         const project = predictionProjects.find(item => String(item.project_id) === select.value);
@@ -1417,6 +1666,7 @@
         const button = document.getElementById('predictCostButton');
         snapshot.hidden = !project;
         button.disabled = !project;
+        // Return early if the project is missing or false.
         if (!project) return;
 
         const currency = value => `₱${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -1434,6 +1684,7 @@
     // Predict cost
     async function predictCost() {
         const form = document.getElementById('predictionForm');
+        // Return early if the report validity is missing or false.
         if (!form.reportValidity()) return;
 
         const projectId = document.getElementById('predictionProject').value;
@@ -1445,6 +1696,7 @@
         resultDiv.style.display = 'block';
         contentDiv.innerHTML = '<div class="text-center"><span class="spinner"></span> Calculating prediction...</div>';
 
+        // Try this action and handle any errors below.
         try {
             const response = await fetch(`${API_BASE}/predict/cost`, {
                 method: 'POST',
@@ -1457,6 +1709,7 @@
 
             const result = await response.json();
 
+            // Run this step if the success is set.
             if (result.success) {
                 const variance = parseFloat(result.variance) || 0;
                 const variancePercentage = parseFloat(result.variance_percentage) || 0;
@@ -1538,6 +1791,7 @@
 
     // Load material forecast
     async function loadMaterialForecast() {
+        // Try this action and handle any errors below.
         try {
             const response = await fetch(`${API_BASE}/predict/material-demand`, {
                 headers: {
@@ -1546,6 +1800,7 @@
             });
             const data = await response.json();
 
+            // Run this step if the success is set.
             if (data.success) {
                 updateMaterialForecast(data.predictions || {});
             } else {
@@ -1560,8 +1815,10 @@
     // Update material forecast
     function updateMaterialForecast(predictions) {
         const tbody = document.getElementById('materialForecastBody');
+        // Run this step if the predictions does not equal the material forecast rows.
         if (predictions !== materialForecastRows) materialForecastRows = predictions ? Object.values(predictions) : [];
         const query = (document.getElementById('materialForecastSearch')?.value || '').trim().toLowerCase();
+        // Process each row.
         materialForecastRows.forEach(row => { if (row.stock_status === 'Healthy') row.stock_status = 'Sufficient'; if (row.status === 'Healthy') row.status = 'Sufficient'; });
         const status = document.getElementById('materialForecastStatus')?.value || '';
         const filteredRows = materialForecastRows.filter(item => (!query || String(item.item_name || '').toLowerCase().includes(query)) && (!status || item.status === status));
@@ -1570,6 +1827,7 @@
         materialForecastPage = Math.min(materialForecastPage, totalPages);
         const items = filteredRows.slice((materialForecastPage - 1) * pageSize, materialForecastPage * pageSize);
 
+        // Run this step if the items length equals 0.
         if (items.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="text-center">No material forecast data available</td></tr>`;
             document.getElementById('materialForecastRange').textContent = 'Showing 0–0 of 0';
@@ -1578,6 +1836,7 @@
         }
 
         let html = '';
+        // Process each item.
         items.forEach(item => {
             const statusClass = item.status === 'Reorder Needed' ? 'badge-danger' :
                                item.status === 'Low Stock' ? 'badge-warning' : 'badge-success';
@@ -1604,24 +1863,32 @@
         renderMaterialForecastPagination(totalPages);
     }
 
+    // Get the compact pagination items.
     function compactPaginationItems(current, total) {
+        // Return early if the total is at most 7.
         if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
         const items = [1];
         const from = Math.max(2, current - 1);
         const to = Math.min(total - 1, current + 1);
+        // Run this step if the from is above 2.
         if (from > 2) items.push('ellipsis-start');
+        // Repeat for each step in this range.
         for (let page = from; page <= to; page += 1) items.push(page);
+        // Run this step if the to is below the value.
         if (to < total - 1) items.push('ellipsis-end');
         items.push(total);
         return items;
     }
 
+    // Show material forecast pagination.
     function renderMaterialForecastPagination(totalPages) {
         const links = document.getElementById('materialForecastPaginationLinks');
+        // Return early if the links is missing or false.
         if (!links) return;
         const button = (label, page, active = false, disabled = false) =>
             `<button type="button" data-material-page="${page}" class="${active ? 'active' : ''}" ${disabled ? 'disabled' : ''}>${label}</button>`;
         let html = button('Previous', materialForecastPage - 1, false, materialForecastPage <= 1);
+        // Process each item.
         compactPaginationItems(materialForecastPage, totalPages).forEach(item => {
             html += typeof item === 'number'
                 ? button(String(item), item, item === materialForecastPage)
@@ -1633,6 +1900,7 @@
 
     // Load budget variance
     async function loadBudgetVariance() {
+        // Try this action and handle any errors below.
         try {
             const response = await fetch(`${API_BASE}/analytics/budget-variance`, {
                 headers: {
@@ -1641,6 +1909,7 @@
             });
             const data = await response.json();
 
+            // Run this step if the success is set.
             if (data.success) {
                 const varianceData = data.data || [];
                 updateBudgetVariance(varianceData);
@@ -1662,21 +1931,26 @@
         return (Math.round(budget * 100) - Math.round(actualCost * 100)) / 100;
     }
 
+    // Update budget variance.
     function updateBudgetVariance(varianceData) {
         const tbody = document.getElementById('budgetVarianceBody');
+        // Run this step if the variance data does not equal the budget variance rows.
         if (varianceData !== budgetVarianceRows) {
             budgetVarianceRows = Array.isArray(varianceData) ? varianceData : [];
             const projectFilter = document.getElementById('budgetVarianceProject');
             const selectedProject = projectFilter?.value || '';
+            // Run this step if the project filter is set.
             if (projectFilter) {
                 const names = [...new Set(budgetVarianceRows.map(item => String(item.project_name || '').trim()).filter(Boolean))].sort();
                 projectFilter.innerHTML = '<option value="">All projects</option>';
+                // Process each name.
                 names.forEach(name => {
                     const option = document.createElement('option');
                     option.value = name;
                     option.textContent = name;
                     projectFilter.appendChild(option);
                 });
+                // Run this step if the includes check matches.
                 if (names.includes(selectedProject)) projectFilter.value = selectedProject;
             }
         }
@@ -1686,7 +1960,9 @@
         const year = document.getElementById('budgetVarianceYear')?.value || '';
         const yearSelect = document.getElementById('budgetVarianceYear');
         const years = [...new Set(budgetVarianceRows.map(row => String(row.start_date || '').substring(0,4)).filter(Boolean))].sort().reverse();
+        // Run this step if the options length does not equal the value.
         if (yearSelect.options.length !== years.length + 1) { yearSelect.innerHTML = '<option value="">All years</option>' + years.map(y => '<option>' + y + '</option>').join(''); yearSelect.value = year; }
+        // Keep the matching item items.
         const filteredRows = budgetVarianceRows.filter(item => {
             const projectName = String(item.project_name || '');
             const matchesSearch = !query || projectName.toLowerCase().includes(query);
@@ -1700,6 +1976,7 @@
         budgetVariancePage = Math.min(budgetVariancePage, totalPages);
         const visibleRows = filteredRows.slice((budgetVariancePage - 1) * pageSize, budgetVariancePage * pageSize);
 
+        // Run this step if the visible rows length equals 0.
         if (visibleRows.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="text-center">No budget comparison data available</td></tr>`;
             document.getElementById('budgetVarianceRange').textContent = 'Showing 0–0 of 0';
@@ -1708,6 +1985,7 @@
         }
 
         let html = '';
+        // Process each item.
         visibleRows.forEach(item => {
             const budget = parseFloat(item.budget) || 0;
             const actualCost = parseFloat(item.actual_cost) || 0;
@@ -1739,12 +2017,15 @@
         renderBudgetVariancePagination(totalPages);
     }
 
+    // Show budget variance pagination.
     function renderBudgetVariancePagination(totalPages) {
         const links = document.getElementById('budgetVariancePaginationLinks');
+        // Return early if the links is missing or false.
         if (!links) return;
         const button = (label, page, active = false, disabled = false) =>
             `<button type="button" data-budget-page="${page}" class="${active ? 'active' : ''}" ${disabled ? 'disabled' : ''}>${label}</button>`;
         let html = button('Previous', budgetVariancePage - 1, false, budgetVariancePage <= 1);
+        // Process each item.
         compactPaginationItems(budgetVariancePage, totalPages).forEach(item => {
             html += typeof item === 'number'
                 ? button(String(item), item, item === budgetVariancePage)
@@ -1756,6 +2037,7 @@
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
+        // Run this step if the ctrl key is set and the key equals Enter.
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
             predictCost();
@@ -1766,42 +2048,57 @@
     document.addEventListener('DOMContentLoaded', function() {
         const sectionMap = { predictive: 'costPredictionSection', 'material-projection': 'materialProjectionSection', 'budget-comparison': 'budgetComparisonSection' };
         const targetSection = sectionMap[requestedAnalyticsSection] || 'costPredictionSection';
+        // Process each section.
         document.querySelectorAll('[data-analytics-content]').forEach(section => { section.hidden = section.id !== targetSection; });
+        // Run this step if the current portal equals admin.
         if (currentPortal === 'admin') loadDashboard();
+        // Run this step if the target section equals costPredictionSection and the current portal equals admin.
         if (targetSection === 'costPredictionSection' && currentPortal === 'admin') {
             loadPredictionProjects(false);
         }
+        // Run this step if the target section equals materialProjectionSection and the includes check matches.
         if (targetSection === 'materialProjectionSection' && ['admin', 'operations'].includes(currentPortal)) {
             loadMaterialForecast();
         }
+        // Run this step if the target section equals budgetComparisonSection and the includes check matches.
         if (targetSection === 'budgetComparisonSection' && ['admin', 'accounting'].includes(currentPortal)) {
             loadBudgetVariance();
         }
         document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
         document.getElementById('predictionProject')?.addEventListener('change', updatePredictionProjectSnapshot);
+        // Handle the change event.
         document.getElementById('materialForecastPageSize').addEventListener('change', () => {
             materialForecastPage = 1;
             updateMaterialForecast(materialForecastRows);
         });
+        // Handle the input event.
         ['materialForecastSearch', 'materialForecastStatus'].forEach(id => document.getElementById(id).addEventListener('input', () => { materialForecastPage = 1; updateMaterialForecast(materialForecastRows); }));
+        // Handle the click event.
         document.getElementById('clearMaterialForecastFilters').addEventListener('click', () => { document.getElementById('materialForecastSearch').value = ''; document.getElementById('materialForecastStatus').value = ''; materialForecastPage = 1; updateMaterialForecast(materialForecastRows); });
+        // Handle the click event.
         document.getElementById('materialForecastPaginationLinks').addEventListener('click', event => {
             const button = event.target.closest('[data-material-page]');
+            // Return early if the button is missing or false or the button disabled is set.
             if (!button || button.disabled) return;
             materialForecastPage = Number(button.dataset.materialPage);
             updateMaterialForecast(materialForecastRows);
         });
+        // Handle the change event.
         document.getElementById('budgetVariancePageSize').addEventListener('change', () => {
             budgetVariancePage = 1;
             updateBudgetVariance(budgetVarianceRows);
         });
+        // Handle the click event.
         document.getElementById('budgetVariancePaginationLinks').addEventListener('click', event => {
             const button = event.target.closest('[data-budget-page]');
+            // Return early if the button is missing or false or the button disabled is set.
             if (!button || button.disabled) return;
             budgetVariancePage = Number(button.dataset.budgetPage);
             updateBudgetVariance(budgetVarianceRows);
         });
+        // Handle the input event.
         ['budgetVarianceSearch', 'budgetVarianceProject', 'budgetVarianceStatus', 'budgetVarianceYear'].forEach(id => document.getElementById(id).addEventListener('input', () => { budgetVariancePage = 1; updateBudgetVariance(budgetVarianceRows); }));
+        // Handle the click event.
         document.getElementById('clearBudgetVarianceFilters').addEventListener('click', () => {
             document.getElementById('budgetVarianceSearch').value = '';
             document.getElementById('budgetVarianceProject').value = '';
@@ -1809,6 +2106,7 @@
             budgetVariancePage = 1;
             updateBudgetVariance(budgetVarianceRows);
         });
+        // Run this step if the contains check matches.
         if (document.body.classList.contains('embedded-ml-dashboard')) {
             const reportHeight = () => window.parent.postMessage({
                 type: 'pfims-ml-height',
@@ -1821,7 +2119,9 @@
     });
 </script>
 
+{{-- Show this section when its display check passes. --}}
 @unless($fragment)
+{{-- Set up the actions used by this page section. --}}
 <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
     @include('partials.validation-alert')
 </body>

@@ -1,3 +1,4 @@
+// Set the app build tools and development options.
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';

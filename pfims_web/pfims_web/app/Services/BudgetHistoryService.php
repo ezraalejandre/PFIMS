@@ -7,13 +7,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
+// Group the budget history actions.
 class BudgetHistoryService
 {
+    // Prepare a new budget history record.
     public function create(array $attributes, string $reason, bool $originalKnown = false): Budget
     {
+        // Run these database steps together. Undo changes if a step fails.
         return DB::transaction(function () use ($attributes, $reason, $originalKnown) {
             $projectId = (int) $attributes['project_id'];
             DB::table('project_tbl')->where('project_id', $projectId)->lockForUpdate()->first();
+            // Stop if the exists check matches.
             if (Budget::where('project_id', $projectId)->exists()) {
                 throw new \DomainException('This project already has a budget.');
             }
@@ -26,23 +30,29 @@ class BudgetHistoryService
         });
     }
 
+    // Get the revise.
     public function revise(Budget $budget, array $attributes, string $reason): Budget
     {
+        // Run these database steps together. Undo changes if a step fails.
         return DB::transaction(function () use ($budget, $attributes, $reason) {
             $projectId = (int) ($attributes['project_id'] ?? $budget->project_id);
             DB::table('project_tbl')->whereIn('project_id', [$budget->project_id, $projectId])
                 ->orderBy('project_id')->lockForUpdate()->get();
             $current = Budget::whereKey($budget->budget_id)->lockForUpdate()->firstOrFail();
+            // Stop if the project id does not equal project id.
             if ((int) $current->project_id !== (int) $budget->project_id) {
                 throw ValidationException::withMessages(['project_id' => 'This budget changed. Reload it before saving.']);
             }
             $this->ensureOpening($current);
             $moved = $projectId !== (int) $current->project_id;
+            // Run this step if the moved is set.
             if ($moved) {
+                // Stop if the exists check matches.
                 if (Budget::where('project_id', $projectId)->whereKeyNot($current->budget_id)->exists()) {
                     throw ValidationException::withMessages(['project_id' => 'The selected project already has a budget.']);
                 }
                 $cost = app(ProjectCostLedger::class)->forProject((int) $current->project_id);
+                // Stop if the cost total and cost unvalued count checks match.
                 if ($cost['total'] > 0 || $cost['unvalued_count'] > 0) {
                     throw ValidationException::withMessages(['project_id' => 'A budget with recorded expenses cannot be moved to another project.']);
                 }
@@ -52,6 +62,7 @@ class BudgetHistoryService
             $changed = array_key_exists('budget_amount', $attributes)
                 && round((float) $attributes['budget_amount'], 2) !== round((float) $current->budget_amount, 2);
             $current->fill($attributes)->save();
+            // Run this step if the moved and changed checks match.
             if ($moved || $changed) {
                 $this->append($current, $moved ? 'reassigned_to' : 'revised', $reason);
             }
@@ -61,15 +72,19 @@ class BudgetHistoryService
         });
     }
 
+    // Get the remove.
     public function remove(Budget $budget, string $reason): void
     {
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function () use ($budget, $reason) {
             DB::table('project_tbl')->where('project_id', $budget->project_id)->lockForUpdate()->first();
             $current = Budget::whereKey($budget->budget_id)->lockForUpdate()->firstOrFail();
+            // Stop if the project id does not equal project id.
             if ((int) $current->project_id !== (int) $budget->project_id) {
                 throw ValidationException::withMessages(['project_id' => 'This budget changed. Reload it before deleting.']);
             }
             $cost = app(ProjectCostLedger::class)->forProject((int) $current->project_id);
+            // Stop if the cost total and cost unvalued count checks match.
             if ($cost['total'] > 0 || $cost['unvalued_count'] > 0) {
                 throw new \DomainException('A budget with recorded expenses cannot be deleted.');
             }
@@ -79,6 +94,7 @@ class BudgetHistoryService
         });
     }
 
+    // Get the context.
     public function context(int $projectId, ?float $amount = null, ?int $budgetId = null): array
     {
         $budget = $amount === null || $budgetId === null
@@ -87,6 +103,7 @@ class BudgetHistoryService
         $amount ??= $budget ? (float) $budget->budget_amount : null;
         $budgetId ??= $budget ? (int) $budget->budget_id : null;
         $original = $version = null;
+        // Run this step if the value check matches.
         if (Schema::hasTable('project_budget_history')) {
             $original = DB::table('project_budget_history')->where('project_id', $projectId)
                 ->where('event_type', 'initial_recorded')->orderBy('history_id')->first();
@@ -111,13 +128,16 @@ class BudgetHistoryService
         ];
     }
 
+    // Make sure opening.
     private function ensureOpening(Budget $budget): void
     {
+        // Run this step if the value check matches.
         if (! Schema::hasTable('project_budget_history')) {
             return;
         }
         $latest = DB::table('project_budget_history')->where('project_id', $budget->project_id)
             ->where('budget_id', $budget->budget_id)->orderByDesc('history_id')->first();
+        // Run this step if the latest is missing or false.
         if (! $latest) {
             $this->append($budget, 'opening_observed', 'Existing budget first observed; original approval date and amount are unknown.');
         } elseif ($latest->budget_amount === null || round((float) $latest->budget_amount, 2) !== round((float) $budget->budget_amount, 2)) {
@@ -125,8 +145,10 @@ class BudgetHistoryService
         }
     }
 
+    // Get the append.
     private function append(Budget $budget, string $event, string $reason, mixed ...$amountOverride): void
     {
+        // Run this step if the value check matches.
         if (! Schema::hasTable('project_budget_history')) {
             return;
         }

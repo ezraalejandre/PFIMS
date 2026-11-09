@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Link records to the fin cash position table.
 class FinCashPosition extends Model
 {
     protected $table = 'fin_cash_position_tbl';
@@ -24,6 +25,7 @@ class FinCashPosition extends Model
         'balance_amount' => 'decimal:2',
     ];
 
+    // Link this record to its account.
     public function account(): BelongsTo
     {
         return $this->belongsTo(CompanyBankAccount::class, 'account_id', 'account_id');

@@ -8,7 +8,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * Reporting views that reconstruct every Excel sheet's "R TOTAL" /
+     * Reporting views that rebuild every Excel sheet's "R TOTAL" /
      * "G TOTAL" on demand from fin_expense_tbl and friends, so totals
      * are computed at query time and can never drift out of sync the
      * way stored spreadsheet formulas can.
@@ -208,6 +208,7 @@ return new class extends Migration
             'v_fin_expovrall',
         ];
 
+        // Process each view.
         foreach ($views as $view) {
             DB::statement("DROP VIEW IF EXISTS `{$view}`");
         }

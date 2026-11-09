@@ -6,15 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('inventory_item_tbl', function (Blueprint $table) {
             $table->integer('bar_code')->nullable()->after('item_name');
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('inventory_item_tbl', function (Blueprint $table) {
             $table->dropColumn('bar_code');
         });

@@ -5,6 +5,7 @@
     box-sizing: border-box;
 }
 
+/* Style the body. */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f4f6f9;
@@ -30,17 +31,20 @@ body {
     height: 70px;
 }
 
+/* Style the top header left. */
 .top-header .left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
+/* Style the top header left. */
 .top-header .left img {
     height: 40px;
     width: auto;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text {
     font-weight: 600;
     font-size: 1.1rem;
@@ -48,6 +52,7 @@ body {
     color: #1a2b3c;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text small {
     display: block;
     font-weight: 300;
@@ -56,6 +61,7 @@ body {
     color: #555;
 }
 
+/* Style the top header right. */
 .top-header .right {
     display: flex;
     align-items: center;
@@ -63,6 +69,7 @@ body {
     font-size: 0.95rem;
 }
 
+/* Style the top header right. */
 .top-header .right a {
     display: flex;
     align-items: center;
@@ -72,10 +79,12 @@ body {
     position: relative; /* added for badge positioning */
 }
 
+/* Style the top header right on hover. */
 .top-header .right a:hover {
     opacity: 0.7;
 }
 
+/* Style the top header right. */
 .top-header .right span {
     cursor: pointer;
     opacity: 0.8;
@@ -86,6 +95,7 @@ body {
     color: #333;
 }
 
+/* Style the top header right on hover. */
 .top-header .right span:hover {
     opacity: 1;
 }
@@ -122,15 +132,18 @@ body {
     z-index: 100;
 }
 
+/* Style the sidebar. */
 .sidebar nav {
     flex: 1;
     margin-top: 20px;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul {
     list-style: none;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li {
     padding: 12px 16px;
     margin-bottom: 4px;
@@ -141,32 +154,38 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li a {
     color: inherit;
     text-decoration: none;
     display: block;
 }
 
+/* Style the sidebar active. */
 .sidebar nav ul li.active {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
 }
 
+/* Style the sidebar on hover. */
 .sidebar nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 20px;
     margin-top: 20px;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul {
     list-style: none;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li {
     display: flex;
     align-items: center;
@@ -178,25 +197,30 @@ body {
     transition: 0.2s;
 }
 
+/* Style the bottom nav nav icon. */
 .sidebar .bottom-nav ul li .nav-icon {
     width: 20px;
     height: 20px;
     object-fit: contain;
 }
 
+/* Style the sidebar bottom nav on hover. */
 .sidebar .bottom-nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout {
     color: #fff;
 }
 
+/* Style the bottom nav logout on hover. */
 .sidebar .bottom-nav ul li.logout:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li a {
     display: flex;
     align-items: center;
@@ -220,12 +244,14 @@ body {
     margin-bottom: 25px;
 }
 
+/* Style the page header. */
 .page-header h1 {
     font-size: 1.8rem;
     font-weight: 600;
     color: #1a2b3c;
 }
 
+/* Style the page header subtitle. */
 .page-header .subtitle {
     font-size: 0.9rem;
     color: #888;
@@ -249,6 +275,7 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the error notification error content. */
 .error-notification .error-content {
     display: flex;
     align-items: center;
@@ -256,12 +283,14 @@ body {
     justify-content: space-between;
 }
 
+/* Style the error notification error icon. */
 .error-notification .error-icon {
     font-size: 1.2rem;
     font-weight: 700;
     color: #fff;
 }
 
+/* Style the error notification error close. */
 .error-notification .error-close {
     background: transparent;
     border: none;
@@ -272,6 +301,7 @@ body {
     padding: 0 8px;
 }
 
+/* Style the error notification error close on hover. */
 .error-notification .error-close:hover {
     opacity: 1;
 }
@@ -293,6 +323,7 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the success notification success content. */
 .success-notification .success-content {
     display: flex;
     align-items: center;
@@ -300,12 +331,14 @@ body {
     justify-content: space-between;
 }
 
+/* Style the success notification success icon. */
 .success-notification .success-icon {
     font-size: 1.2rem;
     font-weight: 700;
     color: #fff;
 }
 
+/* Style the success notification success close. */
 .success-notification .success-close {
     background: transparent;
     border: none;
@@ -316,15 +349,19 @@ body {
     padding: 0 8px;
 }
 
+/* Style the success notification success close on hover. */
 .success-notification .success-close:hover {
     opacity: 1;
 }
 
+/* Define the slide down animation. */
 @keyframes slideDown {
+    /* Style the from. */
     from {
         transform: translateX(-50%) translateY(-30px);
         opacity: 0;
     }
+    /* Style the to. */
     to {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
@@ -350,6 +387,7 @@ body {
     flex-wrap: wrap;
 }
 
+/* Style the profile avatar. */
 .profile-avatar {
     width: 80px;
     height: 80px;
@@ -364,6 +402,7 @@ body {
     flex-shrink: 0;
 }
 
+/* Style the profile avatar. */
 .profile-avatar img {
     width: 100%;
     height: 100%;
@@ -371,6 +410,7 @@ body {
     object-fit: cover;
 }
 
+/* Style the profile info. */
 .profile-info h2 {
     font-size: 1.3rem;
     font-weight: 600;
@@ -378,21 +418,25 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the profile info role. */
 .profile-info .role {
     font-size: 0.9rem;
     color: #888;
 }
 
+/* Style the profile info employee id. */
 .profile-info .employee-id {
     font-size: 0.85rem;
     color: #aaa;
     margin-top: 4px;
 }
 
+/* Style the profile actions. */
 .profile-actions {
     margin-left: auto;
 }
 
+/* Style the btn edit profile. */
 .btn-edit-profile {
     background: #e19a45;
     color: #fff;
@@ -405,6 +449,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn edit profile on hover. */
 .btn-edit-profile:hover {
     background: #cf8735;
     transform: translateY(-2px);
@@ -421,12 +466,14 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* Style the detail grid. */
 .detail-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px 40px;
 }
 
+/* Style the detail item. */
 .detail-item label {
     display: block;
     font-size: 0.75rem;
@@ -436,16 +483,19 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the detail item value. */
 .detail-item .value {
     font-size: 1rem;
     color: #333;
     font-weight: 500;
 }
 
+/* Style the value editable. */
 .detail-item .value.editable {
     display: none;
 }
 
+/* Style the detail item edit input. */
 .detail-item .edit-input {
     display: none;
     width: 100%;
@@ -457,6 +507,7 @@ body {
     background: #fafafa;
 }
 
+/* Style the detail item edit input when focused. */
 .detail-item .edit-input:focus {
     outline: none;
     border-color: #e19a45;
@@ -469,26 +520,32 @@ body {
     display: none;
 }
 
+/* Style the detail item edit input. */
 .profile-card.edit-mode .detail-item .edit-input {
     display: block;
 }
 
+/* Style the value editable. */
 .profile-card.edit-mode .detail-item .value.editable {
     display: none;
 }
 
+/* Style the profile actions btn edit profile. */
 .profile-card.edit-mode .profile-actions .btn-edit-profile {
     display: none;
 }
 
+/* Style the profile actions btn save profile. */
 .profile-card.edit-mode .profile-actions .btn-save-profile {
     display: inline-block;
 }
 
+/* Style the profile actions btn cancel edit. */
 .profile-card.edit-mode .profile-actions .btn-cancel-edit {
     display: inline-block;
 }
 
+/* Style the profile actions btn save profile. */
 .profile-actions .btn-save-profile {
     display: none;
     background: #e19a45;
@@ -502,11 +559,13 @@ body {
     transition: 0.3s;
 }
 
+/* Style the profile actions btn save profile on hover. */
 .profile-actions .btn-save-profile:hover {
     background: #cf8735;
     transform: translateY(-2px);
 }
 
+/* Style the profile actions btn cancel edit. */
 .profile-actions .btn-cancel-edit {
     display: none;
     background: transparent;
@@ -521,11 +580,13 @@ body {
     margin-right: 10px;
 }
 
+/* Style the profile actions btn cancel edit on hover. */
 .profile-actions .btn-cancel-edit:hover {
     background: #f5f5f5;
     color: #333;
 }
 
+/* Style the profile actions. */
 .profile-actions {
     display: flex;
     gap: 10px;
@@ -534,17 +595,21 @@ body {
 
 /* Responsive */
 @media (max-width: 900px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 200px;
         padding: 20px 15px;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 200px;
         padding: 20px;
     }
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 100%;
         height: auto;
@@ -555,68 +620,83 @@ body {
         padding: 15px;
         gap: 10px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul li {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    /* Style the sidebar bottom nav. */
     .sidebar .bottom-nav {
         border-top: none;
         padding-top: 0;
         margin-top: 0;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 0;
         padding: 20px 15px;
     }
+    /* Style the top header. */
     .top-header {
         flex-wrap: wrap;
         height: auto;
         padding: 10px 15px;
         gap: 8px;
     }
+    /* Style the left brand text. */
     .top-header .left .brand-text small {
         display: none;
     }
+    /* Style the top header right. */
     .top-header .right {
         gap: 12px;
         font-size: 0.8rem;
     }
+    /* Style the body. */
     body {
         padding-top: 90px;
     }
+    /* Style the sidebar. */
     .sidebar {
         top: 90px;
         height: auto;
         min-height: 60px;
     }
 
+    /* Style the profile header. */
     .profile-header {
         flex-direction: column;
         align-items: center;
         text-align: center;
     }
+    /* Style the profile actions. */
     .profile-actions {
         margin-left: 0;
         flex-wrap: wrap;
         justify-content: center;
     }
+    /* Style the detail grid. */
     .detail-grid {
         grid-template-columns: 1fr;
         gap: 15px;
     }
+    /* Style the profile card. */
     .profile-card {
         padding: 20px;
     }
+    /* Style the profile avatar. */
     .profile-avatar {
         width: 64px;
         height: 64px;
         font-size: 1.5rem;
     }
+    /* Style the page header. */
     .page-header h1 {
         font-size: 1.4rem;
     }

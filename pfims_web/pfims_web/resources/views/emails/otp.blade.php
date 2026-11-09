@@ -5,9 +5,11 @@
     <meta charset="UTF-8">
 </head>
 <body style="margin:0; padding:0; background-color:#f4f4f5; font-family: Arial, Helvetica, sans-serif;">
+    {{-- Arrange the email content in a table. --}}
     <table width="100%" cellpadding="0" cellspacing="0" style="padding: 40px 0;">
         <tr>
             <td align="center">
+                {{-- Arrange the email content in a table. --}}
                 <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
                     <tr>
                         <td style="background:#1a1a2e; padding:24px; text-align:center;">

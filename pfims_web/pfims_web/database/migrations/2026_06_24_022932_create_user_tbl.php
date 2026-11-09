@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+// Update this part of the database structure.
 Schema::create('user_tbl', function (Blueprint $table) {
 
     $table->id('user_id');
@@ -35,6 +36,7 @@ Schema::create('user_tbl', function (Blueprint $table) {
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('user_tbl');
     }
 };

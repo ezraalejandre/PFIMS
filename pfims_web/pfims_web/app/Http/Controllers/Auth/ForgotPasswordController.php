@@ -11,14 +11,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
+// Group the forgot password actions.
 class ForgotPasswordController extends Controller
 {
+    // Send otp.
     public function sendOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Invalid email format',
@@ -28,6 +31,7 @@ class ForgotPasswordController extends Controller
         $email = $request->input('email');
         $user = User::where('email', $email)->first();
 
+        // Return early if the user is missing or false.
         if (!$user) {
             return response()->json([
                 'message' => 'If that email exists in our system, a reset code has been sent.',
@@ -52,6 +56,7 @@ class ForgotPasswordController extends Controller
         ]);
     }
 
+    // Get the verify otp.
     public function verifyOtp(Request $request)
     {
         $request->validate([
@@ -61,10 +66,12 @@ class ForgotPasswordController extends Controller
 
         $record = PasswordOtp::where('email', $request->email)->first();
 
+        // Return early if the record and otp checks match.
         if (!$record || !Hash::check($request->otp, $record->otp)) {
             return response()->json(['message' => 'Invalid code'], 422);
         }
 
+        // Return early if the is past check matches.
         if ($record->expires_at->isPast()) {
             return response()->json(['message' => 'Code has expired'], 422);
         }
@@ -74,6 +81,7 @@ class ForgotPasswordController extends Controller
         return response()->json(['message' => 'Code verified']);
     }
 
+    // Get the reset.
     public function reset(Request $request, AuditLogService $audit)
     {
         $request->validate([
@@ -86,6 +94,7 @@ class ForgotPasswordController extends Controller
             ->where('verified', true)
             ->first();
 
+        // Return early if the record and otp checks match.
         if (!$record || !Hash::check($request->otp, $record->otp) || $record->expires_at->isPast()) {
             return response()->json([
                 'message' => 'Code not verified or has expired',

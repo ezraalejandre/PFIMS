@@ -32,6 +32,7 @@ Artisan::command('ml:presentation-records {--apply : Insert the verified batch a
 Artisan::command('ml:evaluate {--cohort=auto : auto, planning, presentation_progress, or database_augmented} {--save-report : Save evidence separately without activating a model}', function () {
     $service = new MLService(null, false);
     $report = $service->evaluateCandidate((string) $this->option('cohort'));
+    // Run this step if the option check matches.
     if ($this->option('save-report')) {
         $service->saveCandidateEvaluationReport($report);
     }
@@ -51,6 +52,7 @@ Artisan::command('ml:export-augmentation-source {--connection= : Configured live
 
 Artisan::command('ml:generate-ingested {--source= : Consistent live-source JSON gzip export} {--output= : New private dataset directory} {--seed=20261009}', function () {
     $sourcePath = $this->option('source');
+    // Run this step if the source path checks match.
     if (! $sourcePath || ! is_file($sourcePath)) {
         $this->error('Provide a verified live source export with --source.');
 
@@ -119,6 +121,7 @@ Schedule::command('ml:retrain --scheduled')
     ->withoutOverlapping();
 
 Artisan::command('ml:capture-weekly', function (ProjectCostSnapshotService $snapshots) {
+    // Run this step if the value check matches.
     if (! Schema::hasTable('ml_project_cost_snapshots')) {
         $this->warn('Snapshot storage is unavailable.');
 
@@ -132,9 +135,11 @@ Artisan::command('ml:capture-weekly', function (ProjectCostSnapshotService $snap
             $query->selectRaw('1')->from('budgets_tbl as budget')
                 ->whereColumn('budget.project_id', 'project.project_id');
         })->pluck('project.project_id');
+    // Process each project id.
     foreach ($projects as $projectId) {
         $hasThisWeek = DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)
             ->whereDate('captured_at', '>=', $weekStart)->exists();
+        // Run this step if the has this week and capture checks match.
         if (! $hasThisWeek && $snapshots->capture((int) $projectId, 'weekly_schedule')) {
             $captured++;
         }
@@ -148,6 +153,7 @@ Schedule::command('ml:capture-weekly')->weeklyOn(1, '01:30')->withoutOverlapping
 
 Artisan::command('inventory:audit-history {--apply-safe : Classify only one-to-one proven receipts; never price or reassign ambiguous rows} {--allocate-safe : Replay FIFO for withdrawals with unambiguous earlier receipts}', function (InventoryHistoryReconciler $reconciler) {
     $report = $this->option('apply-safe') ? $reconciler->classifySafeReceipts() : $reconciler->report();
+    // Run this step if the option check matches.
     if ($this->option('allocate-safe')) {
         $report['fifo_replay'] = $reconciler->allocateSafeWithdrawals();
     }
@@ -160,6 +166,7 @@ Artisan::command('inventory:audit-history {--apply-safe : Classify only one-to-o
 })->purpose('Audit legacy inventory valuation and classify only explicitly approved safe receipts');
 
 Artisan::command('inventory:price-legacy {--apply : Create linked purchase expenses from current item prices}', function (LegacyInventoryPriceBackfill $backfill) {
+    // Run this step if the option check matches.
     if (! $this->option('apply')) {
         $candidates = $backfill->candidates();
         $this->line('Dry run: '.count($candidates).' unpriced legacy purchase receipts; '

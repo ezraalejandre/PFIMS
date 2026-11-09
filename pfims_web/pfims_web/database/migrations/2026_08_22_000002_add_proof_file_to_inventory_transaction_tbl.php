@@ -6,16 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('inventory_transaction_tbl', function (Blueprint $table) {
             $table->string('proof_file_path')->nullable()->after('transaction_date');
             $table->string('proof_file_name')->nullable()->after('proof_file_path');
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('inventory_transaction_tbl', function (Blueprint $table) {
             $table->dropColumn(['proof_file_path', 'proof_file_name']);
         });

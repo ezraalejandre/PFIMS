@@ -9,12 +9,16 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\FinProjectContract;
 use App\Services\AuditLogService;
 
+// Group the fin project contract actions.
 class FinProjectContractController extends Controller
 {
+    // Set up the values this class needs.
     public function __construct(private AuditLogService $audit) {}
 
+    // List the fin project contract records.
     public function index()
     {
+        // Try this action and handle any errors below.
         try {
             // Get contracts with budget data from budgets_tbl
             $contracts = DB::table('fin_project_contract_tbl as c')
@@ -41,8 +45,10 @@ class FinProjectContractController extends Controller
         }
     }
 
+    // Save a new fin project contract record.
     public function store(Request $request)
     {
+        // Try this action and handle any errors below.
         try {
             $validator = Validator::make($request->all(), [
                 'project_id' => 'required|exists:project_tbl,project_id',
@@ -53,12 +59,14 @@ class FinProjectContractController extends Controller
                 'remarks' => 'nullable|string|max:255',
             ]);
 
+            // Return early if the submitted fields fail validation.
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
             // Check if contract already exists for this project
             $validated = $validator->validated();
+            // Return early if the where project id is above 0 exists.
             if (! DB::table('budgets_tbl')->where('project_id', $validated['project_id'])->where('budget_amount', '>', 0)->exists()) {
                 return response()->json(['message' => 'Add a budget for this project before recording a contract.', 'errors' => ['project_id' => ['Add a budget for this project before recording a contract.']]], 422);
             }
@@ -66,6 +74,7 @@ class FinProjectContractController extends Controller
                 ->where('project_id', $validated['project_id'])
                 ->first();
 
+            // Return early if the existing is set.
             if ($existing) {
                 return response()->json([
                     'success' => false,
@@ -82,6 +91,7 @@ class FinProjectContractController extends Controller
                 'additional_works_payment' => $validated['additional_works_payment'] ?? 0,
                 'remarks' => blank($validated['remarks'] ?? null) ? null : trim($validated['remarks']),
             ]);
+            // Run this step if the id check matches.
             if ($contract = FinProjectContract::find($id)) $this->audit->record($contract, 'CREATE', [], $contract->getAttributes());
 
             return response()->json([
@@ -94,10 +104,13 @@ class FinProjectContractController extends Controller
         }
     }
 
+    // Save changes to the fin project contract record.
     public function update(Request $request, $id)
     {
+        // Try this action and handle any errors below.
         try {
             $existing = DB::table('fin_project_contract_tbl')->where('contract_id', $id)->first();
+            // Return early if the existing is missing or false.
             if (! $existing) {
                 return response()->json(['error' => 'Contract not found'], 404);
             }
@@ -110,6 +123,7 @@ class FinProjectContractController extends Controller
                 'remarks' => 'nullable|string|max:255',
             ]);
 
+            // Return early if the submitted fields fail validation.
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
@@ -124,6 +138,7 @@ class FinProjectContractController extends Controller
                     'additional_works_payment' => $validated['additional_works_payment'] ?? 0,
                     'remarks' => blank($validated['remarks'] ?? null) ? null : trim($validated['remarks']),
                 ]);
+            // Run this step if the id check matches.
             if ($contract = FinProjectContract::find($id)) $this->audit->record($contract, 'UPDATE', (array) $existing, $contract->getAttributes());
 
             return response()->json([
@@ -135,10 +150,13 @@ class FinProjectContractController extends Controller
         }
     }
 
+    // Delete the selected fin project contract record.
     public function destroy($id)
     {
+        // Try this action and handle any errors below.
         try {
             $existing = DB::table('fin_project_contract_tbl')->where('contract_id', $id)->first();
+            // Return early if the existing is missing or false.
             if (! $existing) {
                 return response()->json(['error' => 'Contract not found'], 404);
             }

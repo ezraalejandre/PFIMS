@@ -1,3 +1,4 @@
+{{-- Prepare the values used by this page section. --}}
 @php
     $navigation = [
         'dashboard' => ['label' => 'DASHBOARD', 'icon' => 'dashboard.png', 'url' => '/dashboard'],
@@ -19,14 +20,21 @@
     <link rel="stylesheet" href="{{ asset('css/centralized-dashboard.css') }}">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/table-scroll-fade.js') }}?v={{ filemtime(public_path('js/table-scroll-fade.js')) }}" defer></script>
+    {{-- Set up the actions used by this page section. --}}
     <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}" defer></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    {{-- Set the styles used by this page section. --}}
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    {{-- Set up the actions used by this page section. --}}
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="dashboard-page audit-logs-page" data-portal="admin" data-default-filter-module="audit-logs" data-latest-audit-id="{{ $latestAuditId }}">
+    {{-- Show the page header. --}}
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="PFIMS logo">
@@ -39,15 +47,20 @@
         </div>
     </header>
 
+    {{-- Show the side panel. --}}
     <aside class="sidebar">
+        {{-- Show the page navigation. --}}
         <nav aria-label="Primary navigation">
             <ul>
+                {{-- Show each item. --}}
                 @foreach($navigation as $key => $item)
                     <li class="{{ in_array($key, ['projects','finance','inventory'], true) ? 'nav-parent' : '' }}">
                         <a href="{{ in_array($key, ['projects','finance','inventory'], true) ? '#' : url($item['url']) }}" class="{{ in_array($key, ['projects','finance','inventory'], true) ? 'nav-parent-toggle' : '' }}" aria-expanded="false">
                             <img src="{{ asset('images/'.$item['icon']) }}" alt="" class="nav-link-icon" aria-hidden="true">{{ $item['label'] }}
+                            {{-- Show this section when its display check passes. --}}
                             @if(in_array($key, ['projects','finance','inventory'], true))<span class="nav-chevron" aria-hidden="true">▾</span>@endif
                         </a>
+                        {{-- Show this section when its display check passes. --}}
                         @if($key === 'projects')
                             <div class="nav-dropdown"><a href="{{ url('/projects') }}">Project Records</a><a href="{{ url('/ml-dashboard-test') }}?section=predictive">Project Cost Prediction</a></div>
                         @elseif($key === 'finance')
@@ -68,11 +81,14 @@
         </div>
     </aside>
 
+    {{-- Show the main page content. --}}
     <main class="main-content">
+        {{-- Show the page section. --}}
         <section class="dashboard-page-header audit-page-header">
             <div class="dashboard-title-block"><h1>AUDIT LOGS</h1><p>Review security, data changes, imports, and exports across PFIMS.</p></div>
         </section>
 
+        {{-- Collect the details entered in this form. --}}
         <form id="auditLogFilters" class="panel filters filters-grid audit-log-filter-panel" method="GET" action="{{ route('audit-logs.index') }}" aria-label="Audit log filters">
             <label>Search<input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="User, record, or details"></label>
             <label>From<input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></label>
@@ -84,12 +100,15 @@
             <a href="{{ route('audit-logs.index') }}" class="btn-secondary pfims-clear-filters">Clear filters</a>
         </form>
 
+        {{-- Show the page section. --}}
         <section class="panel content-card audit-log-panel">
             <div class="panel-heading"><div><h2>Activity history</h2><p>{{ number_format($logs->total()) }} recorded {{ Str::plural('action', $logs->total()) }}</p></div></div>
             <div class="table-wrap table-wrapper audit-log-table-wrap">
+                {{-- Show the records in a table. --}}
                 <table>
                     <thead><tr><th>Date &amp; Time</th><th>User</th><th>User Role</th><th>Action Type</th><th>Details</th><th>Actions</th></tr></thead>
                     <tbody>
+                        {{-- Show each log. --}}
                         @forelse($logs as $log)
                             <tr>
                                 <td>{{ $log->created_at->timezone(config('app.timezone'))->format('M d, Y \a\t g:i A') }}</td>
@@ -97,9 +116,11 @@
                                 <td>{{ ucfirst(strtolower($log->user_role)) }}</td>
                                 <td><span class="audit-action audit-action-{{ strtolower($log->action_type) }}">{{ $log->action_type }}</span></td>
                                 <td class="audit-details-cell">{{ $log->details }}
+                                    {{-- Show this section when its display check passes. --}}
                                     @if($log->changes)<details class="audit-changes"><summary>Changed fields</summary><dl>@foreach($log->changes as $field => $change)<dt>{{ str($field)->replace('_', ' ')->headline() }}</dt><dd>{{ $change['from'] ?? '—' }} → {{ $change['to'] ?? '—' }}</dd>@endforeach</dl></details>@endif
                                 </td>
                                 <td class="action-cell">
+                                    {{-- Show this section when its display check passes. --}}
                                     @if($log->view_available)
                                         <a class="pfims-row-action" href="{{ url($log->view_url) }}" title="View record" aria-label="View {{ $log->record_label ?: 'audit record' }}"><img src="{{ asset('images/view.jpg') }}" alt=""></a>
                                     @else
@@ -107,6 +128,7 @@
                                     @endif
                                 </td>
                             </tr>
+                        {{-- Show this section when its display check passes. --}}
                         @empty
                             <tr><td colspan="6" class="empty-state">No audit activity matches these filters.</td></tr>
                         @endforelse
@@ -117,57 +139,74 @@
                 <div class="rows-info">
                     <label for="auditRowsPerPage">Rows per page</label>
                     <select id="auditRowsPerPage" aria-label="Audit log rows per page" data-pfims-page-size="ready">
+                        {{-- Show each page size. --}}
                         @foreach([10, 20, 50, 100] as $pageSize)
                             <option value="{{ $pageSize }}" @selected((int) request('per_page', 20) === $pageSize)>{{ $pageSize }}</option>
                         @endforeach
                     </select>
                     <span>Showing {{ $logs->firstItem() ?? 0 }}–{{ $logs->lastItem() ?? 0 }} of {{ $logs->total() }}</span>
                 </div>
+                {{-- Show this section when its display check passes. --}}
                 @if($logs->hasPages())
+                    {{-- Show the page navigation. --}}
                     <nav class="pagination-links" aria-label="Audit log pages">
+                        {{-- Show this section when its display check passes. --}}
                         @if($logs->onFirstPage())<button type="button" disabled>Previous</button>@else<a href="{{ $logs->previousPageUrl() }}">Previous</a>@endif
+                        {{-- Show this section when its display check passes. --}}
                         @if($firstPage > 1)<a href="{{ $logs->url(1) }}">1</a>@if($firstPage > 2)<span class="ellipsis">…</span>@endif @endif
                         @for($page = $firstPage; $page <= $lastPage; $page++)<a href="{{ $logs->url($page) }}" class="{{ $page === $logs->currentPage() ? 'active' : '' }}" @if($page === $logs->currentPage()) aria-current="page" @endif>{{ $page }}</a>@endfor
+                        {{-- Show this section when its display check passes. --}}
                         @if($lastPage < $logs->lastPage())@if($lastPage < $logs->lastPage() - 1)<span class="ellipsis">…</span>@endif<a href="{{ $logs->url($logs->lastPage()) }}">{{ $logs->lastPage() }}</a>@endif
+                        {{-- Show this section when its display check passes. --}}
                         @if($logs->hasMorePages())<a href="{{ $logs->nextPageUrl() }}">Next</a>@else<button type="button" disabled>Next</button>@endif
                     </nav>
                 @endif
             </div>
         </section>
     </main>
+    {{-- Set up the actions used by this page section. --}}
     <script>
+        // Set up the audit logs page actions.
         (function () {
             var form = document.getElementById('auditLogFilters');
             var select = document.getElementById('auditRowsPerPage');
             var submitTimer = null;
 
+            // Get the normalized params.
             function normalizedParams(params) {
                 var normalized = new URLSearchParams(params);
                 normalized.delete('page');
+                // Process each key.
                 Array.from(normalized.keys()).forEach(function (key) {
+                    // Run this step if the get equals an empty value.
                     if (normalized.get(key) === '') normalized.delete(key);
                 });
                 normalized.sort();
                 return normalized.toString();
             }
 
+            // Apply filters.
             function applyFilters() {
                 window.clearTimeout(submitTimer);
                 var requested = normalizedParams(new URLSearchParams(new FormData(form)));
                 var current = normalizedParams(new URLSearchParams(window.location.search));
+                // Return early if the requested equals the current.
                 if (requested === current) return false;
                 form.requestSubmit();
                 return true;
             }
 
+            // Process each control.
             form.querySelectorAll('select, input[type="date"]').forEach(function (control) {
                 control.addEventListener('change', applyFilters);
             });
+            // Handle the input event.
             form.querySelector('input[type="search"]').addEventListener('input', function () {
                 window.clearTimeout(submitTimer);
                 submitTimer = window.setTimeout(applyFilters, 450);
             });
 
+            // Handle the change event.
             select.addEventListener('change', function () {
                 var params = new URLSearchParams(window.location.search);
                 params.set('per_page', select.value);
@@ -176,17 +215,22 @@
             });
 
             var latestId = Number(document.body.dataset.latestAuditId || 0);
+            // Run this action at each time interval.
             window.setInterval(function () {
+                // Return early if the hidden is set.
                 if (document.hidden) return;
+                // Use the result when this request finishes.
                 fetch('{{ route('audit-logs.latest') }}', {
                     headers: { 'Accept': 'application/json' },
                     cache: 'no-store'
                 })
                     .then(function (response) {
+                        // Run this step if the response ok is missing or false.
                         if (!response.ok) throw new Error('Audit freshness check failed');
                         return response.json();
                     })
                     .then(function (payload) {
+                        // Run this step if the number is above the latest id.
                         if (Number(payload.latest_id || 0) > latestId) window.pfimsNavigate(window.location.href);
                     })
                     .catch(function () { /* Keep the current page stable if the check is unavailable. */ });

@@ -1,3 +1,4 @@
+{{-- Prepare the values used by this page section. --}}
 @php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -9,9 +10,13 @@
     <link rel="stylesheet" href="{{ asset('css/profile.css') }}">
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    {{-- Set the styles used by this page section. --}}
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    {{-- Set up the actions used by this page section. --}}
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="profile-page" data-portal="{{ $portal }}" data-status-message="{{ session('status', '') }}">
@@ -57,6 +62,7 @@
 
     <!-- Sidebar -->
 <aside class="sidebar">
+    {{-- Show the page navigation. --}}
     <nav>
                 <ul>
             <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
@@ -75,6 +81,7 @@
                 </a>
             </li>
             <li class="logout">
+                    {{-- Collect the details entered in this form. --}}
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
@@ -95,8 +102,11 @@
             <h1>PROFILE</h1>
         </div>
 
+        {{-- Show this section when its display check passes. --}}
         @if(session('status'))
+            {{-- Set up the actions used by this page section. --}}
             <script>
+                // Handle the dom content loaded event.
                 document.addEventListener('DOMContentLoaded', function() {
                     showSuccess(document.body.dataset.statusMessage);
                 });
@@ -113,6 +123,7 @@
                 <div class="profile-avatar">{{ strtoupper(substr($user->name, 0, 1)) }}</div>
                 <div class="profile-info">
                     <h2 id="displayName">{{ $user->name }}</h2>
+                    {{-- Show the display role section. --}}
                     <div class="role" id="displayRole">{{ strtoupper($user->role ?? 'USER') }}</div>
                 </div>
                 <div class="profile-actions">
@@ -129,24 +140,28 @@
                     <!-- Full Name -->
                     <div class="detail-item">
                         <label>Full Name</label>
+                        {{-- Show the display full name section. --}}
                         <div class="value" id="displayFullName">{{ old('name', $user->name) }}</div>
                         <input type="text" name="name" class="edit-input" id="editFullName" value="{{ old('name', $user->name) }}">
                     </div>
                     <!-- Email Address -->
                     <div class="detail-item">
                         <label>Email Address</label>
+                        {{-- Show the display email section. --}}
                         <div class="value" id="displayEmail">{{ old('email', $user->email) }}</div>
                         <input type="email" name="email" class="edit-input" id="editEmail" value="{{ old('email', $user->email) }}">
                     </div>
                     <!-- Phone Number -->
                     <div class="detail-item">
                         <label>Phone Number</label>
+                        {{-- Show the display phone section. --}}
                         <div class="value" id="displayPhone">{{ old('phone', $user->phone) }}</div>
                         <input type="text" name="phone" class="edit-input" id="editPhone" value="{{ old('phone', $user->phone) }}">
                     </div>
                     <!-- Location -->
                     <div class="detail-item">
                         <label>Location</label>
+                        {{-- Show the display location section. --}}
                         <div class="value" id="displayLocation">{{ old('location', $user->location) }}</div>
                         <input type="text" name="location" class="edit-input" id="editLocation" value="{{ old('location', $user->location) }}">
                     </div>
@@ -157,10 +172,12 @@
 
     </main>
 
+    {{-- Set up the actions used by this page section. --}}
     <script>
                 // Hide notification badge on click
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
+            // Run this step if the badge is set.
             if (badge) {
                 badge.style.display = 'none';
             }
@@ -169,17 +186,21 @@
 
         // Fetch unread notification count
         function fetchNotifBadge() {
+            // Use the result when this request finishes.
             fetch('/api/notifications/unread-count', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Failed to load unread count.');
                 return response.json();
             })
             .then(function(data) {
                 var badge = document.getElementById('notifBadge');
+                // Return early if the badge is missing or false.
                 if (!badge) return;
                 var count = data.unread_count || 0;
+                // Run this step if the count is above 0.
                 if (count > 0) {
                     badge.textContent = count;
                     badge.style.display = 'inline-block';
@@ -198,18 +219,23 @@
         function showError(message) {
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
+            // Run this step if the msg span is set.
             if (msgSpan) {
                 msgSpan.textContent = message || 'An error occurred. Please try again.';
             }
             notif.style.display = 'block';
+            // Run this step if the error timeout is set.
             if (window.errorTimeout) clearTimeout(window.errorTimeout);
+            // Run this action after the delay.
             window.errorTimeout = setTimeout(function() {
                 closeError();
             }, 5000);
         }
 
+        // Close error.
         function closeError() {
             document.getElementById('errorNotification').style.display = 'none';
+            // Run this step if the error timeout is set.
             if (window.errorTimeout) {
                 clearTimeout(window.errorTimeout);
                 window.errorTimeout = null;
@@ -220,36 +246,48 @@
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
+            // Run this step if the msg span is set.
             if (msgSpan) {
                 msgSpan.textContent = message || 'Action completed successfully!';
             }
             notif.style.display = 'block';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) clearTimeout(window.successTimeout);
+            // Run this action after the delay.
             window.successTimeout = setTimeout(function() {
                 closeSuccess();
             }, 5000);
         }
 
+        // Close success.
         function closeSuccess() {
             document.getElementById('successNotification').style.display = 'none';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) {
                 clearTimeout(window.successTimeout);
                 window.successTimeout = null;
             }
         }
 
+        // Handle the click event.
         document.addEventListener('click', function(e) {
+            // Run this step if the style display equals block.
             if (document.getElementById('errorNotification').style.display === 'block') {
+                // Run this step if the closest is missing or false.
                 if (!e.target.closest('.error-notification')) { closeError(); }
             }
+            // Run this step if the style display equals block.
             if (document.getElementById('successNotification').style.display === 'block') {
+                // Run this step if the closest is missing or false.
                 if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
         });
 
         // Button loading state (prevents double-click / double-submit)
         function setButtonLoading(button, isLoading, loadingText) {
+            // Return early if the button is missing or false.
             if (!button) return;
+            // Run this step if the is loading is set.
             if (isLoading) {
                 button.dataset.originalText = button.textContent;
                 button.textContent = loadingText || 'Saving...';
@@ -285,6 +323,7 @@
         // Save profile
         function saveProfile() {
             var saveBtn = document.querySelector('.profile-actions .btn-save-profile');
+            // Return early if the save btn is set and the save btn disabled is set.
             if (saveBtn && saveBtn.disabled) return;
 
             var fullName = document.getElementById('editFullName').value.trim();
@@ -292,19 +331,23 @@
             var phone = document.getElementById('editPhone').value.trim();
             var location = document.getElementById('editLocation').value.trim();
 
+            // Run this step if the value checks match.
             if (!fullName || !email || !phone || !location) {
                 showError('Please fill in all fields.');
                 return;
             }
 
             setButtonLoading(saveBtn, true, 'Saving...');
+            // Use the result when this request finishes.
             fetch(document.getElementById('profileCard').action, {
                 method: 'POST', headers: {'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},
                 body: new FormData(document.getElementById('profileCard'))
             }).then(async function(response) {
                 var result=await response.json();
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Unable to save profile.');
                 var user=result.user;
+                // Process each field.
                 [['displayFullName','name'],['displayEmail','email'],['displayPhone','phone'],['displayLocation','location'],['displayName','name']].forEach(function(field) {
                     document.getElementById(field[0]).textContent=user[field[1]] || '';
                 });
@@ -316,6 +359,7 @@
               .finally(function() { setButtonLoading(saveBtn, false); });
         }
     </script>
+    {{-- Set up the actions used by this page section. --}}
     <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
     @include('partials.validation-alert')
 </body>

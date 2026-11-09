@@ -1,3 +1,4 @@
+{{-- Prepare the values used by this page section. --}}
 @php
     $portal = $portal ?? 'admin';
     $portalLinks = [
@@ -56,13 +57,19 @@
     <link rel="stylesheet" href="{{ asset('css/centralized-reports.css') }}?v={{ filemtime(public_path('css/centralized-reports.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/table-scroll-fade.js') }}" defer></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    {{-- Set the styles used by this page section. --}}
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    {{-- Set up the actions used by this page section. --}}
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="reports-page" data-portal="{{ $portal }}" data-reports-api-base="{{ request()->getBaseUrl() }}/api/reports" data-report-view-icon="{{ asset('images/view.jpg') }}" data-report-download-icon="{{ asset('images/download.jpg') }}" data-report-header-image="{{ asset('images/report-header.jpeg') }}">
+    {{-- Show the page header. --}}
     <header class="top-header">
         <div class="left">
             <img src="{{ asset('images/logo.jpg') }}" alt="PFIMS logo">
@@ -83,10 +90,14 @@
         </div>
     </header>
 
+    {{-- Show the side panel. --}}
     <aside class="sidebar">
+        {{-- Show the page navigation. --}}
         <nav aria-label="Primary navigation">
             <ul>
+                {{-- Show each item. --}}
                 @foreach ($navigation as $key => $item)
+                    {{-- Show this section when its display check passes. --}}
                     @if (isset($links[$key]))
                         <li class="{{ $key === 'reports' ? 'active' : '' }}">
                             <a href="{{ url($links[$key]) }}">
@@ -107,6 +118,7 @@
                     </a>
                 </li>
                 <li class="logout">
+                    {{-- Collect the details entered in this form. --}}
                     <form action="{{ url('/logout') }}" method="POST">
                         @csrf
                         <button type="submit">
@@ -119,7 +131,9 @@
         </div>
     </aside>
 
+    {{-- Show the main page content. --}}
     <main class="main-content">
+        {{-- Show the page section. --}}
         <section class="page-heading">
             <div>
                 <h1>REPORTS</h1>
@@ -130,9 +144,12 @@
             </div>
         </section>
 
+        {{-- Show the notice section. --}}
         <div class="notice" id="notice" role="alert" hidden></div>
+        {{-- Show the report tabs. --}}
         <section class="report-tabs" id="reportTabs" aria-label="Report types"></section>
 
+        {{-- Show the page section. --}}
         <section class="panel content-card filter-panel">
             <div class="panel-heading">
                 <div>
@@ -140,8 +157,10 @@
                     <p id="reportScopeNote"></p>
                 </div>
             </div>
+            {{-- Show the report filters grid section. --}}
             <div class="filters-grid" id="reportFiltersGrid">
                 <label class="filter-control" data-filter="search">Search<input id="filterSearch" type="search" maxlength="100" placeholder="Search this report"></label>
+                {{-- Prepare the values used by this page section. --}}
                 @php($reportToday = now()->timezone('Asia/Manila'))
                 <div class="filter-control report-date-picker" data-filter="report_month"><span>Month</span>
                     <input id="filterReportMonth" type="hidden" value="{{ $reportToday->month }}" data-default="{{ $reportToday->month }}">
@@ -176,8 +195,10 @@
             </div>
         </section>
 
+        {{-- Show the kpi grid. --}}
         <section class="kpi-grid" id="kpiGrid" aria-label="Report KPIs"></section>
 
+        {{-- Show the page section. --}}
         <section class="panel content-card live-data-panel">
             <div class="panel-heading">
                 <div>
@@ -187,12 +208,14 @@
                 </div>
             </div>
             <div class="table-wrap table-wrapper">
+                {{-- Show the records in a table. --}}
                 <table>
                     <thead id="dataHead"></thead>
                     <tbody id="dataBody"><tr><td>Loading…</td></tr></tbody>
                     <tfoot id="dataFoot"></tfoot>
                 </table>
             </div>
+            {{-- Show the data pagination section. --}}
             <div class="pagination-wrapper" id="dataPagination">
                 <div class="rows-info">
                     Rows per page
@@ -205,10 +228,12 @@
                     </select>
                     <span id="dataRange">Loading…</span>
                 </div>
+                {{-- Show the data pagination links section. --}}
                 <div class="pagination-links" id="dataPaginationLinks" aria-label="Live report pagination"></div>
             </div>
         </section>
 
+        {{-- Show the page section. --}}
         <section class="panel content-card history-panel">
             <div class="panel-heading">
                 <div>
@@ -223,6 +248,7 @@
                 <button id="clearHistoryFilters" type="button" class="btn-secondary pfims-clear-filters" aria-label="Clear export history filters">Clear filters</button>
             </div>
             <div class="table-wrap table-wrapper">
+                {{-- Show the records in a table. --}}
                 <table data-pfims-standard-actions="off">
                     <thead>
                         <tr><th>Report ID</th><th>Title / Type</th><th>Filters</th><th>Contents</th><th>Rows</th><th>Format</th><th>Generated by</th><th>Generated at</th><th>Action</th></tr>
@@ -230,6 +256,7 @@
                     <tbody id="historyBody"><tr><td colspan="9">Loading export history…</td></tr></tbody>
                 </table>
             </div>
+            {{-- Show the history pagination section. --}}
             <div class="pagination-wrapper" id="historyPagination">
                 <div class="rows-info">
                     Rows per page
@@ -242,12 +269,14 @@
                     </select>
                     <span id="historyRange">Loading…</span>
                 </div>
+                {{-- Show the history pagination links section. --}}
                 <div class="pagination-links" id="historyPaginationLinks" aria-label="Export history pagination"></div>
             </div>
         </section>
     </main>
 
     <dialog id="exportDialog" class="export-dialog">
+        {{-- Collect the details entered in this form. --}}
         <form id="exportForm">
             <div class="dialog-heading">
                 <div><p class="eyebrow">SYSTEM-GENERATED REPORT</p><h2>Configure export</h2></div>
@@ -256,11 +285,14 @@
             <label>Report title<input id="exportTitle" name="title" required minlength="3" maxlength="120"></label>
             <label>Format<select id="exportFormat" name="format" required><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV (.csv)</option><option value="pdf">PDF (.pdf)</option></select></label>
             <label>Rows to export<select id="exportRowLimit" name="row_limit"><option value="">All matching rows</option><option value="5">First 5 rows</option><option value="10">First 10 rows</option><option value="25">First 25 rows</option><option value="50">First 50 rows</option><option value="100">First 100 rows</option><option value="500">First 500 rows</option><option value="1000">First 1,000 rows</option></select></label>
+            {{-- Show the column choices section. --}}
             <div class="selection-group"><strong>Choose detailed fields</strong><div id="columnChoices" class="choice-grid columns"></div></div>
+            {{-- Show the export filter summary section. --}}
             <div class="active-filter-summary"><strong>Filters included in this export</strong><p id="exportFilterSummary">No filters applied.</p></div>
             <div class="preview-toolbar">
                 <h3>Preview Export</h3>
             </div>
+            {{-- Show the report preview section. --}}
             <div class="report-preview" id="reportPreview" aria-live="polite">Preparing preview…</div>
             <div class="dialog-actions">
                 <button type="button" class="btn btn-secondary" id="cancelExport">Cancel</button>
@@ -270,29 +302,44 @@
     </dialog>
 
     <dialog id="historyDetailDialog" class="export-dialog history-detail-dialog" aria-labelledby="historyDetailTitle">
+        {{-- Collect the details entered in this form. --}}
         <form method="dialog" class="history-detail-content">
             <div class="dialog-heading">
+                {{-- Show the history detail title section. --}}
                 <div><p class="eyebrow">EXPORT HISTORY</p><h2 id="historyDetailTitle">Export details</h2></div>
                 <button type="button" class="icon-btn" id="closeHistoryDetail" aria-label="Close">×</button>
             </div>
             <div class="history-detail-grid">
+                {{-- Show the history detail id section. --}}
                 <div><span>Report ID</span><strong id="historyDetailId">—</strong></div>
+                {{-- Show the history detail report title section. --}}
                 <div><span>Title</span><strong id="historyDetailReportTitle">—</strong></div>
+                {{-- Show the history detail dataset section. --}}
                 <div><span>Dataset</span><strong id="historyDetailDataset">—</strong></div>
+                {{-- Show the history detail format section. --}}
                 <div><span>Format</span><strong id="historyDetailFormat">—</strong></div>
+                {{-- Show the history detail rows section. --}}
                 <div><span>Rows</span><strong id="historyDetailRows">—</strong></div>
+                {{-- Show the history detail user section. --}}
                 <div><span>Generated by</span><strong id="historyDetailUser">—</strong></div>
+                {{-- Show the history detail generated section. --}}
                 <div><span>Generated at</span><strong id="historyDetailGenerated">—</strong></div>
+                {{-- Show the history detail filters section. --}}
                 <div class="history-detail-wide"><span>Filters</span><strong id="historyDetailFilters">—</strong></div>
+                {{-- Show the history detail sections section. --}}
                 <div class="history-detail-wide"><span>Included sections</span><strong id="historyDetailSections">—</strong></div>
+                {{-- Show the history detail columns section. --}}
                 <div class="history-detail-wide"><span>Selected fields</span><strong id="historyDetailColumns">—</strong></div>
             </div>
         </form>
     </dialog>
 
+    {{-- Set up the actions used by this page section. --}}
     <script type="application/json" id="reportCatalogBootstrap">{!! json_encode($reportCatalog, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
 
+    {{-- Set up the actions used by this page section. --}}
     <script>
+        // Set up the reports page actions.
         (() => {
             const csrf = document.querySelector('meta[name="csrf-token"]').content;
             const reportsApiBase = document.body.dataset.reportsApiBase;
@@ -346,14 +393,17 @@
                 .map(([key, input]) => [key, input.value.trim()])
                 .filter(([, value]) => value !== ''));
 
+            // Show notice.
             function showNotice(message, type = 'error') {
                 const notice = document.getElementById('notice');
                 notice.textContent = message;
                 notice.className = 'notice ' + type;
                 notice.hidden = false;
+                // Run this action after the delay.
                 window.setTimeout(() => { notice.hidden = true; }, 6000);
             }
 
+            // Get the api json.
             async function apiJson(url, options = {}) {
                 const { headers = {}, ...requestOptions } = options;
                 const response = await fetch(url, {
@@ -363,6 +413,7 @@
                 });
                 const data = await response.json().catch(() => ({}));
 
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) {
                     const validation = data.errors ? Object.values(data.errors).flat().join(' ') : '';
                     throw new Error(validation || data.message || data.error || 'Request failed.');
@@ -371,7 +422,9 @@
                 return data;
             }
 
+            // Get the fill select.
             function fillSelect(element, options) {
+                // Process each option.
                 options.forEach(option => {
                     const value = typeof option === 'object' ? option.value : option;
                     const label = typeof option === 'object' ? option.label : option;
@@ -379,7 +432,9 @@
                 });
             }
 
+            // Set up this page.
             async function initialize() {
+                // Try this action and handle any errors below.
                 try {
                     state.catalog = JSON.parse(document.getElementById('reportCatalogBootstrap').textContent);
                     fillSelect(filterInputs.project_id, state.catalog.options.projects);
@@ -390,8 +445,10 @@
                     fillSelect(filterInputs.stock_status, state.catalog.options.stock_statuses);
                     renderTabs();
 
+                    // Run this step if the datasets length is missing or false.
                     if (!state.catalog.datasets.length) {
                         document.getElementById('openExport').hidden = true;
+                        // Process each panel.
                         document.querySelectorAll('main .filter-panel, main .live-data-panel, main .history-panel').forEach(panel => { panel.hidden = true; });
                         const notice = document.getElementById('notice');
                         notice.textContent = 'No reports are currently available for this role.';
@@ -408,18 +465,22 @@
                 }
             }
 
+            // Show tabs.
             function renderTabs() {
                 const tabs = document.getElementById('reportTabs');
                 tabs.hidden = state.catalog.datasets.length === 0;
                 tabs.innerHTML = state.catalog.datasets.map(item => `
                     <button type="button" class="tab" data-dataset="${escapeHtml(item.key)}">${escapeHtml(item.title)}</button>
                 `).join('');
+                // Handle the click event.
                 tabs.addEventListener('click', event => {
                     const button = event.target.closest('[data-dataset]');
+                    // Run this step if the button is set.
                     if (button) selectDataset(button.dataset.dataset);
                 });
             }
 
+            // Get the select dataset.
             async function selectDataset(key) {
                 window.clearTimeout(state.dataTimer);
                 datasetRequest++;
@@ -428,6 +489,7 @@
                 state.definition = state.catalog.datasets.find(item => item.key === key);
                 state.dataPage = 1;
                 state.historyPage = 1;
+                // Process each button.
                 document.querySelectorAll('[data-dataset]').forEach(button => {
                     button.classList.toggle('active', button.dataset.dataset === key);
                 });
@@ -443,14 +505,18 @@
                 document.getElementById('kpiGrid').hidden = key !== 'inventory';
                 const filterGrid = document.getElementById('reportFiltersGrid');
                 const clearFilters = document.getElementById('clearFilters');
+                // Process each control.
                 Object.values(filterControls).forEach(control => {
+                    // Run this step if the includes check matches.
                     if (state.definition.filters.includes(control.dataset.filter)) {
                         filterGrid.insertBefore(control, clearFilters.parentNode === filterGrid ? clearFilters : null);
                     } else {
                         control.remove();
                     }
                 });
+                // Process each value.
                 Object.entries(filterInputs).forEach(([name, input]) => {
+                    // Run this step if the includes is missing or false.
                     if (!state.definition.filters.includes(name)) input.value = '';
                     else if (key === 'expense_summary' && input.dataset.default) input.value = input.dataset.default;
                 });
@@ -463,11 +529,13 @@
                 await Promise.all([loadDataset(), loadHistory()]);
             }
 
+            // Load dataset.
             async function loadDataset() {
                 const key = state.dataset;
                 const request = ++datasetRequest;
                 document.getElementById('dataBody').innerHTML = '<tr><td>Loading filtered records…</td></tr>';
 
+                // Try this action and handle any errors below.
                 try {
                     const query = {
                         ...selectedFilters(),
@@ -475,6 +543,7 @@
                         per_page: state.dataPerPage
                     };
                     const payload = await apiJson(`${reportsApiBase}/data/${key}?${queryString(query)}`);
+                    // Return early if the request does not equal the dataset request or the key does not equal the dataset.
                     if (request !== datasetRequest || key !== state.dataset) return;
                     state.payload = payload;
                     state.dataPage = state.payload.pagination.current_page;
@@ -483,12 +552,14 @@
                     renderPagination('data', state.payload.pagination);
                     updateExportSummary();
                 } catch (error) {
+                    // Return early if the request does not equal the dataset request or the key does not equal the dataset.
                     if (request !== datasetRequest || key !== state.dataset) return;
                     showNotice(error.message);
                     document.getElementById('dataBody').innerHTML = '<tr><td>Unable to load this report.</td></tr>';
                 }
             }
 
+            // Show kpis.
             function renderKpis() {
                 document.getElementById('kpiGrid').innerHTML = state.dataset === 'inventory' ? state.payload.kpis.map(kpi => `
                     <article class="kpi-card">
@@ -498,14 +569,19 @@
                 `).join('') : '';
             }
 
+            // Get the display value.
             function displayValue(column, value) {
+                // Return early if the value equals null or the value equals an empty value.
                 if (value === null || value === '') return '—';
+                // Return early if the has check matches.
                 if (moneyColumns.has(column)) {
                     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value));
                 }
+                // Return early if the column equals completion_percentage or the column equals utilization_percentage.
                 if (column === 'completion_percentage' || column === 'utilization_percentage') {
                     return Number(value).toFixed(1) + '%';
                 }
+                // Return early if the value equals number.
                 if (typeof value === 'number') {
                     return new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 }).format(value);
                 }
@@ -515,12 +591,15 @@
             const isTotalColumn = key => key === 'total' || key.startsWith('total_');
             const summaryTitle = () => `SUMMARY OF EXPENSES (PROJECT SITE-${filterInputs.expense_type.value.toUpperCase()} EXPENSES)`;
 
+            // Show data table.
             function renderDataTable() {
                 const columns = Object.entries(state.payload.columns);
+                // Run this step if the dataset equals expense_summary.
                 if (state.dataset === 'expense_summary') document.getElementById('recordsTitle').textContent = summaryTitle();
                 document.getElementById('dataHead').innerHTML = '<tr>' + columns
                     .map(([key, label]) => `<th${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(label)}</th>`).join('')
                     + '</tr>';
+                // Build a value for each value.
                 document.getElementById('dataBody').innerHTML = state.payload.rows.length
                     ? state.payload.rows.map(row => (state.dataset === 'contracts' ? '<tr class="report-contract-row">' : '<tr>') + columns
                         .map(([key]) => {
@@ -545,8 +624,10 @@
                         .map((totalRow, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">` + columns.map(([key]) => `<td${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(displayValue(key, totalRow[key]))}</td>`).join('') + '</tr>').join('')
                     : '';
 
+                // Run this step if the dataset equals contracts.
                 if (state.dataset === 'contracts') {
                     const pageTotals = {};
+                    // Process each value.
                     columns.forEach(([key]) => { if (moneyColumns.has(key)) pageTotals[key] = state.payload.rows.reduce((sum, row) => sum + Math.round(Number(row[key] || 0) * 100), 0) / 100; });
                     document.getElementById('dataFoot').innerHTML = '<tr class="report-total-row">' + columns.map(([key], index) => '<td>' + (index === 0 ? 'TOTAL' : (moneyColumns.has(key) ? escapeHtml(displayValue(key, pageTotals[key])) : '')) + '</td>').join('') + '</tr>';
                 }
@@ -560,13 +641,17 @@
                     : 'No records match the selected filters.';
             }
 
+            // Get the pagination items.
             function paginationItems(current, last) {
+                // Return early if the last is at most 7.
                 if (last <= 7) return Array.from({ length: last }, (_, index) => index + 1);
                 const pages = new Set([1, last, current - 1, current, current + 1]);
                 const sorted = [...pages].filter(page => page >= 1 && page <= last).sort((a, b) => a - b);
                 const items = [];
 
+                // Process each page.
                 sorted.forEach((page, index) => {
+                    // Run this step if the index is set and the value is above 1.
                     if (index && page - sorted[index - 1] > 1) items.push('ellipsis-' + page);
                     items.push(page);
                 });
@@ -574,6 +659,7 @@
                 return items;
             }
 
+            // Show pagination.
             function renderPagination(kind, pagination) {
                 const range = document.getElementById(kind + 'Range');
                 const links = document.getElementById(kind + 'PaginationLinks');
@@ -594,6 +680,7 @@
                 `;
             }
 
+            // Show column choices.
             function renderColumnChoices() {
                 document.getElementById('columnChoices').innerHTML = Object.entries(state.definition.columns).map(([key, label]) => `
                     <label><input type="checkbox" name="columns" value="${escapeHtml(key)}" checked> ${escapeHtml(label)}</label>
@@ -604,6 +691,7 @@
                         : `${state.definition.title} - ${new Date().toLocaleDateString('en-PH')}`;
             }
 
+            // Update export summary.
             function updateExportSummary() {
                 const entries = Object.entries(selectedFilters());
                 document.getElementById('exportFilterSummary').textContent = entries.length
@@ -611,7 +699,9 @@
                     : 'No filters applied; all accessible records will be exported.';
             }
 
+            // Load history.
             async function loadHistory() {
+                // Return early if the dataset is missing or false.
                 if (!state.dataset) return;
                 const key = state.dataset;
                 const request = ++historyRequest;
@@ -624,12 +714,15 @@
                     per_page: state.historyPerPage
                 };
 
+                // Try this action and handle any errors below.
                 try {
                     const response = await apiJson(`${reportsApiBase}?${queryString(filters)}`);
+                    // Return early if the request does not equal the history request or the key does not equal the dataset.
                     if (request !== historyRequest || key !== state.dataset) return;
                     const reports = response.data || [];
                     state.historyRecords = {};
                     state.historyPage = response.current_page;
+                    // Build a value for each report.
                     document.getElementById('historyBody').innerHTML = reports.length
                         ? reports.map(report => {
                             state.historyRecords[String(report.report_id)] = report;
@@ -654,6 +747,7 @@
                         : '<tr><td colspan="9">No exports have been generated yet.</td></tr>';
                     renderPagination('history', response);
                 } catch (error) {
+                    // Return early if the request does not equal the history request or the key does not equal the dataset.
                     if (request !== historyRequest || key !== state.dataset) return;
                     showNotice(error.message);
                 }
@@ -664,7 +758,9 @@
             let yearPickerStart = 1900;
             const datePickerNames = ['report_month', 'report_day', 'report_year'];
 
+            // Update date picker triggers.
             function updateDatePickerTriggers() {
+                // Process each name.
                 datePickerNames.forEach(name => {
                     const input = filterInputs[name];
                     const trigger = input.closest('.report-date-picker').querySelector('.report-date-trigger');
@@ -673,7 +769,9 @@
                 });
             }
 
+            // Close date pickers.
             function closeDatePickers() {
+                // Process each name.
                 datePickerNames.forEach(name => {
                     const picker = filterInputs[name].closest('.report-date-picker');
                     picker.querySelector('.report-date-popover').hidden = true;
@@ -681,19 +779,23 @@
                 });
             }
 
+            // Get the days in selected month.
             function daysInSelectedMonth() {
                 return new Date(Number(filterInputs.report_year.value), Number(filterInputs.report_month.value), 0).getDate();
             }
 
+            // Get the limit selected day.
             function limitSelectedDay() {
                 const dayInput = filterInputs.report_day;
                 dayInput.value = String(Math.min(Number(dayInput.value), daysInSelectedMonth()));
             }
 
+            // Show date picker.
             function renderDatePicker(name) {
                 const input = filterInputs[name];
                 const popover = input.closest('.report-date-picker').querySelector('.report-date-popover');
                 let values;
+                // Run this step if the name equals report_month.
                 if (name === 'report_month') values = monthNames.map((label, index) => ({ value: index + 1, label }));
                 else if (name === 'report_day') values = Array.from({ length: daysInSelectedMonth() }, (_, index) => ({ value: index + 1, label: String(index + 1) }));
                 else values = Array.from({ length: 12 }, (_, index) => ({ value: yearPickerStart + index, label: String(yearPickerStart + index) }))
@@ -706,7 +808,9 @@
                 popover.innerHTML = navigation + `<div class="report-date-options ${name}">` + values.map(item =>
                     `<button type="button" data-picker-value="${item.value}" aria-pressed="${String(item.value) === input.value}">${escapeHtml(item.label)}</button>`
                 ).join('') + '</div>';
+                // Process each button.
                 popover.querySelectorAll('[data-year-shift]').forEach(button => {
+                    // Handle the click event.
                     button.addEventListener('click', event => {
                         event.preventDefault();
                         event.stopPropagation();
@@ -714,9 +818,12 @@
                         renderDatePicker(name);
                     });
                 });
+                // Process each button.
                 popover.querySelectorAll('[data-picker-value]').forEach(button => {
+                    // Handle the click event.
                     button.addEventListener('click', () => {
                         input.value = button.dataset.pickerValue;
+                        // Run this step if the name equals report_month or the name equals report_year.
                         if (name === 'report_month' || name === 'report_year') limitSelectedDay();
                         updateDatePickerTriggers();
                         closeDatePickers();
@@ -725,14 +832,18 @@
                 });
             }
 
+            // Process each name.
             datePickerNames.forEach(name => {
                 const picker = filterInputs[name].closest('.report-date-picker');
                 const trigger = picker.querySelector('.report-date-trigger');
                 const popover = picker.querySelector('.report-date-popover');
+                // Handle the click event.
                 trigger.addEventListener('click', () => {
                     const wasOpen = !popover.hidden;
                     closeDatePickers();
+                    // Return early if the was open is set.
                     if (wasOpen) return;
+                    // Run this step if the name equals report_year.
                     if (name === 'report_year') {
                         yearPickerStart = Math.min(2089, 1900 + Math.floor((Number(filterInputs[name].value) - 1900) / 12) * 12);
                     }
@@ -741,20 +852,27 @@
                     trigger.setAttribute('aria-expanded', 'true');
                     popover.style.left = '0';
                     popover.style.right = 'auto';
+                    // Run this step if the right is above the value.
                     if (popover.getBoundingClientRect().right > window.innerWidth - 8) {
                         popover.style.left = 'auto';
                         popover.style.right = '0';
                     }
                 });
             });
+            // Handle the click event.
             document.addEventListener('click', event => {
+                // Run this step if the closest is missing or false.
                 if (!event.target.closest('.report-date-picker')) closeDatePickers();
             });
+            // Handle the keydown event.
             document.addEventListener('keydown', event => {
+                // Run this step if the key equals Escape.
                 if (event.key === 'Escape') closeDatePickers();
             });
 
+            // Process each value.
             Object.entries(filterInputs).forEach(([name, input]) => {
+                // Run the add event listener action.
                 input.addEventListener(name === 'search' ? 'input' : 'change', () => {
                     state.dataPage = 1;
                     window.clearTimeout(state.dataTimer);
@@ -762,7 +880,9 @@
                 });
             });
 
+            // Handle the click event.
             document.getElementById('clearFilters').addEventListener('click', () => {
+                // Process each input.
                 Object.values(filterInputs).forEach(input => {
                     input.value = state.dataset === 'expense_summary' && input.dataset.default ? input.dataset.default : '';
                 });
@@ -771,23 +891,28 @@
                 state.dataPage = 1;
                 loadDataset();
             });
+            // Handle the change event.
             document.getElementById('dataPageSize').addEventListener('change', event => {
                 state.dataPerPage = Number(event.target.value);
                 state.dataPage = 1;
                 loadDataset();
             });
+            // Handle the click event.
             document.getElementById('dataPaginationLinks').addEventListener('click', event => {
                 const button = event.target.closest('[data-page]');
+                // Return early if the button is missing or false or the button disabled is set.
                 if (!button || button.disabled) return;
                 state.dataPage = Number(button.dataset.page);
                 loadDataset();
             });
 
+            // Refresh history from start.
             function refreshHistoryFromStart() {
                 state.historyPage = 1;
                 loadHistory();
             }
 
+            // Handle the input event.
             document.getElementById('historySearch').addEventListener('input', () => {
                 state.historyPage = 1;
                 window.clearTimeout(state.historyTimer);
@@ -795,30 +920,39 @@
             });
             document.getElementById('historyStart').addEventListener('change', refreshHistoryFromStart);
             document.getElementById('historyEnd').addEventListener('change', refreshHistoryFromStart);
+            // Handle the click event.
             document.getElementById('clearHistoryFilters').addEventListener('click', () => {
+                // Process each id.
                 ['historySearch', 'historyStart', 'historyEnd'].forEach(id => {
                     document.getElementById(id).value = '';
                 });
                 window.clearTimeout(state.historyTimer);
                 refreshHistoryFromStart();
             });
+            // Handle the change event.
             document.getElementById('historyPageSize').addEventListener('change', event => {
                 state.historyPerPage = Number(event.target.value);
                 refreshHistoryFromStart();
             });
+            // Handle the click event.
             document.getElementById('historyPaginationLinks').addEventListener('click', event => {
                 const button = event.target.closest('[data-page]');
+                // Return early if the button is missing or false or the button disabled is set.
                 if (!button || button.disabled) return;
                 state.historyPage = Number(button.dataset.page);
                 loadHistory();
             });
 
+            // Set history detail value.
             function setHistoryDetailValue(id, value) {
                 const element = document.getElementById(id);
+                // Run this step if the element is set.
                 if (element) element.textContent = value || '—';
             }
 
+            // Open history details.
             function openHistoryDetails(report) {
+                // Return early if the report is missing or false.
                 if (!report) return;
                 const filters = Object.entries(report.filters_applied || {})
                     .map(([key, value]) => `${key.replaceAll('_', ' ')}=${value}`).join(', ') || 'All records';
@@ -836,31 +970,38 @@
                 document.getElementById('historyDetailDialog').showModal();
             }
 
+            // Handle the click event.
             document.getElementById('historyBody').addEventListener('click', event => {
                 const button = event.target.closest('.history-view-button');
+                // Return early if the button is missing or false.
                 if (!button) return;
                 openHistoryDetails(state.historyRecords[String(button.dataset.reportId)]);
             });
 
             const dialog = document.getElementById('exportDialog');
+            // Close dialog.
             const closeDialog = () => { if (dialog.open) dialog.close(); };
+            // Handle the click event.
             document.getElementById('openExport').addEventListener('click', () => {
                 updateExportSummary();
                 dialog.showModal();
                 loadExportPreview();
             });
             let previewRequest = 0;
+            // Load export preview.
             async function loadExportPreview() {
                 const current = ++previewRequest;
                 const host = document.getElementById('reportPreview');
                 const button = document.getElementById('submitExport');
                 const columns = [...document.querySelectorAll('input[name="columns"]:checked')].map(input => input.value);
                 button.disabled = true;
+                // Run this step if the columns length is missing or false.
                 if (!columns.length) {
                     host.textContent = 'Select at least one field to preview the report.';
                     return;
                 }
                 host.textContent = 'Preparing preview…';
+                // Try this action and handle any errors below.
                 try {
                     const data = await apiJson(`${reportsApiBase}/preview`, {
                         method: 'POST',
@@ -873,6 +1014,7 @@
                             filters: selectedFilters()
                         })
                     });
+                    // Return early if the current does not equal the preview request.
                     if (current !== previewRequest) return;
                     const keys = Object.keys(data.columns);
                     const balanceRows = [data.totals, data.previous_totals, data.month_totals].filter(Boolean);
@@ -883,33 +1025,43 @@
                     host.innerHTML = `<div class="preview-paper"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table data-pfims-standard-actions="off"><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${balanceRows.map((row, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">${cells(row, true)}</tr>`).join('')}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} exported rows.</p>` : ''}</div>`;
                     button.disabled = false;
                 } catch (error) {
+                    // Run this step if the current equals the preview request.
                     if (current === previewRequest) host.textContent = 'Preview unavailable: ' + error.message;
                 }
             }
             document.getElementById('exportFormat').addEventListener('change', loadExportPreview);
             document.getElementById('exportRowLimit').addEventListener('change', loadExportPreview);
+            // Handle the input event.
             document.getElementById('exportTitle').addEventListener('input', () => {
                 window.clearTimeout(state.previewTimer);
                 state.previewTimer = window.setTimeout(loadExportPreview, 300);
             });
             document.getElementById('columnChoices').addEventListener('change', loadExportPreview);
+            // Process each id.
             ['closeExport', 'cancelExport'].forEach(id => {
                 document.getElementById(id).addEventListener('click', closeDialog);
             });
+            // Handle the click event.
             dialog.addEventListener('click', event => {
+                // Run this step if the target equals the dialog.
                 if (event.target === dialog) closeDialog();
             });
 
             const historyDetailDialog = document.getElementById('historyDetailDialog');
+            // Close history details.
             const closeHistoryDetails = () => { if (historyDetailDialog.open) historyDetailDialog.close(); };
             document.getElementById('closeHistoryDetail').addEventListener('click', closeHistoryDetails);
+            // Handle the click event.
             historyDetailDialog.addEventListener('click', event => {
+                // Run this step if the target equals the history detail dialog.
                 if (event.target === historyDetailDialog) closeHistoryDetails();
             });
+            // Handle the submit event.
             document.getElementById('exportForm').addEventListener('submit', async event => {
                 event.preventDefault();
                 const columns = [...document.querySelectorAll('input[name="columns"]:checked')].map(input => input.value);
 
+                // Run this step if the columns length is missing or false.
                 if (!columns.length) {
                     showNotice('Choose at least one report field.');
                     return;
@@ -919,6 +1071,7 @@
                 button.disabled = true;
                 button.textContent = 'Generating…';
 
+                // Try this action and handle any errors below.
                 try {
                     const response = await fetch(`${reportsApiBase}/export`, {
                         credentials: 'same-origin',
@@ -938,6 +1091,7 @@
                         })
                     });
 
+                    // Run this step if the response ok is missing or false.
                     if (!response.ok) {
                         const data = await response.json().catch(() => ({}));
                         throw new Error(data.errors
@@ -967,6 +1121,7 @@
                 }
             });
 
+            // Handle the pfims autorefresh event.
             document.addEventListener('pfims:autorefresh', () => {
                 loadDataset();
                 loadHistory();
@@ -974,6 +1129,7 @@
             initialize();
         })();
     </script>
+    {{-- Set up the actions used by this page section. --}}
     <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
     @include('partials.validation-alert')
 </body>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the expense category table.
 class ExpenseCategory extends Model
 {
     protected $table = 'expense_category_tbl';

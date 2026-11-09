@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the inventory transaction table.
 class InventoryTransaction extends Model
 {
     protected $table = 'inventory_transaction_tbl';
@@ -23,11 +24,13 @@ class InventoryTransaction extends Model
         'proof_file_name',
     ];
 
+    // Link this record to its item.
     public function item()
     {
         return $this->belongsTo(InventoryItem::class, 'item_id', 'item_id');
     }
 
+    // Link this record to its project.
     public function project()
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');

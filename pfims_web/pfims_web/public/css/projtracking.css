@@ -5,6 +5,7 @@
     box-sizing: border-box;
 }
 
+/* Style the body. */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f4f6f9;
@@ -30,17 +31,20 @@ body {
     height: 70px;
 }
 
+/* Style the top header left. */
 .top-header .left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
+/* Style the top header left. */
 .top-header .left img {
     height: 40px;
     width: auto;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text {
     font-weight: 600;
     font-size: 1.1rem;
@@ -48,6 +52,7 @@ body {
     color: #1a2b3c;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text small {
     display: block;
     font-weight: 300;
@@ -56,6 +61,7 @@ body {
     color: #555;
 }
 
+/* Style the top header right. */
 .top-header .right {
     display: flex;
     align-items: center;
@@ -63,6 +69,7 @@ body {
     font-size: 0.95rem;
 }
 
+/* Style the top header right. */
 .top-header .right a {
     display: flex;
     align-items: center;
@@ -72,10 +79,12 @@ body {
     position: relative;
 }
 
+/* Style the top header right on hover. */
 .top-header .right a:hover {
     opacity: 0.7;
 }
 
+/* Style the top header right. */
 .top-header .right span {
     cursor: pointer;
     opacity: 0.8;
@@ -86,6 +95,7 @@ body {
     color: #333;
 }
 
+/* Style the top header right on hover. */
 .top-header .right span:hover {
     opacity: 1;
 }
@@ -122,15 +132,18 @@ body {
     z-index: 100;
 }
 
+/* Style the sidebar. */
 .sidebar nav {
     flex: 1;
     margin-top: 20px;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul {
     list-style: none;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li {
     padding: 12px 16px;
     margin-bottom: 4px;
@@ -141,32 +154,38 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li a {
     color: inherit;
     text-decoration: none;
     display: block;
 }
 
+/* Style the sidebar active. */
 .sidebar nav ul li.active {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
 }
 
+/* Style the sidebar on hover. */
 .sidebar nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 20px;
     margin-top: 20px;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul {
     list-style: none;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li {
     display: flex;
     align-items: center;
@@ -178,25 +197,30 @@ body {
     transition: 0.2s;
 }
 
+/* Style the bottom nav nav icon. */
 .sidebar .bottom-nav ul li .nav-icon {
     width: 20px;
     height: 20px;
     object-fit: contain;
 }
 
+/* Style the sidebar bottom nav on hover. */
 .sidebar .bottom-nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout {
     color: #fff;
 }
 
+/* Style the bottom nav logout on hover. */
 .sidebar .bottom-nav ul li.logout:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li a {
     display: flex;
     align-items: center;
@@ -225,12 +249,14 @@ body {
     gap: 15px;
 }
 
+/* Style the page header with btn. */
 .page-header-with-btn h1 {
     font-size: 1.8rem;
     font-weight: 600;
     color: #1a2b3c;
 }
 
+/* Style the btn new project. */
 .btn-new-project {
     background: #1a2b3c;
     color: #fff;
@@ -246,6 +272,7 @@ body {
     gap: 8px;
 }
 
+/* Style the btn new project on hover. */
 .btn-new-project:hover {
     background: #2a3f54;
     transform: translateY(-2px);
@@ -260,6 +287,7 @@ body {
     margin-bottom: 30px;
 }
 
+/* Style the stat card proj. */
 .stat-card-proj {
     background: #fff;
     border-radius: 16px;
@@ -267,6 +295,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
+/* Style the stat info stat label. */
 .stat-card-proj .stat-info .stat-label {
     font-size: 0.8rem;
     text-transform: uppercase;
@@ -275,6 +304,7 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the stat info stat value. */
 .stat-card-proj .stat-info .stat-value {
     font-size: 1.8rem;
     font-weight: 700;
@@ -282,6 +312,7 @@ body {
     line-height: 1.2;
 }
 
+/* Style the stat info stat sub. */
 .stat-card-proj .stat-info .stat-sub {
     font-size: 0.75rem;
     color: #888;
@@ -297,6 +328,7 @@ body {
     margin-top: 10px;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table {
     width: 100%;
     border-collapse: collapse;
@@ -304,6 +336,7 @@ body {
     min-width: 1100px;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table thead th {
     text-align: left;
     padding: 12px 16px;
@@ -316,6 +349,7 @@ body {
     white-space: nowrap;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody td {
     padding: 12px 16px;
     border-bottom: 1px solid #f5f5f5;
@@ -323,14 +357,17 @@ body {
     white-space: nowrap;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody tr {
     cursor: pointer;
 }
 
+/* Style the table wrapper on hover. */
 .table-wrapper table tbody tr:hover {
     background: #faf8f5;
 }
 
+/* Style the table wrapper. */
 .table-wrapper table tbody tr:last-child td {
     border-bottom: none;
 }
@@ -345,6 +382,7 @@ body {
     font-weight: 500;
 }
 
+/* Style the status badge dot. */
 .status-badge .dot {
     width: 6px;
     height: 6px;
@@ -352,16 +390,24 @@ body {
     display: inline-block;
 }
 
+/* Style the status badge on track. */
 .status-badge.on-track { color: #2e7d32; }
+/* Style the on track dot. */
 .status-badge.on-track .dot { background: #2e7d32; }
 
+/* Style the status badge delayed. */
 .status-badge.delayed { color: #d32f2f; }
+/* Style the delayed dot. */
 .status-badge.delayed .dot { background: #d32f2f; }
 
+/* Style the status badge completed. */
 .status-badge.completed { color: #c9a96e; }
+/* Style the completed dot. */
 .status-badge.completed .dot { background: #c9a96e; }
 
+/* Style the status badge at risk. */
 .status-badge.at-risk { color: #e65100; }
+/* Style the at risk dot. */
 .status-badge.at-risk .dot { background: #e65100; }
 
 /* Progress Bar in Table (without text) */
@@ -371,6 +417,7 @@ body {
     gap: 10px;
 }
 
+/* Style the progress cell mini bar. */
 .progress-cell .mini-bar {
     width: 80px;
     height: 6px;
@@ -379,12 +426,14 @@ body {
     overflow: hidden;
 }
 
+/* Style the mini bar fill. */
 .progress-cell .mini-bar .fill {
     height: 100%;
     background: #c9a96e;
     border-radius: 10px;
 }
 
+/* Style the phase badge. */
 .phase-badge {
     display: inline-block;
     padding: 2px 10px;
@@ -395,6 +444,7 @@ body {
     color: #666;
 }
 
+/* Style the progress percent. */
 .progress-percent {
     font-weight: 600;
     font-size: 0.8rem;
@@ -418,6 +468,7 @@ body {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the success notification success content. */
 .success-notification .success-content {
     display: flex;
     align-items: center;
@@ -425,12 +476,14 @@ body {
     justify-content: space-between;
 }
 
+/* Style the success notification success icon. */
 .success-notification .success-icon {
     font-size: 1.2rem;
     font-weight: 700;
     color: #fff;
 }
 
+/* Style the success notification success close. */
 .success-notification .success-close {
     background: transparent;
     border: none;
@@ -441,15 +494,19 @@ body {
     padding: 0 8px;
 }
 
+/* Style the success notification success close on hover. */
 .success-notification .success-close:hover {
     opacity: 1;
 }
 
+/* Define the slide down animation. */
 @keyframes slideDown {
+    /* Style the from. */
     from {
         transform: translateX(-50%) translateY(-30px);
         opacity: 0;
     }
+    /* Style the to. */
     to {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
@@ -471,10 +528,12 @@ body {
     backdrop-filter: blur(4px);
 }
 
+/* Style the modal overlay active. */
 .modal-overlay.active {
     display: flex;
 }
 
+/* Style the modal container. */
 .modal-container {
     background: #fff;
     width: 600px;
@@ -489,11 +548,14 @@ body {
     flex-direction: column;
 }
 
+/* Define the fade in scale animation. */
 @keyframes fadeInScale {
+    /* Style the from. */
     from {
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
+    /* Style the to. */
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -514,6 +576,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the modal header. */
 .modal-header h2 {
     font-size: 1.5rem;
     font-weight: 600;
@@ -521,11 +584,13 @@ body {
     margin: 0;
 }
 
+/* Style the modal header subtitle. */
 .modal-header .subtitle {
     font-size: 0.9rem;
     color: #888;
 }
 
+/* Style the modal close. */
 .modal-close {
     background: none;
     border: none;
@@ -537,6 +602,7 @@ body {
     line-height: 1;
 }
 
+/* Style the modal close on hover. */
 .modal-close:hover {
     color: #333;
 }
@@ -550,6 +616,7 @@ body {
     padding-bottom: 0;
 }
 
+/* Style the step indicator step. */
 .step-indicator .step {
     flex: 1;
     text-align: center;
@@ -562,6 +629,7 @@ body {
     cursor: default;
 }
 
+/* Style the step step number. */
 .step-indicator .step .step-number {
     display: inline-block;
     width: 22px;
@@ -577,20 +645,24 @@ body {
     transition: 0.3s;
 }
 
+/* Style the step active. */
 .step-indicator .step.active {
     color: #1a2b3c;
     border-bottom-color: #c9a96e;
 }
 
+/* Style the active step number. */
 .step-indicator .step.active .step-number {
     background: #c9a96e;
 }
 
+/* Style the step completed. */
 .step-indicator .step.completed {
     color: #2e7d32;
     border-bottom-color: #2e7d32;
 }
 
+/* Style the completed step number. */
 .step-indicator .step.completed .step-number {
     background: #2e7d32;
 }
@@ -602,6 +674,7 @@ body {
     flex-direction: column;
 }
 
+/* Style the modal step. */
 .modal-step h3 {
     font-size: 0.85rem;
     font-weight: 600;
@@ -611,6 +684,7 @@ body {
     margin: 15px 0 12px;
 }
 
+/* Style the modal step. */
 .modal-step h3:first-of-type {
     margin-top: 0;
 }
@@ -620,6 +694,7 @@ body {
     margin-bottom: 18px;
 }
 
+/* Style the form group. */
 .form-group label {
     display: block;
     font-size: 0.85rem;
@@ -628,10 +703,12 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the form group required. */
 .form-group label .required {
     color: #d32f2f;
 }
 
+/* Style the form group. */
 .form-group input,
 .form-group select {
     width: 100%;
@@ -643,6 +720,7 @@ body {
     background: #fafafa;
 }
 
+/* Style the form group when focused. */
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
@@ -658,6 +736,7 @@ body {
     gap: 20px;
 }
 
+/* Style the form row form group. */
 .form-row .form-group {
     margin-bottom: 18px;
 }
@@ -671,6 +750,7 @@ body {
     border-left: 4px solid #c9a96e;
 }
 
+/* Style the summary item. */
 .summary-item {
     display: flex;
     padding: 8px 0;
@@ -679,10 +759,12 @@ body {
     color: #333;
 }
 
+/* Style the summary item. */
 .summary-item:last-child {
     border-bottom: none;
 }
 
+/* Style the summary item. */
 .summary-item strong {
     width: 170px;
     flex-shrink: 0;
@@ -690,6 +772,7 @@ body {
     font-weight: 600;
 }
 
+/* Style the summary item summary value. */
 .summary-item .summary-value {
     color: #1a2b3c;
     font-weight: 500;
@@ -706,16 +789,19 @@ body {
     border-top: 1px solid #e9ecef;
 }
 
+/* Style the modal footer footer left. */
 .modal-footer .footer-left {
     display: flex;
     gap: 12px;
 }
 
+/* Style the modal footer footer right. */
 .modal-footer .footer-right {
     display: flex;
     gap: 12px;
 }
 
+/* Style the modal footer. */
 .modal-footer button {
     padding: 10px 24px;
     border-radius: 8px;
@@ -726,40 +812,48 @@ body {
     border: none;
 }
 
+/* Style the btn cancel. */
 .btn-cancel {
     background: transparent;
     color: #888;
 }
 
+/* Style the btn cancel on hover. */
 .btn-cancel:hover {
     color: #333;
     background: #f5f5f5;
 }
 
+/* Style the btn back. */
 .btn-back {
     background: #e9ecef;
     color: #555;
 }
 
+/* Style the btn back on hover. */
 .btn-back:hover {
     background: #ddd;
 }
 
+/* Style the btn continue. */
 .btn-continue {
     background: #1a2b3c;
     color: #fff;
 }
 
+/* Style the btn continue on hover. */
 .btn-continue:hover {
     background: #2a3f54;
     transform: translateY(-1px);
 }
 
+/* Style the btn save. */
 .btn-save {
     background: #c9a96e;
     color: #fff;
 }
 
+/* Style the btn save on hover. */
 .btn-save:hover {
     background: #b8975a;
     transform: translateY(-1px);
@@ -778,6 +872,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn delete on hover. */
 .btn-delete:hover {
     background: #b71c1c;
     transform: translateY(-2px);
@@ -794,11 +889,13 @@ body {
     border-radius: 12px;
 }
 
+/* Style the detail item. */
 .detail-item {
     display: flex;
     flex-direction: column;
 }
 
+/* Style the detail item. */
 .detail-item label {
     font-size: 0.7rem;
     text-transform: uppercase;
@@ -807,12 +904,14 @@ body {
     margin-bottom: 2px;
 }
 
+/* Style the detail item. */
 .detail-item span {
     font-size: 1rem;
     font-weight: 500;
     color: #1a2b3c;
 }
 
+/* Style the detail item status badge. */
 .detail-item span.status-badge {
     display: inline-flex;
     align-items: center;
@@ -822,6 +921,7 @@ body {
     font-weight: 600;
 }
 
+/* Style the detail item phase badge. */
 .detail-item span.phase-badge {
     display: inline-block;
     padding: 2px 10px;
@@ -845,6 +945,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the btn edit project on hover. */
 .btn-edit-project:hover {
     background: #b8975a;
     transform: translateY(-2px);
@@ -852,17 +953,21 @@ body {
 
 /* Responsive */
 @media (max-width: 900px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 200px;
         padding: 20px 15px;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 200px;
         padding: 20px;
     }
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 100%;
         height: auto;
@@ -873,52 +978,64 @@ body {
         padding: 15px;
         gap: 10px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul li {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    /* Style the sidebar bottom nav. */
     .sidebar .bottom-nav {
         border-top: none;
         padding-top: 0;
         margin-top: 0;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 0;
         padding: 20px 15px;
     }
+    /* Style the stats grid proj. */
     .stats-grid-proj {
         grid-template-columns: 1fr 1fr;
     }
+    /* Style the top header. */
     .top-header {
         flex-wrap: wrap;
         height: auto;
         padding: 10px 15px;
         gap: 8px;
     }
+    /* Style the left brand text. */
     .top-header .left .brand-text small {
         display: none;
     }
+    /* Style the top header right. */
     .top-header .right {
         gap: 12px;
         font-size: 0.8rem;
     }
+    /* Style the body. */
     body {
         padding-top: 90px;
     }
+    /* Style the sidebar. */
     .sidebar {
         top: 90px;
         height: auto;
         min-height: 60px;
     }
+    /* Style the page header with btn. */
     .page-header-with-btn {
         flex-direction: column;
         align-items: flex-start;
     }
+    /* Style the btn new project. */
     .btn-new-project {
         width: 100%;
         justify-content: center;
@@ -930,38 +1047,47 @@ body {
         max-height: 95vh;
         width: 95%;
     }
+    /* Style the form row. */
     .form-row {
         grid-template-columns: 1fr;
         gap: 0;
     }
+    /* Style the modal footer. */
     .modal-footer {
         flex-direction: column;
         align-items: stretch;
     }
+    /* Style the modal footer footer left. */
     .modal-footer .footer-left,
     .modal-footer .footer-right {
         justify-content: center;
     }
+    /* Style the summary item. */
     .summary-item {
         flex-direction: column;
         padding: 6px 0;
     }
+    /* Style the summary item. */
     .summary-item strong {
         width: auto;
     }
+    /* Style the success notification. */
     .success-notification {
         min-width: auto;
         width: 90%;
         top: 75px;
         padding: 12px 18px;
     }
+    /* Style the success notification success content. */
     .success-notification .success-content {
         font-size: 0.9rem;
     }
+    /* Style the step indicator step. */
     .step-indicator .step {
         font-size: 0.65rem;
         padding: 8px 0;
     }
+    /* Style the step step number. */
     .step-indicator .step .step-number {
         width: 18px;
         height: 18px;
@@ -976,16 +1102,19 @@ body {
         padding: 20px;
     }
 
+    /* Style the project details grid. */
     .project-details-grid {
         grid-template-columns: 1fr;
         gap: 12px;
         padding: 15px;
     }
 
+    /* Style the modal footer. */
     .modal-footer {
         flex-direction: column;
         align-items: stretch;
     }
+    /* Style the modal footer. */
     .modal-footer button {
         width: 100%;
     }
@@ -1001,11 +1130,13 @@ body {
     gap: 15px;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info {
     font-size: 0.85rem;
     color: #888;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info select {
     padding: 4px 8px;
     border: 1px solid #ddd;
@@ -1015,12 +1146,14 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links {
     display: flex;
     gap: 6px;
     align-items: center;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links a,
 .pagination-wrapper .pagination-links span {
     padding: 6px 12px;
@@ -1032,15 +1165,18 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links on hover. */
 .pagination-wrapper .pagination-links a:hover {
     background: #e9ecef;
 }
 
+/* Style the pagination links active. */
 .pagination-wrapper .pagination-links .active {
     background: #1a2b3c;
     color: #fff;
 }
 
+/* Style the pagination links dots. */
 .pagination-wrapper .pagination-links .dots {
     color: #aaa;
     cursor: default;
@@ -1051,6 +1187,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the search bar. */
 .search-bar {
     display: flex;
     gap: 15px;
@@ -1063,11 +1200,13 @@ body {
     transition: 0.3s;
 }
 
+/* Style the search bar when focused. */
 .search-bar:focus-within {
     border-color: #c9a96e;
     box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
 }
 
+/* Style the search bar search input. */
 .search-bar .search-input {
     flex: 1;
     padding: 10px 14px;
@@ -1079,10 +1218,12 @@ body {
     min-width: 200px;
 }
 
+/* Style the search bar search input. */
 .search-bar .search-input::placeholder {
     color: #aaa;
 }
 
+/* Style the project filter panel btn clear search. */
 .project-filter-panel .btn-clear-search {
     width: 32px;
     height: 32px;
@@ -1100,22 +1241,27 @@ body {
     justify-content: center;
 }
 
+/* Style the project filter panel btn clear search on hover. */
 .project-filter-panel .btn-clear-search:hover {
     background: #f5f5f5;
     border-color: #e19a45;
     color: #333;
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the search bar. */
     .search-bar {
         flex-direction: column;
         align-items: stretch;
         padding: 12px;
     }
+    /* Style the search bar search input. */
     .search-bar .search-input {
         min-width: auto;
         padding: 10px 0;
     }
+    /* Style the search bar btn clear search. */
     .search-bar .btn-clear-search {
         width: 100%;
         text-align: center;

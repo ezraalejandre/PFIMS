@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
+// Group the inventory import actions.
 class InventoryImportService
 {
     private const ITEM_REQUIRED_HEADERS = ['item_name', 'category', 'supplier', 'unit', 'unit_price', 'current_stock', 'reorder_level', 'opening_balance_date'];
@@ -19,12 +20,14 @@ class InventoryImportService
 
     private const TRANSACTION_ALLOWED_HEADERS = self::TRANSACTION_REQUIRED_HEADERS;
 
+    // Set up the values this class needs.
     public function __construct(
         private TabularImportReader $reader,
         private InventoryCostAllocator $costAllocator,
         private InventoryPurchaseService $purchaseService,
     ) {}
 
+    // Get the import.
     public function import(UploadedFile $file, string $type): array
     {
         return match ($type) {
@@ -34,10 +37,12 @@ class InventoryImportService
         };
     }
 
+    // Import items.
     private function importItems(array $sheet): array
     {
         $missing = array_diff(self::ITEM_REQUIRED_HEADERS, $sheet['headers']);
         $unexpected = array_diff($sheet['headers'], self::ITEM_ALLOWED_HEADERS);
+        // Stop if the missing and unexpected checks match.
         if ($missing !== [] || $unexpected !== []) {
             throw new ImportValidationException($this->headerMessage('inventory-item', $missing, $unexpected));
         }
@@ -49,6 +54,7 @@ class InventoryImportService
         $errors = [];
         $fileKeys = [];
 
+        // Process each row.
         foreach ($sheet['rows'] as $row) {
             $values = $row['values'];
             $values['opening_balance_date'] = $this->normalizeDate($values['opening_balance_date']);
@@ -62,6 +68,7 @@ class InventoryImportService
                 'reorder_level' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
                 'opening_balance_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             ]);
+            // Run this step if the submitted fields fail validation.
             if ($validator->fails()) {
                 $this->appendValidationErrors($errors, $row['row'], $validator->errors()->toArray());
 
@@ -72,6 +79,7 @@ class InventoryImportService
             $categoryId = $this->resolveLookup($categories, $values['category'], $row['row'], 'category', $errors);
             $supplierId = $this->resolveLookup($suppliers, $values['supplier'], $row['row'], 'supplier', $errors);
             $unitId = $this->resolveLookup($units, $values['unit'], $row['row'], 'unit', $errors);
+            // Skip this item if the category id and supplier id checks match.
             if (! $categoryId || ! $supplierId || ! $unitId) {
                 continue;
             }
@@ -87,12 +95,14 @@ class InventoryImportService
                 'opening_balance_date' => $values['opening_balance_date'],
             ];
             $key = implode('|', [$this->key($record['item_name']), $categoryId, $supplierId, $unitId, number_format($record['unit_price'], 2, '.', ''), number_format($record['current_stock'], 2, '.', ''), number_format($record['reorder_level'], 2, '.', ''), $record['opening_balance_date']]);
+            // Run this step if the key is set.
             if (isset($fileKeys[$key])) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'Duplicates row '.$fileKeys[$key].' in this file.');
 
                 continue;
             }
             $fileKeys[$key] = $row['row'];
+            // Run this step if the exists check matches.
             if ($this->duplicateItemQuery($record)->exists()) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'This inventory item already exists in PFIMS.');
 
@@ -103,8 +113,11 @@ class InventoryImportService
 
         $this->throwWhenErrors($errors);
 
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function () use ($prepared) {
+            // Process each row.
             foreach ($prepared as $row) {
+                // Stop if the exists data check matches.
                 if ($this->duplicateItemQuery($row['data'])->lockForUpdate()->exists()) {
                     throw new ImportValidationException('No rows were imported because a duplicate was created while the file was being checked.', [
                         $this->rowError($row['row'], 'duplicate', 'This inventory item now already exists in PFIMS.'),
@@ -116,6 +129,7 @@ class InventoryImportService
                 unset($itemData['opening_balance_date']);
                 $itemData['current_stock'] = 0;
                 $itemId = DB::table('inventory_item_tbl')->insertGetId($itemData);
+                // Run this step if the stock is above 0.
                 if ($stock > 0) {
                     DB::table('inventory_transaction_tbl')->insert([
                         'item_id' => $itemId,
@@ -137,10 +151,12 @@ class InventoryImportService
         return ['imported' => count($prepared), 'type' => 'inventory_items'];
     }
 
+    // Import transactions.
     private function importTransactions(array $sheet): array
     {
         $missing = array_diff(self::TRANSACTION_REQUIRED_HEADERS, $sheet['headers']);
         $unexpected = array_diff($sheet['headers'], self::TRANSACTION_ALLOWED_HEADERS);
+        // Stop if the missing and unexpected checks match.
         if ($missing !== [] || $unexpected !== []) {
             throw new ImportValidationException($this->headerMessage('inventory-transaction', $missing, $unexpected));
         }
@@ -153,6 +169,7 @@ class InventoryImportService
         $fileKeys = [];
         $simulatedStock = [];
 
+        // Process each row.
         foreach ($sheet['rows'] as $row) {
             $values = $row['values'] + ['project_name' => null, 'bar_code' => null];
             $values['transaction_type'] = strtoupper(trim((string) ($values['transaction_type'] ?? '')));
@@ -167,6 +184,7 @@ class InventoryImportService
                 'transaction_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
                 'stock_in_reason' => ['required', 'in:purchase,return,adjustment,opening_balance,n/a'],
             ]);
+            // Run this step if the submitted fields fail validation.
             if ($validator->fails()) {
                 $this->appendValidationErrors($errors, $row['row'], $validator->errors()->toArray());
 
@@ -176,17 +194,20 @@ class InventoryImportService
 
             $projectName = trim((string) ($data['project_name'] ?? ''));
             $forStorage = strcasecmp($projectName, 'For Storage') === 0;
+            // Run this step if the data transaction type and project name checks match.
             if ($data['transaction_type'] === 'OUT' && ($projectName === '' || $forStorage)) {
                 $errors[] = $this->rowError($row['row'], 'project_name', 'Project name is required for OUT inventory transactions.');
 
                 continue;
             }
+            // Run this step if the data transaction type and project name checks match.
             if ($data['transaction_type'] === 'IN' && $projectName !== '' && ! $forStorage) {
                 $errors[] = $this->rowError($row['row'], 'project_name', 'Stock-in is for storage; use For Storage or leave the project blank.');
 
                 continue;
             }
             $reason = $data['transaction_type'] === 'IN' ? $data['stock_in_reason'] : null;
+            // Run this step if the data transaction type and data stock in reason checks match.
             if (($data['transaction_type'] === 'OUT' && $data['stock_in_reason'] !== 'n/a')
                 || ($data['transaction_type'] === 'IN' && $reason === 'n/a')) {
                 $errors[] = $this->rowError($row['row'], 'stock_in_reason', 'Choose a stock-in reason for IN, or N/A for OUT.');
@@ -194,6 +215,7 @@ class InventoryImportService
             }
 
             $itemMatches = $items->get($this->key($data['item_name']), collect());
+            // Run this step if the count does not equal 1.
             if ($itemMatches->count() !== 1) {
                 $errors[] = $this->rowError($row['row'], 'item_name', $itemMatches->isEmpty() ? 'Inventory item not found.' : 'Inventory item name is ambiguous.');
 
@@ -201,16 +223,20 @@ class InventoryImportService
             }
             $item = $itemMatches->first();
             $purchaseAmount = null;
+            // Run this step if the reason equals purchase.
             if ($reason === 'purchase') {
                 $purchaseAmount = round((float) ($item->unit_price ?? 0) * (float) $data['quantity'], 2);
+                // Run this step if the purchase amount checks match.
                 if ($purchaseAmount < 0.01 || $purchaseAmount > 9999999999.99) {
                     $errors[] = $this->rowError($row['row'], 'item_name', 'Purchase IN requires a positive item Unit Price and a total within the Finance limit.');
                     continue;
                 }
             }
             $projectId = null;
+            // Run this step if the data transaction type equals out.
             if ($data['transaction_type'] === 'OUT') {
                 $projectMatches = $projects->get($this->key($data['project_name']), collect());
+                // Run this step if the count does not equal 1.
                 if ($projectMatches->count() !== 1) {
                     $errors[] = $this->rowError($row['row'], 'project_name', $projectMatches->isEmpty() ? 'Project not found.' : 'Project name is ambiguous.');
 
@@ -229,12 +255,14 @@ class InventoryImportService
                 'movement_reason' => $reason,
             ];
             $key = $this->transactionKey($record, $purchaseAmount);
+            // Run this step if the key is set.
             if (isset($fileKeys[$key])) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'Duplicates row '.$fileKeys[$key].' in this file.');
 
                 continue;
             }
             $fileKeys[$key] = $row['row'];
+            // Run this step if the exists check matches.
             if ($this->duplicateTransactionQuery($record, $purchaseAmount)->exists()) {
                 $errors[] = $this->rowError($row['row'], 'duplicate', 'This inventory transaction already exists in PFIMS.');
 
@@ -243,6 +271,7 @@ class InventoryImportService
 
             $stock = $simulatedStock[$record['item_id']] ?? (float) $item->current_stock;
             $stock += $record['transaction_type'] === 'IN' ? $record['quantity'] : -$record['quantity'];
+            // Run this step if the stock is below 0.
             if ($stock < 0) {
                 $errors[] = $this->rowError($row['row'], 'quantity', 'This OUT transaction exceeds the available stock at this point in the file.');
 
@@ -254,26 +283,32 @@ class InventoryImportService
 
         $this->throwWhenErrors($errors);
 
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function () use ($prepared) {
+            // Process each row.
             foreach ($prepared as $row) {
                 $item = DB::table('inventory_item_tbl')->where('item_id', $row['data']['item_id'])->lockForUpdate()->first();
+                // Stop if the item is missing or false.
                 if (! $item) {
                     throw new ImportValidationException('No rows were imported because an inventory item was removed during validation.', [
                         $this->rowError($row['row'], 'item_name', 'Inventory item no longer exists.'),
                     ]);
                 }
+                // Stop if the row data and unit price checks match.
                 if ($row['data']['movement_reason'] === 'purchase'
                     && round((float) ($item->unit_price ?? 0) * (float) $row['data']['quantity'], 2) !== $row['purchase_amount']) {
                     throw new ImportValidationException('No rows were imported because an item price changed during validation.', [
                         $this->rowError($row['row'], 'item_name', 'Unit Price changed. Review the item and retry the import.'),
                     ]);
                 }
+                // Stop if the exists data purchase amount check matches.
                 if ($this->duplicateTransactionQuery($row['data'], $row['purchase_amount'])->lockForUpdate()->exists()) {
                     throw new ImportValidationException('No rows were imported because a duplicate was created while the file was being checked.', [
                         $this->rowError($row['row'], 'duplicate', 'This inventory transaction now already exists in PFIMS.'),
                     ]);
                 }
                 $newStock = (float) $item->current_stock + ($row['data']['transaction_type'] === 'IN' ? $row['data']['quantity'] : -$row['data']['quantity']);
+                // Stop if the new stock is below 0.
                 if ($newStock < 0) {
                     throw new ImportValidationException('No rows were imported because stock changed while the file was being checked.', [
                         $this->rowError($row['row'], 'quantity', 'Available stock is now insufficient.'),
@@ -285,7 +320,9 @@ class InventoryImportService
                     'proof_file_name' => 'Imported data',
                 ]);
                 DB::table('inventory_item_tbl')->where('item_id', $item->item_id)->update(['current_stock' => $newStock]);
+                // Run this step if the row data movement reason equals purchase.
                 if ($row['data']['movement_reason'] === 'purchase') {
+                    // Try this action and handle any errors below.
                     try {
                         $this->purchaseService->createLinkedExpense((int) $transactionId, $row['purchase_amount']);
                     } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
@@ -294,7 +331,9 @@ class InventoryImportService
                         ]);
                     }
                 }
+                // Run this step if the row data transaction type equals out.
                 if ($row['data']['transaction_type'] === 'OUT') {
+                    // Try this action and handle any errors below.
                     try {
                         $this->costAllocator->allocate((int) $transactionId);
                     } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
@@ -314,6 +353,7 @@ class InventoryImportService
         ];
     }
 
+    // Get the lookup groups.
     private function lookupGroups(string $table, string $id, string $name)
     {
         return DB::table($table)
@@ -322,9 +362,11 @@ class InventoryImportService
             ->groupBy(fn ($row) => $this->key($row->lookup_name));
     }
 
+    // Find lookup.
     private function resolveLookup($groups, string $value, int $row, string $field, array &$errors): ?int
     {
         $matches = $groups->get($this->key($value), collect());
+        // Run this step if the count does not equal 1.
         if ($matches->count() !== 1) {
             $errors[] = $this->rowError($row, $field, $matches->isEmpty() ? ucfirst($field).' not found in Settings > Configurations.' : ucfirst($field).' is ambiguous.');
 
@@ -334,6 +376,7 @@ class InventoryImportService
         return (int) $matches->first()->lookup_id;
     }
 
+    // Get the duplicate item query.
     private function duplicateItemQuery(array $record)
     {
         $query = DB::table('inventory_item_tbl')
@@ -345,6 +388,7 @@ class InventoryImportService
             ->where('current_stock', $record['current_stock'])
             ->where('reorder_level', $record['reorder_level']);
 
+        // Return early if the record current stock is at most 0.
         if ((float) $record['current_stock'] <= 0) {
             return $query->whereRaw('1 = 0');
         }
@@ -362,6 +406,7 @@ class InventoryImportService
         });
     }
 
+    // Get the duplicate transaction query.
     private function duplicateTransactionQuery(array $record, $purchaseAmount = null)
     {
         $query = DB::table('inventory_transaction_tbl')
@@ -371,7 +416,9 @@ class InventoryImportService
             ->whereDate('transaction_date', $record['transaction_date']);
         $query = $record['project_id'] === null ? $query->whereNull('project_id') : $query->where('project_id', $record['project_id']);
         $query = $record['bar_code'] === null ? $query->whereNull('bar_code') : $query->where('bar_code', $record['bar_code']);
+        // Run this step if the record movement reason equals legacy unpriced.
         if ($record['movement_reason'] === 'legacy_unpriced') {
+            // Group these checks when finding matching records.
             $query->where(function ($reason) {
                 $reason->whereNull('movement_reason')->orWhere('movement_reason', 'legacy_unpriced');
             });
@@ -380,6 +427,7 @@ class InventoryImportService
         } else {
             $query->where('movement_reason', $record['movement_reason']);
         }
+        // Run this step if the record movement reason equals purchase.
         if ($record['movement_reason'] === 'purchase') {
             $query->whereExists(function ($expense) use ($purchaseAmount) {
                 $expense->selectRaw('1')->from('fin_expense_tbl')
@@ -391,22 +439,29 @@ class InventoryImportService
         return $query;
     }
 
+    // Get the transaction key.
     private function transactionKey(array $record, $purchaseAmount = null): string
     {
         return implode('|', [$record['item_id'], $record['project_id'] ?? '', $record['transaction_type'], number_format($record['quantity'], 2, '.', ''), $record['bar_code'] ?? '', $record['transaction_date'], $record['movement_reason'] ?? '', $purchaseAmount === null ? '' : number_format($purchaseAmount, 2, '.', '')]);
     }
 
+    // Clean up date.
     private function normalizeDate(mixed $value): mixed
     {
+        // Return early if the value checks match.
         if (is_numeric($value) && (float) $value >= 1 && (float) $value < 100000) {
             return Carbon::create(1899, 12, 30)->addDays((int) floor((float) $value))->format('Y-m-d');
         }
+        // Return early if the value checks match.
         if (! is_string($value) || trim($value) === '') {
             return $value;
         }
+        // Process each format.
         foreach (['Y-m-d', 'm/d/Y', 'd/m/Y', 'm-d-Y'] as $format) {
+            // Try this action and handle any errors below.
             try {
                 $date = Carbon::createFromFormat('!'.$format, trim($value));
+                // Return early if the date and format checks match.
                 if ($date !== false && $date->format($format) === trim($value)) {
                     return $date->format('Y-m-d');
                 }
@@ -417,12 +472,15 @@ class InventoryImportService
         return $value;
     }
 
+    // Get the header message.
     private function headerMessage(string $type, array $missing, array $unexpected): string
     {
         $parts = [];
+        // Run this step if the missing is not empty.
         if ($missing !== []) {
             $parts[] = 'Missing: '.implode(', ', $missing).'.';
         }
+        // Run this step if the unexpected is not empty.
         if ($unexpected !== []) {
             $parts[] = 'Unexpected: '.implode(', ', $unexpected).'.';
         }
@@ -430,27 +488,34 @@ class InventoryImportService
         return 'Invalid '.$type.' headers. '.implode(' ', $parts);
     }
 
+    // Get the throw when errors.
     private function throwWhenErrors(array $errors): void
     {
+        // Stop if the errors is not empty.
         if ($errors !== []) {
             throw new ImportValidationException('No rows were imported. Correct the listed row errors and upload the file again.', $errors);
         }
     }
 
+    // Get the append validation errors.
     private function appendValidationErrors(array &$errors, int $row, array $messages): void
     {
+        // Process each field messages.
         foreach ($messages as $field => $fieldMessages) {
+            // Process each message.
             foreach ($fieldMessages as $message) {
                 $errors[] = $this->rowError($row, $field, $message);
             }
         }
     }
 
+    // Get the row error.
     private function rowError(int $row, string $field, string $message): array
     {
         return compact('row', 'field', 'message');
     }
 
+    // Get the key.
     private function key(mixed $value): string
     {
         return Str::lower(trim((string) $value));

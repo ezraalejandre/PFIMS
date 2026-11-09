@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Project;
 
+// Link records to the budget table.
 class Budget extends Model
 {
     protected $table = 'budgets_tbl';
@@ -13,6 +14,7 @@ class Budget extends Model
     public $timestamps = false;
     protected $fillable = ['project_id', 'budget_amount', 'actual_amount', 'proof_file_path', 'proof_file_name'];
 
+    // Link this record to its project.
     public function project()
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');

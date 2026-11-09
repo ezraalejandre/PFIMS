@@ -7,9 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
-/** Consistent read-only export; credentials stay in the configured connection. */
+/** Read project costs without changing them. Use the saved database login settings. */
 class LiveProjectCostSource
 {
+    // Get the export.
     public function export(string $connection, string $output): array
     {
         $previous = DB::getDefaultConnection();
@@ -17,22 +18,27 @@ class LiveProjectCostSource
         $host = $database->getConfig('host');
         $isLiveHost = $host === 'srv603.hstgr.io';
         $isHostedApp = parse_url(config('app.url'), PHP_URL_HOST) === 'gray-elk-934703.hostingersite.com';
+        // Stop if the get driver name and is live host checks match.
         if ($database->getDriverName() !== 'mysql' || (! $isLiveHost && ! $isHostedApp)
             || $database->selectOne('SELECT DATABASE() AS name')->name !== 'u822802132_pfims') {
             throw new RuntimeException('The source connection must identify the live PFIMS database.');
         }
+        // Stop if the output file exists.
         if (is_file($output)) {
             throw new RuntimeException('Source export already exists; choose a new version path.');
         }
         $pdo = $database->getPdo();
+        // Stop if the in transaction check matches.
         if ($pdo->inTransaction()) {
             throw new RuntimeException('Export requires its own consistent read-only transaction.');
         }
         DB::setDefaultConnection($connection);
+        // Try this action and handle any errors below.
         try {
             $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
             $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
             $source = ['source' => ['host' => 'srv603.hstgr.io', 'database' => 'u822802132_pfims', 'captured_at' => now()->toIso8601String()]];
+            // Process each table.
             foreach (['project_tbl', 'budgets_tbl', 'fin_expense_tbl', 'fin_expense_category_tbl', 'inventory_item_tbl',
                 'inventory_transaction_tbl', 'inventory_cost_allocation_tbl', 'ml_project_cost_snapshots', 'project_budget_history'] as $table) {
                 $source[$table] = Schema::hasTable($table) ? DB::table($table)->orderByRaw('1')->get()->map(fn ($row) => (array) $row)->all() : [];
@@ -41,10 +47,12 @@ class LiveProjectCostSource
             $source['cohort'] = ['strategy' => $cohort['strategy'], 'feature_names' => $cohort['feature_names'],
                 'records' => $cohort['records']->map(fn ($row) => (array) $row)->all(), 'snapshot_readiness' => $cohort['snapshot_readiness']];
             $pdo->rollBack();
+            // Stop if the output checks match.
             if (! is_dir(dirname($output)) && ! mkdir(dirname($output), 0700, true)) {
                 throw new RuntimeException('Unable to create private source directory.');
             }
             $payload = gzencode(json_encode($source, JSON_THROW_ON_ERROR), 9);
+            // Stop if the payload does not equal payload.
             if (file_put_contents($output, $payload, LOCK_EX) !== strlen($payload)) {
                 throw new RuntimeException('Incomplete source export.');
             }
@@ -52,6 +60,7 @@ class LiveProjectCostSource
             return ['source' => $source['source'], 'eligible_projects' => $cohort['records']->pluck('project_id')->unique()->count(),
                 'strategy' => $cohort['strategy'], 'sha256' => hash_file('sha256', $output)];
         } finally {
+            // Run this step if the in transaction check matches.
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }

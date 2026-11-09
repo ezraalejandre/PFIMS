@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the report table.
 class Report extends Model
 {
     use HasFactory;
@@ -44,6 +45,7 @@ class Report extends Model
         'generated_at' => 'datetime',
     ];
 
+    // Link this record to its user.
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -52,6 +54,7 @@ class Report extends Model
     // Scope for filtering by role
     public function scopeForRole($query, $role)
     {
+        // Return early if the role equals admin.
         if ($role === 'admin') {
             return $query; // Admin sees all
         }
@@ -62,6 +65,7 @@ class Report extends Model
     // Scope for filtering by type
     public function scopeOfType($query, $type)
     {
+        // Return early if the type equals all.
         if ($type === 'all') {
             return $query;
         }
@@ -69,6 +73,7 @@ class Report extends Model
         return $query->where('type', $type);
     }
 
+    // Get the scope generated.
     public function scopeGenerated($query)
     {
         return $query->where('generation_method', 'system_export')

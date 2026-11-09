@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the inventory category table.
 class InventoryCategory extends Model
 {
     protected $table = 'inventory_category_tbl';

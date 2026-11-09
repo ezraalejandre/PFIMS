@@ -9,19 +9,22 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
+// Group the project cost snapshot actions.
 class ProjectCostSnapshotService
 {
     /**
      * Capture only the state known now. This method deliberately never creates
-     * backdated snapshots from reconstructed or sample progress.
+     * backdated snapshots from rebuilt or sample progress.
      */
     public function captureAfterCommit(?int $projectId, string $reason): void
     {
+        // Run this step if the project id is missing or false.
         if (! $projectId) {
             return;
         }
 
         DB::afterCommit(function () use ($projectId, $reason): void {
+            // Try this action and handle any errors below.
             try {
                 $this->capture($projectId, $reason);
             } catch (Throwable $exception) {
@@ -34,16 +37,20 @@ class ProjectCostSnapshotService
         });
     }
 
+    // Get the capture.
     public function capture(int $projectId, string $reason = 'manual'): bool
     {
+        // Return early if the value check matches.
         if (! Schema::hasTable('ml_project_cost_snapshots')) {
             return false;
         }
 
+        // Run these database steps together. Undo changes if a step fails.
         return DB::transaction(function () use ($projectId, $reason): bool {
-            // Serialize captures for one project so a snapshot cannot combine
+            // Process in order captures for one project so a snapshot cannot combine
             // project, budget, and ledger states from different commits.
             $project = DB::table('project_tbl')->where('project_id', $projectId)->lockForUpdate()->first();
+            // Return early if the project and start date checks match.
             if (! $project || empty($project->start_date) || empty($project->estimated_end_date)) {
                 return false;
             }
@@ -51,9 +58,11 @@ class ProjectCostSnapshotService
             $start = Carbon::parse($project->start_date)->startOfDay();
             $plannedEnd = Carbon::parse($project->estimated_end_date)->startOfDay();
             $capturedAt = now();
+            // Return early if the lt and start checks match.
             if ($plannedEnd->lt($start) || $start->gt($capturedAt->copy()->startOfDay())) {
                 return false;
             }
+            // Return early if the reason and project id checks match.
             if ($reason === 'weekly_schedule' && DB::table('ml_project_cost_snapshots')
                 ->where('project_id', $projectId)->where('capture_reason', 'weekly_schedule')
                 ->where('captured_at', '>=', $capturedAt->copy()->startOfWeek())->exists()) {
@@ -63,12 +72,14 @@ class ProjectCostSnapshotService
             $completion = is_numeric($project->completion_percentage ?? null)
                 ? (float) $project->completion_percentage
                 : null;
+            // Return early if the worker count and completion checks match.
             if ($workerCount === false || $workerCount < 1 || $completion === null || $completion < 0 || $completion > 100) {
                 return false;
             }
 
             $budget = DB::table('budgets_tbl')->where('project_id', $projectId)
                 ->orderByDesc('budget_id')->first();
+            // Return early if the budget and budget amount checks match.
             if (! $budget || (float) $budget->budget_amount <= 0) {
                 return false;
             }
@@ -87,6 +98,7 @@ class ProjectCostSnapshotService
                 ? ($finance['has_ledger_rows'] || Schema::hasTable('inventory_cost_allocation_tbl')
                     ? (float) $finance['total'] : (float) ($budget->actual_amount ?? 0))
                 : null;
+            // Run this step if the final cost checks match.
             if ($finalCost !== null && $finalCost <= 0) {
                 $finalCost = null;
             }
@@ -113,12 +125,14 @@ class ProjectCostSnapshotService
                     ? ($project->data_source ?: 'operational')
                     : 'operational',
             ];
+            // Run this step if the value check matches.
             if (Schema::hasColumn('ml_project_cost_snapshots', 'budget_history_id')) {
                 $budgetContext = app(BudgetHistoryService::class)->context($projectId, (float) $budget->budget_amount, (int) $budget->budget_id);
                 $snapshot['budget_history_id'] = $budgetContext['current_budget_version_id'];
                 $snapshot['original_budget_amount'] = $budgetContext['original_budget_amount'];
                 $snapshot['budget_basis'] = $budgetContext['budget_basis'];
             }
+            // Run this step if the value check matches.
             if (Schema::hasColumn('ml_project_cost_snapshots', 'capture_schema_version')) {
                 $snapshot += [
                     'capture_schema_version' => 2,
@@ -129,13 +143,16 @@ class ProjectCostSnapshotService
                     'days_past_planned_end' => max(0, (int) $plannedEnd->diffInDays($capturedAt->copy()->startOfDay(), false)),
                     'cost_coverage_complete' => $this->costCoverageComplete($projectId, $finance),
                 ];
+                // Run this step if the snapshot cost coverage complete check matches.
                 if (! $snapshot['cost_coverage_complete']) {
                     $finalCost = null;
                     $snapshot['final_actual_cost'] = null;
                     $snapshot['finalized_at'] = null;
                 }
             }
+            // Process each value.
             foreach ($activity as $column => $value) {
+                // Run this step if the column check matches.
                 if (Schema::hasColumn('ml_project_cost_snapshots', $column)) {
                     $snapshot[$column] = $value;
                 }
@@ -145,6 +162,7 @@ class ProjectCostSnapshotService
                 $latest = DB::table('ml_project_cost_snapshots')->where('project_id', $projectId)
                     ->where('captured_at', '>=', $capturedAt->copy()->subSeconds(5))
                     ->orderByDesc('snapshot_id')->first();
+                // Return early if the latest and snapshot checks match.
                 if ($latest && collect($snapshot)->except(['captured_at', 'capture_reason', 'finalized_at', 'elapsed_duration_months'])
                     ->every(fn ($value, $column) => ($latest->{$column} ?? null) == $value)) {
                     return false;
@@ -170,9 +188,11 @@ class ProjectCostSnapshotService
         }, 3);
     }
 
+    // Get the finance totals.
     private function financeTotals(int $projectId, Carbon $capturedAt): array
     {
         $result = ['total' => 0.0, 'material' => 0.0, 'labor' => 0.0, 'equipment' => 0.0, 'other' => 0.0, 'as_of_date' => null, 'has_ledger_rows' => false, 'unvalued_count' => 0, 'allocated_material' => 0.0];
+        // Return early if the value check matches.
         if (! Schema::hasTable('fin_expense_tbl')) {
             return $result;
         }
@@ -181,6 +201,7 @@ class ProjectCostSnapshotService
             ->leftJoin('fin_expense_category_tbl as category', 'category.fin_category_id', '=', 'expense.fin_category_id')
             ->where('expense.project_id', $projectId)
             ->whereDate('expense.expense_date', '<=', $capturedAt->toDateString());
+        // Run this step if the value check matches.
         if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
             $query->whereNull('expense.inventory_transaction_id');
         }
@@ -189,28 +210,34 @@ class ProjectCostSnapshotService
             ->select('expense.amount', 'expense.expense_date', 'expense.project_cost_component', 'category.category_code', 'category.category_name')
             ->get();
 
+        // Process each row.
         foreach ($rows as $row) {
             $result['has_ledger_rows'] = true;
             $amount = max(0, (float) $row->amount);
             $component = $this->normalizeComponent($row);
             $result['total'] += $amount;
             $result[$component] += $amount;
+            // Run this step if the expense date and result as of date checks match.
             if ($row->expense_date && ($result['as_of_date'] === null || $row->expense_date > $result['as_of_date'])) {
                 $result['as_of_date'] = $row->expense_date;
             }
         }
 
+        // Run this step if the value check matches.
         if (Schema::hasTable('inventory_cost_allocation_tbl')) {
             $allocations = DB::table('inventory_cost_allocation_tbl as allocation')
                 ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'allocation.out_transaction_id')
                 ->where('allocation.project_id', $projectId)
                 ->whereDate('movement.transaction_date', '<=', $capturedAt->toDateString());
             $this->limitToKnownRows($allocations, 'inventory_transaction_tbl', 'movement', $capturedAt);
+            // Run this step if the value check matches.
             if (Schema::hasColumn('inventory_cost_allocation_tbl', 'allocated_at')) {
                 $allocations->where('allocation.allocated_at', '<=', $capturedAt);
             }
             $allocations = $allocations->get(['allocation.valuation_status', 'allocation.allocated_amount', 'movement.transaction_date']);
+            // Process each allocation.
             foreach ($allocations as $allocation) {
+                // Run this step if the valuation status does not equal valued.
                 if ($allocation->valuation_status !== 'valued') {
                     $result['unvalued_count']++;
                     continue;
@@ -220,11 +247,13 @@ class ProjectCostSnapshotService
                 $result['total'] += $amount;
                 $result['material'] += $amount;
                 $result['allocated_material'] += $amount;
+                // Run this step if the result as of date and transaction date checks match.
                 if ($result['as_of_date'] === null || $allocation->transaction_date > $result['as_of_date']) {
                     $result['as_of_date'] = $allocation->transaction_date;
                 }
             }
         }
+        // Run this step if the input checks match.
         if (Schema::hasTable('inventory_transaction_tbl')
             && Schema::hasColumn('inventory_transaction_tbl', 'project_id')) {
             $unallocated = DB::table('inventory_transaction_tbl as withdrawal')
@@ -232,6 +261,7 @@ class ProjectCostSnapshotService
                 ->where('withdrawal.transaction_type', 'OUT')
                 ->whereDate('withdrawal.transaction_date', '<=', $capturedAt->toDateString());
             $this->limitToKnownRows($unallocated, 'inventory_transaction_tbl', 'withdrawal', $capturedAt);
+            // Run this step if the value check matches.
             if (Schema::hasTable('inventory_cost_allocation_tbl')) {
                 $unallocated->whereNotExists(function ($query) {
                     $query->selectRaw('1')->from('inventory_cost_allocation_tbl as allocation')
@@ -243,6 +273,7 @@ class ProjectCostSnapshotService
                 ->where('receipt.project_id', $projectId)->where('receipt.transaction_type', 'IN')
                 ->whereDate('receipt.transaction_date', '<=', $capturedAt->toDateString());
             $this->limitToKnownRows($projectReceipts, 'inventory_transaction_tbl', 'receipt', $capturedAt);
+            // Run this step if the value check matches.
             if (Schema::hasColumns('fin_expense_tbl',
                 ['inventory_transaction_id', 'project_id', 'entry_kind', 'amount'])) {
                 $projectReceipts->whereNotExists(function ($query) {
@@ -258,6 +289,7 @@ class ProjectCostSnapshotService
         return $result;
     }
 
+    // Get the activity for project.
     public function activityForProject(int $projectId, ?Carbon $capturedAt = null, ?array $finance = null): array
     {
         $capturedAt ??= now();
@@ -275,14 +307,17 @@ class ProjectCostSnapshotService
         $sevenDaysAgo = $capturedAt->copy()->subDays(6)->toDateString();
         $thirtyDaysAgo = $capturedAt->copy()->subDays(29)->toDateString();
         $projectStart = DB::table('project_tbl')->where('project_id', $projectId)->value('start_date');
+        // Run this step if the project start and as of checks match.
         if ($projectStart && $projectStart <= $asOf) {
             // Recent rates use the observed project days in their denominator, excluding pre-start costs.
             $sevenDaysAgo = max($sevenDaysAgo, $projectStart);
             $thirtyDaysAgo = max($thirtyDaysAgo, $projectStart);
         }
 
+        // Run this step if the value check matches.
         if (Schema::hasTable('fin_expense_tbl')) {
             $direct = DB::table('fin_expense_tbl')->where('project_id', $projectId);
+            // Run this step if the value check matches.
             if (Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
                 $direct->whereNull('inventory_transaction_id');
             }
@@ -293,6 +328,7 @@ class ProjectCostSnapshotService
             $features['direct_expense_count_30d'] = (clone $month)->count();
             $features['direct_expense_amount_30d'] = (float) $month->sum('amount');
         }
+        // Run this step if the value check matches.
         if (Schema::hasTable('inventory_transaction_tbl')) {
             $withdrawals = DB::table('inventory_transaction_tbl')
                 ->where('project_id', $projectId)->where('transaction_type', 'OUT');
@@ -302,11 +338,13 @@ class ProjectCostSnapshotService
             $features['stock_out_count_30d'] = (clone $month)->count();
             $features['stock_out_quantity_30d'] = (float) $month->sum('quantity');
         }
+        // Run this step if the value check matches.
         if (Schema::hasTable('inventory_cost_allocation_tbl')) {
             $allocated = DB::table('inventory_cost_allocation_tbl as allocation')
                 ->join('inventory_transaction_tbl as movement', 'movement.inventory_transaction_id', '=', 'allocation.out_transaction_id')
                 ->where('allocation.project_id', $projectId)->where('allocation.valuation_status', 'valued');
             $this->limitToKnownRows($allocated, 'inventory_transaction_tbl', 'movement', $capturedAt);
+            // Run this step if the value check matches.
             if (Schema::hasColumn('inventory_cost_allocation_tbl', 'allocated_at')) {
                 $allocated->where('allocation.allocated_at', '<=', $capturedAt);
             }
@@ -319,6 +357,7 @@ class ProjectCostSnapshotService
         return $features;
     }
 
+    // Get the forecast inputs.
     public function forecastInputs(int $projectId, Carbon $start, Carbon $plannedEnd): array
     {
         $at = now();
@@ -334,6 +373,7 @@ class ProjectCostSnapshotService
         ];
     }
 
+    // Get the cost coverage complete.
     private function costCoverageComplete(int $projectId, array $finance): bool
     {
         $quality = app(ProjectCostDataQualityService::class)->inspect($projectId);
@@ -347,10 +387,13 @@ class ProjectCostSnapshotService
             && abs($quality['final_cost'] - $finance['total']) <= 0.01;
     }
 
+    // Get the limit to known rows.
     private function limitToKnownRows(Builder $query, string $table, string $alias, Carbon $capturedAt): void
     {
         $column = $table === 'fin_expense_tbl' ? 'created_at' : 'recorded_at';
+        // Run this step if the column check matches.
         if (Schema::hasColumn($table, $column)) {
+            // Group these checks when finding matching records.
             $query->where(function ($query) use ($alias, $column, $capturedAt) {
                 // Legacy missing timestamps remain visible, but never prove a historical posting time.
                 $query->whereNull($alias.'.'.$column)->orWhere($alias.'.'.$column, '<=', $capturedAt);
@@ -358,15 +401,19 @@ class ProjectCostSnapshotService
         }
     }
 
+    // Clean up component.
     private function normalizeComponent(object $row): string
     {
         $category = strtolower(trim(($row->category_code ?? '').' '.($row->category_name ?? '')));
+        // Process each terms.
         foreach ([
             'material' => ['material', 'supply', 'cement', 'steel', 'sand', 'gravel', 'lumber', 'hardware'],
             'labor' => ['labor', 'labour', 'salary', 'wage', 'payroll', 'worker', 'manpower'],
             'equipment' => ['equipment', 'machine', 'backhoe', 'rental', 'repair', 'maintenance', 'fuel', 'diesel', 'gasoline'],
         ] as $component => $terms) {
+            // Process each term.
             foreach ($terms as $term) {
+                // Return early if the term check matches.
                 if (str_contains($category, $term)) {
                     return $component;
                 }
@@ -374,6 +421,7 @@ class ProjectCostSnapshotService
         }
 
         $explicit = strtolower(trim((string) ($row->project_cost_component ?? '')));
+        // Return early if the explicit check matches.
         if (in_array($explicit, ['material', 'labor', 'equipment', 'other'], true)) {
             return $explicit;
         }

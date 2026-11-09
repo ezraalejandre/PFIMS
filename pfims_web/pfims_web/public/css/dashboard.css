@@ -5,6 +5,7 @@
     box-sizing: border-box;
 }
 
+/* Style the body. */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f4f6f9;
@@ -30,17 +31,20 @@ body {
     height: 70px;
 }
 
+/* Style the top header left. */
 .top-header .left {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
+/* Style the top header left. */
 .top-header .left img {
     height: 40px;
     width: auto;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text {
     font-weight: 600;
     font-size: 1.1rem;
@@ -48,6 +52,7 @@ body {
     color: #1a2b3c;
 }
 
+/* Style the left brand text. */
 .top-header .left .brand-text small {
     display: block;
     font-weight: 300;
@@ -56,6 +61,7 @@ body {
     color: #555;
 }
 
+/* Style the top header right. */
 .top-header .right {
     display: flex;
     align-items: center;
@@ -63,6 +69,7 @@ body {
     font-size: 0.95rem;
 }
 
+/* Style the top header right. */
 .top-header .right a {
     display: flex;
     align-items: center;
@@ -72,10 +79,12 @@ body {
     position: relative; /* added for badge positioning */
 }
 
+/* Style the top header right on hover. */
 .top-header .right a:hover {
     opacity: 0.7;
 }
 
+/* Style the top header right. */
 .top-header .right span {
     cursor: pointer;
     opacity: 0.8;
@@ -86,10 +95,12 @@ body {
     color: #333;
 }
 
+/* Style the top header right on hover. */
 .top-header .right span:hover {
     opacity: 1;
 }
 
+/* Style the right user icon. */
 .top-header .right .user-icon {
     background: #1a2b3c;
     color: #fff;
@@ -130,15 +141,18 @@ body {
     z-index: 100;
 }
 
+/* Style the sidebar. */
 .sidebar nav {
     flex: 1;
     margin-top: 20px;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul {
     list-style: none;
 }
 
+/* Style the sidebar. */
 .sidebar nav ul li {
     padding: 12px 16px;
     margin-bottom: 4px;
@@ -149,26 +163,31 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
+/* Style the sidebar active. */
 .sidebar nav ul li.active {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
 }
 
+/* Style the sidebar on hover. */
 .sidebar nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 20px;
     margin-top: 20px;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul {
     list-style: none;
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li {
     display: flex;
     align-items: center;
@@ -180,25 +199,30 @@ body {
     transition: 0.2s;
 }
 
+/* Style the bottom nav nav icon. */
 .sidebar .bottom-nav ul li .nav-icon {
     width: 20px;
     height: 20px;
     object-fit: contain;
 }
 
+/* Style the sidebar bottom nav on hover. */
 .sidebar .bottom-nav ul li:hover {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
+/* Style the bottom nav logout. */
 .sidebar .bottom-nav ul li.logout {
     color: #fff;
 }
 
+/* Style the bottom nav logout on hover. */
 .sidebar .bottom-nav ul li.logout:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
+/* Style the sidebar bottom nav. */
 .sidebar .bottom-nav ul li a {
     display: flex;
     align-items: center;
@@ -222,6 +246,7 @@ body {
     color: #1a2b3c;
 }
 
+/* Style the page header. */
 .page-header h1 small {
     font-weight: 400;
     font-size: 0.9rem;
@@ -237,6 +262,7 @@ body {
     margin-bottom: 30px;
 }
 
+/* Style the stat card. */
 .stat-card {
     background: #fff;
     border-radius: 16px;
@@ -245,6 +271,7 @@ body {
     border: 1px solid #e5e7eb;
 }
 
+/* Style the stat card stat label. */
 .stat-card .stat-label {
     font-size: 0.85rem;
     text-transform: uppercase;
@@ -253,6 +280,7 @@ body {
     margin-bottom: 8px;
 }
 
+/* Style the stat card stat value. */
 .stat-card .stat-value {
     font-size: 2.2rem;
     font-weight: 700;
@@ -260,6 +288,7 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the stat card stat sub. */
 .stat-card .stat-sub {
     font-size: 0.8rem;
     color: #888;
@@ -273,6 +302,7 @@ body {
     margin-bottom: 40px;
 }
 
+/* Style the chart box. */
 .chart-box {
     background: #fff;
     border-radius: 16px;
@@ -280,6 +310,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
+/* Style the chart box. */
 .chart-box h3 {
     font-size: 1rem;
     font-weight: 600;
@@ -297,6 +328,7 @@ body {
     gap: 12px;
 }
 
+/* Style the bar chart bar group. */
 .bar-chart .bar-group {
     display: flex;
     flex-direction: column;
@@ -304,6 +336,7 @@ body {
     flex: 1;
 }
 
+/* Style the bar chart bar. */
 .bar-chart .bar {
     width: 100%;
     max-width: 40px;
@@ -312,6 +345,7 @@ body {
     transition: 0.3s;
 }
 
+/* Style the bar chart bar label. */
 .bar-chart .bar-label {
     margin-top: 8px;
     font-size: 0.7rem;
@@ -330,11 +364,13 @@ body {
     padding: 5px 0 10px 0;
 }
 
+/* Style the chart box line chart. */
 .chart-box .line-chart svg {
     width: 100%;
     height: 100%;
 }
 
+/* Style the line chart line path. */
 .chart-box .line-chart .line-path {
     fill: none;
     stroke: #c9a96e;
@@ -343,10 +379,12 @@ body {
     stroke-linecap: round;
 }
 
+/* Style the line chart area path. */
 .chart-box .line-chart .area-path {
     fill: rgba(201, 169, 110, 0.15);
 }
 
+/* Style the line chart dot. */
 .chart-box .line-chart .dot {
     fill: #c9a96e;
     stroke: #fff;
@@ -355,10 +393,12 @@ body {
     transition: 0.2s;
 }
 
+/* Style the line chart dot on hover. */
 .chart-box .line-chart .dot:hover {
     r: 6;
 }
 
+/* Style the line chart dot label. */
 .chart-box .line-chart .dot-label {
     font-size: 0.65rem;
     font-weight: 600;
@@ -366,18 +406,21 @@ body {
     text-anchor: middle;
 }
 
+/* Style the line chart x label. */
 .chart-box .line-chart .x-label {
     font-size: 0.7rem;
     fill: #888;
     text-anchor: middle;
 }
 
+/* Style the line chart grid line. */
 .chart-box .line-chart .grid-line {
     stroke: #f0f0f0;
     stroke-width: 1;
     stroke-dasharray: 4, 4;
 }
 
+/* Style the line chart y label. */
 .chart-box .line-chart .y-label {
     font-size: 0.6rem;
     fill: #aaa;
@@ -390,6 +433,7 @@ body {
     margin-top: 20px;
 }
 
+/* Style the projects section. */
 .projects-section h2 {
     font-size: 1.3rem;
     font-weight: 600;
@@ -397,12 +441,14 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the projects list. */
 .projects-list {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
+/* Style the project item. */
 .project-item {
     display: flex;
     align-items: center;
@@ -415,12 +461,14 @@ body {
     cursor: pointer;
 }
 
+/* Style the project item on hover. */
 .project-item:hover {
     transform: scale(1.02) translateY(-2px);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
     background: #fefcf7;
 }
 
+/* Style the project item. */
 .project-item img {
     width: 90px;
     height: 90px;
@@ -429,10 +477,12 @@ body {
     flex-shrink: 0;
 }
 
+/* Style the project item info. */
 .project-item .info {
     flex: 1;
 }
 
+/* Style the project item info. */
 .project-item .info h4 {
     font-size: 1rem;
     font-weight: 600;
@@ -440,16 +490,19 @@ body {
     margin-bottom: 4px;
 }
 
+/* Style the info budget. */
 .project-item .info .budget {
     font-size: 0.85rem;
     color: #555;
 }
 
+/* Style the project item progress wrapper. */
 .project-item .progress-wrapper {
     width: 200px;
     flex-shrink: 0;
 }
 
+/* Style the progress wrapper progress bar. */
 .project-item .progress-wrapper .progress-bar {
     width: 100%;
     height: 8px;
@@ -458,12 +511,14 @@ body {
     overflow: hidden;
 }
 
+/* Style the progress bar fill. */
 .project-item .progress-wrapper .progress-bar .fill {
     height: 100%;
     background: #c9a96e;
     border-radius: 10px;
 }
 
+/* Style the progress wrapper progress label. */
 .project-item .progress-wrapper .progress-label {
     display: flex;
     justify-content: space-between;
@@ -474,26 +529,33 @@ body {
 
 /* Responsive */
 @media (max-width: 900px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 200px;
         padding: 20px 15px;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 200px;
         padding: 20px;
     }
+    /* Style the charts row. */
     .charts-row {
         grid-template-columns: 1fr;
     }
+    /* Style the project item. */
     .project-item {
         flex-wrap: wrap;
     }
+    /* Style the project item progress wrapper. */
     .project-item .progress-wrapper {
         width: 100%;
     }
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 650px) {
+    /* Style the sidebar. */
     .sidebar {
         width: 100%;
         height: auto;
@@ -504,54 +566,67 @@ body {
         padding: 15px;
         gap: 10px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
     }
+    /* Style the sidebar. */
     .sidebar nav ul li {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    /* Style the sidebar bottom nav. */
     .sidebar .bottom-nav {
         border-top: none;
         padding-top: 0;
         margin-top: 0;
     }
+    /* Style the main content. */
     .main-content {
         margin-left: 0;
         padding: 20px 15px;
     }
+    /* Style the stats grid. */
     .stats-grid {
         grid-template-columns: 1fr 1fr;
     }
+    /* Style the top header. */
     .top-header {
         flex-wrap: wrap;
         height: auto;
         padding: 10px 15px;
         gap: 8px;
     }
+    /* Style the left brand text. */
     .top-header .left .brand-text small {
         display: none;
     }
+    /* Style the top header right. */
     .top-header .right {
         gap: 12px;
         font-size: 0.8rem;
     }
+    /* Style the project item. */
     .project-item {
         flex-direction: column;
         align-items: flex-start;
     }
+    /* Style the project item. */
     .project-item img {
         width: 100%;
         height: 160px;
     }
+    /* Style the project item progress wrapper. */
     .project-item .progress-wrapper {
         width: 100%;
     }
+    /* Style the body. */
     body {
         padding-top: 90px;
     }
+    /* Style the sidebar. */
     .sidebar {
         top: 90px;
         height: auto;
@@ -569,11 +644,13 @@ body {
     gap: 15px;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info {
     font-size: 0.85rem;
     color: #888;
 }
 
+/* Style the pagination wrapper rows info. */
 .pagination-wrapper .rows-info select {
     padding: 4px 8px;
     border: 1px solid #ddd;
@@ -583,12 +660,14 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links {
     display: flex;
     gap: 6px;
     align-items: center;
 }
 
+/* Style the pagination wrapper pagination links. */
 .pagination-wrapper .pagination-links a,
 .pagination-wrapper .pagination-links span {
     padding: 6px 12px;
@@ -600,15 +679,18 @@ body {
     cursor: pointer;
 }
 
+/* Style the pagination wrapper pagination links on hover. */
 .pagination-wrapper .pagination-links a:hover {
     background: #e9ecef;
 }
 
+/* Style the pagination links active. */
 .pagination-wrapper .pagination-links .active {
     background: #1a2b3c;
     color: #fff;
 }
 
+/* Style the pagination links dots. */
 .pagination-wrapper .pagination-links .dots {
     color: #aaa;
     cursor: default;
@@ -630,10 +712,12 @@ body {
     backdrop-filter: blur(4px);
 }
 
+/* Style the modal overlay active. */
 .modal-overlay.active {
     display: flex;
 }
 
+/* Style the modal container. */
 .modal-container {
     background: #fff;
     width: 600px;
@@ -648,11 +732,14 @@ body {
     flex-direction: column;
 }
 
+/* Define the fade in scale animation. */
 @keyframes fadeInScale {
+    /* Style the from. */
     from {
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
+    /* Style the to. */
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -673,6 +760,7 @@ body {
     margin-bottom: 20px;
 }
 
+/* Style the modal header. */
 .modal-header h2 {
     font-size: 1.5rem;
     font-weight: 600;
@@ -680,11 +768,13 @@ body {
     margin: 0;
 }
 
+/* Style the modal header subtitle. */
 .modal-header .subtitle {
     font-size: 0.9rem;
     color: #888;
 }
 
+/* Style the modal close. */
 .modal-close {
     background: none;
     border: none;
@@ -696,6 +786,7 @@ body {
     line-height: 1;
 }
 
+/* Style the modal close on hover. */
 .modal-close:hover {
     color: #333;
 }
@@ -711,11 +802,13 @@ body {
     border-radius: 12px;
 }
 
+/* Style the detail item. */
 .detail-item {
     display: flex;
     flex-direction: column;
 }
 
+/* Style the detail item. */
 .detail-item label {
     font-size: 0.7rem;
     text-transform: uppercase;
@@ -724,12 +817,14 @@ body {
     margin-bottom: 2px;
 }
 
+/* Style the detail item. */
 .detail-item span {
     font-size: 1rem;
     font-weight: 500;
     color: #1a2b3c;
 }
 
+/* Style the detail item status badge. */
 .detail-item span.status-badge {
     display: inline-flex;
     align-items: center;
@@ -739,6 +834,7 @@ body {
     font-weight: 600;
 }
 
+/* Style the detail item phase badge. */
 .detail-item span.phase-badge {
     display: inline-block;
     padding: 2px 10px;
@@ -759,6 +855,7 @@ body {
     font-weight: 500;
 }
 
+/* Style the status badge dot. */
 .status-badge .dot {
     width: 6px;
     height: 6px;
@@ -766,16 +863,24 @@ body {
     display: inline-block;
 }
 
+/* Style the status badge on track. */
 .status-badge.on-track { color: #2e7d32; }
+/* Style the on track dot. */
 .status-badge.on-track .dot { background: #2e7d32; }
 
+/* Style the status badge delayed. */
 .status-badge.delayed { color: #d32f2f; }
+/* Style the delayed dot. */
 .status-badge.delayed .dot { background: #d32f2f; }
 
+/* Style the status badge completed. */
 .status-badge.completed { color: #c9a96e; }
+/* Style the completed dot. */
 .status-badge.completed .dot { background: #c9a96e; }
 
+/* Style the status badge at risk. */
 .status-badge.at-risk { color: #e65100; }
+/* Style the at risk dot. */
 .status-badge.at-risk .dot { background: #e65100; }
 
 /* Modal footer */
@@ -789,6 +894,7 @@ body {
     border-top: 1px solid #e9ecef;
 }
 
+/* Style the modal footer. */
 .modal-footer button {
     padding: 10px 24px;
     border-radius: 8px;
@@ -799,21 +905,25 @@ body {
     border: none;
 }
 
+/* Style the btn cancel. */
 .btn-cancel {
     background: transparent;
     color: #888;
 }
 
+/* Style the btn cancel on hover. */
 .btn-cancel:hover {
     color: #333;
     background: #f5f5f5;
 }
 
+/* Style the btn view project. */
 .btn-view-project {
     background: #c9a96e;
     color: #fff;
 }
 
+/* Style the btn view project on hover. */
 .btn-view-project:hover {
     background: #b8975a;
     transform: translateY(-2px);
@@ -821,24 +931,29 @@ body {
 
 /* Responsive for modal */
 @media (max-width: 650px) {
+    /* Style the modal container. */
     .modal-container {
         padding: 20px;
         max-height: 95vh;
         width: 95%;
     }
+    /* Style the modal update modal container. */
     .modal-update .modal-container {
         width: 95%;
         padding: 20px;
     }
+    /* Style the project details grid. */
     .project-details-grid {
         grid-template-columns: 1fr;
         gap: 12px;
         padding: 15px;
     }
+    /* Style the modal footer. */
     .modal-footer {
         flex-direction: column;
         align-items: stretch;
     }
+    /* Style the modal footer. */
     .modal-footer button {
         width: 100%;
     }

@@ -18,6 +18,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('fin_expense_category_tbl', function (Blueprint $table) {
             $table->increments('fin_category_id');
             $table->string('category_code', 40);
@@ -34,6 +35,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('fin_expense_category_tbl');
     }
 };

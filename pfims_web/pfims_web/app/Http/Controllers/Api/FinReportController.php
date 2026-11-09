@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Group the fin report actions.
 class FinReportController extends Controller
 {
+    // Get expovrall.
     public function getExpovrall(Request $request)
     {
         $filters = $request->validate([
@@ -44,6 +46,7 @@ class FinReportController extends Controller
             ])
             ->groupByRaw($monthExpression);
 
+        // Run this step if the project id is set.
         if ($projectId) {
             $query->where('fe.project_id', $projectId);
         }
@@ -51,6 +54,7 @@ class FinReportController extends Controller
         return response()->json($query->get());
     }
 
+    // Get admin expense.
     public function getAdminExpense(Request $request)
     {
         $filters = $request->validate([
@@ -63,6 +67,7 @@ class FinReportController extends Controller
         $query = DB::table('v_fin_admin_expense')
             ->where('period_month', $period);
 
+        // Run this step if the project id is set.
         if ($projectId) {
             $query->where('project_id', $projectId);
         }
@@ -78,6 +83,7 @@ class FinReportController extends Controller
     public function getProfitDirect(Request $request)
     {
         $year = $request->validate(['year' => ['nullable', 'integer', 'between:2000,2100']])['year'] ?? null;
+        // Try this action and handle any errors below.
         try {
             $results = DB::table('fin_project_contract_tbl as c')
                 ->join('project_tbl as p', 'p.project_id', '=', 'c.project_id')
@@ -125,6 +131,7 @@ class FinReportController extends Controller
     public function getProfitOverall(Request $request)
     {
         $year = $request->validate(['year' => ['nullable', 'integer', 'between:2000,2100']])['year'] ?? null;
+        // Try this action and handle any errors below.
         try {
             $results = DB::table('fin_project_contract_tbl as c')
                 ->join('project_tbl as p', 'p.project_id', '=', 'c.project_id')
@@ -164,6 +171,7 @@ class FinReportController extends Controller
         }
     }
 
+    // Get cash asset.
     public function getCashAsset(Request $request)
     {
         $filters = $request->validate([
@@ -181,10 +189,12 @@ class FinReportController extends Controller
             })
             ->select('fin_cash_position_tbl.*', 'company_bank_account_tbl.account_name', 'company_bank_account_tbl.account_type');
 
+        // Run this step if the period is set.
         if ($period) {
             $query->where('fin_cash_position_tbl.period_month', $period);
         }
 
+        // Run this step if the account id is set.
         if ($accountId) {
             $query->where('fin_cash_position_tbl.account_id', $accountId);
         }
@@ -192,6 +202,7 @@ class FinReportController extends Controller
         return response()->json($query->get());
     }
 
+    // Get backhoe profitability.
     public function getBackhoeProfitability(Request $request)
     {
         $filters = $request->validate([
@@ -216,10 +227,12 @@ class FinReportController extends Controller
             })
             ->where('a.asset_type', 'heavy_equipment');
 
+        // Run this step if the asset id is set.
         if ($assetId) {
             $query->where('ee.asset_id', $assetId);
         }
 
+        // Run this step if the period is set.
         if ($period) {
             $query->where('ee.expense_date', '>=', $period)
                 ->where('ee.expense_date', '<', \Carbon\Carbon::parse($period)->addMonth()->toDateString());
@@ -285,9 +298,11 @@ class FinReportController extends Controller
             )
             ->orderBy('rp.entry_date', 'desc');
 
+        // Run this step if the entry type is set.
         if ($entryType) {
             $query->where('rp.entry_type', $entryType);
         }
+        // Run this step if the filters month has a value.
         if (!empty($filters['month'])) {
             $start = \Carbon\Carbon::createFromFormat('!Y-m', $filters['month']);
             $query->where('rp.entry_date', '>=', $start->toDateString())
@@ -297,6 +312,7 @@ class FinReportController extends Controller
         return response()->json($query->get());
     }
 
+    // Get construction bond.
     public function getConstructionBond(Request $request)
     {
         $filters = $request->validate([
@@ -307,6 +323,7 @@ class FinReportController extends Controller
             ->leftJoin('project_tbl', 'fin_construction_bond_tbl.project_id', '=', 'project_tbl.project_id')
             ->select('fin_construction_bond_tbl.*', 'project_tbl.project_name');
 
+        // Run this step if the project id is set.
         if ($projectId) {
             $query->where('fin_construction_bond_tbl.project_id', $projectId);
         }
@@ -314,6 +331,7 @@ class FinReportController extends Controller
         return response()->json($query->get());
     }
 
+    // Get repair total.
     public function getRepairTotal(Request $request)
     {
         $filters = $request->validate([
@@ -326,6 +344,7 @@ class FinReportController extends Controller
         return response()->json($query->get());
     }
 
+    // Get summary expenses.
     public function getSummaryExpenses(Request $request)
     {
         $filters = $request->validate([

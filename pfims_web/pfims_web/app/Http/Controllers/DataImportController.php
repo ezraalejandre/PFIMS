@@ -13,16 +13,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+// Group the data import actions.
 class DataImportController extends Controller
 {
+    // Get the contracts.
     public function contracts(Request $request, \App\Services\ContractImportService $service): JsonResponse
     {
         $this->authorizeRole($request, ['admin', 'accounting']);
         $validated = $request->validate(['file' => ['required', 'file', 'max:5120']]);
         return $this->runImport(fn () => $service->import($validated['file']), 'Project Contracts', 'fin_project_contract_tbl');
     }
+    // Set up the values this class needs.
     public function __construct(private AutomaticModelRetraining $modelRetraining, private AuditLogService $audit) {}
 
+    // Get the finance.
     public function finance(Request $request, FinanceImportService $service): JsonResponse
     {
         $this->authorizeRole($request, ['admin', 'accounting']);
@@ -33,6 +37,7 @@ class DataImportController extends Controller
         return $this->runImport(fn () => $service->import($validated['file']), 'Expenses', 'fin_expense_tbl');
     }
 
+    // Get the inventory.
     public function inventory(Request $request, InventoryImportService $service): JsonResponse
     {
         $this->authorizeRole($request, ['admin', 'operations']);
@@ -48,6 +53,7 @@ class DataImportController extends Controller
         );
     }
 
+    // Get the projects.
     public function projects(Request $request, ProjectImportService $service): JsonResponse
     {
         $this->authorizeRole($request, ['admin', 'operations']);
@@ -58,6 +64,7 @@ class DataImportController extends Controller
         return $this->runImport(fn () => $service->import($validated['file']), 'Projects', 'project_tbl');
     }
 
+    // Get the template.
     public function template(Request $request, string $type): StreamedResponse
     {
         abort_unless(in_array($type, ['projects', 'finance-expenses', 'contracts', 'inventory-items', 'inventory-transactions'], true), 404);
@@ -108,6 +115,7 @@ class DataImportController extends Controller
         return response()->streamDownload(function () use ($rows) {
             $output = fopen('php://output', 'wb');
             fwrite($output, "\xEF\xBB\xBF");
+            // Process each row.
             foreach ($rows as $row) {
                 fputcsv($output, $row);
             }
@@ -115,19 +123,24 @@ class DataImportController extends Controller
         }, $type.'-template.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    // Get the run import.
     private function runImport(callable $callback, string $module, string $table): JsonResponse
     {
+        // Try this action and handle any errors below.
         try {
             $result = $callback();
             $projectIds = array_values(array_filter(array_map('intval', $result['project_ids'] ?? [])));
+            // Run this step if the project ids is not empty.
             if ($projectIds !== []) {
                 $this->modelRetraining->afterDataChange($projectIds);
             }
+            // Run this step if the result imported is above 0.
             if (($result['imported'] ?? 0) > 0) {
                 $this->audit->recordOperation('IMPORT', $module, $table, 'Imported '.$result['imported'].' '.$module.' record(s)');
             }
 
             $message = $result['imported'].' row(s) imported successfully.';
+            // Run this step if the result unpriced stock in count is above 0.
             if (($result['unpriced_stock_in_count'] ?? 0) > 0) {
                 $message .= ' '.$result['unpriced_stock_in_count'].' legacy stock-in row(s) remain unpriced and are flagged for review.';
             }
@@ -154,6 +167,7 @@ class DataImportController extends Controller
         }
     }
 
+    // Get the authorize role.
     private function authorizeRole(Request $request, array $allowed): void
     {
         $role = strtolower((string) $request->user()?->role);

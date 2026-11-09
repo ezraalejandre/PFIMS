@@ -5,11 +5,13 @@
     box-sizing: border-box;
 }
 
+/* Style the html. */
 html, body {
     height: 100%;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Style the body. */
 body {
     display: flex;
     justify-content: center;
@@ -23,6 +25,7 @@ body {
     color: #1d2733;
 }
 
+/* Style the body before content. */
 body::before {
     content: "";
     position: fixed;
@@ -57,6 +60,7 @@ body::before {
     text-shadow: 0 2px 20px rgba(0, 0, 0, 0.55);
 }
 
+/* Style the brand logo. */
 .brand .logo {
     max-width: 140px;          /* slightly bigger */
     height: auto;
@@ -64,6 +68,7 @@ body::before {
     filter: drop-shadow(0 4px 15px rgba(0,0,0,0.6));
 }
 
+/* Style the brand. */
 .brand h1 {
     font-size: clamp(2.25rem, 4vw, 3.5rem);
     font-weight: 700;
@@ -71,6 +76,7 @@ body::before {
     line-height: 1.1;
 }
 
+/* Style the brand. */
 .brand h1 span {
     font-weight: 500;
     display: block;
@@ -79,6 +85,7 @@ body::before {
     opacity: 0.92;
 }
 
+/* Style the brand decorative line. */
 .brand .decorative-line {
     width: 70px;
     height: 4px;
@@ -87,6 +94,7 @@ body::before {
     border-radius: 2px;
 }
 
+/* Style the brand subtitle. */
 .brand .subtitle {
     font-size: 1rem;
     opacity: 0.9;
@@ -109,6 +117,7 @@ body::before {
     flex-shrink: 0;
 }
 
+/* Style the form wrapper. */
 .form-wrapper h2 {
     font-size: 1.8rem;
     font-weight: 600;
@@ -116,6 +125,7 @@ body::before {
     margin-bottom: 4px;
 }
 
+/* Style the form wrapper form subtitle. */
 .form-wrapper .form-subtitle {
     color: #888;
     font-size: 0.95rem;
@@ -127,6 +137,7 @@ body::before {
     margin-bottom: 22px;
 }
 
+/* Style the form group. */
 .form-group label {
     display: block;
     font-size: 0.85rem;
@@ -135,6 +146,7 @@ body::before {
     margin-bottom: 5px;
 }
 
+/* Style the form group. */
 .form-group input {
     width: 100%;
     padding: 13px 15px;
@@ -146,6 +158,7 @@ body::before {
     color: #1d2733;
 }
 
+/* Style the form group when focused. */
 .form-group input:focus {
     outline: none;
     border-color: #c9a96e;
@@ -168,6 +181,7 @@ body::before {
     margin-top: 8px;
 }
 
+/* Style the btn signin on hover. */
 .btn-signin:hover {
     background: #cf760a;
     transform: translateY(-2px);
@@ -180,6 +194,7 @@ body::before {
     margin-top: 15px;
 }
 
+/* Style the forgot password. */
 .forgot-password a {
     color: #888;
     font-size: 0.85rem;
@@ -187,6 +202,7 @@ body::before {
     transition: 0.3s;
 }
 
+/* Style the forgot password on hover. */
 .forgot-password a:hover {
     color: #c9a96e;
     text-decoration: underline;
@@ -201,6 +217,7 @@ body::before {
     line-height: 1.5;
 }
 
+/* Style the footer text. */
 .footer-text strong {
     color: #1a2b3c;
 }
@@ -222,6 +239,7 @@ body::before {
     animation: slideDown 0.4s ease;
 }
 
+/* Style the error notification error content. */
 .error-notification .error-content {
     display: flex;
     align-items: center;
@@ -229,12 +247,14 @@ body::before {
     justify-content: space-between;
 }
 
+/* Style the error notification error icon. */
 .error-notification .error-icon {
     font-size: 1.2rem;
     font-weight: 700;
     color: #fff;
 }
 
+/* Style the error notification error close. */
 .error-notification .error-close {
     background: transparent;
     border: none;
@@ -245,15 +265,19 @@ body::before {
     padding: 0 8px;
 }
 
+/* Style the error notification error close on hover. */
 .error-notification .error-close:hover {
     opacity: 1;
 }
 
+/* Define the slide down animation. */
 @keyframes slideDown {
+    /* Style the from. */
     from {
         transform: translateX(-50%) translateY(-30px);
         opacity: 0;
     }
+    /* Style the to. */
     to {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
@@ -275,10 +299,12 @@ body::before {
     backdrop-filter: blur(6px);
 }
 
+/* Style the modal overlay active. */
 .modal-overlay.active {
     display: flex;
 }
 
+/* Style the modal container. */
 .modal-container {
     background: #fff;
     width: 450px;
@@ -291,17 +317,21 @@ body::before {
     animation: fadeInScale 0.25s ease;
 }
 
+/* Define the fade in scale animation. */
 @keyframes fadeInScale {
+    /* Style the from. */
     from {
         opacity: 0;
         transform: scale(0.95) translateY(10px);
     }
+    /* Style the to. */
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
     }
 }
 
+/* Style the modal header. */
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -309,6 +339,7 @@ body::before {
     margin-bottom: 20px;
 }
 
+/* Style the modal header. */
 .modal-header h2 {
     font-size: 1.4rem;
     font-weight: 600;
@@ -316,6 +347,7 @@ body::before {
     margin: 0;
 }
 
+/* Style the modal close. */
 .modal-close {
     background: none;
     border: none;
@@ -327,14 +359,17 @@ body::before {
     line-height: 1;
 }
 
+/* Style the modal close on hover. */
 .modal-close:hover {
     color: #333;
 }
 
+/* Style the modal body. */
 .modal-body {
     padding: 0 2px;
 }
 
+/* Style the modal footer. */
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -344,6 +379,7 @@ body::before {
     border-top: 1px solid #e9ecef;
 }
 
+/* Style the modal footer. */
 .modal-footer button {
     padding: 10px 24px;
     border-radius: 8px;
@@ -354,21 +390,25 @@ body::before {
     border: none;
 }
 
+/* Style the btn cancel. */
 .btn-cancel {
     background: transparent;
     color: #888;
 }
 
+/* Style the btn cancel on hover. */
 .btn-cancel:hover {
     color: #333;
     background: #f5f5f5;
 }
 
+/* Style the btn save. */
 .btn-save {
     background: #c9a96e;
     color: #fff;
 }
 
+/* Style the btn save on hover. */
 .btn-save:hover {
     background: #b8975a;
     transform: translateY(-1px);
@@ -376,33 +416,41 @@ body::before {
 
 /* Responsive */
 @media (max-width: 1024px) {
+    /* Style the container. */
     .container {
         padding-inline: 0;
     }
 
+    /* Style the brand. */
     .brand {
         padding-inline: 20px;
     }
 }
 
+/* Adjust these styles for this screen size or display setting. */
 @media (max-width: 850px) {
+    /* Style the container. */
     .container {
         flex-direction: column;
         padding: 20px 0;
         gap: 30px;
     }
+    /* Style the brand. */
     .brand {
         width: 100%;
         padding: 0 20px;
     }
+    /* Style the brand subtitle. */
     .brand .subtitle {
         max-width: 100%;
     }
+    /* Style the form wrapper. */
     .form-wrapper {
         width: 100%;
         padding: 30px 25px;
         border-radius: 0;
     }
+    /* Style the error notification. */
     .error-notification {
         min-width: auto;
         width: 90%;
@@ -414,11 +462,13 @@ body::before {
 /* Keep stacked landing content anchored within short phone and tablet viewports. */
 @media (max-width: 850px) and (max-height: 850px),
        (max-width: 600px) {
+    /* Style the body. */
     body {
         align-items: flex-start;
         overflow-y: auto;
     }
 
+    /* Style the container. */
     .container {
         padding-top: max(20px, env(safe-area-inset-top));
         padding-bottom: max(20px, env(safe-area-inset-bottom));

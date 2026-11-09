@@ -3,6 +3,7 @@
 namespace App\Services;
 
 
+// Group the automatic model training again actions.
 class AutomaticModelRetraining
 {
     /** Preserve observations on writes; model training runs on the weekly schedule. */
@@ -12,6 +13,7 @@ class AutomaticModelRetraining
             ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false && (int) $id > 0)
             ->map(fn ($id) => (int) $id)->unique()->values();
 
+        // Process each project id.
         foreach ($ids as $projectId) {
             app(ProjectCostSnapshotService::class)->captureAfterCommit($projectId, 'data_change');
         }

@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('reports', function (Blueprint $table) {
             $table->string('generation_method', 30)->default('legacy_upload')->after('status');
             $table->string('dataset_key', 40)->nullable()->after('generation_method');
@@ -23,8 +25,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('reports', function (Blueprint $table) {
             $table->dropIndex('reports_generation_dataset_idx');
             $table->dropIndex('reports_generated_at_idx');

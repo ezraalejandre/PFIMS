@@ -17,6 +17,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('fin_receivable_payable_tbl', function (Blueprint $table) {
             $table->increments('rp_id');
             $table->enum('entry_type', [
@@ -47,6 +48,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('fin_receivable_payable_tbl');
     }
 };

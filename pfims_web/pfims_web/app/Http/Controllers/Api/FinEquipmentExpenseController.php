@@ -8,13 +8,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+// Group the fin equipment expense actions.
 class FinEquipmentExpenseController extends Controller
 {
+    // List the fin equipment expense records.
     public function index()
     {
         return response()->json(FinEquipmentExpense::with(['asset:asset_id,asset_name', 'project:project_id,project_name'])->get());
     }
 
+    // Save a new fin equipment expense record.
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -26,11 +29,13 @@ class FinEquipmentExpenseController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $data = $this->normalize($validator->validated());
+        // Return early if a matching record already exists.
         if ($this->isDuplicate($data)) {
             return response()->json(['message' => 'This equipment expense already exists.'], 409);
         }
@@ -39,9 +44,11 @@ class FinEquipmentExpenseController extends Controller
         return response()->json($expense, 201);
     }
 
+    // Save changes to the fin equipment expense record.
     public function update(Request $request, $id)
     {
         $expense = FinEquipmentExpense::find($id);
+        // Return early if the expense is missing or false.
         if (! $expense) {
             return response()->json(['message' => 'Equipment expense not found'], 404);
         }
@@ -54,14 +61,17 @@ class FinEquipmentExpenseController extends Controller
             'expense_date' => 'sometimes|required|date|before_or_equal:today',
             'remarks' => 'nullable|string|max:255',
         ]);
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
+        // Return early if the filled and expense date checks match.
         if ($request->filled('expense_date') && \Carbon\Carbon::parse($request->expense_date)->format('Y-m') !== $expense->expense_date->format('Y-m')) {
             return response()->json(['message' => 'The expense date does not match the rental period.'], 422);
         }
         $data = $this->normalize($validator->validated());
         $candidate = array_merge($expense->only($expense->getFillable()), $data);
+        // Return early if a matching record already exists.
         if ($this->isDuplicate($candidate, (int) $id)) {
             return response()->json(['message' => 'This equipment expense already exists.'], 409);
         }
@@ -70,9 +80,11 @@ class FinEquipmentExpenseController extends Controller
         return response()->json($expense);
     }
 
+    // Delete the selected fin equipment expense record.
     public function destroy($id)
     {
         $expense = FinEquipmentExpense::find($id);
+        // Return early if the expense is missing or false.
         if (! $expense) {
             return response()->json(['message' => 'Equipment expense not found'], 404);
         }
@@ -82,8 +94,10 @@ class FinEquipmentExpenseController extends Controller
         return response()->json(['message' => 'Equipment expense deleted successfully']);
     }
 
+    // Clean up the supplied values.
     private function normalize(array $data): array
     {
+        // Run this step if the data check matches.
         if (array_key_exists('remarks', $data)) {
             $data['remarks'] = blank($data['remarks']) ? null : trim($data['remarks']);
         }
@@ -91,6 +105,7 @@ class FinEquipmentExpenseController extends Controller
         return $data;
     }
 
+    // Check the duplicate condition.
     private function isDuplicate(array $data, ?int $ignoreId = null): bool
     {
         $query = DB::table('fin_equipment_expense_tbl')
@@ -99,6 +114,7 @@ class FinEquipmentExpenseController extends Controller
             ->where('amount', $data['amount'])
             ->whereDate('expense_date', $data['expense_date']);
         $query = empty($data['project_id']) ? $query->whereNull('project_id') : $query->where('project_id', $data['project_id']);
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('equip_expense_id', '!=', $ignoreId);
         }

@@ -2,17 +2,21 @@
 
 namespace App\Services;
 
+// Group the project overrun policy actions.
 class ProjectOverrunPolicy
 {
     public const MATERIAL_TOLERANCE = 0.05;
 
+    // Get the classify.
     public function classify(float $cost, ?float $budget): array
     {
+        // Return early if the budget and cost checks match.
         if ($budget === null || $budget <= 0 || ! is_finite($budget) || ! is_finite($cost) || $cost < 0) {
             return ['any_overrun' => null, 'material_overrun' => null, 'variance' => null, 'variance_percentage' => null];
         }
         $cost = round($cost, 2);
         $budget = round($budget, 2);
+        // Return early if the budget is at most 0.
         if ($budget <= 0) {
             return ['any_overrun' => null, 'material_overrun' => null, 'variance' => null, 'variance_percentage' => null];
         }
@@ -25,6 +29,7 @@ class ProjectOverrunPolicy
         ];
     }
 
+    // Get the outcomes.
     public function outcomes(float $cost, array $context): array
     {
         return [

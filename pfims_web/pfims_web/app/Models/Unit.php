@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the unit table.
 class Unit extends Model
 {
     protected $table = 'unit_tbl';

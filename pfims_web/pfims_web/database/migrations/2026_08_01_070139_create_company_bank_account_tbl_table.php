@@ -16,6 +16,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('company_bank_account_tbl', function (Blueprint $table) {
             $table->increments('account_id');
             $table->string('account_name', 100);
@@ -29,6 +30,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('company_bank_account_tbl');
     }
 };

@@ -5,8 +5,10 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function (): void {
             $categories = [
                 ['CONSTRUCTION_SUPPLY', 'CONSTRUCTION_SUPPLY', 'Construction Supply', 'direct'],
@@ -31,12 +33,15 @@ return new class extends Migration
                 ['OTHER_ADMIN_COSTS', 'ADMIN_OTHERS', 'Others', 'admin'],
             ];
 
+            // Process each classification.
             foreach ($categories as [$oldCode, $code, $name, $classification]) {
                 $existing = DB::table('fin_expense_category_tbl')->where('category_code', $code)->first();
                 $legacy = $oldCode === $code ? null : DB::table('fin_expense_category_tbl')->where('category_code', $oldCode)->first();
+                // Run this step if the legacy and classification checks match.
                 if ($legacy && $classification === 'direct' && $legacy->classification !== 'direct') {
                     $legacy = null;
                 }
+                // Run this step if the existing and legacy checks match.
                 if ($existing && $legacy && $existing->fin_category_id !== $legacy->fin_category_id) {
                     DB::table('fin_expense_tbl')->where('fin_category_id', $legacy->fin_category_id)
                         ->update(['fin_category_id' => $existing->fin_category_id, 'updated_at' => now()]);
@@ -66,9 +71,11 @@ return new class extends Migration
                 'PENALTY' => 'ADMIN_PENALTY_EXPENSE',
                 'OTHERS' => 'ADMIN_OTHERS',
             ];
+            // Process each new code.
             foreach ($legacyCodes as $oldCode => $newCode) {
                 $old = DB::table('fin_expense_category_tbl')->where('category_code', $oldCode)->first();
                 $newId = DB::table('fin_expense_category_tbl')->where('category_code', $newCode)->value('fin_category_id');
+                // Skip this item if the old and new id checks match.
                 if (! $old || ! $newId || ($oldCode !== 'CONST_SUPPLY' && $old->classification === 'direct')) {
                     continue;
                 }
@@ -79,6 +86,7 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
         // Existing expenses may now use these categories; reversing them would lose meaning.

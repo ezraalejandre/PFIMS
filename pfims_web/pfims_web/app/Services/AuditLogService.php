@@ -9,6 +9,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
+// Group the audit log actions.
 class AuditLogService
 {
     private const SENSITIVE = ['password', 'remember_token', 'first_login_otp', 'first_login_otp_expires_at', 'profile_photo_data', 'profile_photo', 'profile_photo_mime'];
@@ -38,9 +39,11 @@ class AuditLogService
         'expense_category_tbl' => ['Configurations', 'category_name', '/settings?section=configurations'],
     ];
 
+    // Get the record.
     public function record(Model $model, string $action, array $before = [], array $after = []): void
     {
         $user = Auth::user();
+        // Run this step if the user and model checks match.
         if (! $user || ! Schema::hasTable('audit_logs') || $model instanceof AuditLog) {
             return;
         }
@@ -55,21 +58,26 @@ class AuditLogService
             && $before['password'] !== $after['password'];
         $photoChanged = $model instanceof User && $action === 'UPDATE'
             && ($before['profile_photo_data'] ?? null) !== ($after['profile_photo_data'] ?? null);
+        // Run this step if the action and changes checks match.
         if ($action === 'UPDATE' && ! $changes && ! $passwordChanged && ! $photoChanged) {
             return;
         }
         $verb = match ($action) { 'CREATE' => 'Added', 'UPDATE' => 'Updated', default => 'Deleted' };
         $details = "{$verb} {$module}: {$label}";
+        // Run this step if the password changed is set.
         if ($passwordChanged) {
             $details .= '; changed password';
         }
+        // Run this step if the photo changed is set.
         if ($photoChanged) {
             $details .= '; changed profile photo';
         }
+        // Run this step if the action and changes checks match.
         if ($action === 'UPDATE' && $changes) {
             $fields = collect(array_keys($changes))->map(fn ($field) => str($field)->replace('_', ' ')->headline())->join(', ');
             $details .= "; changed {$fields}";
         }
+        // Run this step if the table and action checks match.
         if ($table === 'reports' && $action === 'CREATE' && ($after['generation_method'] ?? null) === 'system_export') {
             $action = 'EXPORT';
             $details = "Exported report: {$label}";
@@ -94,9 +102,11 @@ class AuditLogService
         ]);
     }
 
+    // Record operation.
     public function recordOperation(string $action, string $module, string $table, string $details): void
     {
         $user = Auth::user();
+        // Run this step if the user checks match.
         if (! $user || ! Schema::hasTable('audit_logs')) {
             return;
         }
@@ -119,8 +129,10 @@ class AuditLogService
         ]);
     }
 
+    // Record password reset.
     public function recordPasswordReset(User $user): void
     {
+        // Run this step if the value check matches.
         if (! Schema::hasTable('audit_logs')) {
             return;
         }
@@ -144,12 +156,15 @@ class AuditLogService
         ]);
     }
 
+    // Get the meaningful changes.
     private function meaningfulChanges(array $before, array $after): array
     {
         $before = Arr::except($before, [...self::SENSITIVE, 'created_at', 'updated_at']);
         $after = Arr::except($after, [...self::SENSITIVE, 'created_at', 'updated_at']);
         $changes = [];
+        // Process each value.
         foreach ($after as $field => $value) {
+            // Run this step if the field and before checks match.
             if (array_key_exists($field, $before) && (string) $before[$field] !== (string) $value) {
                 $changes[$field] = ['from' => $before[$field], 'to' => $value];
             }

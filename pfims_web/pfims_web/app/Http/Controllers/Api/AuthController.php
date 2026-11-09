@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Group the auth actions.
 class AuthController extends Controller
 {
+    // Get the login.
     public function login(Request $request)
     {
         $username = $request->username;
@@ -17,6 +19,7 @@ class AuthController extends Controller
             ->first();
 
 
+        // Return early if the user is missing or false.
         if (!$user) {
             return response()->json([
                 "success" => false,

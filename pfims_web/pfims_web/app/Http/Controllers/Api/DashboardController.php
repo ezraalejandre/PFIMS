@@ -13,10 +13,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+// Group the dashboard actions.
 class DashboardController extends Controller
 {
     private const INACTIVE_STATUSES = ['Completed', 'Pending'];
 
+    // List the dashboard records.
     public function index(Request $request): JsonResponse
     {
         $filters = array_filter($request->validate([
@@ -44,6 +46,7 @@ class DashboardController extends Controller
         ]);
     }
 
+    // Get the stat cards.
     private function statCards(array $filters): array
     {
         $allProjects = $this->projectQuery($filters)->get();
@@ -101,11 +104,13 @@ class DashboardController extends Controller
         return $cards;
     }
 
+    // Get the completion trend.
     private function completionTrend(array $filters): array
     {
         $months = collect();
         $values = collect();
         $counts = collect();
+        // Repeat for each step in this range.
         for ($i = 5; $i >= 0; $i--) {
             $month = now()->subMonths($i);
             $months->push($month->format('M Y'));
@@ -117,12 +122,14 @@ class DashboardController extends Controller
         return ['months' => $months, 'values' => $values, 'project_counts' => $counts];
     }
 
+    // Get the budget vs expense.
     private function budgetVsExpense(array $filters): array
     {
         $projects = $this->projectQuery($filters)->get(['project_id', 'start_date']);
         $months = collect();
         $budgets = collect();
         $expenses = collect();
+        // Repeat for each step in this range.
         for ($i = 5; $i >= 0; $i--) {
             $month = now()->subMonths($i);
             $monthEnd = $month->copy()->endOfMonth();
@@ -135,6 +142,7 @@ class DashboardController extends Controller
         return ['months' => $months, 'allocated_budget' => $budgets, 'expenses' => $expenses];
     }
 
+    // Get the project status.
     private function projectStatus(array $filters): array
     {
         $groups = $this->projectQuery($filters)->get()->groupBy(fn ($project) => $project->status ?: 'Unspecified')->map->count();
@@ -142,9 +150,11 @@ class DashboardController extends Controller
         return ['labels' => $groups->keys()->values(), 'values' => $groups->values()];
     }
 
+    // Get the stock status.
     private function stockStatus(?string $selectedStatus = null): array
     {
         $groups = $this->inventoryStockGroups();
+        // Run this step if the selected status is not null.
         if ($selectedStatus !== null) {
             $groups = [$selectedStatus => $groups[$selectedStatus] ?? 0];
         }
@@ -152,11 +162,13 @@ class DashboardController extends Controller
         return ['labels' => array_keys($groups), 'values' => array_values($groups)];
     }
 
+    // Get the inventory stock groups.
     private function inventoryStockGroups(): array
     {
         $minimumThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
         $items = DB::table('inventory_item_tbl')->get(['current_stock', 'reorder_level']);
         $groups = ['In stock' => 0, 'Low stock' => 0, 'Out of stock' => 0];
+        // Process each item.
         foreach ($items as $item) {
             $stock = (float) $item->current_stock;
             $reorder = max((float) ($item->reorder_level ?? 0), $minimumThreshold);
@@ -166,6 +178,7 @@ class DashboardController extends Controller
         return $groups;
     }
 
+    // Get the projects.
     private function projects(array $filters): array
     {
         $ledger = app(ProjectCostLedger::class);
@@ -177,6 +190,7 @@ class DashboardController extends Controller
                 'project_tbl.actual_end_date',
                 'project_tbl.completion_percentage', 'project_tbl.worker_count', DB::raw('COALESCE(b.budget_amount, 0) as budget_amount'),
                 DB::raw('COALESCE(b.actual_amount, 0) as actual_amount')])
+            // Build a result for each record.
             ->orderByDesc('project_tbl.start_date')->limit(500)->get()->map(function ($project) use ($direct, $allocated) {
                 $project->actual_amount = round((float) ($direct[$project->project_id] ?? 0) + (float) ($allocated[$project->project_id] ?? 0), 2);
                 $project->budget = $this->currency((float) $project->budget_amount);
@@ -185,18 +199,23 @@ class DashboardController extends Controller
             })->all();
     }
 
+    // Get the project query.
     private function projectQuery(array $filters): Builder
     {
         $query = Project::query();
+        // Run this step if the filters status has a value.
         if (! empty($filters['status'])) {
             $query->where('project_tbl.status', $filters['status']);
         }
+        // Run this step if the filters start date has a value.
         if (! empty($filters['start_date'])) {
             $query->whereDate('project_tbl.start_date', '>=', $filters['start_date']);
         }
+        // Run this step if the filters end date has a value.
         if (! empty($filters['end_date'])) {
             $query->whereDate('project_tbl.start_date', '<=', $filters['end_date']);
         }
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = addcslashes(trim($filters['search']), '%_\\');
             $query->where(fn ($inner) => $inner->where('project_tbl.project_name', 'like', "%{$search}%")
@@ -208,8 +227,10 @@ class DashboardController extends Controller
         return $query;
     }
 
+    // Get the total expenses.
     private function totalExpenses(array $projectIds, ?string $throughDate = null): float
     {
+        // Return early if the project ids is empty.
         if ($projectIds === []) {
             return 0;
         }
@@ -218,6 +239,7 @@ class DashboardController extends Controller
             ->when($throughDate, fn ($query) => $query->whereDate('expense_date', '<=', $throughDate))->sum('amount');
     }
 
+    // Get the currency.
     private function currency(float $amount): string
     {
         return '₱'.number_format($amount, 2);

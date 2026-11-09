@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+// Group the expense category rules actions.
 class ExpenseCategoryRules
 {
+    // Get the component.
     public static function component(object $category): string
     {
         $code = strtoupper((string) ($category->category_code ?? ''));

@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+// Link records to the project table.
 class Project extends Model
 {
     protected $table = 'project_tbl';

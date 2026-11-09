@@ -8,17 +8,21 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
 
+// Group the forgot password otp actions.
 class ForgotPasswordOtpNotification extends Notification
 {
     use Queueable;
 
+    // Set up the values this class needs.
     public function __construct(public string $otp) {}
 
+    // Choose how to send this notification.
     public function via($notifiable)
     {
         return ['mail'];
     }
 
+    // Build the email message.
     public function toMail($notifiable)
     {
         return (new MailMessage)

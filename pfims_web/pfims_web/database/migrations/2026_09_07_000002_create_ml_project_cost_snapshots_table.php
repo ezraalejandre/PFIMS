@@ -6,12 +6,15 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Run this step if the value check matches.
         if (Schema::hasTable('ml_project_cost_snapshots')) {
             return;
         }
 
+        // Update this part of the database structure.
         Schema::create('ml_project_cost_snapshots', function (Blueprint $table) {
             $table->bigIncrements('snapshot_id');
             $table->integer('project_id');
@@ -40,8 +43,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('ml_project_cost_snapshots');
     }
 };

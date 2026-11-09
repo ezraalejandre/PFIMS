@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+// Group the company asset actions.
 class CompanyAssetController extends Controller
 {
     /**
@@ -51,6 +52,7 @@ class CompanyAssetController extends Controller
     public function show($id)
     {
         $asset = CompanyAsset::find($id);
+        // Return early if the asset is missing or false.
         if (! $asset) {
             return response()->json(['message' => 'Asset not found'], 404);
         }
@@ -71,6 +73,7 @@ class CompanyAssetController extends Controller
             'status' => 'sometimes|required|in:active,sold,disposed',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
@@ -79,6 +82,7 @@ class CompanyAssetController extends Controller
         $data['asset_name'] = trim($data['asset_name']);
         $data['asset_code'] = blank($data['asset_code'] ?? null) ? null : strtoupper(trim($data['asset_code']));
         $data['status'] = $data['status'] ?? 'active';
+        // Return early if the data asset name asset type check matches.
         if ($this->duplicateNameType($data['asset_name'], $data['asset_type'])) {
             return response()->json(['message' => 'An asset with this name and type already exists.'], 409);
         }
@@ -93,6 +97,7 @@ class CompanyAssetController extends Controller
     public function update(Request $request, $id)
     {
         $asset = CompanyAsset::find($id);
+        // Return early if the asset is missing or false.
         if (! $asset) {
             return response()->json(['message' => 'Asset not found'], 404);
         }
@@ -105,18 +110,22 @@ class CompanyAssetController extends Controller
             'status' => 'sometimes|required|in:active,sold,disposed',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $data = $validator->validated();
+        // Run this step if the data asset name is set.
         if (isset($data['asset_name'])) {
             $data['asset_name'] = trim($data['asset_name']);
         }
+        // Run this step if the data check matches.
         if (array_key_exists('asset_code', $data)) {
             $data['asset_code'] = blank($data['asset_code']) ? null : strtoupper(trim($data['asset_code']));
         }
         $candidate = array_merge($asset->only($asset->getFillable()), $data);
+        // Return early if the id asset name asset type check matches.
         if ($this->duplicateNameType($candidate['asset_name'], $candidate['asset_type'], (int) $id)) {
             return response()->json(['message' => 'An asset with this name and type already exists.'], 409);
         }
@@ -131,6 +140,7 @@ class CompanyAssetController extends Controller
     public function destroy($id)
     {
         $asset = CompanyAsset::find($id);
+        // Return early if the asset is missing or false.
         if (! $asset) {
             return response()->json(['message' => 'Asset not found'], 404);
         }
@@ -139,6 +149,7 @@ class CompanyAssetController extends Controller
         $hasExpenses = $asset->expenses()->exists();
         $hasRentalIncome = $asset->rentalIncome()->exists();
 
+        // Return early if the has expenses and has rental income checks match.
         if ($hasExpenses || $hasRentalIncome) {
             return response()->json([
                 'message' => 'Cannot delete asset because it has related expense or rental income records.',
@@ -150,11 +161,13 @@ class CompanyAssetController extends Controller
         return response()->json(['message' => 'Asset deleted successfully']);
     }
 
+    // Get the duplicate name type.
     private function duplicateNameType(string $name, string $type, ?int $ignoreId = null): bool
     {
         $query = DB::table('company_asset_tbl')
             ->where('asset_type', $type)
             ->whereRaw('LOWER(TRIM(asset_name)) = ?', [strtolower(trim($name))]);
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('asset_id', '!=', $ignoreId);
         }

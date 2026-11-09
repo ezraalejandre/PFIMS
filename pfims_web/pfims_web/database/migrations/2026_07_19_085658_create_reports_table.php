@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up()
     {
+        // Update this part of the database structure.
         Schema::create('reports', function (Blueprint $table) {
             $table->id();
             $table->string('report_id')->unique();
@@ -30,8 +32,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down()
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('reports');
     }
 };

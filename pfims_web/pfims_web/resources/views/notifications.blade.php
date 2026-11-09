@@ -1,3 +1,4 @@
+{{-- Prepare the values used by this page section. --}}
 @php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -7,19 +8,29 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Notifications - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/notifications.css') }}">
+    {{-- Set the styles used by this page section. --}}
     <style>
+        /* Style the error notification. */
         .error-notification { z-index: 9999 !important; }
+        /* Style the success notification. */
         .success-notification { z-index: 9999 !important; }
+        /* Style the confirm modal. */
         #confirmModal { z-index: 9999 !important; }
         
         /* Notification icon colors */
         .notif-icon.green { background: #e8f5e9; color: #2e7d32; }
+        /* Style the notif icon orange. */
         .notif-icon.orange { background: #fff3e0; color: #e65100; }
+        /* Style the notif icon red. */
         .notif-icon.red { background: #ffebee; color: #c62828; }
+        /* Style the notif icon blue. */
         .notif-icon.blue { background: #e3f2fd; color: #0d47a1; }
+        /* Style the notif icon wrench. */
         .notif-icon.wrench { background: #f5f5f5; color: #616161; }
+        /* Style the notif icon purple. */
         .notif-icon.purple { background: #f3e5f5; color: #6a1b9a; }
         
+        /* Style the notif item unread. */
         .notif-item.unread,
         .notif-item.read {
             background: #f0f7ff;
@@ -27,23 +38,27 @@
             opacity: 1;
         }
         
+        /* Style the notif item notif time. */
         .notif-item .notif-time {
             font-size: 0.7rem;
             color: #aaa;
             margin-top: 4px;
         }
         
+        /* Style the empty state. */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
             color: #aaa;
         }
         
+        /* Style the empty state empty icon. */
         .empty-state .empty-icon {
             font-size: 3rem;
             margin-bottom: 15px;
         }
         
+        /* Style the notif actions. */
         .notif-actions {
             display: flex;
             gap: 10px;
@@ -61,23 +76,27 @@
             transition: transform 0.2s ease;
         }
         
+        /* Style the total notif item on hover. */
         .total-notif-item:hover {
             transform: translateX(5px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         }
         
+        /* Style the total notif item total header. */
         .total-notif-item .total-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         
+        /* Style the total notif item total title. */
         .total-notif-item .total-title {
             font-size: 0.9rem;
             font-weight: 600;
             color: #1a2b3c;
         }
         
+        /* Style the total notif item total count. */
         .total-notif-item .total-count {
             font-size: 1.2rem;
             font-weight: 700;
@@ -87,32 +106,44 @@
             border-radius: 12px;
         }
         
+        /* Style the total count red. */
         .total-notif-item .total-count.red { color: #d32f2f; background: #ffebee; }
+        /* Style the total count orange. */
         .total-notif-item .total-count.orange { color: #e65100; background: #fff3e0; }
+        /* Style the total count green. */
         .total-notif-item .total-count.green { color: #2e7d32; background: #e8f5e9; }
+        /* Style the total count blue. */
         .total-notif-item .total-count.blue { color: #1565c0; background: #e3f2fd; }
         
+        /* Style the total notif item total message. */
         .total-notif-item .total-message {
             font-size: 0.8rem;
             color: #888;
             margin-top: 4px;
         }
         
+        /* Style the total notif item total time. */
         .total-notif-item .total-time {
             font-size: 0.7rem;
             color: #aaa;
             margin-top: 6px;
         }
         
+                /* Style the total notif item card red. */
                 .total-notif-item.card-red { border-left-color: #d32f2f; }
+        /* Style the total notif item card orange. */
         .total-notif-item.card-orange { border-left-color: #e65100; }
+        /* Style the total notif item card green. */
         .total-notif-item.card-green { border-left-color: #2e7d32; }
+        /* Style the total notif item card blue. */
         .total-notif-item.card-blue { border-left-color: #1565c0; }
 
+        /* Style the notif actions. */
         .notif-actions {
             align-items: center;
         }
 
+        /* Style the notif actions btn action icon. */
         .notif-actions .btn-action-icon {
             display: inline-flex;
             align-items: center;
@@ -127,22 +158,26 @@
             transition: 0.3s;
         }
 
+        /* Style the notif actions btn action icon. */
         .notif-actions .btn-action-icon img {
             width: 18px;
             height: 18px;
             object-fit: contain;
         }
 
+        /* Style the notif actions btn action icon on hover. */
         .notif-actions .btn-action-icon:hover {
             background: #f5f5f5;
             border-color: #c9a96e;
         }
 
+        /* Style the notif actions btn action icon. */
         .notif-actions .btn-action-icon:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
         
+        /* Style the confirm modal modal container. */
         #confirmModal .modal-container {
             width: 400px;
             max-width: 95%;
@@ -150,9 +185,13 @@
     </style>
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    {{-- Set the styles used by this page section. --}}
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    {{-- Set up the actions used by this page section. --}}
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="notifications-page" data-portal="{{ $portal }}">
@@ -221,6 +260,7 @@
 
     <!-- Sidebar -->
     <aside class="sidebar">
+                {{-- Show the page navigation. --}}
                 <nav>
             <ul>
                 <li><a href="{{ url('/dashboard') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
@@ -239,6 +279,7 @@
                     </a>
                 </li>
                 <li class="logout">
+                    {{-- Collect the details entered in this form. --}}
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
@@ -289,6 +330,7 @@
                 </select>
                 <span id="notifTotalCount" class="pagination-total">Total: 0</span>
             </div>
+            {{-- Show the notif pagination links section. --}}
             <div class="pagination-links" id="notifPaginationLinks">
                 <!-- Generated by JavaScript -->
             </div>
@@ -296,10 +338,12 @@
 
     </main>
 
+    {{-- Set up the actions used by this page section. --}}
     <script>
                 var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         var allNotifications = [];
         var currentTab = 'all';
+        // Escape text so it can be shown safely in HTML.
         function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
         var showOnlyTotals = false;
         var notifPageSize = 10;
@@ -312,17 +356,22 @@
             budget_alerts: ['budget_expense_overrun_total', 'new_expense', 'new_budget', 'budget_updated'],
             inventory_alerts: ['item_low_stock', 'item_low_stock_total', 'item_out_of_stock', 'stock_in_expense']
         };
+        // Filter muted notifications.
         function filterMutedNotifications(list) {
             var mutedTypes = [];
+            // Process each category.
             Object.keys(MUTABLE_TYPES).forEach(function(category) {
+                // Run this step if the get item equals true.
                 if (localStorage.getItem('notif_mute_' + category) === 'true') mutedTypes = mutedTypes.concat(MUTABLE_TYPES[category]);
             });
+            // Keep the matching n items.
             return list.filter(function(n) { return n.requires_acknowledgement || mutedTypes.indexOf(n.type) === -1; });
         }
 
         // Hide notification badge
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
+            // Run this step if the badge is set.
             if (badge) {
                 badge.style.display = 'none';
             }
@@ -331,12 +380,15 @@
         // Confirm modal
         var confirmCallback = null;
 
+        // Open clear all modal.
         function openClearAllModal() {
             document.getElementById('confirmMessage').textContent = 'Are you sure you want to move all notifications to Trash Bin?';
             confirmCallback = async function() {
+                // Try this action and handle any errors below.
                 try {
                     var response = await fetch('/api/notifications', {method:'DELETE',headers:{'Accept':'application/json','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content}});
                     var result=await response.json();
+                    // Run this step if the response ok is missing or false.
                     if (!response.ok) throw new Error(result.message || 'Unable to clear notifications.');
                     showOnlyTotals=false; await loadNotifications();
                     showSuccess(result.message || 'Notifications moved to Trash Bin for 30 days.');
@@ -346,20 +398,25 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // Close confirm modal.
         function closeConfirmModal() {
             document.getElementById('confirmModal').style.display = 'none';
             document.body.style.overflow = '';
             confirmCallback = null;
         }
 
+        // Get the confirm action.
         function confirmAction() {
+            // Run this step if the confirm callback equals function.
             if (typeof confirmCallback === 'function') {
                 confirmCallback();
             }
             closeConfirmModal();
         }
 
+        // Handle the click event.
         document.getElementById('confirmModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) {
                 closeConfirmModal();
             }
@@ -368,6 +425,7 @@
                 // Tab switching
         function switchTab(el, type) {
             var tabs = document.querySelectorAll('.notif-tabs .tab');
+            // Process each tab.
             tabs.forEach(function(tab) {
                 tab.classList.remove('active');
             });
@@ -395,8 +453,11 @@
             var totals = [];
             var types = {};
 
+            // Process each n.
             allNotifications.forEach(function(n) {
+                // Run this step if the n type is set and the ends with check matches.
                 if (n.type && n.type.endsWith('_total')) {
+                    // Run this step if the n type is missing or false.
                     if (!types[n.type]) {
                         types[n.type] = {
                             type: n.type,
@@ -421,6 +482,7 @@
             var list = document.getElementById('notifList');
             list.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;">Loading notifications...</div>';
 
+            // Use the result when this request finishes.
             return fetch('/api/notifications', {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -428,6 +490,7 @@
                 }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Failed to load notifications');
                 return response.json();
             })
@@ -504,8 +567,10 @@
 
         // Update badge count
         function updateBadgeCount() {
+            // Keep the matching n items.
             var unread = allNotifications.filter(function(n) { return !n.is_read; }).length;
             var badge = document.getElementById('notifBadge');
+            // Run this step if the unread is above 0.
             if (unread > 0) {
                 badge.textContent = unread;
                 badge.style.display = 'inline-block';
@@ -522,10 +587,12 @@
 
             // Filter by tab
             if (currentTab === 'alerts') {
+                // Keep the matching n items.
                 filtered = filtered.filter(function(n) { 
                     return n.filter === 'alerts' || n.kind === 'alert' || n.kind === 'warning' || n.kind === 'overdue'; 
                 });
             } else if (currentTab === 'system') {
+                // Keep the matching n items.
                 filtered = filtered.filter(function(n) { 
                     return n.filter === 'system' || n.kind === 'system' || n.kind === 'system_update' || n.kind === 'maintenance'; 
                 });
@@ -538,15 +605,18 @@
                 
                 // Filter totals by tab
                 if (currentTab === 'alerts') {
+                    // Keep the matching n items.
                     totals = totals.filter(function(n) { 
                         return n.filter === 'alerts' || n.kind === 'alert' || n.kind === 'warning' || n.kind === 'overdue'; 
                     });
                 } else if (currentTab === 'system') {
+                    // Keep the matching n items.
                     totals = totals.filter(function(n) { 
                         return n.filter === 'system' || n.kind === 'system' || n.kind === 'system_update' || n.kind === 'maintenance'; 
                     });
                 }
 
+                // Run this step if the totals length equals 0.
                 if (totals.length === 0) {
                     list.innerHTML = `
                         <div class="empty-state">
@@ -559,6 +629,7 @@
                 }
 
                 var html = '';
+                // Process each total.
                 totals.forEach(function(total) {
                     var icon = getNotificationIcon(total.kind);
                     var cardClass = total.kind === 'overdue' ? 'card-red' : 
@@ -599,6 +670,7 @@
                 return new Date(b.created_at) - new Date(a.created_at);
             });
 
+            // Run this step if the filtered length equals 0.
             if (filtered.length === 0) {
                 paginationWrapper.style.display = 'none';
                 list.innerHTML = `
@@ -613,6 +685,7 @@
 
             var totalFiltered = filtered.length;
             var totalPages = Math.ceil(totalFiltered / notifPageSize);
+            // Run this step if the notif current page is above the total pages.
             if (notifCurrentPage > totalPages) notifCurrentPage = totalPages || 1;
             var start = (notifCurrentPage - 1) * notifPageSize;
             var pageData = filtered.slice(start, start + notifPageSize);
@@ -624,6 +697,7 @@
             var html = '';
             var currentDate = '';
 
+            // Process each notification.
             pageData.forEach(function(notification) {
                 var date = new Date(notification.created_at);
                 var dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -632,7 +706,9 @@
 
                 var sectionTitle = isToday ? 'TODAY' : (isYesterday ? 'YESTERDAY' : dateStr);
 
+                // Run this step if the section title does not equal the current date.
                 if (sectionTitle !== currentDate) {
+                    // Run this step if the current date does not equal an empty value.
                     if (currentDate !== '') {
                         html += '</div>';
                     }
@@ -667,6 +743,7 @@
             var container = document.getElementById('notifPaginationLinks');
             var current = notifCurrentPage;
 
+            // Run this step if the total pages is at most 1.
             if (totalPages <= 1) {
                 container.innerHTML = '';
                 return;
@@ -675,6 +752,7 @@
             var html = '';
             html += '<a href="#" onclick="goToNotifPage(' + (current - 1) + '); return false;" class="' + (current <= 1 ? 'disabled' : '') + '">«</a>';
 
+            // Repeat for each step in this range.
             for (var i = 1; i <= totalPages; i++) {
                 html += '<a href="#" onclick="goToNotifPage(' + i + '); return false;" class="' + (i === current ? 'active' : '') + '">' + i + '</a>';
             }
@@ -683,12 +761,15 @@
             container.innerHTML = html;
         }
 
+        // Get the go to notif page.
         function goToNotifPage(page) {
+            // Return early if the page is below 1.
             if (page < 1) return;
             notifCurrentPage = page;
             renderNotifications();
         }
 
+        // Get the change notif page size.
         function changeNotifPageSize() {
             var select = document.getElementById('notifRowsPerPage');
             notifPageSize = parseInt(select.value) || 10;
@@ -707,10 +788,13 @@
         // Mark as read
         function markAsRead(element) {
             var id = element.dataset.id;
+            // Return early if the id is missing or false.
             if (!id) return;
 
+            // Return early if the contains check matches.
             if (element.classList.contains('read')) return;
 
+            // Use the result when this request finishes.
             fetch('/api/notifications/' + id + '/read', {
                 method: 'PUT',
                 headers: {
@@ -720,12 +804,16 @@
                 }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Failed to mark as read');
                 return response.json();
             })
             .then(function(data) {
+                // Run this step if the success is set.
                 if (data.success) {
+                    // Run this step if the removed is set.
                     if (data.removed) {
+                        // Keep the matching n items.
                         allNotifications = allNotifications.filter(function(n) { return n.notification_id != id; });
                         renderNotifications();
                         updateBadgeCount();
@@ -735,8 +823,11 @@
                     element.classList.remove('unread');
                     element.classList.add('read');
                     var dot = element.querySelector('.notif-icon + .notif-content + div');
+                    // Run this step if the dot is set.
                     if (dot) dot.remove();
+                    // Run the find action.
                     var notif = allNotifications.find(function(n) { return n.notification_id == id; });
+                    // Run this step if the notif is set.
                     if (notif) notif.is_read = true;
                     updateBadgeCount();
                 }
@@ -746,8 +837,11 @@
                 element.classList.remove('unread');
                 element.classList.add('read');
                 var dot = element.querySelector('.notif-icon + .notif-content + div');
+                // Run this step if the dot is set.
                 if (dot) dot.remove();
+                // Run the find action.
                 var notif = allNotifications.find(function(n) { return n.notification_id == id; });
+                // Run this step if the notif is set.
                 if (notif) notif.is_read = true;
                 updateBadgeCount();
             });
@@ -755,13 +849,16 @@
 
         // Mark all read
         function markAllRead() {
+            // Keep the matching n items.
             var unreadIds = allNotifications.filter(function(n) { return !n.is_read && !n.requires_acknowledgement; }).map(function(n) { return n.notification_id; });
             
+            // Run this step if the unread ids length equals 0.
             if (unreadIds.length === 0) {
                 showSuccess('All notifications are already read!');
                 return;
             }
 
+            // Use the result when this request finishes.
             fetch('/api/notifications/mark-all-read', {
                 method: 'PUT',
                 headers: {
@@ -771,11 +868,14 @@
                 }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Server returned ' + response.status);
                 return response.json();
             })
             .then(function(data) {
+                // Run this step if the success is set.
                 if (data.success) {
+                    // Process each n.
                     allNotifications.forEach(function(n) { if (!n.requires_acknowledgement) n.is_read = true; });
                     renderNotifications();
                     updateBadgeCount();
@@ -794,18 +894,23 @@
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
+            // Run this step if the msg span is set.
             if (msgSpan) {
                 msgSpan.textContent = message || 'Action completed successfully!';
             }
             notif.style.display = 'block';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) clearTimeout(window.successTimeout);
+            // Run this action after the delay.
             window.successTimeout = setTimeout(function() {
                 closeSuccess();
             }, 5000);
         }
 
+        // Close success.
         function closeSuccess() {
             document.getElementById('successNotification').style.display = 'none';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) {
                 clearTimeout(window.successTimeout);
                 window.successTimeout = null;
@@ -818,6 +923,7 @@
         });
     </script>
 
+    {{-- Set up the actions used by this page section. --}}
     <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
     @include('partials.validation-alert')
 </body>

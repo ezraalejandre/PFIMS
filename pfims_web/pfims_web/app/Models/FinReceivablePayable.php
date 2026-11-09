@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Link records to the fin receivable payable table.
 class FinReceivablePayable extends Model
 {
     protected $table = 'fin_receivable_payable_tbl';
@@ -34,6 +35,7 @@ class FinReceivablePayable extends Model
         'amount_91_120d' => 'decimal:2',
     ];
 
+    // Link this record to its project.
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id', 'project_id');

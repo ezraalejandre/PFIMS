@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
@@ -25,12 +26,14 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        // Update this part of the database structure.
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
 
+        // Update this part of the database structure.
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->foreignId('user_id')->nullable()->index();
@@ -46,8 +49,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::dropIfExists('users');
+        // Update this part of the database structure.
         Schema::dropIfExists('password_reset_tokens');
+        // Update this part of the database structure.
         Schema::dropIfExists('sessions');
     }
 };

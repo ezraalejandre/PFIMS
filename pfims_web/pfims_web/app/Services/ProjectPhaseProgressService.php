@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Throwable;
 
+// Group the project phase progress actions.
 class ProjectPhaseProgressService
 {
+    // Get the phases.
     public function phases(): Collection
     {
         $this->ensureSchema();
@@ -20,13 +22,17 @@ class ProjectPhaseProgressService
             ->get(['phase_id', 'phase_name', 'stage_order']);
     }
 
+    // Make sure schema.
     public function ensureSchema(): void
     {
+        // Run this step if the value check matches.
         if (Schema::hasColumn('project_phase_tbl', 'stage_order')) {
             return;
         }
 
+        // Try this action and handle any errors below.
         try {
+            // Update this part of the database structure.
             Schema::table('project_phase_tbl', function (Blueprint $table) {
                 $table->unsignedInteger('stage_order')->nullable()->index();
             });
@@ -49,17 +55,20 @@ class ProjectPhaseProgressService
                     : '1-'.str_pad((string) $phase->phase_id, 10, '0', STR_PAD_LEFT);
             })->values();
 
+        // Process each phase.
         foreach ($phases as $index => $phase) {
             DB::table('project_phase_tbl')->where('phase_id', $phase->phase_id)
                 ->update(['stage_order' => $index + 1]);
         }
     }
 
+    // Get the first phase name.
     public function firstPhaseName(): ?string
     {
         return $this->phases()->first()?->phase_name;
     }
 
+    // Get the main phase name.
     public function canonicalPhaseName(string $phaseName): ?string
     {
         return $this->phases()->first(
@@ -67,6 +76,7 @@ class ProjectPhaseProgressService
         )?->phase_name;
     }
 
+    // Get the completion for phase.
     public function completionForPhase(string $phaseName): float
     {
         $phases = $this->phases();
@@ -74,6 +84,7 @@ class ProjectPhaseProgressService
             fn ($item) => mb_strtolower(trim((string) $item->phase_name)) === mb_strtolower(trim($phaseName))
         );
 
+        // Return early if the phase and is empty checks match.
         if (! $phase || $phases->isEmpty()) {
             return 0.0;
         }
@@ -81,15 +92,18 @@ class ProjectPhaseProgressService
         return round(((int) $phase->stage_order / $phases->count()) * 100, 2);
     }
 
+    // Match all projects.
     public function syncAllProjects(): void
     {
         $phases = $this->phases();
         $total = $phases->count();
+        // Run this step if the total equals 0.
         if ($total === 0) {
             DB::table('project_tbl')->update(['completion_percentage' => 0]);
             return;
         }
 
+        // Process each phase.
         foreach ($phases as $phase) {
             DB::table('project_tbl')
                 ->whereRaw('LOWER(TRIM(phase)) = ?', [mb_strtolower(trim((string) $phase->phase_name))])
@@ -97,8 +111,10 @@ class ProjectPhaseProgressService
         }
     }
 
+    // Clean up stage order.
     public function normalizeStageOrder(): void
     {
+        // Apply this action to each record.
         $this->phases()->values()->each(function ($phase, int $index) {
             DB::table('project_phase_tbl')->where('phase_id', $phase->phase_id)
                 ->update(['stage_order' => $index + 1]);

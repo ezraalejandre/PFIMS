@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('notifications_tbl', function (Blueprint $table) {
             $table->foreignId('user_id')->nullable()->after('notification_id')->constrained('users')->cascadeOnDelete();
             $table->boolean('requires_acknowledgement')->default(false)->after('is_read');
@@ -16,8 +18,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('notifications_tbl', function (Blueprint $table) {
             $table->dropIndex(['user_id', 'is_read']);
             $table->dropForeign(['user_id']);

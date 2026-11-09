@@ -8,13 +8,16 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Throwable;
 
+// Group the ml candidate evaluation actions.
 class MLCandidateEvaluationController extends Controller
 {
+    // Save a new ml candidate evaluation record.
     public function store(Request $request)
     {
         $input = $request->validate([
             'cohort' => ['required', Rule::in(['auto', 'planning', 'presentation_progress', 'database_augmented'])],
         ]);
+        // Try this action and handle any errors below.
         try {
             // Evaluating a candidate must never trigger constructor-time training.
             $service = new MLService(loadModel: false);

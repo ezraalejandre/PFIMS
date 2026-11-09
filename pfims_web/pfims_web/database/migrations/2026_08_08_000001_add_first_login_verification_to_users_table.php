@@ -6,8 +6,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Update this part of the database structure.
         Schema::table('users', function (Blueprint $table) {
             $table->boolean('first_login_verification_required')->default(false);
             $table->string('first_login_otp')->nullable();
@@ -15,8 +17,10 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
+        // Update this part of the database structure.
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn([
                 'first_login_verification_required',

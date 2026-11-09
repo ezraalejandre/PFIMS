@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// Link records to the fin expense category table.
 class FinExpenseCategory extends Model
 {
     protected $table = 'fin_expense_category_tbl';
@@ -24,6 +25,7 @@ class FinExpenseCategory extends Model
         'is_active' => 'boolean',
     ];
 
+    // Link this record to its expenses.
     public function expenses(): HasMany
     {
         return $this->hasMany(FinExpense::class, 'fin_category_id', 'fin_category_id');

@@ -5,8 +5,10 @@ namespace App\Observers;
 use App\Models\Project;
 use App\Services\NotificationService;
 
+// Group the project actions.
 class ProjectObserver
 {
+    // Set up the values this class needs.
     public function __construct(protected NotificationService $notifications)
     {
     }
@@ -17,6 +19,7 @@ class ProjectObserver
      */
     public function updated(Project $project): void
     {
+        // Run this step if the is dirty check matches.
         if (!$project->isDirty('status')) {
             return;
         }
@@ -24,10 +27,12 @@ class ProjectObserver
         $newStatus = strtolower((string) $project->status);
         $oldStatus = strtolower((string) $project->getOriginal('status'));
 
+        // Run this step if the new status equals old status.
         if ($newStatus === $oldStatus) {
             return;
         }
 
+        // Run this step if the new status equals delayed.
         if ($newStatus === 'delayed') {
             $this->fire($project, 'project_delayed', 'overdue',
                 'Project Delayed',
@@ -43,12 +48,13 @@ class ProjectObserver
 
     /**
      * Also worth catching on CREATE in case a project is entered directly
-     * with status Delayed/At Risk (e.g. backfilled data).
+     * with status Delayed/At Risk (e.g. filled in later data).
      */
     public function created(Project $project): void
     {
         $status = strtolower((string) $project->status);
 
+        // Run this step if the status equals delayed.
         if ($status === 'delayed') {
             $this->fire($project, 'project_delayed', 'overdue',
                 'Project Delayed',
@@ -62,6 +68,7 @@ class ProjectObserver
         }
     }
 
+    // Get the fire.
     protected function fire(Project $project, string $type, string $kind, string $title, string $message): void
     {
         // Avoid re-spamming while it's still unread and still in that state.

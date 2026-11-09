@@ -1,3 +1,4 @@
+{{-- Prepare the values used by this page section. --}}
 @php $portal = $portal ?? 'admin'; @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -7,43 +8,69 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Project Tracking - PFIMS</title>
     <link rel="stylesheet" href="{{ asset('css/projtracking.css') }}">
+        {{-- Set the styles used by this page section. --}}
         <style>
+        /* Style the error notification. */
         .error-notification { z-index: 9999 !important; }
+        /* Style the success notification. */
         .success-notification { z-index: 9999 !important; }
+        /* Style the delete confirm modal. */
         #deleteConfirmModal { z-index: 9999 !important; }
+        /* Style the field error. */
         .field-error {
             display: none;
             color: #d32f2f;
             font-size: 0.8rem;
             margin-top: 5px;
         }
+        /* Style the form group input error. */
         .form-group input.input-error,
         .form-group select.input-error {
             border-color: #d32f2f !important;
             box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15) !important;
         }
+        /* Style the project filter panel. */
         .project-filter-panel { display:grid; grid-template-columns:minmax(220px,2fr) repeat(4,minmax(140px,1fr)) auto; gap:12px; align-items:end; margin:18px 0; padding:16px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; }
+        /* Style the project filter field. */
         .project-filter-field { display:flex; flex-direction:column; gap:6px; }
+        /* Style the project filter field. */
         .project-filter-field label { font-size:.78rem; font-weight:700; color:#4b5563; }
+        /* Style the project filter field. */
         .project-filter-field input,.project-filter-field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid #d1d5db; border-radius:8px; background:#fff; }
+        /* Style the project analytics. */
         .project-analytics { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; margin-bottom:18px; }
+                /* Style the project chart card. */
                 .project-chart-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 16px; max-width:none; width:100%; }
+        /* Style the project chart card. */
         .project-chart-card h2 { margin:0 0 8px; font-size:0.9rem; }
+        /* Style the status chart. */
         .status-chart { display:grid; gap:5px; }
+        /* Style the status chart row. */
         .status-chart-row { display:grid; grid-template-columns:80px minmax(0,1fr) 32px; gap:10px; align-items:center; font-size:.78rem; }
+        /* Style the status chart track. */
         .status-chart-track { height:7px; border-radius:999px; background:#eef2f7; overflow:hidden; }
+        /* Style the status chart bar. */
         .status-chart-bar { height:100%; min-width:0; border-radius:999px; transition:width .25s ease; }
+        /* Style the status chart empty. */
         .status-chart-empty { color:#6b7280; font-size:.85rem; }
+        /* Style the project pie wrap. */
         .project-pie-wrap { position:relative; height:260px; max-width:520px; margin:0 auto; }
+        /* Adjust these styles for this screen size or display setting. */
         @media (max-width:1024px) { .project-filter-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        /* Adjust these styles for this screen size or display setting. */
         @media (max-width:640px) { .project-filter-panel { grid-template-columns:1fr; } }
     </style>
     <link rel="stylesheet" href="{{ asset('css/'.$portal.'.css') }}">
     <link rel="stylesheet" href="{{ asset('css/ui-refresh.css') }}?v={{ filemtime(public_path('css/ui-refresh.css')) }}">
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/theme.js') }}?v={{ filemtime(public_path('js/theme.js')) }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/modal-policy.js') }}?v={{ filemtime(public_path('js/modal-policy.js')) }}"></script>
+    {{-- Set the styles used by this page section. --}}
     <style id="pfims-session-privacy">html { visibility:hidden; }</style>
+    {{-- Set up the actions used by this page section. --}}
     <script data-navigation-granted="{{ session('_page_navigation_granted', false) ? '1' : '0' }}" data-session-epoch="{{ session('navigation_epoch', '') }}" src="{{ asset('js/protected-navigation.js') }}?v={{ filemtime(public_path('js/protected-navigation.js')) }}"></script>
 </head>
 <body class="projects-page" data-portal="{{ $portal }}" data-project-view-icon="{{ asset('images/view.jpg') }}" data-project-edit-icon="{{ asset('images/edit.jpg') }}">
@@ -112,6 +139,7 @@
 
     <!-- Sidebar -->
     <aside class="sidebar">
+                {{-- Show the page navigation. --}}
                 <nav>
             <ul>
                 <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
@@ -130,6 +158,7 @@
                     </a>
                 </li>
                 <li class="logout">
+                    {{-- Collect the details entered in this form. --}}
                     <form method="POST" action="{{ url('/logout') }}" style="width: 100%; margin: 0; padding: 0;">
                         @csrf
                         <button type="submit" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; width: 100%; background: none; border: none; cursor: pointer; padding: 0; font: inherit; color: inherit;">
@@ -166,7 +195,9 @@
                 <label for="projectPhaseFilter">Phase</label>
                 <select id="projectPhaseFilter" onchange="filterProjects()"><option value="">All phases</option></select>
             </div>
+            {{-- Show the project date from section. --}}
             <div class="project-filter-field"><label for="projectDateFrom">Started from</label><input type="date" id="projectDateFrom" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
+            {{-- Show the project date to section. --}}
             <div class="project-filter-field"><label for="projectDateTo">Started to</label><input type="date" id="projectDateTo" min="2000-01-01" max="2100-12-31" onchange="filterProjects()"></div>
             <button type="button" class="btn-clear-search" onclick="clearProjectSearch()">x</button>
         </div>
@@ -180,6 +211,7 @@
 
         <!-- Table with Progress Bar -->
         <div class="table-wrapper">
+            {{-- Show the records in a table. --}}
             <table data-pfims-standard-actions="off">
                 <thead>
                     <tr>
@@ -214,6 +246,7 @@
                 </select>
                 <span id="projectTotalCount" class="pagination-total">Total: 0</span>
             </div>
+            {{-- Show the project pagination links section. --}}
             <div class="pagination-links" id="projectPaginationLinks">
                 <!-- Generated by JavaScript -->
             </div>
@@ -241,6 +274,7 @@
                 </span>
             </div>
 
+            {{-- Show the step1 section. --}}
             <div class="modal-step" id="step1">
                 <h3>BASIC INFORMATION</h3>
                 <div class="form-group">
@@ -263,6 +297,7 @@
                 </div>
             </div>
 
+            {{-- Show the step2 section. --}}
             <div class="modal-step" id="step2" style="display: none;">
                 <h3>TEAM ASSIGNMENT</h3>
                 <div class="form-row">
@@ -304,14 +339,21 @@
                 </div>
             </div>
 
+            {{-- Show the step3 section. --}}
             <div class="modal-step" id="step3" style="display: none;">
                 <h3>SUMMARY</h3>
                 <div class="summary-list">
+                    {{-- Show the summary name section. --}}
                     <div class="summary-item"><strong>Project name:</strong> <span class="summary-value" id="summaryName">—</span></div>
+                    {{-- Show the summary client section. --}}
                     <div class="summary-item"><strong>Client:</strong> <span class="summary-value" id="summaryClient">—</span></div>
+                    {{-- Show the summary manager section. --}}
                     <div class="summary-item"><strong>Project manager:</strong> <span class="summary-value" id="summaryManager">—</span></div>
+                    {{-- Show the summary start section. --}}
                     <div class="summary-item"><strong>Start date:</strong> <span class="summary-value" id="summaryStart">—</span></div>
+                    {{-- Show the summary end section. --}}
                     <div class="summary-item"><strong>Estimated end date:</strong> <span class="summary-value" id="summaryEnd">—</span></div>
+                    {{-- Show the summary workers section. --}}
                     <div class="summary-item"><strong>No. of workers:</strong> <span class="summary-value" id="summaryWorkers">—</span></div>
                 </div>
 
@@ -466,6 +508,7 @@
 
     @include('partials.data-import', ['importModule' => 'projects'])
 
+    {{-- Set up the actions used by this page section. --}}
     <script>
         // Global variables
                 var currentEditData = null;
@@ -478,6 +521,7 @@
         // Hide notification badge on click
         function hideBadge(event) {
             var badge = document.getElementById('notifBadge');
+            // Run this step if the badge is set.
             if (badge) {
                 badge.style.display = 'none';
             }
@@ -486,26 +530,33 @@
         // Error notification (pop-up)
                 var suppressErrorAutoClose = false;
 
+        // Show error.
         function showError(message) {
+            // Run this step if the show pfims alert equals function.
             if (typeof window.showPfimsAlert === 'function') {
                 closeError();
                 return window.showPfimsAlert(message || 'An error occurred. Please try again.', 'error');
             }
             var notif = document.getElementById('errorNotification');
             var msgSpan = document.getElementById('errorMessage');
+            // Run this step if the msg span is set.
             if (msgSpan) {
                 msgSpan.textContent = message || 'An error occurred. Please try again.';
             }
             notif.style.display = 'block';
             suppressErrorAutoClose = true;
+            // Run this step if the error timeout is set.
             if (window.errorTimeout) clearTimeout(window.errorTimeout);
+            // Run this action after the delay.
             window.errorTimeout = setTimeout(function() {
                 closeError();
             }, 5000);
         }
 
+        // Close error.
         function closeError() {
             document.getElementById('errorNotification').style.display = 'none';
+            // Run this step if the error timeout is set.
             if (window.errorTimeout) {
                 clearTimeout(window.errorTimeout);
                 window.errorTimeout = null;
@@ -516,18 +567,23 @@
         function showSuccess(message) {
             var notif = document.getElementById('successNotification');
             var msgSpan = document.getElementById('successMessage');
+            // Run this step if the msg span is set.
             if (msgSpan) {
                 msgSpan.textContent = message || 'Project saved successfully!';
             }
             notif.style.display = 'block';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) clearTimeout(window.successTimeout);
+            // Run this action after the delay.
             window.successTimeout = setTimeout(function() {
                 closeSuccess();
             }, 5000);
         }
 
+        // Close success.
         function closeSuccess() {
             document.getElementById('successNotification').style.display = 'none';
+            // Run this step if the success timeout is set.
             if (window.successTimeout) {
                 clearTimeout(window.successTimeout);
                 window.successTimeout = null;
@@ -542,20 +598,25 @@
             document.body.style.overflow = 'hidden';
         }
 
+        // Close delete modal.
         function closeDeleteModal() {
             document.getElementById('deleteConfirmModal').style.display = 'none';
             document.body.style.overflow = '';
             deleteCallback = null;
         }
 
+        // Get the confirm delete.
         function confirmDelete() {
+            // Run this step if the delete callback equals function.
             if (typeof deleteCallback === 'function') {
                 deleteCallback();
             }
             closeDeleteModal();
         }
 
+        // Handle the click event.
         document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) {
                 closeDeleteModal();
             }
@@ -567,17 +628,21 @@
                 timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
             }).formatToParts(new Date());
             var values = {};
+            // Process each part.
             parts.forEach(function(part) { values[part.type] = part.value; });
             return values.year + '-' + values.month + '-' + values.day;
         }
 
+        // Refresh project end date bounds.
         function refreshProjectEndDateBounds() {
             var today = projectToday();
+            // Process each id.
             ['endDate', 'editEstEndDate', 'editActualEndDate'].forEach(function(id) {
                 document.getElementById(id).min = today;
             });
         }
 
+        // Open the dialog.
         function openModal() {
             refreshProjectEndDateBounds();
             document.getElementById('projectModal').classList.add('active');
@@ -591,6 +656,7 @@
             document.getElementById('endDate').value = '';
         }
 
+        // Close the dialog.
         function closeModal() {
             document.getElementById('projectModal').classList.remove('active');
             document.body.style.overflow = '';
@@ -598,12 +664,15 @@
 
         let currentStep = 1;
 
+        // Get the go to step.
         function goToStep(step) {
+            // Process each el.
             document.querySelectorAll('.modal-step').forEach(function(el) {
                 el.style.display = 'none';
             });
             document.getElementById('step' + step).style.display = 'block';
 
+            // Process each el.
             document.querySelectorAll('.step-indicator .step').forEach(function(el, index) {
                 el.classList.toggle('active', index + 1 === step);
                 el.classList.toggle('completed', index + 1 < step);
@@ -611,42 +680,51 @@
             currentStep = step;
         }
 
+                // Clear field error.
                 function clearFieldError(inputId, errorId) {
     var input = document.getElementById(inputId);
     var error = document.getElementById(errorId);
 
+    // Run this step if the input is set.
     if (input) {
         input.classList.remove('input-error');
     }
 
+    // Run this step if the error is set.
     if (error) {
         error.style.display = 'none';
         error.textContent = '';
     }
 }
 
+// Show field error.
 function showFieldError(inputId, errorId, message) {
     var input = document.getElementById(inputId);
     var error = document.getElementById(errorId);
 
+    // Run this step if the input is set.
     if (input) {
         input.classList.add('input-error');
     }
 
+    // Run this step if the error is set.
     if (error) {
         error.textContent = message;
         error.style.display = 'block';
     }
 }
 
+// Clear end date error.
 function clearEndDateError() {
     clearFieldError('endDate', 'endDateError');
 }
 
+// Show end date error.
 function showEndDateError(message) {
     showFieldError('endDate', 'endDateError', message);
 }
 
+// Handle the dom content loaded event.
 document.addEventListener('DOMContentLoaded', function() {
     var projectName = document.getElementById('projectName');
     var clientName = document.getElementById('clientName');
@@ -655,46 +733,62 @@ document.addEventListener('DOMContentLoaded', function() {
     var startDate = document.getElementById('startDate');
     var endDate = document.getElementById('endDate');
 
+    // Run this step if the project name is set.
     if (projectName) {
+        // Handle the input event.
         projectName.addEventListener('input', function() {
+            // Run this step if the trim check matches.
             if (this.value.trim()) {
                 clearFieldError('projectName', 'projectNameError');
             }
         });
     }
 
+    // Run this step if the client name is set.
     if (clientName) {
+        // Handle the input event.
         clientName.addEventListener('input', function() {
+            // Run this step if the trim check matches.
             if (this.value.trim()) {
                 clearFieldError('clientName', 'clientNameError');
             }
         });
     }
 
+    // Run this step if the project manager is set.
     if (projectManager) {
+        // Handle the input event.
         projectManager.addEventListener('input', function() {
+            // Run this step if the trim check matches.
             if (this.value.trim()) {
                 clearFieldError('projectManager', 'projectManagerError');
             }
         });
     }
 
+    // Run this step if the worker count is set.
     if (workerCount) {
+        // Handle the input event.
         workerCount.addEventListener('input', function() {
+            // Run this step if the value value equals an empty value or the parse int is at least 0.
             if (this.value === '' || parseInt(this.value, 10) >= 0) {
                 clearFieldError('workerCount', 'workerCountError');
             }
         });
     }
 
+    // Run this step if the start date is set.
     if (startDate) {
+        // Handle the change event.
         startDate.addEventListener('change', function() {
+            // Run this step if the value value is set.
             if (this.value) {
                 clearFieldError('startDate', 'startDateError');
             }
 
             var end = document.getElementById('endDate').value;
 
+            // Run this step if the end is set and the value is above the value.
             if (end && new Date(end) > new Date(this.value)) {
     clearEndDateError();
 } else if (end && new Date(end) <= new Date(this.value)) {
@@ -703,15 +797,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Run this step if the end date is set.
     if (endDate) {
+        // Handle the change event.
         endDate.addEventListener('change', function() {
             var start = document.getElementById('startDate').value;
 
+            // Run this step if the value value is missing or false.
             if (!this.value) {
                 clearEndDateError();
                 return;
             }
 
+            // Run this step if the value value is below the project today.
             if (this.value < projectToday()) {
     showEndDateError('Estimated end date cannot be in the past.');
 } else if (start && new Date(this.value) <= new Date(start)) {
@@ -726,8 +824,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var editEstEndDate = document.getElementById('editEstEndDate');
     var editActualEndDate = document.getElementById('editActualEndDate');
 
+    // Run this step if the edit start date is set.
     if (editStartDate) {
+        // Handle the change event.
         editStartDate.addEventListener('change', function() {
+            // Run this step if the value value is set.
             if (this.value) {
                 clearFieldError('editStartDate', 'editStartDateError');
             }
@@ -735,24 +836,30 @@ document.addEventListener('DOMContentLoaded', function() {
             var end = document.getElementById('editEstEndDate').value;
             var actual = document.getElementById('editActualEndDate').value;
 
+            // Run this step if the end is set and the end is above the value value.
             if (end && end > this.value) {
                 clearFieldError('editEstEndDate', 'editEstEndDateError');
             }
+            // Run this step if the actual is set and the actual is above the value value.
             if (actual && actual > this.value) {
                 clearFieldError('editActualEndDate', 'editActualEndDateError');
             }
         });
     }
 
+    // Run this step if the edit est end date is set.
     if (editEstEndDate) {
+        // Handle the change event.
         editEstEndDate.addEventListener('change', function() {
             var start = document.getElementById('editStartDate').value;
 
+            // Run this step if the value value is missing or false.
             if (!this.value) {
                 clearFieldError('editEstEndDate', 'editEstEndDateError');
                 return;
             }
 
+            // Run this step if the value value is below the project today and the value value does not equal the value.
             if (this.value < projectToday() && this.value !== (currentEditData && currentEditData.endDate)) {
     showFieldError('editEstEndDate', 'editEstEndDateError', 'Estimated end date cannot be in the past.');
 } else if (start && new Date(this.value) <= new Date(start)) {
@@ -767,8 +874,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Run this step if the edit actual end date is set.
     if (editActualEndDate) {
+        // Handle the change event.
         editActualEndDate.addEventListener('change', function() {
+            // Run this step if the value value is missing or false.
             if (!this.value) {
                 clearFieldError('editActualEndDate', 'editActualEndDateError');
                 return;
@@ -777,6 +887,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var todayStr = projectToday();
             var start = document.getElementById('editStartDate').value;
 
+            // Run this step if the value value is below the today str and the value value does not equal the value.
             if (this.value < todayStr && this.value !== (currentEditData && currentEditData.actualEndDate)) {
                 showFieldError(
                     'editActualEndDate',
@@ -797,7 +908,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 
+        // Get the next step.
         function nextStep(step) {
+            // Run this step if the current step equals 1.
             if (currentStep === 1) {
     var name = document.getElementById('projectName').value.trim();
     var client = document.getElementById('clientName').value.trim();
@@ -805,17 +918,20 @@ document.addEventListener('DOMContentLoaded', function() {
     clearFieldError('projectName', 'projectNameError');
     clearFieldError('clientName', 'clientNameError');
 
+    // Run this step if the name is missing or false.
     if (!name) {
         showFieldError('projectName', 'projectNameError', 'Please enter the project name.');
         return;
     }
 
+    // Run this step if the client is missing or false.
     if (!client) {
         showFieldError('clientName', 'clientNameError', 'Please enter the client name.');
         return;
     }
 }
 
+// Run this step if the current step equals 2.
 if (currentStep === 2) {
     var manager = document.getElementById('projectManager').value.trim();
     var start = document.getElementById('startDate').value;
@@ -827,26 +943,31 @@ if (currentStep === 2) {
     clearFieldError('workerCount', 'workerCountError');
     clearEndDateError();
 
+    // Run this step if the manager is missing or false.
     if (!manager) {
         showFieldError('projectManager', 'projectManagerError', 'Please select a project manager.');
         return;
     }
 
+    // Run this step if the start is missing or false.
     if (!start) {
         showFieldError('startDate', 'startDateError', 'Please select a start date.');
         return;
     }
 
+    // Run this step if the end is missing or false.
     if (!end) {
         showEndDateError('Please select an estimated end date.');
         return;
     }
 
+    // Run this step if the workers is set and the test is missing or false or the parse int is below 1 or the parse int is above 100000.
     if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) < 1 || parseInt(workers, 10) > 100000)) {
         showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 1 to 100,000.');
         return;
     }
 
+    // Run this step if the value is at most the value.
     if (new Date(end) <= new Date(start)) {
     showEndDateError('Estimated end date must be after the start date.');
     return;
@@ -862,16 +983,20 @@ if (currentStep === 2) {
             goToStep(step);
         }
 
+        // Get the prev step.
         function prevStep(step) {
             goToStep(step);
         }
 
+        // Calculate duration.
         function calculateDuration(start, end) {
+            // Return early if the start is missing or false.
             if (!start) {
                 return '—';
             }
             var startDate = new Date(start);
             var endDate = end ? new Date(end) : new Date();
+            // Return early if the is na n check matches or the is na n check matches or the end date is below the start date.
             if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate) {
                 return '—';
             }
@@ -879,6 +1004,7 @@ if (currentStep === 2) {
             return (diffDays / 30).toFixed(1) + ' mo';
         }
 
+                // Get csrf token.
                 function getCsrfToken() {
             var meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? meta.content : '';
@@ -886,7 +1012,9 @@ if (currentStep === 2) {
 
         // Button loading state (prevents double-click / double-submit)
         function setButtonLoading(button, isLoading, loadingText) {
+            // Return early if the button is missing or false.
             if (!button) return;
+            // Run this step if the is loading is set.
             if (isLoading) {
                 button.dataset.originalText = button.textContent;
                 button.textContent = loadingText || 'Saving...';
@@ -901,19 +1029,24 @@ if (currentStep === 2) {
             }
         }
 
+        // Format date.
         function formatDate(rawDate) {
+            // Return early if the raw date is missing or false.
             if (!rawDate) return '—';
             var date = new Date(rawDate);
+            // Return early if the is na n check matches.
             if (isNaN(date.getTime())) return rawDate;
             var options = { year: 'numeric', month: 'short', day: 'numeric' };
             return date.toLocaleDateString('en-US', options);
         }
 
+        // Show the amount as money.
         function formatCurrency(value) {
             var amount = parseFloat(value) || 0;
             return '₱' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        // Get the map project api record.
         function mapProjectApiRecord(record) {
             var actualDate = record.actual_end_date || null;
             return {
@@ -951,28 +1084,34 @@ if (currentStep === 2) {
             
             var tbody = document.getElementById('projectTableBody');
             tbody.innerHTML = '';
+            // Run this step if the page data length equals 0.
             if (pageData.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:28px;color:#6b7280">No projects match the selected filters.</td></tr>';
             }
+            // Process each project.
             pageData.forEach(function(project) {
                 tbody.appendChild(createProjectRow(project));
             });
             
             renderProjectPagination();
+            // Run this step if the refresh table scroll fade is set.
             if (window.refreshTableScrollFade) window.refreshTableScrollFade();
         }
 
         // Render project pagination
                 function renderProjectPagination() {
             var container = document.getElementById('projectPaginationLinks');
+            // Return early if the container is missing or false.
             if (!container) return;
             
             var total = projectFilteredData.length;
             var totalEl = document.getElementById('projectTotalCount');
+            // Run this step if the total el is set.
             if (totalEl) totalEl.textContent = 'Total: ' + total;
             var totalPages = Math.ceil(total / projectPageSize);
             var current = projectCurrentPage;
             
+            // Run this step if the total pages is at most 1.
             if (totalPages <= 1) {
                 container.innerHTML = `<span class="pagination-info">Showing all ${total} projects</span>`;
                 return;
@@ -985,6 +1124,7 @@ if (currentStep === 2) {
             
             // Page numbers - show first 3, then dots, then last 2
             if (totalPages <= 7) {
+                // Repeat for each step in this range.
                 for (var i = 1; i <= totalPages; i++) {
                     html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
@@ -1002,6 +1142,7 @@ if (currentStep === 2) {
                 // Pages around current
                 var startPage = Math.max(4, current - 1);
                 var endPage = Math.min(totalPages - 2, current + 1);
+                // Repeat for each step in this range.
                 for (var i = startPage; i <= endPage; i++) {
                     html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                 }
@@ -1013,6 +1154,7 @@ if (currentStep === 2) {
                 
                 // Last 2 pages
                 for (var i = totalPages - 1; i <= totalPages; i++) {
+                    // Run this step if the i is above 3.
                     if (i > 3) {
                         html += `<a href="#" onclick="renderProjectPage(${i}); return false;" class="${i === current ? 'active' : ''}">${i}</a>`;
                     }
@@ -1033,12 +1175,14 @@ if (currentStep === 2) {
             renderProjectPage(1);
         }
 
+        // Filter projects.
         function filterProjects() {
             projectSearchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
             var status = document.getElementById('projectStatusFilter').value;
             var phase = document.getElementById('projectPhaseFilter').value;
             var from = document.getElementById('projectDateFrom').value;
             var to = document.getElementById('projectDateTo').value;
+            // Keep the matching project items.
             projectFilteredData = allProjects.filter(function(project) {
                 var haystack = [project.name, project.client, project.manager, project.phase, project.status]
                     .join(' ').toLowerCase();
@@ -1053,32 +1197,40 @@ if (currentStep === 2) {
             renderProjectPage(1);
         }
 
+        // Clear project search.
         function clearProjectSearch() {
+            // Process each id.
             ['projectSearch', 'projectStatusFilter', 'projectPhaseFilter', 'projectDateFrom', 'projectDateTo']
                 .forEach(function(id) { document.getElementById(id).value = ''; });
             projectSearchTerm = '';
             filterProjects();
         }
 
+        // Update stats.
         function updateStats(projects) {
             allProjects = projects.slice();
             filterProjects();
         }
 
+        // Refresh project analytics.
         function refreshProjectAnalytics(projects) {
+        // Keep the matching p items.
         var activeProjects = projects.filter(function(p) {
             return p.status !== 'Completed';
         });
         
+        // Keep the matching p items.
         var onSchedule = projects.filter(function(p) {
             return p.status === 'Ongoing';
         });
         
+        // Keep the matching p items.
         var delayed = projects.filter(function(p) {
             return p.status === 'Delayed' || p.status === 'At Risk';
         });
         
         var totalProgress = 0;
+        // Process each p.
         projects.forEach(function(p) {
             totalProgress += parseFloat(p.progress) || 0;
         });
@@ -1097,17 +1249,22 @@ if (currentStep === 2) {
         renderStatusChart(projects);
         }
 
+        // Show status chart.
         function renderStatusChart(projects) {
             var chart = document.getElementById('projectStatusChart');
             var scope = document.getElementById('projectChartScope');
+            // Return early if the chart is missing or false or the scope is missing or false.
             if (!chart || !scope) return;
             var statuses = [
                 { label: 'Ongoing', color: '#4f8b68' }, { label: 'Pending', color: '#64748b' },
                 { label: 'At Risk', color: '#e19a45' }, { label: 'Delayed', color: '#c95c5c' }
             ];
+            // Keep the matching project items.
             var active = projects.filter(function(project) { return project.status !== 'Completed'; });
             scope.textContent = '(' + active.length + ' active)';
+            // Run this step if the project status pie is set.
             if (window.projectStatusPie) window.projectStatusPie.destroy();
+            // Build a value for each item.
             window.projectStatusPie = new Chart(chart, { type: 'pie', data: {
                 labels: statuses.map(function(item) { return item.label; }),
                 datasets: [{ data: statuses.map(function(item) { return active.filter(function(project) { return project.status === item.label; }).length; }), backgroundColor: statuses.map(function(item) { return item.color; }), hoverOffset: 12 }]
@@ -1116,16 +1273,19 @@ if (currentStep === 2) {
 
                 // Fetch projects (modified)
         function fetchProjects() {
+            // Use the result when this request finishes.
             return fetch('/api/projects', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) {
                     throw new Error('Unable to load projects');
                 }
                 return response.json();
             })
             .then(function(data) {
+                // Build a value for each item.
                 var projects = data.map(function(item) {
                     return mapProjectApiRecord(item);
                 });
@@ -1136,28 +1296,38 @@ if (currentStep === 2) {
                 // Auto-open a specific project's modal if linked from Dashboard
                 var params = new URLSearchParams(window.location.search);
                 var targetId = params.get('project');
+                // Run this step if the target id is set.
                 if (targetId) {
+                    // Run the find index action.
                     var targetIndex = projectFilteredData.findIndex(function(project) {
                         return String(project.id) === String(targetId);
                     });
+                    // Run this step if the target index equals the value.
                     if (targetIndex === -1) {
+                        // Process each id.
                         ['projectSearch', 'projectStatusFilter', 'projectPhaseFilter', 'projectDateFrom', 'projectDateTo']
                             .forEach(function(id) { document.getElementById(id).value = ''; });
                         projectSearchTerm = '';
                         filterProjects();
+                        // Run the find index action.
                         targetIndex = projectFilteredData.findIndex(function(project) {
                             return String(project.id) === String(targetId);
                         });
                     }
+                    // Run this step if the target index does not equal the value.
                     if (targetIndex !== -1) {
                         renderProjectPage(Math.floor(targetIndex / projectPageSize) + 1);
+                        // Run this action after the delay.
                         window.setTimeout(function() {
+                            // Run the find action.
                             var targetRow = Array.from(document.querySelectorAll('#projectTableBody tr[data-project-id]')).find(function(row) {
                                 return row.dataset.projectId === String(targetId);
                             });
                             var viewButton = targetRow && targetRow.querySelector('.pfims-row-action');
+                            // Run this step if the view button is set.
                             if (viewButton) {
                                 viewButton.click();
+                                // Run this step if the get equals 1.
                                 if (params.get('edit') === '1') window.setTimeout(openEditProjectModal, 0);
                             }
                         }, 0);
@@ -1170,16 +1340,21 @@ if (currentStep === 2) {
             });
         }
 
+        // Load project managers.
         function loadProjectManagers() {
+            // Use the result when this request finishes.
             return fetch('/api/project-managers', {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             }).then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Unable to load project managers');
                 return response.json();
             }).then(function(managers) {
+                // Process each id.
                 ['projectManager', 'editProjectManager'].forEach(function(id) {
                     var select = document.getElementById(id);
                     select.innerHTML = '<option value="">' + (managers.length ? 'Select project manager' : 'Add project managers in Settings first') + '</option>';
+                    // Process each manager.
                     managers.forEach(function(manager) {
                         select.add(new Option(manager.manager_name, manager.manager_name));
                     });
@@ -1187,11 +1362,14 @@ if (currentStep === 2) {
             });
         }
 
+        // Load project phases.
         function loadProjectPhases() {
+            // Use the result when this request finishes.
             return fetch('/api/project-phases', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Unable to load project phases');
                 return response.json();
             })
@@ -1200,6 +1378,7 @@ if (currentStep === 2) {
                 var edit = document.getElementById('editPhase');
                 filter.innerHTML = '<option value="">All phases</option>';
                 edit.innerHTML = '';
+                // Process each phase.
                 phases.forEach(function(phase) {
                     var filterOption = document.createElement('option');
                     filterOption.value = phase.phase_name;
@@ -1214,20 +1393,26 @@ if (currentStep === 2) {
             });
         }
 
+        // Escape text so it can be shown safely in HTML.
         function escapeHtml(value) {
+            // Run the replace action.
             return String(value == null ? '' : value).replace(/[&<>'"]/g, function(character) {
                 return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character];
             });
         }
 
+        // Get the api error message.
         function apiErrorMessage(error, fallback) {
+            // Run this step if the error is set and the errors is set.
             if (error && error.errors) {
                 var fields = Object.keys(error.errors);
+                // Return early if the fields length is set and the 0 length is set.
                 if (fields.length && error.errors[fields[0]].length) return error.errors[fields[0]][0];
             }
             return (error && error.message) || fallback;
         }
 
+        // Update project row.
         function updateProjectRow(row, project) {
             row.dataset.projectId = project.id || '';
             row.dataset.manager = project.manager || '';
@@ -1241,7 +1426,9 @@ if (currentStep === 2) {
             row.dataset.status = project.status || 'Ongoing';
             row.dataset.budget = project.budget || '';
 
+            // Open project from action.
             function openProjectFromAction(editMode) {
+                // Return early if the is opening project modal is set.
                 if (isOpeningProjectModal) return;
                 isOpeningProjectModal = true;
                 openUpdateModal(
@@ -1262,7 +1449,9 @@ if (currentStep === 2) {
                     project.startDate,
                     project.endDate
                 );
+                // Run this step if the edit mode is set.
                 if (editMode) setTimeout(openEditProjectModal, 0);
+                // Run this action after the delay.
                 setTimeout(function() { isOpeningProjectModal = false; }, 400);
             }
             row.onclick = null;
@@ -1291,6 +1480,7 @@ if (currentStep === 2) {
             actionButtons[0].onclick = function(event) { event.stopPropagation(); openProjectFromAction(false); };
         }
 
+        // Create project row.
         function createProjectRow(project) {
             var tr = document.createElement('tr');
             updateProjectRow(tr, project);
@@ -1314,41 +1504,49 @@ clearFieldError('workerCount', 'workerCountError');
 clearFieldError('startDate', 'startDateError');
 clearEndDateError();
 
+// Run this step if the name is missing or false.
 if (!name) {
     showFieldError('projectName', 'projectNameError', 'Please enter the project name.');
     return;
 }
 
+// Run this step if the client is missing or false.
 if (!client) {
     showFieldError('clientName', 'clientNameError', 'Please enter the client name.');
     return;
 }
 
+// Run this step if the manager is missing or false.
 if (!manager) {
     showFieldError('projectManager', 'projectManagerError', 'Please select a project manager.');
     return;
 }
 
+// Run this step if the start date is missing or false.
 if (!startDate) {
     showFieldError('startDate', 'startDateError', 'Please select a start date.');
     return;
 }
 
+// Run this step if the end date is missing or false.
 if (!endDate) {
     showEndDateError('Please select an estimated end date.');
     return;
 }
 
+// Run this step if the end date is below the project today.
 if (endDate < projectToday()) {
     showEndDateError('Estimated end date cannot be in the past.');
     return;
 }
 
+// Run this step if the workers is set and the test is missing or false or the parse int is below 1 or the parse int is above 100000.
 if (workers && (!/^\d+$/.test(workers) || parseInt(workers, 10) < 1 || parseInt(workers, 10) > 100000)) {
     showFieldError('workerCount', 'workerCountError', 'Workers must be a whole number from 1 to 100,000.');
     return;
 }
 
+// Run this step if the value is at most the value.
 if (new Date(endDate) <= new Date(startDate)) {
     showEndDateError('Estimated end date must be after the start date.');
     return;
@@ -1369,6 +1567,7 @@ if (new Date(endDate) <= new Date(startDate)) {
 
             setButtonLoading(saveBtn, true, 'Saving...');
 
+            // Use the result when this request finishes.
             fetch('/api/projects', {
                 method: 'POST',
                 headers: {
@@ -1379,7 +1578,9 @@ if (new Date(endDate) <= new Date(startDate)) {
                 body: JSON.stringify(payload)
             })
             .then(function(response) {
+                // Return early if the response ok is missing or false.
                 if (!response.ok) {
+                    // Use the result when this request finishes.
                     return response.json().then(function(err) {
                         throw new Error(apiErrorMessage(err, 'Failed to save project'));
                     });
@@ -1389,6 +1590,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             .then(function(savedProject) {
                 var project = mapProjectApiRecord(savedProject);
                 var tbody = document.getElementById('projectTableBody');
+                // Run this step if the tbody is set.
                 if (tbody) {
                     tbody.appendChild(createProjectRow(project));
                 }
@@ -1407,7 +1609,9 @@ if (new Date(endDate) <= new Date(startDate)) {
             });
         }
 
+        // Handle the click event.
         document.getElementById('projectModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeModal(); }
         });
 
@@ -1456,6 +1660,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             var statusEl = document.getElementById('updateStatus');
             statusEl.textContent = status;
             statusEl.className = 'status-badge';
+            // Run this step if the status equals Ongoing.
             if (status === 'Ongoing') statusEl.classList.add('on-track');
             else if (status === 'Delayed') statusEl.classList.add('delayed');
             else if (status === 'Completed') statusEl.classList.add('completed');
@@ -1466,6 +1671,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             document.body.style.overflow = 'hidden';
         }
 
+        // Close update modal.
         function closeUpdateModal() {
             document.getElementById('updateModal').classList.remove('active');
             document.body.style.overflow = '';
@@ -1476,6 +1682,7 @@ if (new Date(endDate) <= new Date(startDate)) {
 
         // Delete project
                 function deleteProject() {
+            // Run this step if the current project row is missing or false.
             if (!currentProjectRow) {
                 showError('No project selected to delete.');
                 return;
@@ -1483,9 +1690,12 @@ if (new Date(endDate) <= new Date(startDate)) {
 
             var deleteConfirmBtn = document.getElementById('confirmDeleteBtn');
             var projectId = currentProjectRow.dataset.projectId;
+            // Run the open delete modal action.
             openDeleteModal('Are you sure you want to move this project to Trash Bin?', function() {
+                // Run this step if the project id is missing or false.
                 if (!projectId) {
                     currentProjectRow.remove();
+                    // Keep the matching p items.
                     allProjects = allProjects.filter(function(p) {
                         return p.id !== currentEditData.id;
                     });
@@ -1499,6 +1709,7 @@ if (new Date(endDate) <= new Date(startDate)) {
 
                                 setButtonLoading(deleteConfirmBtn, true, 'Deleting...');
 
+                // Use the result when this request finishes.
                 fetch('/api/projects/' + projectId, {
                     method: 'DELETE',
                     headers: {
@@ -1508,10 +1719,12 @@ if (new Date(endDate) <= new Date(startDate)) {
                     }
                 })
                 .then(function(response) {
+                    // Return early if the response ok is missing or false.
                     if (!response.ok) {
                         // Try to parse error message
                         return response.text().then(function(text) {
                             var data;
+                            // Try this action and handle any errors below.
                             try { data = JSON.parse(text); } catch (e) { data = null; }
                             throw new Error((data && data.message) || 'Failed to delete project. Server error.');
                         });
@@ -1520,6 +1733,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                 })
                 .then(function() {
                     currentProjectRow.remove();
+                    // Keep the matching p items.
                     allProjects = allProjects.filter(function(p) {
                         return p.id !== currentEditData.id;
                     });
@@ -1541,6 +1755,7 @@ if (new Date(endDate) <= new Date(startDate)) {
 
         // Edit project modal
         function openEditProjectModal() {
+            // Run this step if the current edit data is missing or false.
             if (!currentEditData) {
                 showError('No project data to edit.');
                 return;
@@ -1554,6 +1769,7 @@ if (new Date(endDate) <= new Date(startDate)) {
             // Preserve historical imported assignments when editing other fields.
             managerSelect.querySelectorAll('[data-historical]').forEach(function(option) { option.remove(); });
             var managerName = currentEditData.manager || '';
+            // Run this step if the manager name is set and the some is missing or false.
             if (managerName && !Array.from(managerSelect.options).some(function(option) { return option.value === managerName; })) {
                 var historical = new Option(managerName + ' (current)', managerName);
                 historical.dataset.historical = '1';
@@ -1571,12 +1787,15 @@ if (new Date(endDate) <= new Date(startDate)) {
             document.body.style.overflow = 'hidden';
         }
 
+        // Close edit project modal.
         function closeEditProjectModal() {
             document.getElementById('editProjectModal').classList.remove('active');
             document.body.style.overflow = '';
         }
 
+                // Save edit project.
                 function saveEditProject() {
+            // Run this step if the current project row is missing or false or the current edit data is missing or false.
             if (!currentProjectRow || !currentEditData) {
                 showError('No project selected to edit.');
                 return;
@@ -1596,14 +1815,17 @@ if (new Date(endDate) <= new Date(startDate)) {
             clearFieldError('editProjectName', 'editProjectNameError');
             clearFieldError('editClientName', 'editClientNameError');
             clearFieldError('editProjectManager', 'editProjectManagerError');
+            // Run this step if the project name is missing or false.
             if (!projectName) {
                 showFieldError('editProjectName', 'editProjectNameError', 'Please enter the project name.');
                 return;
             }
+            // Run this step if the client name is missing or false.
             if (!clientName) {
                 showFieldError('editClientName', 'editClientNameError', 'Please enter the client name.');
                 return;
             }
+            // Run this step if the manager is missing or false.
             if (!manager) {
                 showFieldError('editProjectManager', 'editProjectManagerError', 'Please select a project manager.');
                 return;
@@ -1613,21 +1835,25 @@ if (new Date(endDate) <= new Date(startDate)) {
 clearFieldError('editEstEndDate', 'editEstEndDateError');
 clearFieldError('editActualEndDate', 'editActualEndDateError');
 
+// Run this step if the start is missing or false.
 if (!start) {
     showFieldError('editStartDate', 'editStartDateError', 'Please select a start date.');
     return;
 }
 
+// Run this step if the est end is missing or false.
 if (!estEnd) {
     showFieldError('editEstEndDate', 'editEstEndDateError', 'Please select an estimated end date.');
     return;
 }
 
+// Run this step if the est end is below the project today and the est end does not equal the end date.
 if (estEnd < projectToday() && estEnd !== currentEditData.endDate) {
     showFieldError('editEstEndDate', 'editEstEndDateError', 'Estimated end date cannot be in the past.');
     return;
 }
 
+// Run this step if the value is at most the value.
 if (new Date(estEnd) <= new Date(start)) {
     showFieldError(
         'editEstEndDate',
@@ -1639,6 +1865,7 @@ if (new Date(estEnd) <= new Date(start)) {
 
 var todayStr = projectToday();
 
+// Run this step if the value checks match.
 if (actualEnd && actualEnd < todayStr && actualEnd !== currentEditData.actualEndDate) {
     showFieldError(
         'editActualEndDate',
@@ -1648,6 +1875,7 @@ if (actualEnd && actualEnd < todayStr && actualEnd !== currentEditData.actualEnd
     return;
 }
 
+// Run this step if the actual end is set and the actual end is at most the start.
 if (actualEnd && actualEnd <= start) {
     showFieldError(
         'editActualEndDate',
@@ -1658,6 +1886,7 @@ if (actualEnd && actualEnd <= start) {
 }
 
             var editedWorkers = Number(document.getElementById('editWorkerCount').value);
+            // Run this step if the is integer is missing or false or the edited workers is below 1 or the edited workers is above 100000.
             if (!Number.isInteger(editedWorkers) || editedWorkers < 1 || editedWorkers > 100000) {
                 showError('Workers must be a whole number from 1 to 100,000.');
                 return;
@@ -1676,6 +1905,7 @@ if (actualEnd && actualEnd <= start) {
 
             setButtonLoading(editSaveBtn, true, 'Saving...');
 
+            // Use the result when this request finishes.
             fetch('/api/projects/' + currentEditData.id, {
                 method: 'PUT',
                 headers: {
@@ -1686,7 +1916,9 @@ if (actualEnd && actualEnd <= start) {
                 body: JSON.stringify(payload)
             })
             .then(function(response) {
+                // Return early if the response ok is missing or false.
                 if (!response.ok) {
+                    // Use the result when this request finishes.
                     return response.json().then(function(err) {
                         throw new Error(apiErrorMessage(err, 'Failed to save project changes'));
                     });
@@ -1702,6 +1934,7 @@ if (actualEnd && actualEnd <= start) {
                 var index = allProjects.findIndex(function(p) {
                     return p.id === currentEditData.id;
                 });
+                // Run this step if the index does not equal the value.
                 if (index !== -1) {
                     allProjects[index] = currentEditData;
                     updateStats(allProjects);
@@ -1739,33 +1972,46 @@ if (actualEnd && actualEnd <= start) {
 
         // Close modals on backdrop click
         document.getElementById('updateModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeUpdateModal(); }
         });
+        // Handle the click event.
         document.getElementById('editProjectModal').addEventListener('click', function(e) {
+            // Run this step if the target equals the value.
             if (e.target === this) { closeEditProjectModal(); }
         });
 
+        // Handle the click event.
         document.addEventListener('click', function(e) {
+            // Run this step if the style display equals block.
             if (document.getElementById('errorNotification').style.display === 'block') {
+                // Run this step if the closest is missing or false.
                 if (!e.target.closest('.error-notification')) { closeError(); }
             }
+            // Run this step if the style display equals block.
             if (document.getElementById('successNotification').style.display === 'block') {
+                // Run this step if the closest is missing or false.
                 if (!e.target.closest('.success-notification')) { closeSuccess(); }
             }
         });
 
+                // Load notif badge.
                 function fetchNotifBadge() {
+            // Use the result when this request finishes.
             fetch('/api/notifications/unread-count', {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(function(response) {
+                // Run this step if the response ok is missing or false.
                 if (!response.ok) throw new Error('Failed to load unread count.');
                 return response.json();
             })
             .then(function(data) {
                 var badge = document.getElementById('notifBadge');
+                // Return early if the badge is missing or false.
                 if (!badge) return;
                 var count = data.unread_count || 0;
+                // Run this step if the count is above 0.
                 if (count > 0) {
                     badge.textContent = count;
                     badge.style.display = 'inline-block';
@@ -1778,7 +2024,9 @@ if (actualEnd && actualEnd <= start) {
             });
         }
 
+        // Set up project page.
         function initializeProjectPage() {
+            // Handle a failed request.
             Promise.all([loadProjectPhases(), loadProjectManagers()])
                 .then(fetchProjects)
                 .catch(function(error) {
@@ -1788,13 +2036,16 @@ if (actualEnd && actualEnd <= start) {
             fetchNotifBadge();
         }
 
+                // Run this step if the ready state equals loading.
                 if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeProjectPage);
         } else {
             initializeProjectPage();
         }
     </script>
+    {{-- Set up the actions used by this page section. --}}
     <script src="{{ asset('js/table-scroll-fade.js') }}"></script>
+    {{-- Set up the actions used by this page section. --}}
     <script data-login-epoch="{{ session('navigation_epoch', 'initial') }}" src="{{ asset('js/pfims-system-ui.js') }}?v={{ filemtime(public_path('js/pfims-system-ui.js')) }}"></script>
 
     @include('partials.validation-alert')

@@ -9,19 +9,23 @@ use Random\Randomizer;
 use RuntimeException;
 use Throwable;
 
-/** Smoothed joint empirical project bootstrap, conditional on one training donor per project. */
+/** Create extra training projects from real training projects, with small changes to their values. */
 class ProjectCostDistributionGenerator
 {
     private Randomizer $random;
 
+    // Get the generate.
     public function generate(array $source, string $directory, int $projects = 1000, int $expenses = 300, int $transactions = 1000, int $seed = 20261008): array
     {
+        // Stop if the source source checks match.
         if (($source['source']['host'] ?? '') !== 'srv603.hstgr.io' || ($source['source']['database'] ?? '') !== 'u822802132_pfims') {
             throw new RuntimeException('A verified live PFIMS source export is required.');
         }
+        // Stop if the projects and expenses checks match.
         if ($projects < 1 || $expenses < 1 || $transactions < 2 || $transactions % 2 !== 0) {
             throw new RuntimeException('Positive counts and paired IN/OUT inventory movements are required.');
         }
+        // Stop if the directory folder exists.
         if (is_dir($directory)) {
             throw new RuntimeException('Dataset directory already exists; use a new version directory.');
         }
@@ -31,6 +35,7 @@ class ProjectCostDistributionGenerator
         $projectMap = array_column($source['project_tbl'], null, 'project_id');
         $items = array_column($source['inventory_item_tbl'], null, 'item_id');
         $pricedItems = array_filter($items, fn ($i) => (float) $i['unit_price'] > 0);
+        // Stop if the priced items is empty.
         if ($pricedItems === []) {
             throw new RuntimeException('The live catalogue has no valued items.');
         }
@@ -38,13 +43,17 @@ class ProjectCostDistributionGenerator
         $outGroups = collect($source['inventory_transaction_tbl'])->where('transaction_type', 'OUT')->groupBy('project_id');
         $this->random = new Randomizer(new Mt19937($seed));
         $temporary = $directory.'.building.'.bin2hex(random_bytes(6));
+        // Stop if the temporary check matches.
         if (! mkdir($temporary, 0700, true)) {
             throw new RuntimeException('Unable to create dataset directory.');
         }
         $handles = $counts = [];
+        // Try this action and handle any errors below.
         try {
+            // Process each name.
             foreach (['projects', 'expenses', 'inventory-transactions', 'items', 'training-observations'] as $name) {
                 $handles[$name] = gzopen($temporary.'/'.$name.'.jsonl.gz', 'wb6');
+                // Stop if the name is false.
                 if ($handles[$name] === false) {
                     throw new RuntimeException('Unable to open dataset output.');
                 }
@@ -52,14 +61,17 @@ class ProjectCostDistributionGenerator
             }
             $write = function (string $name, array $row) use (&$handles, &$counts): void {
                 $line = json_encode($row, JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR)."\n";
+                // Stop if the line does not equal line.
                 if (gzwrite($handles[$name], $line) !== strlen($line)) {
                     throw new RuntimeException('Incomplete dataset write.');
                 }
                 $counts[$name]++;
             };
+            // Process each item.
             foreach ($items as $item) {
                 $write('items', $item);
             }
+            // Repeat for each step in this range.
             for ($index = 1; $index <= $projects; $index++) {
                 $donorId = $this->pick($split['training']);
                 $donorRows = $training[$donorId];
@@ -74,6 +86,7 @@ class ProjectCostDistributionGenerator
                 $directShare = $donorFinal > 0 ? array_sum(array_column($directDonor, 'amount')) / $donorFinal : .5;
                 $directTotal = max($expenses, (int) round($final * min(.95, max(.05, $directShare))));
                 $materialTotal = $final - $directTotal;
+                // Stop if the material total is below transactions.
                 if ($materialTotal < $transactions / 2) {
                     throw new RuntimeException('Project cost cannot support the requested transaction count.');
                 }
@@ -85,6 +98,7 @@ class ProjectCostDistributionGenerator
                 $donorPlannedDays = max(1, (int) CarbonImmutable::parse($project['start_date'])->diffInDays(CarbonImmutable::parse($project['estimated_end_date'])));
                 $plannedDays = min($maximumDays, max(1, (int) round($donorPlannedDays * $durationScale)));
                 $end = $start->addDays($days);
+                // Run this step if the is future check matches.
                 if ($end->isFuture()) {
                     $start = CarbonImmutable::today()->subDays($days);
                 }
@@ -93,11 +107,13 @@ class ProjectCostDistributionGenerator
                 $direct = $movements = [];
                 $weights = [];
                 $templates = [];
+                // Repeat for each step in this range.
                 for ($j = 0; $j < $expenses; $j++) {
                     $template = $directDonor === [] ? ['expense_date' => $project['start_date'], 'amount' => 1, 'project_cost_component' => 'other', 'fin_category_id' => null, 'expense_description' => 'Project operating expense'] : $this->pick(array_values($directDonor));
                     $templates[] = $template;
                     $weights[] = max(.01, (float) $template['amount']) * $this->draw(.8, 1.2);
                 }
+                // Process each amount.
                 foreach ($this->apportion($directTotal, $weights) as $j => $amount) {
                     $template = $templates[$j];
                     $direct[] = ['expense_id' => $id.'-E'.($j + 1), 'project_id' => $id, 'expense_date' => $this->eventDate($start, $days, $project, $template['expense_date']),
@@ -107,11 +123,13 @@ class ProjectCostDistributionGenerator
                 $outs = $outGroups->get($donorId, collect())->filter(fn ($o) => isset($pricedItems[$o['item_id']]))->values()->all();
                 $pairs = $transactions / 2;
                 $materials = $weights = [];
+                // Repeat for each step in this range.
                 for ($j = 0; $j < $pairs; $j++) {
                     $template = $outs === [] ? ['item_id' => $this->pick(array_keys($pricedItems)), 'quantity' => 1, 'transaction_date' => $project['start_date']] : $this->pick($outs);
                     $materials[] = $template;
                     $weights[] = max(.01, (float) $template['quantity'] * (float) $pricedItems[$template['item_id']]['unit_price']) * $this->draw(.8, 1.2);
                 }
+                // Process each amount.
                 foreach ($this->apportion($materialTotal, $weights) as $j => $amount) {
                     $template = $materials[$j];
                     $item = $pricedItems[$template['item_id']];
@@ -129,15 +147,19 @@ class ProjectCostDistributionGenerator
                     'estimated_end_date' => $plannedEnd->toDateString(), 'duration_months' => max(1, (int) $start->diffInMonths($plannedEnd)), 'worker_count' => max(1, (int) round($donor['worker_count'] * $scale)),
                     'budget' => $budget, 'actual_cost' => $final / 100, 'data_source' => 'distribution_dummy'];
                 $write('projects', $newProject);
+                // Process each event.
                 foreach ($direct as $event) {
                     $write('expenses', $event);
                 }
+                // Process each event.
                 foreach ($movements as $event) {
                     $write('inventory-transactions', $event);
                 }
+                // Process each donor row.
                 foreach ($donorRows as $donorRow) {
                     $row = (array) $donorRow;
                     $row = array_replace($row, $newProject, ['completed_at' => $end->toDateString(), 'planned_start_date' => $start->toDateString(), 'data_source' => 'distribution_dummy']);
+                    // Run this step if the snapshot id is set.
                     if (isset($donorRow->snapshot_id)) {
                         $fraction = min(.99, max(0, (float) ($donorRow->elapsed_days ?? 0) / $donorDays));
                         $asOf = $start->addDays((int) floor($days * $fraction));
@@ -150,6 +172,7 @@ class ProjectCostDistributionGenerator
                     $write('training-observations', $row);
                 }
             }
+            // Process each handle.
             foreach ($handles as $handle) {
                 gzclose($handle);
             }
@@ -165,19 +188,23 @@ class ProjectCostDistributionGenerator
                 'limitations' => ['Fixed requested event counts deliberately differ from observed per-project transaction frequencies.',
                     'A larger dummy dataset adds no independent company outcomes; performance must be evaluated on database projects.',
                     'Database provenance labels are preserved; they are not independently verified by this generator.'], 'files' => []];
+            // Process each count.
             foreach ($counts as $name => $count) {
                 $manifest['files'][$name.'.jsonl.gz'] = ['records' => $count, 'sha256' => hash_file('sha256', $temporary.'/'.$name.'.jsonl.gz')];
             }
             file_put_contents($temporary.'/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
             (new ProjectCostAugmentationDataset($temporary))->assertDatabaseMatches($records);
             (new ProjectCostAugmentationAudit)->audit($temporary);
+            // Stop if the directory check matches.
             if (! rename($temporary, $directory)) {
                 throw new RuntimeException('Unable to publish dataset directory.');
             }
 
             return $manifest;
         } catch (Throwable $error) {
+            // Process each handle.
             foreach ($handles as $handle) {
+                // Run this step if the handle check matches.
                 if (is_resource($handle)) {
                     gzclose($handle);
                 }
@@ -187,20 +214,24 @@ class ProjectCostDistributionGenerator
         }
     }
 
+    // Get the pick.
     private function pick(array $values): mixed
     {
         return $values[$this->random->getInt(0, count($values) - 1)];
     }
 
+    // Get the draw.
     private function draw(float $min, float $max): float
     {
         return $min + ($max - $min) * $this->random->getInt(0, 1000000) / 1000000;
     }
 
+    // Get the apportion.
     private function apportion(int $total, array $weights): array
     {
         $remaining = $total - count($weights);
         $sum = array_sum($weights);
+        // Stop if the remaining is below 0.
         if ($remaining < 0) {
             throw new RuntimeException('Requested events exceed available centavos.');
         }
@@ -210,6 +241,7 @@ class ProjectCostDistributionGenerator
         return $amounts;
     }
 
+    // Get the event date.
     private function eventDate(CarbonImmutable $start, int $days, array $project, string $date): string
     {
         $donorStart = CarbonImmutable::parse($project['start_date']);
@@ -219,6 +251,7 @@ class ProjectCostDistributionGenerator
         return $start->addDays(max(0, min($days, (int) round($fraction * $days) + $this->random->getInt(-3, 3))))->toDateString();
     }
 
+    // Get the saved values for this point in time.
     private function snapshot(array $direct, array $movements, CarbonImmutable $asOf, CarbonImmutable $start, int $days, float $budget, float $progress): array
     {
         $date = $asOf->toDateString();
@@ -229,6 +262,7 @@ class ProjectCostDistributionGenerator
         $sum = fn ($rows) => round(array_sum(array_column($rows, 'amount')), 2);
         $last = fn ($rows, $key, $since) => array_filter($rows, fn ($e) => $e[$key] >= $since);
         $components = [];
+        // Process each component.
         foreach (['material', 'labor', 'equipment', 'other'] as $component) {
             $components[$component] = $sum(array_filter($known, fn ($e) => $e['project_cost_component'] === $component));
         }
@@ -242,6 +276,7 @@ class ProjectCostDistributionGenerator
             'stock_out_count_30d' => count($last($outs, 'transaction_date', $recent)), 'stock_out_count_7d' => count($last($outs, 'transaction_date', $week)),
             'valued_stock_out_cost' => $sum($outs), 'valued_stock_out_cost_30d' => $sum($last($outs, 'transaction_date', $recent)), 'valued_stock_out_cost_7d' => $sum($last($outs, 'transaction_date', $week)),
             'unvalued_stock_out_count' => 0, 'has_unvalued_stock_out' => 0];
+        // Process each amount.
         foreach ($components as $name => $amount) {
             $row['fin_'.$name.'_expense'] = $amount;
         }

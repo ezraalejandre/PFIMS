@@ -20,8 +20,10 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+// Group the inventory actions.
 class InventoryController extends Controller
 {
+    // Set up the values this class needs.
     public function __construct(
         private readonly AuditLogService $audit,
         private readonly InventoryCostAllocator $costAllocator,
@@ -42,8 +44,10 @@ class InventoryController extends Controller
 
         $defaultThreshold = (float) SystemSetting::value('inventory_reorder_threshold', 5);
         $query = InventoryItem::with(['category', 'supplier', 'unit']);
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = trim($filters['search']);
+            // Group these checks when finding matching records.
             $query->where(function ($inner) use ($search) {
                 $inner->where('item_name', 'like', "%{$search}%")
                     ->orWhereHas('category', fn ($relation) => $relation->where('inventory_category_name', 'like', "%{$search}%"))
@@ -51,12 +55,15 @@ class InventoryController extends Controller
                     ->orWhereHas('unit', fn ($relation) => $relation->where('unit_name', 'like', "%{$search}%"));
             });
         }
+        // Run this step if the filters category id has a value.
         if (! empty($filters['category_id'])) {
             $query->where('inventory_category_id', $filters['category_id']);
         }
+        // Run this step if the filters supplier id has a value.
         if (! empty($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
         }
+        // Run this step if the filters stock state equals in stock.
         if (($filters['stock_state'] ?? null) === 'in_stock') {
             $query->whereRaw('current_stock > CASE WHEN reorder_level IS NULL OR reorder_level < ? THEN ? ELSE reorder_level END', [$defaultThreshold, $defaultThreshold]);
         } elseif (($filters['stock_state'] ?? null) === 'low_stock') {
@@ -68,6 +75,7 @@ class InventoryController extends Controller
         $items = $query
             ->orderBy('item_name')
             ->get()
+            // Build a result for each record.
             ->map(function ($item) use ($defaultThreshold) {
                 return [
                     'item_id' => $item->item_id,
@@ -103,6 +111,7 @@ class InventoryController extends Controller
             'reorder_level' => 'required|numeric|min:0|max:999999999999.99',
         ]);
         $validated['item_name'] = trim($validated['item_name']);
+        // Return early if the validated check matches.
         if ($this->duplicateItem($validated)) {
             return response()->json(['success' => false, 'message' => 'This inventory item already exists.'], 409);
         }
@@ -132,10 +141,13 @@ class InventoryController extends Controller
 
         $proofFile = $request->file('proof_file');
         unset($validated['proof_file'], $validated['purchase_amount']);
+        // Run this step if the validated transaction type equals out.
         if ($validated['transaction_type'] === 'OUT') {
+            // Return early if the validated project id is empty.
             if (empty($validated['project_id'])) {
                 return response()->json(['success' => false, 'message' => 'Stock-out requires a project.'], 422);
             }
+            // Return early if the validated movement reason is not null.
             if (($validated['movement_reason'] ?? null) !== null) {
                 return response()->json(['success' => false, 'message' => 'Stock-out cannot have a stock-in reason.'], 422);
             }
@@ -147,19 +159,24 @@ class InventoryController extends Controller
         $validated['proof_file_name'] = $proofFile?->getClientOriginalName();
 
         DB::beginTransaction();
+        // Try this action and handle any errors below.
         try {
             $item = InventoryItem::lockForUpdate()->findOrFail($validated['item_id']);
             $purchaseAmount = null;
+            // Run this step if the validated transaction type and validated movement reason checks match.
             if ($validated['transaction_type'] === 'IN' && $validated['movement_reason'] === 'purchase') {
                 $unitPrice = $item->unit_price === null ? null : (float) $item->unit_price;
+                // Run this step if the unit price checks match.
                 if ($unitPrice === null || $unitPrice <= 0) {
                     abort(422, 'Set a positive Unit Price on this item before recording a purchase stock-in.');
                 }
                 $purchaseAmount = round($unitPrice * (float) $validated['quantity'], 2);
+                // Run this step if the purchase amount checks match.
                 if ($purchaseAmount < 0.01 || $purchaseAmount > 9999999999.99) {
                     abort(422, 'The quantity multiplied by Unit Price exceeds the supported purchase amount.');
                 }
             }
+            // Run this step if the purchase amount check matches.
             if ($this->duplicateTransaction($validated, null, $purchaseAmount)) {
                 abort(409, 'This inventory transaction already exists.');
             }
@@ -167,6 +184,7 @@ class InventoryController extends Controller
             // Create transaction record
             $transaction = InventoryTransaction::create($validated + ['recorded_at' => now()]);
 
+            // Run this step if the validated transaction type and validated movement reason checks match.
             if ($validated['transaction_type'] === 'IN' && $validated['movement_reason'] === 'purchase') {
                 $this->purchaseService->createLinkedExpense((int) $transaction->getKey(), $purchaseAmount);
             }
@@ -175,17 +193,20 @@ class InventoryController extends Controller
             if ($validated['transaction_type'] === 'IN') {
                 $item->current_stock += $validated['quantity'];
             } else {
+                // Run this step if the current stock is below validated quantity.
                 if ($item->current_stock < $validated['quantity']) {
                     abort(422, 'Insufficient stock for this transaction.');
                 }
                 $item->current_stock -= $validated['quantity'];
             }
             $item->save();
+            // Run this step if the validated transaction type equals out.
             if ($validated['transaction_type'] === 'OUT') {
                 $this->costAllocator->allocate((int) $transaction->getKey());
             }
 
             DB::commit();
+            // Run this step if the transaction type equals out.
             if ($transaction->transaction_type === 'OUT') {
                 app(ProjectCostSnapshotService::class)->captureAfterCommit((int) $transaction->project_id, 'stock_out_created');
             }
@@ -193,6 +214,7 @@ class InventoryController extends Controller
             return response()->json(['success' => true, 'data' => $transaction, 'message' => 'Transaction added successfully!'], 201);
         } catch (\Throwable $e) {
             DB::rollBack();
+            // Run this step if the validated proof file path has a value.
             if (! empty($validated['proof_file_path'])) {
                 app(\App\Services\TrashService::class)->retainFile($validated['proof_file_path']);
             }
@@ -202,6 +224,7 @@ class InventoryController extends Controller
         }
     }
 
+    // Update item.
     public function updateItem(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
@@ -215,6 +238,7 @@ class InventoryController extends Controller
 
         $item = InventoryItem::findOrFail($id);
         $validated['item_name'] = trim($validated['item_name']);
+        // Return early if the id check matches.
         if ($this->duplicateItem($validated, (int) $id)) {
             return response()->json(['success' => false, 'message' => 'This inventory item already exists.'], 409);
         }
@@ -227,8 +251,10 @@ class InventoryController extends Controller
         ]);
     }
 
+    // Get the destroy item.
     public function destroyItem($id): JsonResponse
     {
+        // Return early if the exists check matches.
         if (InventoryTransaction::where('item_id', $id)->exists()) {
             return response()->json([
                 'success' => false,
@@ -237,6 +263,7 @@ class InventoryController extends Controller
         }
 
         DB::beginTransaction();
+        // Try this action and handle any errors below.
         try {
             $item = InventoryItem::lockForUpdate()->findOrFail($id);
             InventoryTransaction::where('item_id', $item->item_id)->delete();
@@ -275,12 +302,15 @@ class InventoryController extends Controller
             ->get();
 
         $runningStock = [];
+        // Build a result for each record.
         $rows = $transactions->map(function ($transaction) use (&$runningStock, $defaultThreshold) {
             $itemId = $transaction->item_id;
+            // Run this step if the item id is missing.
             if (! isset($runningStock[$itemId])) {
                 $runningStock[$itemId] = 0;
             }
 
+            // Run this step if the transaction type equals in.
             if ($transaction->transaction_type === 'IN') {
                 $runningStock[$itemId] += $transaction->quantity;
             } else {
@@ -311,8 +341,10 @@ class InventoryController extends Controller
             ];
         });
 
+        // Run this step if the filters search has a value.
         if (! empty($filters['search'])) {
             $search = Str::lower(trim($filters['search']));
+            // Keep the items that pass these checks.
             $rows = $rows->filter(function (array $row) use ($search) {
                 $haystack = Str::lower(implode(' ', [
                     $row['project'] ?? '', $row['item_name'] ?? '', $row['category'] ?? '',
@@ -322,18 +354,23 @@ class InventoryController extends Controller
                 return str_contains($haystack, $search);
             });
         }
+        // Run this step if the filters transaction type has a value.
         if (! empty($filters['transaction_type'])) {
             $rows = $rows->where('transaction_type', $filters['transaction_type']);
         }
+        // Run this step if the filters project id has a value.
         if (! empty($filters['project_id'])) {
             $rows = $rows->where('project_id', (int) $filters['project_id']);
         }
+        // Run this step if the filters category id has a value.
         if (! empty($filters['category_id'])) {
             $rows = $rows->where('inventory_category_id', (int) $filters['category_id']);
         }
+        // Run this step if the filters start date has a value.
         if (! empty($filters['start_date'])) {
             $rows = $rows->filter(fn (array $row) => $row['transaction_date'] >= $filters['start_date']);
         }
+        // Run this step if the filters end date has a value.
         if (! empty($filters['end_date'])) {
             $rows = $rows->filter(fn (array $row) => $row['transaction_date'] <= $filters['end_date']);
         }
@@ -353,6 +390,7 @@ class InventoryController extends Controller
         return response()->json(['success' => true, 'data' => $transactions]);
     }
 
+    // Update transaction.
     public function updateTransaction(Request $request, $id): JsonResponse
     {
         $maxQuantity = (float) SystemSetting::value('inventory_max_transaction_quantity', 999999999999.99);
@@ -366,11 +404,13 @@ class InventoryController extends Controller
         $newProofPath = null;
         $proofCommitted = false;
         DB::beginTransaction();
+        // Try this action and handle any errors below.
         try {
             $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
             $before = $transaction->getAttributes();
             $quantityChanged = (float) $transaction->quantity !== (float) $validated['quantity'];
             $wasAllocated = DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', $id)->exists();
+            // Run this step if the quantity changed and transaction checks match.
             if ($quantityChanged && ($this->hasLaterStockOut($transaction)
                 || $this->hasLaterCostAllocation($transaction, $transaction->transaction_type !== 'OUT'))) {
                 abort(409, 'Quantity cannot be changed because a later stock-out depends on this movement.');
@@ -383,15 +423,18 @@ class InventoryController extends Controller
                 'bar_code' => $validated['bar_code'] ?? null,
                 'transaction_date' => $validated['transaction_date'],
             ];
+            // Run this step if the id check matches.
             if ($this->duplicateTransaction($candidate, (int) $id)) {
                 abort(409, 'This inventory transaction already exists.');
             }
             $item = InventoryItem::whereKey($transaction->item_id)->lockForUpdate()->firstOrFail();
             $oldEffect = $transaction->transaction_type === 'IN' ? (float) $transaction->quantity : -(float) $transaction->quantity;
             $newEffect = $transaction->transaction_type === 'IN' ? (float) $validated['quantity'] : -(float) $validated['quantity'];
+            // Run this step if the new effect is below 0.
             if (((float) $item->current_stock - $oldEffect + $newEffect) < 0) {
                 abort(422, 'The updated OUT quantity exceeds available stock.');
             }
+            // Run this step if the quantity changed and was allocated checks match.
             if ($quantityChanged && $wasAllocated) {
                 DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', $id)->delete();
             }
@@ -400,6 +443,7 @@ class InventoryController extends Controller
                 'bar_code' => $validated['bar_code'] ?? null,
                 'transaction_date' => $validated['transaction_date'],
             ]);
+            // Run this step if the has file check matches.
             if ($request->hasFile('proof_file')) {
                 $newProofPath = $request->file('proof_file')->store('inventory-transaction-proofs', 'protected');
                 $transaction->update([
@@ -411,9 +455,11 @@ class InventoryController extends Controller
             $this->syncLinkedStockInExpense($transaction, (float) $before['quantity']);
 
             $this->recalculateItemStock($transaction->item_id);
+            // Run this step if the quantity changed and was allocated checks match.
             if ($quantityChanged && $wasAllocated) {
                 $this->costAllocator->allocate((int) $id);
             }
+            // Run this step if the was allocated and quantity changed checks match.
             if ($wasAllocated && ! $quantityChanged && $transaction->project_id !== null) {
                 app(ProjectCostLedger::class)->syncBudget((int) $transaction->project_id);
             }
@@ -421,6 +467,7 @@ class InventoryController extends Controller
             $this->audit->record($transaction, 'UPDATE', $before, $transaction->getAttributes());
             DB::commit();
             $proofCommitted = true;
+            // Run this step if the transaction type equals out.
             if ($transaction->transaction_type === 'OUT') {
                 app(ProjectCostSnapshotService::class)->captureAfterCommit((int) $transaction->project_id, 'stock_out_updated');
             }
@@ -428,6 +475,7 @@ class InventoryController extends Controller
             return response()->json(['success' => true, 'data' => $transaction, 'message' => 'Transaction updated successfully!']);
         } catch (\Throwable $e) {
             DB::rollBack();
+            // Run this step if the new proof path and proof committed checks match.
             if ($newProofPath && ! $proofCommitted) Storage::disk('protected')->delete($newProofPath);
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
 
@@ -435,11 +483,14 @@ class InventoryController extends Controller
         }
     }
 
+    // Get the destroy transaction.
     public function destroyTransaction($id): JsonResponse
     {
         DB::beginTransaction();
+        // Try this action and handle any errors below.
         try {
             $transaction = InventoryTransaction::lockForUpdate()->findOrFail($id);
+            // Run this step if the transaction and transaction type checks match.
             if ($this->hasLaterStockOut($transaction)
                 || $this->hasLaterCostAllocation($transaction, $transaction->transaction_type !== 'OUT')) {
                 abort(409, 'This transaction cannot be deleted because a later stock-out depends on it.');
@@ -448,10 +499,12 @@ class InventoryController extends Controller
             $linkedExpense = Schema::hasTable('fin_expense_tbl')
                 ? DB::table('fin_expense_tbl')->where('inventory_transaction_id', $transaction->getKey())->first()
                 : null;
+            // Run this step if the linked expense and amount checks match.
             if ($linkedExpense && ($linkedExpense->amount !== null || $linkedExpense->project_id !== null)
                 && ($linkedExpense->entry_kind ?? null) !== 'inventory_purchase') {
                 abort(409, 'This transaction cannot be deleted because its Finance expense already has details.');
             }
+            // Run this step if the linked expense is set.
             if ($linkedExpense) {
                 DB::table('fin_expense_tbl')->where('fin_expense_id', $linkedExpense->fin_expense_id)->delete();
             }
@@ -461,16 +514,19 @@ class InventoryController extends Controller
             $proofPath = $transaction->proof_file_path;
             DB::table('inventory_cost_allocation_tbl')->where('out_transaction_id', $id)->delete();
             $transaction->delete();
+            // Run this step if the transaction type and project id checks match.
             if ($transaction->transaction_type === 'OUT' && $transaction->project_id !== null) {
                 app(ProjectCostLedger::class)->syncBudget((int) $transaction->project_id);
             }
             $this->recalculateItemStock($itemId);
             $this->audit->record($transaction, 'DELETE', $before, []);
             DB::commit();
+            // Run this step if the transaction type equals out.
             if ($transaction->transaction_type === 'OUT') {
                 app(ProjectCostSnapshotService::class)->captureAfterCommit((int) $transaction->project_id, 'stock_out_deleted');
             }
 
+            // Run this step if the proof path is set.
             if ($proofPath) {
                 app(\App\Services\TrashService::class)->retainFile($proofPath);
             }
@@ -490,6 +546,7 @@ class InventoryController extends Controller
         }
     }
 
+    // Get the recalculate item stock.
     protected function recalculateItemStock(int $itemId): void
     {
         $runningStock = InventoryTransaction::where('item_id', $itemId)
@@ -503,6 +560,7 @@ class InventoryController extends Controller
         $item->save();
     }
 
+    // Check for later cost allocation.
     private function hasLaterCostAllocation(InventoryTransaction $transaction, bool $includeSelf = true): bool
     {
         return DB::table('inventory_cost_allocation_tbl as allocation')
@@ -512,6 +570,7 @@ class InventoryController extends Controller
             ->exists();
     }
 
+    // Check for later stock out.
     private function hasLaterStockOut(InventoryTransaction $transaction): bool
     {
         return InventoryTransaction::where('item_id', $transaction->item_id)
@@ -520,18 +579,22 @@ class InventoryController extends Controller
             ->exists();
     }
 
+    // Match linked stock in expense.
     private function syncLinkedStockInExpense(InventoryTransaction $transaction, float $previousQuantity): void
     {
+        // Run this step if the transaction type checks match.
         if ($transaction->transaction_type !== 'IN' || ! Schema::hasTable('fin_expense_tbl')) {
             return;
         }
 
         $item = InventoryItem::find($transaction->item_id);
+        // Run this step if the item is missing or false.
         if (! $item) {
             return;
         }
         $expense = DB::table('fin_expense_tbl')
             ->where('inventory_transaction_id', $transaction->inventory_transaction_id)->first();
+        // Run this step if the expense is missing or false.
         if (! $expense) {
             return;
         }
@@ -543,6 +606,7 @@ class InventoryController extends Controller
             'remarks' => $historicalEstimate ? $expense->remarks : $this->stockInExpenseRemarks($transaction->bar_code),
             'updated_at' => now(),
         ];
+        // Run this step if the entry kind and previous quantity checks match.
         if ($expense->entry_kind === 'inventory_purchase' && $previousQuantity > 0
             && (float) $transaction->quantity !== $previousQuantity) {
             $updates['amount'] = round((float) $expense->amount / $previousQuantity * (float) $transaction->quantity, 2);
@@ -552,6 +616,7 @@ class InventoryController extends Controller
             ->update($updates);
     }
 
+    // Get the stock in expense description.
     private function stockInExpenseDescription(InventoryTransaction $transaction, string $itemName, string $unit): string
     {
         $quantity = rtrim(rtrim(number_format((float) $transaction->quantity, 2, '.', ''), '0'), '.');
@@ -559,6 +624,7 @@ class InventoryController extends Controller
         return "Purchased {$quantity} ".strtolower($unit)." of {$itemName}";
     }
 
+    // Get the stock in expense remarks.
     private function stockInExpenseRemarks($barCode): string
     {
         $remarks = 'Inventory stock-in transaction.';
@@ -566,6 +632,7 @@ class InventoryController extends Controller
         return $barCode === null || $barCode === '' ? $remarks : $remarks.' Receiving reference: '.$barCode;
     }
 
+    // Get the duplicate item.
     private function duplicateItem(array $data, ?int $ignoreId = null): bool
     {
         $query = InventoryItem::query()
@@ -573,6 +640,7 @@ class InventoryController extends Controller
             ->where('inventory_category_id', $data['inventory_category_id'])
             ->where('supplier_id', $data['supplier_id'])
             ->where('unit_id', $data['unit_id']);
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('item_id', '!=', $ignoreId);
         }
@@ -580,6 +648,7 @@ class InventoryController extends Controller
         return $query->exists();
     }
 
+    // Get the duplicate transaction.
     private function duplicateTransaction(array $data, ?int $ignoreId = null, $purchaseAmount = null): bool
     {
         $query = InventoryTransaction::query()
@@ -589,8 +658,10 @@ class InventoryController extends Controller
             ->whereDate('transaction_date', $data['transaction_date']);
         $query = empty($data['project_id']) ? $query->whereNull('project_id') : $query->where('project_id', $data['project_id']);
         $query = ($data['bar_code'] ?? null) === null ? $query->whereNull('bar_code') : $query->where('bar_code', $data['bar_code']);
+        // Run this step if the ignore id and data checks match.
         if ($ignoreId === null && array_key_exists('movement_reason', $data)) {
             $query->where('movement_reason', $data['movement_reason']);
+            // Run this step if the data movement reason equals purchase.
             if ($data['movement_reason'] === 'purchase') {
                 $query->whereExists(function ($expense) use ($purchaseAmount) {
                     $expense->selectRaw('1')->from('fin_expense_tbl')
@@ -599,6 +670,7 @@ class InventoryController extends Controller
                 });
             }
         }
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('inventory_transaction_id', '!=', $ignoreId);
         }
@@ -631,9 +703,11 @@ class InventoryController extends Controller
         $query = InventoryItem::query()
             ->select('item_id', 'item_name', 'inventory_category_id', 'supplier_id', 'unit_id', 'unit_price', 'current_stock');
 
+        // Run this step if the filters category id has a value.
         if (! empty($filters['category_id'])) {
             $query->where('inventory_category_id', $filters['category_id']);
         }
+        // Run this step if the filters supplier id has a value.
         if (! empty($filters['supplier_id'])) {
             $query->where('supplier_id', $filters['supplier_id']);
         }
@@ -642,7 +716,7 @@ class InventoryController extends Controller
     }
 
     /**
-     * Legacy mobile list including each item's latest transaction metadata.
+     * Legacy mobile list including each item's latest transaction saved details.
      */
     public function itemList(): JsonResponse
     {

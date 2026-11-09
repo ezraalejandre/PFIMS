@@ -5,8 +5,10 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    // Apply these database changes.
     public function up(): void
     {
+        // Run these database steps together. Undo changes if a step fails.
         DB::transaction(function (): void {
             $requested = [
                 ['CONSTRUCTION_SUPPLY', 'Construction Supply', 'direct', ['CONST_SUPPLY']],
@@ -31,10 +33,13 @@ return new class extends Migration
                 ['OTHERS', 'Others', 'admin', ['ADMIN_OTHERS', 'OTHER_ADMIN_COSTS']],
             ];
 
+            // Process each aliases.
             foreach ($requested as [$code, $name, $type, $aliases]) {
                 $category = DB::table('fin_expense_category_tbl')->where('category_code', $code)->first();
+                // Run this step if the category is missing or false.
                 if (! $category) {
                     $alias = DB::table('fin_expense_category_tbl')->whereIn('category_code', $aliases)->first();
+                    // Run this step if the alias is set.
                     if ($alias) {
                         DB::table('fin_expense_category_tbl')->where('fin_category_id', $alias->fin_category_id)->update(['category_code' => $code]);
                         $category = $alias;
@@ -49,8 +54,10 @@ return new class extends Migration
                 DB::table('fin_expense_category_tbl')->where('fin_category_id', $category->fin_category_id)->update([
                     'category_name' => $name, 'classification' => $type, 'is_active' => true,
                 ]);
+                // Process each alias code.
                 foreach ($aliases as $aliasCode) {
                     $legacy = DB::table('fin_expense_category_tbl')->where('category_code', $aliasCode)->first();
+                    // Skip this item if the legacy and fin category id checks match.
                     if (! $legacy || $legacy->fin_category_id === $category->fin_category_id) continue;
                     DB::table('fin_expense_tbl')->where('fin_category_id', $legacy->fin_category_id)
                         ->update(['fin_category_id' => $category->fin_category_id]);
@@ -63,6 +70,7 @@ return new class extends Migration
                 'direct' => DB::table('fin_expense_category_tbl')->where('category_code', 'OTHERS_SOS_ETC')->value('fin_category_id'),
                 'admin' => DB::table('fin_expense_category_tbl')->where('category_code', 'MISCELLANEOUS_EXPENSE')->value('fin_category_id'),
             ];
+            // Process each legacy.
             foreach (DB::table('fin_expense_category_tbl')->whereNotIn('category_code', $validCodes)->get() as $legacy) {
                 $target = strtolower((string) $legacy->classification) === 'direct' ? $fallbackIds['direct'] : $fallbackIds['admin'];
                 DB::table('fin_expense_tbl')->where('fin_category_id', $legacy->fin_category_id)->update(['fin_category_id' => $target]);
@@ -71,6 +79,7 @@ return new class extends Migration
         });
     }
 
+    // Undo these database changes.
     public function down(): void
     {
         // This migration preserves expenses while replacing legacy category identities.

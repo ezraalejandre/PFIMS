@@ -6,6 +6,7 @@ use App\Models\AppNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
+// Group the notification actions.
 class NotificationService
 {
     /**
@@ -117,12 +118,14 @@ class NotificationService
         );
     }
 
+    // Match summary.
     private function syncSummary(string $type, string $title, string $message, int $count, string $kind): void
     {
         $query = AppNotification::where('type', $type)
             ->where('reference_type', 'summary')
             ->where('reference_id', 0);
 
+        // Run this step if the count is at most 0.
         if ($count <= 0) {
             $query->where('is_read', false)->update(['is_read' => true]);
             return;
@@ -131,6 +134,7 @@ class NotificationService
         $notification = $query->first();
         $currentMessage = $notification?->message;
 
+        // Run this step if the notification is missing or false.
         if (!$notification) {
             $this->notify(
                 title: $title,

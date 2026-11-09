@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 
+// Link records to the password otp table.
 class PasswordOtp extends Model
 {
     protected $fillable = ['email', 'otp', 'verified', 'expires_at'];

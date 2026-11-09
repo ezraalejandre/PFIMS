@@ -8,13 +8,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+// Group the fin receivable payable actions.
 class FinReceivablePayableController extends Controller
 {
+    // List the fin receivable payable records.
     public function index()
     {
         return response()->json(FinReceivablePayable::with('project:project_id,project_name')->get());
     }
 
+    // Save a new fin receivable payable record.
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -30,6 +33,7 @@ class FinReceivablePayableController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
@@ -43,6 +47,7 @@ class FinReceivablePayableController extends Controller
         $data['amount_91_120d'] = $data['amount_91_120d'] ?? 0;
         $data['status'] = $data['status'] ?? 'outstanding';
         $data['remarks'] = blank($data['remarks'] ?? null) ? null : trim($data['remarks']);
+        // Return early if a matching record already exists.
         if ($this->isDuplicate($data)) {
             return response()->json(['message' => 'This receivable/payable entry already exists.'], 409);
         }
@@ -52,9 +57,11 @@ class FinReceivablePayableController extends Controller
         return response()->json($rp, 201);
     }
 
+    // Save changes to the fin receivable payable record.
     public function update(Request $request, $id)
     {
         $rp = FinReceivablePayable::find($id);
+        // Return early if the rp is missing or false.
         if (! $rp) {
             return response()->json(['message' => 'Record not found'], 404);
         }
@@ -72,18 +79,22 @@ class FinReceivablePayableController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $data = $validator->validated();
+        // Run this step if the data counterparty name is set.
         if (isset($data['counterparty_name'])) {
             $data['counterparty_name'] = trim($data['counterparty_name']);
         }
+        // Run this step if the data check matches.
         if (array_key_exists('remarks', $data)) {
             $data['remarks'] = blank($data['remarks']) ? null : trim($data['remarks']);
         }
         $candidate = array_merge($rp->only($rp->getFillable()), $data);
+        // Return early if a matching record already exists.
         if ($this->isDuplicate($candidate, (int) $id)) {
             return response()->json(['message' => 'This receivable/payable entry already exists.'], 409);
         }
@@ -93,9 +104,11 @@ class FinReceivablePayableController extends Controller
         return response()->json($rp);
     }
 
+    // Delete the selected fin receivable payable record.
     public function destroy($id)
     {
         $rp = FinReceivablePayable::find($id);
+        // Return early if the rp is missing or false.
         if (! $rp) {
             return response()->json(['message' => 'Record not found'], 404);
         }
@@ -105,16 +118,19 @@ class FinReceivablePayableController extends Controller
         return response()->json(['message' => 'Record deleted successfully']);
     }
 
+    // Check the duplicate condition.
     private function isDuplicate(array $data, ?int $ignoreId = null): bool
     {
         $query = DB::table('fin_receivable_payable_tbl')
             ->where('entry_type', $data['entry_type'])
             ->whereDate('entry_date', $data['entry_date'])
             ->whereRaw('LOWER(TRIM(counterparty_name)) = ?', [strtolower(trim($data['counterparty_name']))]);
+        // Process each field.
         foreach (['amount_30d', 'amount_31_60d', 'amount_61_90d', 'amount_91_120d'] as $field) {
             $query->where($field, $data[$field] ?? 0);
         }
         $query = empty($data['project_id']) ? $query->whereNull('project_id') : $query->where('project_id', $data['project_id']);
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('rp_id', '!=', $ignoreId);
         }

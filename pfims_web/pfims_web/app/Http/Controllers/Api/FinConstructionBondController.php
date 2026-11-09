@@ -8,8 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
+// Group the fin construction bond actions.
 class FinConstructionBondController extends Controller
 {
+    // List the fin construction bond records.
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -29,6 +31,7 @@ class FinConstructionBondController extends Controller
             $query->where('status', $filters['status']);
         }
 
+        // Run this step if the filters month has a value.
         if (!empty($filters['month'])) {
             $start = \Carbon\Carbon::createFromFormat('!Y-m', $filters['month']);
             $query->where('bond_date', '>=', $start->toDateString())
@@ -37,6 +40,7 @@ class FinConstructionBondController extends Controller
         return response()->json($query->get());
     }
 
+    // Save a new fin construction bond record.
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -48,12 +52,14 @@ class FinConstructionBondController extends Controller
             'remarks' => 'nullable|string|max:255',
         ]);
 
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $data = $this->normalize($validator->validated());
         $data['status'] = $data['status'] ?? 'active';
+        // Return early if a matching record already exists.
         if ($this->isDuplicate($data)) {
             return response()->json(['message' => 'This construction bond already exists.'], 409);
         }
@@ -62,9 +68,11 @@ class FinConstructionBondController extends Controller
         return response()->json($bond, 201);
     }
 
+    // Save changes to the fin construction bond record.
     public function update(Request $request, $id)
     {
         $bond = FinConstructionBond::find($id);
+        // Return early if the bond is missing or false.
         if (! $bond) {
             return response()->json(['message' => 'Bond not found'], 404);
         }
@@ -77,11 +85,13 @@ class FinConstructionBondController extends Controller
             'status' => 'sometimes|required|in:active,released,forfeited',
             'remarks' => 'nullable|string|max:255',
         ]);
+        // Return early if the submitted fields fail validation.
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
         $data = $this->normalize($validator->validated());
         $candidate = array_merge($bond->only($bond->getFillable()), $data);
+        // Return early if a matching record already exists.
         if ($this->isDuplicate($candidate, (int) $id)) {
             return response()->json(['message' => 'This construction bond already exists.'], 409);
         }
@@ -90,9 +100,11 @@ class FinConstructionBondController extends Controller
         return response()->json($bond);
     }
 
+    // Delete the selected fin construction bond record.
     public function destroy($id)
     {
         $bond = FinConstructionBond::find($id);
+        // Return early if the bond is missing or false.
         if (! $bond) {
             return response()->json(['message' => 'Bond not found'], 404);
         }
@@ -102,9 +114,12 @@ class FinConstructionBondController extends Controller
         return response()->json(['message' => 'Bond deleted successfully']);
     }
 
+    // Clean up the supplied values.
     private function normalize(array $data): array
     {
+        // Process each field.
         foreach (['bond_provider', 'remarks'] as $field) {
+            // Run this step if the data check matches.
             if (array_key_exists($field, $data)) {
                 $data[$field] = blank($data[$field]) ? null : trim($data[$field]);
             }
@@ -113,6 +128,7 @@ class FinConstructionBondController extends Controller
         return $data;
     }
 
+    // Check the duplicate condition.
     private function isDuplicate(array $data, ?int $ignoreId = null): bool
     {
         $query = DB::table('fin_construction_bond_tbl')
@@ -122,6 +138,7 @@ class FinConstructionBondController extends Controller
         $query = blank($data['bond_provider'] ?? null)
             ? $query->whereNull('bond_provider')
             : $query->whereRaw('LOWER(TRIM(bond_provider)) = ?', [strtolower(trim($data['bond_provider']))]);
+        // Run this step if the ignore id is not null.
         if ($ignoreId !== null) {
             $query->where('bond_id', '!=', $ignoreId);
         }
