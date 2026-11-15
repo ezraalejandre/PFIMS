@@ -5,9 +5,9 @@ namespace App\Services\ML;
 /** Check whether a model can be activated. This check does not save model files. */
 class ModelActivationPolicy
 {
-    public const AGREED_MAE_MAX_PERCENT = 15.0;
+    public const AGREED_MAE_MAX_PESOS = 50000.0;
 
-    public const STRETCH_MAE_PERCENT = 10.0;
+    public const STRETCH_MAE_PERCENT = 1.0;
 
     // Get the mae target.
     public function maeTarget(array $metrics): array
@@ -18,8 +18,8 @@ class ModelActivationPolicy
 
         return ['basis' => 'median_actual_final_cost_of_evaluated_projects',
             'reference_pesos' => $valid ? (float) $median : null,
-            'maximum_percent' => self::AGREED_MAE_MAX_PERCENT, 'stretch_percent' => self::STRETCH_MAE_PERCENT,
-            'maximum_pesos' => $valid ? round($median * self::AGREED_MAE_MAX_PERCENT / 100, 2) : null,
+            'maximum_percent' => $valid ? self::AGREED_MAE_MAX_PESOS / $median * 100 : null, 'stretch_percent' => self::STRETCH_MAE_PERCENT,
+            'maximum_pesos' => self::AGREED_MAE_MAX_PESOS,
             'stretch_pesos' => $valid ? round($median * self::STRETCH_MAE_PERCENT / 100, 2) : null,
             'actual_percent' => $valid && $this->finite($mae) ? round($mae / $median * 100, 4) : null];
     }
@@ -34,7 +34,9 @@ class ModelActivationPolicy
         $tolerance = array_key_exists('mae_tolerance', $evidence) ? $evidence['mae_tolerance'] : $maeTarget['maximum_pesos'];
         $checks['agreed_mae_tolerance'] = $this->finite($tolerance) && $tolerance > 0
             && $this->finite($maeTarget['maximum_pesos'])
-            && $this->atMost($metrics['mean_absolute_error'] ?? null, min((float) $tolerance, $maeTarget['maximum_pesos']));
+            && $this->finite($metrics['mean_absolute_error'] ?? null)
+            && (float) $metrics['mean_absolute_error'] >= 0
+            && (float) $metrics['mean_absolute_error'] < min((float) $tolerance, $maeTarget['maximum_pesos']);
         $baseline = $evidence['budget_baseline_mape'] ?? null;
         $checks['budget_baseline_improvement_at_least_2_points'] = $this->finite($baseline)
             && $this->finite($metrics['mean_absolute_percentage_error'] ?? null)
@@ -49,7 +51,7 @@ class ModelActivationPolicy
             'minimum' => ['mape_max' => 10, 'r_squared_min' => 0.8, 'baseline_mape_improvement_points' => 2],
             'ideal' => ['mape_max' => 5, 'r_squared_min' => 0.9],
             'mae_target' => $maeTarget,
-            'mae' => 'MAE at most 15% of the median actual final cost in the real-only project evaluation; 10% is the preferred target. Lower is better. A stricter supplied peso tolerance is honored.',
+            'mae' => 'MAE below PHP 50,000; stretch target below 1% of the median actual final cost. A stricter supplied peso tolerance is honored.',
         ]);
     }
 

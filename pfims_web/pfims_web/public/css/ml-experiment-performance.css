@@ -1,0 +1,42 @@
+.experiment-performance{margin:12px 0 28px;padding:22px;border:1px solid #d8e1ec;border-top:3px solid #d97706;border-radius:12px;background:var(--ui-surface-solid,#fff);color:var(--ui-text,#172033)}
+.experiment-performance-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.experiment-performance h3{margin:0 0 6px;font-size:1.1rem;font-weight:500}.experiment-performance-heading p{margin:0;color:var(--ui-muted,#64748b);font-size:.9rem}
+.experiment-label{padding:6px 10px;border:1px solid #e8bb75;border-radius:20px;background:#fff7ed;color:#9a4c0a;font-size:.8rem;font-weight:400}
+.experiment-metric-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:18px 0}
+.experiment-metric-grid>div{padding:16px 12px;border:1px solid #e2e8f0;border-radius:9px;background:var(--ui-bg,#f8fafc)}
+.experiment-metric-grid span{display:block;font-size:.8rem;color:var(--ui-muted,#64748b);margin-bottom:9px}.experiment-metric-grid strong{font-size:1.65rem;font-weight:500;font-variant-numeric:tabular-nums}
+.experiment-table-scroll{overflow-x:auto;margin-top:18px}.experiment-performance table{width:100%;border-collapse:collapse;min-width:650px;font-size:.86rem}
+.experiment-performance caption{text-align:left;margin-bottom:10px;font-weight:400;color:var(--ui-muted,#64748b)}
+.experiment-performance :is(th,td){padding:11px 9px;border-bottom:1px solid #e2e8f0;text-align:right;white-space:nowrap}.experiment-performance :is(th,td):first-child{text-align:left}
+.experiment-performance th{font-weight:500;background:var(--ui-bg,#f8fafc)}
+.experiment-performance .experiment-limit{padding:12px 14px;margin:18px 0 12px;background:#fff7ed;border-left:3px solid #d97706;color:#854d0e;font-size:.9rem;line-height:1.6;font-weight:400}
+.experiment-performance .analytics-panel-description{line-height:1.6;font-weight:400;font-size:.88rem;margin:12px 0}
+@media(max-width:900px){.experiment-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:550px){.experiment-performance{padding:14px}.experiment-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.experiment-metric-grid strong{font-size:1.4rem}}
+
+.experiment-count-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}
+.experiment-count-card{display:flex;flex-direction:column;gap:7px;padding:18px 14px;border:1px solid #cbd5e1;border-top:4px solid #16836b;border-radius:10px;background:var(--ui-bg,#f8fafc)}
+.experiment-count-card strong{font-size:1.9rem;font-variant-numeric:tabular-nums;font-weight:600}.experiment-count-card span{font-size:.85rem;color:var(--ui-muted,#64748b)}
+.experiment-count-card.missed{border-top-color:#dc4545}.experiment-count-card.alerts{border-top-color:#d97706}
+#modelMetrics .metric-section .model-status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+#modelMetrics .metric-section .metric-item{display:flex;flex-direction:column;align-items:flex-start;padding:16px 12px;border:1px solid #e2e8f0;border-radius:9px;background:var(--ui-bg,#f8fafc);gap:0}
+#modelMetrics .metric-section .metric-label{font-size:.8rem;margin-bottom:9px;color:var(--ui-muted,#64748b)}
+#modelMetrics .metric-section .metric-value{font-size:1.65rem;font-weight:500;font-variant-numeric:tabular-nums}
+#performanceStatus{font-size:1.1rem;font-weight:500;margin:0 0 6px}
+@media(max-width:550px){.experiment-count-grid,#modelMetrics .metric-section .model-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#modelMetrics .metric-section .metric-value{font-size:1.4rem}}
+
+.experiment-performance{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+
+/* Detection counts read as one row, separated without card surfaces. */
+#experimentPerformanceCounts{display:flex;gap:0;margin:20px 0;align-items:stretch}
+#experimentPerformanceCounts .experiment-count-card{flex:1;min-width:0;padding:4px 18px;border:0;border-radius:0;background:transparent;box-shadow:none}
+#experimentPerformanceCounts .experiment-count-card:first-child{padding-left:0}
+#experimentPerformanceCounts .experiment-count-card + .experiment-count-card{border-left:1px solid var(--ui-border-strong,#d3dae6)}
+#retrainResults{flex-basis:100%;padding:0;border:0;background:transparent;box-shadow:none}
+#retrainResults > p{margin:0 0 8px}
+@media(max-width:550px){#experimentPerformanceCounts .experiment-count-card{padding:4px 8px}#experimentPerformanceCounts .experiment-count-card span{overflow-wrap:anywhere}}
+
+#experimentPerformanceCounts .experiment-count-card{align-items:center;justify-content:center;text-align:center;padding:4px 12px}
+#experimentPerformanceCounts .experiment-count-card:first-child{padding-left:12px}
+#experimentPerformanceCounts .experiment-count-card strong{font-size:1.35rem;font-weight:500}
+#experimentPerformanceCounts .experiment-count-card span{font-size:.78rem}

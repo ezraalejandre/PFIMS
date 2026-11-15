@@ -116,7 +116,7 @@ class ReportFileBuilder
         foreach (array_keys($columns) as $key) {
             $value = $row[$key] ?? '';
             $number = is_numeric($value) && ! in_array($key, ['project_name', 'item_name', 'category_name', 'supplier_name', 'unit_name', 'stock_status'], true);
-            $display = $number ? number_format((float) $value, $key === 'item_id' ? 0 : 2) : $value;
+            $display = $number ? number_format((float) $value, str_ends_with($key, '_id') ? 0 : 2) : $value;
             $cells .= '<td'.($this->isTotalColumn($key) ? ' class="total-column"' : '').'>'.$this->html($display).'</td>';
         }
         return '<tr'.($total || $rowClass !== '' ? ' class="'.trim(($total ? 'total ' : '').$rowClass).'"' : '').'>'.$cells.'</tr>';
@@ -230,7 +230,7 @@ class ReportFileBuilder
             $widths = '<cols>';
             // Process each key.
             foreach (array_keys($columns) as $index => $key) {
-                $widths .= '<col min="'.($index + 1).'" max="'.($index + 1).'" width="'.($index === 0 ? 32 : 20).'" customWidth="1"/>';
+                $widths .= '<col min="'.($index + 1).'" max="'.($index + 1).'" width="'.($key === 'project_name' ? 32 : ($key === 'project_id' ? 12 : 20)).'" customWidth="1"/>';
             }
             $widths .= '</cols>';
             $zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8"?>'
@@ -285,7 +285,7 @@ class ReportFileBuilder
                 'previous' => $isNumber ? 13 : 12,
                 'month' => $isNumber ? 15 : 14,
                 default => $this->isTotalColumn($key) ? ($expenseSummary ? ($isNumber ? 17 : 18) : ($isNumber ? 8 : 9))
-                    : ($isNumber ? ($key === 'item_id' ? 6 : ($total ? 4 : 3))
+                    : ($isNumber ? (str_ends_with($key, '_id') ? 6 : ($total ? 4 : 3))
                         : ($total || ($expenseSummary && $key === 'project_name') ? 1 : 0)),
             };
             $cells .= $this->xlsxCell($this->excelColumn($index + 1).$number, $value,

@@ -1184,6 +1184,18 @@
     }
 
     // Get the install single click navigation.
+    function normalizeSidebarLabels() {
+        document.querySelectorAll('.sidebar a, .sidebar button').forEach(function (control) {
+            var walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
+            var node;
+            while ((node = walker.nextNode())) {
+                if (node.parentElement.closest('svg, script, style, .nav-chevron')) continue;
+                var label = node.textContent;
+                node.textContent = label.toLowerCase().replace(/\b[a-z]/g, function (letter) { return letter.toUpperCase(); });
+            }
+        });
+    }
+
     function installSingleClickNavigation() {
         // Process each toggle.
         document.querySelectorAll('.nav-parent-toggle').forEach(function (toggle) {
@@ -1257,6 +1269,11 @@
             link.dataset.moduleHref = base;
             link.href = '#';
             link.classList.add('nav-parent-toggle');
+            Array.from(link.childNodes).forEach(function (node) {
+                if (node.nodeType === 3 && node.textContent.trim()) {
+                    node.textContent = node.textContent.toLowerCase().replace(/\b\w/g, function (letter) { return letter.toUpperCase(); });
+                }
+            });
             link.setAttribute('aria-expanded', 'false');
             var chevron = document.createElement('span');
             chevron.className = 'nav-chevron';
@@ -2259,6 +2276,7 @@
         installAuditDeepLink();
         removeProjectFilterControls();
         installModuleNavigation();
+        normalizeSidebarLabels();
         installSingleClickNavigation();
         installExpandableActionButtons();
         document.querySelectorAll('.pagination-wrapper select').forEach(normalizePageSize);
@@ -2289,7 +2307,8 @@
             removeProjectFilterControls();
             installRoleNavigation();
             installModuleNavigation();
-            installSingleClickNavigation();
+            normalizeSidebarLabels();
+        installSingleClickNavigation();
             installExpandableActionButtons();
             document.querySelectorAll('.pagination-wrapper select').forEach(normalizePageSize);
             normalizePaginationTotals();

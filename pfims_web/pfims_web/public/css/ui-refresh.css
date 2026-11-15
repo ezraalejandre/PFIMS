@@ -1,5 +1,52 @@
 @import url("pfims-alert.css");
 
+/* Shared typography: navigation is identified by color and position. */
+body .sidebar :is(a, button, li, span),
+body .top-header .right :is(a, span),
+body :is(.module-tabs, .analytics-tabs) :is(a, button) {
+    font-weight: 400 !important;
+}
+body :is(.btn, .btn-primary, .btn-outline, .btn-add, .btn-edit-project),
+body :is(.modal, .modal-overlay) :is(label, button),
+body table th { font-weight: 500 !important; }
+body table td strong { font-weight: 500; }
+.project-reference { white-space: nowrap; color: #64748b; font-variant-numeric: tabular-nums; }
+
+/* Prediction hierarchy uses space, size and surface color for key decisions. */
+#costPredictionSection :is(p, label, .result-label, .snapshot-item strong, .performance-goals dd, .performance-facts, .performance-overview, .performance-detail-card strong) {
+    font-weight: 400 !important;
+}
+#costPredictionSection :is(.card-title, h3, h4, .metric-value, .result-value) { font-weight: 500 !important; }
+#costPredictionSection .project-snapshot-grid { gap: 12px; }
+#costPredictionSection .snapshot-item { padding: 12px; border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-bg); }
+/* Keep result labels and their contents in separate, bounded columns. */
+#costPredictionSection .prediction-result .result-row {
+    display: grid; grid-template-columns: minmax(0, 30fr) minmax(0, 70fr);
+    gap: 0; align-items: stretch; padding: 0; margin: 0;
+    border: 0; border-bottom: 1px solid var(--ui-border);
+    border-radius: 0; background: transparent; font-size: inherit;
+}
+#costPredictionSection .prediction-result .result-row > :is(.result-label, .result-value) {
+    min-width: 0; max-width: none; padding: 12px 0; white-space: normal;
+    overflow-wrap: anywhere; box-sizing: border-box; text-align: left;
+}
+#costPredictionSection .prediction-result .result-row > .result-label {
+    padding-right: 14px; border-right: 1px solid var(--ui-border-strong);
+}
+#costPredictionSection .prediction-result .result-row > .result-value {
+    padding-left: 16px; border-radius: 0; border: 0;
+    font-size: inherit; line-height: 1.55;
+}
+#costPredictionSection .result-headline .result-value { font-variant-numeric: tabular-nums; }
+#costPredictionSection .result-value.narrative,
+#costPredictionSection .result-value .result-context { font-weight: 400 !important; line-height: 1.65; }
+#costPredictionSection .result-helper strong { font-weight: 400; }
+@media (max-width: 600px) {
+    #costPredictionSection .prediction-result .result-row { grid-template-columns: minmax(0, 35fr) minmax(0, 65fr); }
+    #costPredictionSection .prediction-result .result-row > .result-label { padding-right: 10px; }
+    #costPredictionSection .prediction-result .result-row > .result-value { padding-left: 10px; }
+}
+
 /* Style the page elements. */
 :root {
     --pfims-add-blue: linear-gradient(135deg, #172033, #2a3f54);
@@ -7443,3 +7490,24 @@ body :is(.pfims-delete-confirm, .pfims-restore-confirm) .modal-footer button {
 .finance-page .file-preview-container { width: 100%; min-width: 0; overflow: hidden; }
 /* Style the finance page file preview container. */
 .finance-page .file-preview-container img { display: block; width: 100%; height: auto; max-width: 100%; max-height: 250px; object-fit: contain; margin: 0 auto; }
+
+/* Keep regular navigation labels even when a page adds active-link styles. */
+html body .sidebar ul li a,
+html body .sidebar ul li.active a,
+html body .sidebar ul li button,
+html body .sidebar .nav-dropdown a,
+html body .sidebar .nav-dropdown.active a {
+    font-weight: 400 !important;
+}
+
+/* Prediction labels remain gray with stronger contrast. */
+#costPredictionSection .prediction-result .result-row > .result-label { color: #4b5563; }
+#costPredictionSection .result-value .result-percentage { font-weight: 600; }
+html[data-theme="dark"] #costPredictionSection .prediction-result .result-row > .result-label { color: #cbd5e1; }
+
+#costPredictionSection .result-value .result-context { font-weight: 400 !important; }
+#costPredictionSection .result-value .result-context .result-percentage { font-weight: 600 !important; }
+body .sidebar :is(a,button,li,span){color:#f1f5f9 !important;font-weight:400 !important}
+body .sidebar .nav-parent-toggle{text-transform:none !important}
+
+body .sidebar :is(a,button,li,span){text-transform:none !important}

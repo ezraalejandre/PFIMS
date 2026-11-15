@@ -1,0 +1,10 @@
+.remaining-work-review { margin-top:20px; padding:16px; border:1px solid var(--ui-border,#dbe3ed); border-radius:12px; background:var(--ui-surface-solid,#fff); }
+.remaining-work-review summary { cursor:pointer; font-weight:500; }
+.remaining-work-review p { margin:12px 0; line-height:1.6; font-size:.9rem; }
+.remaining-work-review label { display:flex; flex-direction:column; gap:6px; font-weight:400; font-size:.85rem; margin:10px 0; }
+.remaining-work-review :is(input:not([type=checkbox]),select,textarea) { box-sizing:border-box; width:100%; min-width:0; padding:9px 10px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; color:inherit; background:var(--ui-surface-solid,#fff); }
+.remaining-work-item { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 12px; margin:16px 0; padding:12px; border:1px solid #dbe3ed; border-radius:10px; }
+.remaining-work-item legend { font-size:.85rem; padding:0 6px; }
+.remaining-work-review .remaining-work-confirm { flex-direction:row; align-items:flex-start; line-height:1.5; gap:10px; margin:18px 0; }
+.remaining-work-confirm input { margin-top:4px; }
+@media(max-width:600px) { .remaining-work-item { grid-template-columns:minmax(0,1fr); } }

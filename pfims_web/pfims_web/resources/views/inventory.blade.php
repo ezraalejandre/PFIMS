@@ -392,11 +392,11 @@
                 {{-- Show the page navigation. --}}
                 <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
-                <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
-                <li class="active"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">Dashboard</a></li>
+                <li><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">Projects</a></li>
+                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">Finance</a></li>
+                <li class="active"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">Inventory</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">Reports</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -1615,7 +1615,7 @@
                     projects.forEach(function(project) {
                         var opt = document.createElement('option');
                         opt.value = project.project_id;
-                        opt.textContent = project.project_name;
+                        opt.textContent = '#' + project.project_id + ' — ' + project.project_name;
                         select.appendChild(opt);
                     });
                 }
@@ -1957,14 +1957,15 @@
                 tr.setAttribute('data-date', row.transaction_date || '');
                 tr.setAttribute('data-stock', stock);
                 tr.setAttribute('data-status', statusText);
-                tr.setAttribute('data-project', row.project || '');
+                var projectLabel = row.project_id ? '#' + row.project_id + ' — ' + (row.project || 'Project') : (row.project || '');
+                tr.setAttribute('data-project', projectLabel);
                 tr.dataset.proofPath = row.proof_file_path || '';
                 tr.dataset.proofName = row.proof_file_name || '';
 
                 var statusClass = status === 'in-stock' ? 'in-stock' : (status === 'out-of-stock' ? 'out-of-stock' : 'low-stock');
 
                 tr.innerHTML = `
-                    <td>${escapeHtml(row.project || '-')}</td>
+                    <td>${escapeHtml(projectLabel || '-')}</td>
                     <td>${escapeHtml(row.category)}</td>
                     <td><strong>${escapeHtml(row.item_name)}</strong></td>
                     <td>${escapeHtml(row.description || '-')}</td>

@@ -178,9 +178,9 @@ class ProjectCostOptimizationService extends MLService
             $models[] = $this->trial($training, $features, 'ridge_linear_regression', compact('alpha'));
         }
         // Process each cost.
-        foreach ([1.0, 10.0, 100.0] as $cost) {
+        foreach ([1.0, 3.0, 10.0, 30.0, 100.0] as $cost) {
             // Process each gamma.
-            foreach ([0.1, 1.0] as $gamma) {
+            foreach ([0.01, 0.03, 0.1, 0.3, 1.0] as $gamma) {
                 // Process each epsilon.
                 foreach ([0.01, 0.1] as $epsilon) {
                     $models[] = $this->trial($training, $features, 'support_vector_regression_rbf', compact('cost', 'gamma', 'epsilon'));

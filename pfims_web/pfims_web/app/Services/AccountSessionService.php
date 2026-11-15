@@ -16,7 +16,7 @@ class AccountSessionService {
                 abort(409,'This account is already signed in on another browser or device. Sign out there before signing in here.');
             }
             $token=bin2hex(random_bytes(32));
-            DB::table('account_sessions')->updateOrInsert(['user_id'=>$user->id],['token_hash'=>hash('sha256',$token),'credential_hash'=>$fingerprint,'closing_at'=>null,'page_nonce'=>null,'expires_at'=>now()->addSeconds((int)config('session.account_lease_seconds',60))]);
+            DB::table('account_sessions')->updateOrInsert(['user_id'=>$user->id],['token_hash'=>hash('sha256',$token),'credential_hash'=>$fingerprint,'closing_at'=>null,'page_nonce'=>null,'expires_at'=>now()->addSeconds((int)config('session.account_lease_seconds',300))]);
             return $token;
         });
     }
@@ -28,7 +28,7 @@ class AccountSessionService {
         // Return early if the active and expires at checks match.
         if(!$active || now()->greaterThanOrEqualTo($active->expires_at) || !hash_equals($active->token_hash,hash('sha256',$token)) || !hash_equals($active->credential_hash,hash('sha256',$user->password)))return false;
         // Run this step if the closing at is missing or false.
-        if (!$active->closing_at) DB::table('account_sessions')->where('user_id',$user->id)->where('token_hash',hash('sha256',$token))->update(['expires_at'=>now()->addSeconds((int)config('session.account_lease_seconds',60))]);
+        if (!$active->closing_at) DB::table('account_sessions')->where('user_id',$user->id)->where('token_hash',hash('sha256',$token))->update(['expires_at'=>now()->addSeconds((int)config('session.account_lease_seconds',300))]);
         return true;
     }
     // Get the inactivity timeout seconds.
@@ -41,7 +41,7 @@ class AccountSessionService {
             || ! hash_equals($active->token_hash, hash('sha256', $token))
             || ! hash_equals($active->credential_hash, hash('sha256', $user->password))) return null;
 
-        return (int) config('session.account_lease_seconds', 60);
+        return (int) config('session.account_lease_seconds', 300);
     }
     // Get the release.
     public function release(?object $user, ?string $token): void {

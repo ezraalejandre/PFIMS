@@ -659,6 +659,10 @@ Route::middleware('auth')->group(function () {
 
     // Group routes that share these access rules or URL settings.
     Route::prefix('api/ml')->group(function () {
+        Route::get('/remaining-work/{project}', [\App\Http\Controllers\ProjectRemainingCostReviewController::class, 'show'])
+            ->whereNumber('project')->middleware('role.portal:admin');
+        Route::post('/remaining-work/{project}', [\App\Http\Controllers\ProjectRemainingCostReviewController::class, 'store'])
+            ->whereNumber('project')->middleware(['role.portal:admin', 'throttle:20,1']);
         // Submit requests for /predict/cost.
         Route::post('/predict/cost', [MLController::class, 'predictProjectCost'])
             ->middleware(['role.portal:admin', 'throttle:60,1']);

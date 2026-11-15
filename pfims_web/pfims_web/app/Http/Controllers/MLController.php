@@ -223,6 +223,7 @@ class MLController extends Controller
                 'feature_indicators' => $this->ml->getLastFeatureIndicators(),
                 'budget_overrun_detector' => $this->ml->getLastDetectorPrediction(),
                 'forecast_calculation' => $this->ml->getLastForecastCalculation(),
+                'remaining_work_review' => $selectedProject === null ? null : app(\App\Services\ProjectRemainingCostReview::class)->latest((int) $selectedProject['project_id']),
                 'status' => $status,
                 'risk_level' => $riskLevel,
                 'business_action' => $businessAction,
@@ -309,6 +310,7 @@ class MLController extends Controller
 
         // Try this action and handle any errors below.
         try {
+            set_time_limit(900);
             $result = $this->ml->retrain();
 
             return response()->json([
