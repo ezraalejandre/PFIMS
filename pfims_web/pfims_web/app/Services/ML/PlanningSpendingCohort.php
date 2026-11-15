@@ -25,6 +25,8 @@ class PlanningSpendingCohort
             $source[$table] = Schema::hasTable($table) ? DB::table($table)->orderByRaw('1')->get()->map(fn ($r) => (array) $r)->all() : [];
         }
 
+        $reserved = IndependentProjectHoldout::ids();
+        $source['project_tbl'] = array_values(array_filter($source['project_tbl'], fn ($row) => ! in_array((int) $row['project_id'], $reserved, true)));
         return $this->build($source);
     }
 
@@ -103,12 +105,13 @@ class PlanningSpendingCohort
     }
 
     // Build the planning spending project group output.
-    public function build(array $source): array
+    public function build(array $source, bool $includeReserved = false): array
     {
         $records = [];
         $excluded = [];
         $budgetFallback = 0;
         $eligible = 0;
+        $reserved = $includeReserved ? [] : IndependentProjectHoldout::ids();
         $budgets = collect($source['budgets_tbl'] ?? [])->groupBy('project_id');
         $history = collect($source['project_budget_history'] ?? [])->groupBy('project_id');
         $expenses = collect($source['fin_expense_tbl'] ?? [])->whereNull('inventory_transaction_id')->groupBy('project_id');
@@ -117,6 +120,7 @@ class PlanningSpendingCohort
         $categories = array_column($source['fin_expense_category_tbl'] ?? [], null, 'fin_category_id');
         // Process each project.
         foreach ($source['project_tbl'] ?? [] as $project) {
+            if (in_array((int) $project['project_id'], $reserved, true)) continue;
             // Skip this item if the project status does not equal completed.
             if (($project['status'] ?? '') !== 'Completed') {
                 continue;

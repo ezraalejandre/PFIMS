@@ -70,13 +70,13 @@
                         @endif
                     </li>
                 @endforeach
-                <li class="active"><a href="{{ route('audit-logs.index') }}"><img src="{{ asset('images/audit-log.svg') }}" alt="" class="nav-link-icon" aria-hidden="true">AUDIT LOGS</a></li>
+                <li class="active"><a href="{{ route('audit-logs.index') }}"><img src="{{ asset('images/audit-log.svg') }}" alt="" class="nav-link-icon" aria-hidden="true">Audit Logs</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
             <ul>
                 <li><a href="{{ url('/settings') }}"><img src="{{ asset('images/settings.png') }}" alt="" class="nav-icon" aria-hidden="true">Settings</a></li>
-                <li class="logout"><form action="{{ url('/logout') }}" method="POST">@csrf<button type="submit"><img src="{{ asset('images/logout.png') }}" alt="" class="nav-icon" aria-hidden="true">Log out</button></form></li>
+                <li class="logout"><form action="{{ url('/logout') }}" method="POST">@csrf<button type="submit"><img src="{{ asset('images/logout.png') }}" alt="" class="nav-icon" aria-hidden="true">Log Out</button></form></li>
             </ul>
         </div>
     </aside>

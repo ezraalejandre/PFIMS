@@ -2088,7 +2088,7 @@
             if (type === 'direct') {
                 // Process each project.
                 financeProjects.forEach(function(project) {
-                    projectSelect.add(new Option(project.project_name, project.project_id));
+                    projectSelect.add(new Option('#' + project.project_id + ' — ' + project.project_name, project.project_id));
                 });
             }
             toggleExpenseAmountFields();
@@ -2104,7 +2104,7 @@
             projectSelect.add(new Option('Office', 'office'));
             // Run this step if the type equals direct.
             if (type === 'direct') financeProjects.forEach(function(project) {
-                projectSelect.add(new Option(project.project_name, project.project_id));
+                projectSelect.add(new Option('#' + project.project_id + ' — ' + project.project_name, project.project_id));
             });
             projectSelect.value = type === 'direct' ? previousProject : 'office';
             updateDetailExpenseCategory();
@@ -3061,7 +3061,7 @@
                 financeProjects.forEach(function(project) {
                     var option = document.createElement('option');
                     option.value = project.project_id;
-                    option.textContent = project.project_name;
+                    option.textContent = '#' + project.project_id + ' — ' + project.project_name;
                     select.appendChild(option);
                 });
             });
@@ -3090,7 +3090,7 @@
             financeProjects.forEach(function(project) {
                 var option = document.createElement('option');
                 option.value = project.project_id;
-                option.textContent = project.project_name;
+                option.textContent = '#' + project.project_id + ' — ' + project.project_name;
                 filter.appendChild(option);
             });
         }
@@ -3120,7 +3120,7 @@
             financeProjects.forEach(function(project) {
                 var option = document.createElement('option');
                 option.value = project.project_name;
-                option.textContent = project.project_name;
+                option.textContent = '#' + project.project_id + ' — ' + project.project_name;
                 filter.appendChild(option);
             });
         }
@@ -3294,7 +3294,7 @@
             financeProjects.forEach(function(project) {
                 var option = document.createElement('option');
                 option.value = project.project_id;
-                option.textContent = project.project_name;
+                option.textContent = '#' + project.project_id + ' — ' + project.project_name;
                 filter.appendChild(option);
             });
         }
@@ -3360,7 +3360,7 @@
                 if (isAdmin || expenseTypeForCategory(categoryObj) === 'office') categoryClass = 'admin';
                 else if (['labor', 'material', 'equipment', 'other'].indexOf(categoryClass) === -1) categoryClass = 'other';
 
-                var projectDisplay = isOfficeExpense(expense) ? 'Office Expenses' : (expense.project_name || (expense.entry_kind === 'inventory_purchase' ? 'For Storage' : '—'));
+                var projectDisplay = isOfficeExpense(expense) ? 'Office Expenses' : ((expense.project_id ? '#' + expense.project_id + ' — ' : '') + (expense.project_name || (expense.entry_kind === 'inventory_purchase' ? 'For Storage' : '—')));
                 var amountDisplay = expense.amount === null || expense.amount === undefined || String(expense.amount).trim() === ''
                     ? '—'
                     : formatCurrency(expense.amount);
@@ -3537,7 +3537,7 @@
                 else if (status === 'Over Budget') statusBadge = '<span class="badge badge-danger">Over Budget</span>';
                 else statusBadge = '<span class="badge badge-secondary">No Budget</span>';
 
-                row.innerHTML = '<td><strong>' + (budget.project_name || 'Unnamed Project') + '</strong></td>' +
+                row.innerHTML = '<td><strong>' + ('#' + budget.project_id + ' — ' + (budget.project_name || 'Unnamed Project')) + '</strong></td>' +
                     '<td>' + formatCurrency(budgetAmount) + '</td>' +
                     '<td>' + formatCurrency(actualAmount) + '</td>' +
                     '<td style="' + (remaining < 0 ? 'color:#d32f2f;' : (remaining < budgetAmount * 0.1 && budgetAmount > 0 ? 'color:#f57c00;' : 'color:#2e7d32;')) + '">' + formatCurrency(remaining) + '</td>' +
@@ -4485,7 +4485,7 @@
                 financeProjects.forEach(function(project) {
                     var option = document.createElement('option');
                     option.value = project.project_id;
-                    option.textContent = project.project_name;
+                    option.textContent = '#' + project.project_id + ' — ' + project.project_name;
                     option.setAttribute('data-budget', project.budget || 0);
                     select.appendChild(option);
                 });
@@ -5309,7 +5309,7 @@
                 var projects = {};
                 // Process each e.
                 filteredExpenses.forEach(function(e) {
-                    var projectName = e.project_name || 'OFFICE';
+                    var projectName = (e.project_id ? '#' + e.project_id + ' — ' : '') + (e.project_name || 'OFFICE');
                     // Run this step if the project name is missing or false.
                     if (!projects[projectName]) {
                         projects[projectName] = {};
@@ -5434,7 +5434,7 @@
                     var directProjects = {};
                     // Process each e.
                     directExpenses.forEach(function(e) {
-                        var projectName = e.project_name || 'OFFICE';
+                        var projectName = (e.project_id ? '#' + e.project_id + ' — ' : '') + (e.project_name || 'OFFICE');
                         // Run this step if the project name is missing or false.
                         if (!directProjects[projectName]) {
                             directProjects[projectName] = {};
@@ -5465,7 +5465,7 @@
                     var adminProjects = {};
                     // Process each e.
                     adminExpenses.forEach(function(e) {
-                        var projectName = e.project_name || 'OFFICE';
+                        var projectName = (e.project_id ? '#' + e.project_id + ' — ' : '') + (e.project_name || 'OFFICE');
                         // Run this step if the project name is missing or false.
                         if (!adminProjects[projectName]) {
                             adminProjects[projectName] = {};
@@ -5944,7 +5944,7 @@
                         tr.setAttribute('data-remarks', row.remarks || '');
                         tr.style.cursor = 'pointer';
                         tr.onclick = function() { openContractViewModal(this); };
-                        tr.innerHTML = '<td><strong>' + (row.project_name || '') + '</strong></td>' +
+                        tr.innerHTML = '<td><strong>' + ('#' + row.project_id + ' — ' + (row.project_name || '')) + '</strong></td>' +
                             '<td>' + (row.start_date || '') + '</td>' +
                             '<td>' + (row.actual_end_date || 'In Progress') + '</td>' +
                             '<td>' + formatCurrency(contractPrice) + '</td>' +
@@ -6021,7 +6021,7 @@
 
                         tr.innerHTML = '<td>' + (row.entry_date || '') + '</td>' +
                             '<td>' + (row.counterparty_name || '') + '</td>' +
-                            '<td>' + (row.project_name || '—') + '</td>' +
+                            '<td>' + ((row.project_id ? '#' + row.project_id + ' — ' : '') + (row.project_name || '—')) + '</td>' +
                             '<td>' + formatCurrency(amt30d) + '</td>' +
                             '<td>' + formatCurrency(amt60d) + '</td>' +
                             '<td>' + formatCurrency(amt90d) + '</td>' +
@@ -6516,11 +6516,11 @@
             var rows = [];
             // Process each row.
             records.expenses.forEach(function(row) {
-                rows.push('<tr><td>Expense (' + escapeFinanceHtml(String(row.expense_type || '').replace('_', ' ')) + ')</td><td>' + escapeFinanceHtml(equipmentDate(row.expense_date)) + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Delete</button></td></tr>');
+                rows.push('<tr><td>Expense (' + escapeFinanceHtml(String(row.expense_type || '').replace('_', ' ')) + ')</td><td>' + escapeFinanceHtml(equipmentDate(row.expense_date)) + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? '#' + row.project_id + ' — ' + row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'expense\',' + row.equip_expense_id + ')">Delete</button></td></tr>');
             });
             // Process each row.
             records.rentals.forEach(function(row) {
-                rows.push('<tr><td>Rental income</td><td>' + escapeFinanceHtml(equipmentDate(row.period_month || '').substring(0, 7)) + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Delete</button></td></tr>');
+                rows.push('<tr><td>Rental income</td><td>' + escapeFinanceHtml(equipmentDate(row.period_month || '').substring(0, 7)) + '</td><td>' + escapeFinanceHtml(row.project && row.project.project_name ? '#' + row.project_id + ' — ' + row.project.project_name : 'Office/Admin') + '</td><td>' + formatCurrency(row.amount) + '</td><td>' + escapeFinanceHtml(row.remarks || '—') + '</td><td><button type="button" class="btn-edit-project" onclick="editEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Edit</button> <button type="button" class="btn-delete" onclick="deleteEquipmentRecord(\'rental\',' + row.rental_income_id + ')">Delete</button></td></tr>');
             });
             body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;">No underlying records.</td></tr>';
             document.getElementById('equipmentDetailModal').classList.add('active');
@@ -6714,7 +6714,7 @@
                             year: 'numeric', month: '2-digit', day: '2-digit'
                         }) : '—';
                         
-                        var projectName = row.project ? row.project.project_name : (row.project_name || 'Project ' + row.project_id);
+                        var projectName = (row.project_id ? '#' + row.project_id + ' — ' : '') + (row.project ? row.project.project_name : (row.project_name || 'Project'));
                         
                         tr.setAttribute('data-bond-id', row.bond_id);
                         tr.setAttribute('data-project-id', row.project_id);

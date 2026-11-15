@@ -33,6 +33,7 @@ class ReportController extends Controller
     private const REPORT_TABS = ['expense_summary', 'inventory', 'contracts'];
 
     private const SUMMARY_COLUMNS = [
+        'project_id' => 'Project ID',
         'project_name' => 'Project Name',
         'construction_supply' => 'Construction Supply',
         'salaries_wages' => 'Salaries & Wages',
@@ -54,7 +55,7 @@ class ReportController extends Controller
         'contracts' => [
             'title' => 'Contracts', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
             'columns' => [
-                'project_name' => 'Project', 'start_date' => 'Start Date', 'actual_end_date' => 'End Date',
+                'project_id' => 'Project ID', 'project_name' => 'Project', 'start_date' => 'Start Date', 'actual_end_date' => 'End Date',
                 'original_contract_price' => 'Contract Price', 'additional_works_contract' => 'Addl. Works',
                 'total_contract_price' => 'Total Contract', 'original_payment_received' => 'Original Payment',
                 'additional_works_payment' => 'Addl. Payment', 'total_payment' => 'Total Payment',
@@ -81,7 +82,7 @@ class ReportController extends Controller
             'title' => 'Expenses', 'type' => 'finance', 'roles' => ['admin', 'accounting'],
             'columns' => [
                 'fin_expense_id' => 'Expense ID', 'expense_date' => 'Expense Date',
-                'project_name' => 'Project / Cost Center', 'category_name' => 'Category',
+                'project_id' => 'Project ID', 'project_name' => 'Project / Cost Center', 'category_name' => 'Category',
                 'classification' => 'Classification', 'cost_role' => 'Cost Role', 'expense_description' => 'Description',
                 'amount' => 'Amount', 'remarks' => 'Remarks',
             ],
@@ -90,7 +91,7 @@ class ReportController extends Controller
         'budget' => [
             'title' => 'Budget', 'type' => 'budget', 'roles' => ['admin', 'accounting'],
             'columns' => [
-                'budget_id' => 'Budget ID', 'project_name' => 'Project', 'client_name' => 'Client',
+                'budget_id' => 'Budget ID', 'project_id' => 'Project ID', 'project_name' => 'Project', 'client_name' => 'Client',
                 'status' => 'Project Status', 'budget_amount' => 'Budget',
                 'direct_cost' => 'Direct Project Expenses', 'inventory_usage_cost' => 'Inventory Usage Cost',
                 'unvalued_withdrawals' => 'Unvalued Withdrawals', 'actual_amount' => 'Actual Cost',
@@ -192,7 +193,7 @@ class ReportController extends Controller
         return [
             'datasets' => $datasets,
             'options' => [
-                'projects' => DB::table('project_tbl')->orderBy('project_name')->get(['project_id as value', 'project_name as label']),
+                'projects' => DB::table('project_tbl')->orderBy('project_name')->get(['project_id as value', 'project_name as label'])->map(function ($project) { $project->label = '#'.$project->value.' — '.$project->label; return $project; }),
                 'statuses' => DB::table('project_tbl')->whereNotNull('status')->distinct()->pluck('status')
                     ->sortBy(fn (string $status) => $status === 'Ongoing' ? '0' : '1'.$status)->values(),
                 'categories' => DB::table('inventory_category_tbl')->orderBy('inventory_category_name')->get(['inventory_category_id as value', 'inventory_category_name as label']),
@@ -602,7 +603,7 @@ class ReportController extends Controller
             // Process each label.
             foreach (self::SUMMARY_COLUMNS as $key => $label) {
                 // Run this step if the key does not equal project name.
-                if ($key !== 'project_name') $row[$key] = round((float) $row[$key], 2);
+                if (! in_array($key, ['project_id', 'project_name'], true)) $row[$key] = round((float) $row[$key], 2);
             }
             return $row;
         });
@@ -615,7 +616,7 @@ class ReportController extends Controller
         // Process each key.
         foreach ($columns as $key) {
             // Run this step if the key check matches.
-            if (! in_array($key, ['project_name', 'start_date', 'actual_end_date'], true)) {
+            if (! in_array($key, ['project_id', 'project_name', 'start_date', 'actual_end_date'], true)) {
                 $totals[$key] = $rows->sum(fn ($row) => (int) round((float) ($row[$key] ?? 0) * 100)) / 100;
             }
         }
@@ -695,7 +696,7 @@ class ReportController extends Controller
     {
         $query = DB::table('fin_expense_tbl as fe')->join('fin_expense_category_tbl as fc', 'fc.fin_category_id', '=', 'fe.fin_category_id')
             ->leftJoin('project_tbl as p', 'p.project_id', '=', 'fe.project_id')
-            ->select(['fe.fin_expense_id', 'fe.expense_date', DB::raw("COALESCE(p.project_name, 'OFFICE') as project_name"),
+            ->select(['fe.fin_expense_id', 'fe.project_id', 'fe.expense_date', DB::raw("COALESCE(p.project_name, 'OFFICE') as project_name"),
                 'fc.category_name', 'fc.classification', 'fe.expense_description', 'fe.amount', 'fe.remarks']);
         // Run this step if the value check matches.
         if (\Illuminate\Support\Facades\Schema::hasColumn('fin_expense_tbl', 'inventory_transaction_id')) {
@@ -729,7 +730,7 @@ class ReportController extends Controller
         $query = DB::table('budgets_tbl as b')->join('project_tbl as p', 'p.project_id', '=', 'b.project_id');
         $actual = $this->joinProjectCosts($query, 'p.project_id');
         $query
-            ->select(['b.budget_id', 'p.project_name', 'p.client_name', 'p.status', 'b.budget_amount',
+            ->select(['b.budget_id', 'p.project_id', 'p.project_name', 'p.client_name', 'p.status', 'b.budget_amount',
                 DB::raw('COALESCE(project_direct_cost.direct_cost, 0) as direct_cost'),
                 DB::raw($this->allocationColumn('allocated_cost').' as inventory_usage_cost'),
                 DB::raw($this->allocationColumn('unvalued_count').' as unvalued_withdrawals'),
@@ -970,7 +971,7 @@ class ReportController extends Controller
         // Process each label.
         foreach (self::SUMMARY_COLUMNS as $key => $label) {
             // Run this step if the key does not equal project name.
-            if ($key !== 'project_name') $totals[$key] = round((float) $rows->sum($key), 2);
+            if (! in_array($key, ['project_id', 'project_name'], true)) $totals[$key] = round((float) $rows->sum($key), 2);
         }
         return $totals;
     }
@@ -989,7 +990,7 @@ class ReportController extends Controller
         // Process each label.
         foreach (self::SUMMARY_COLUMNS as $key => $label) {
             // Run this step if the key does not equal project name.
-            if ($key !== 'project_name') $month[$key] = round($current[$key] - $previous[$key], 2);
+            if (! in_array($key, ['project_id', 'project_name'], true)) $month[$key] = round($current[$key] - $previous[$key], 2);
         }
         return ['totals' => $current, 'previous_totals' => $previous, 'month_totals' => $month];
     }
@@ -1003,7 +1004,7 @@ class ReportController extends Controller
     // Get the summary rows for columns.
     private function summaryRowsForColumns(Collection $rows, array $columns): Collection
     {
-        $categories = array_diff(array_keys(self::SUMMARY_COLUMNS), ['project_name', 'total']);
+        $categories = array_diff(array_keys(self::SUMMARY_COLUMNS), ['project_id', 'project_name', 'total']);
         $selectedCategories = array_intersect($categories, $columns);
 
         // Build a result for each record.

@@ -39,25 +39,25 @@
     <nav>
         <ul>
             
-            <li class="{{ request()->is('dashboard') ? 'active' : '' }}"><a href="{{ url('/dashboard') }}">DASHBOARD</a></li>
+            <li class="{{ request()->is('dashboard') ? 'active' : '' }}"><a href="{{ url('/dashboard') }}">Dashboard</a></li>
 
             {{-- Show this section when its display check passes. --}}
             @if(in_array($role, ['admin','project']))
-                <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">PROJECTS</a></li>
-                <li class="{{ request()->is('finance*') ? 'active' : '' }}"><a href="{{ url('/finance') }}">FINANCE</a></li>
-                <li class="{{ request()->is('inventory*') ? 'active' : '' }}"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
-                <li class="{{ request()->is('reports*') ? 'active' : '' }}"><a href="{{ url('/reports') }}">REPORTS</a></li>
+                <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">Projects</a></li>
+                <li class="{{ request()->is('finance*') ? 'active' : '' }}"><a href="{{ url('/finance') }}">Finance</a></li>
+                <li class="{{ request()->is('inventory*') ? 'active' : '' }}"><a href="{{ url('/inventory') }}">Inventory</a></li>
+                <li class="{{ request()->is('reports*') ? 'active' : '' }}"><a href="{{ url('/reports') }}">Reports</a></li>
             @endif
 
             {{-- Show this section when its display check passes. --}}
             @if(in_array($role, ['accounting','finance']))
-                <li class="{{ request()->is('finance*') ? 'active' : '' }}"><a href="{{ url('/finance') }}">FINANCE</a></li>
+                <li class="{{ request()->is('finance*') ? 'active' : '' }}"><a href="{{ url('/finance') }}">Finance</a></li>
             @endif
 
             {{-- Show this section when its display check passes. --}}
             @if(in_array($role, ['operations','inventory']))
-                <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">PROJECTS</a></li>
-                <li class="{{ request()->is('inventory*') ? 'active' : '' }}"><a href="{{ url('/inventory') }}">INVENTORY</a></li>
+                <li class="{{ request()->is('projects*') ? 'active' : '' }}"><a href="{{ url('/projects') }}">Projects</a></li>
+                <li class="{{ request()->is('inventory*') ? 'active' : '' }}"><a href="{{ url('/inventory') }}">Inventory</a></li>
             @endif
         
         </ul>

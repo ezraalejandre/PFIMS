@@ -193,7 +193,7 @@
         addOption(filter, 'all', 'All Projects');
         // Process each project.
         financeProjects.forEach(function (project) {
-            addOption(filter, project.project_id, project.project_name || ('Project ' + project.project_id));
+            addOption(filter, project.project_id, '#' + project.project_id + ' — ' + (project.project_name || 'Project'));
         });
         // Run the some action.
         filter.value = Array.from(filter.options).some(function (option) { return option.value === selected; }) ? selected : 'all';
@@ -208,7 +208,7 @@
         addOption(filter, 'all', 'All Projects');
         // Process each project.
         financeProjects.forEach(function (project) {
-            addOption(filter, project.project_id, project.project_name || ('Project ' + project.project_id));
+            addOption(filter, project.project_id, '#' + project.project_id + ' — ' + (project.project_name || 'Project'));
         });
         // Run the some action.
         filter.value = Array.from(filter.options).some(function (option) { return option.value === selected; }) ? selected : 'all';
@@ -303,7 +303,7 @@
                 || (source === 'inventory' && isInventoryExpense)
                 || (source === 'manual' && !isInventoryExpense);
             // Build a value for each value.
-            var haystack = [expense.project_name, expense.expense_description, expense.category_name, expense.remarks]
+            var haystack = [expense.project_id, expense.project_name, expense.expense_description, expense.category_name, expense.remarks]
                 .map(function (value) { return String(value || '').toLocaleLowerCase(); }).join(' ');
             return matchesProject
                 && matchesCategory

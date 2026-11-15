@@ -572,7 +572,8 @@
             // Get the display value.
             function displayValue(column, value) {
                 // Return early if the value equals null or the value equals an empty value.
-                if (value === null || value === '') return '—';
+                if (value === null || value === undefined || value === '') return '—';
+                if (column === 'project_id') return '#' + String(value);
                 // Return early if the has check matches.
                 if (moneyColumns.has(column)) {
                     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value));
@@ -1020,7 +1021,7 @@
                     const balanceRows = [data.totals, data.previous_totals, data.month_totals].filter(Boolean);
                     const header = Object.entries(data.columns).map(([key, label]) => `<th${isTotalColumn(key) ? ' class="report-total-column"' : ''}>${escapeHtml(label.toUpperCase())}</th>`).join('');
                     const fileValue = (key, value) => typeof value === 'number' || (value !== '' && value !== null && !isNaN(Number(value)) && !['project_name', 'item_name', 'category_name', 'supplier_name', 'unit_name', 'stock_status'].includes(key))
-                        ? Number(value).toLocaleString('en-US', {minimumFractionDigits: key === 'item_id' ? 0 : 2, maximumFractionDigits: key === 'item_id' ? 0 : 2}) : (value ?? '');
+                        ? Number(value).toLocaleString('en-US', {minimumFractionDigits: key.endsWith('_id') ? 0 : 2, maximumFractionDigits: key.endsWith('_id') ? 0 : 2}) : (value ?? '');
                     const cells = (row, isBalance = false) => keys.map(key => `<td${!isBalance && state.dataset === 'expense_summary' && key === 'project_name' ? ' class="report-project-name"' : (isTotalColumn(key) ? ' class="report-total-column"' : '')}>${escapeHtml(fileValue(key, row[key]))}</td>`).join('');
                     host.innerHTML = `<div class="preview-paper"><img src="${escapeHtml(document.body.dataset.reportHeaderImage)}" alt="E.V. Catapang Design & Construction header"><h3>${escapeHtml(data.title)}</h3><p>As of ${escapeHtml(data.as_of)}</p><strong>${escapeHtml(data.scope)}</strong><div class="table-wrap"><table data-pfims-standard-actions="off"><thead><tr>${header}</tr></thead><tbody>${data.rows.map(row => `<tr>${cells(row)}</tr>`).join('')}${balanceRows.map((row, index) => `<tr class="report-total-row report-total-row-${index === 0 ? 'current' : (index === 1 ? 'previous' : 'month')}">${cells(row, true)}</tr>`).join('')}</tbody></table></div>${data.row_count > data.rows.length ? `<p class="preview-note">Showing the first ${data.rows.length} of ${data.row_count} exported rows.</p>` : ''}</div>`;
                     button.disabled = false;

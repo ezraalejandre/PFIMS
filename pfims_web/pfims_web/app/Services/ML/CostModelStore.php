@@ -22,6 +22,7 @@ class CostModelStore
             $model instanceof LeastSquares => 'least_squares_linear_regression',
             $model instanceof RidgeRegression => 'ridge_linear_regression',
             $model instanceof PortableRbfSvr => 'support_vector_regression_rbf',
+            $model instanceof PortableGradientBoosting => 'gradient_boosting_regression',
             default => throw new RuntimeException('Unsupported served cost estimator.'),
         };
     }

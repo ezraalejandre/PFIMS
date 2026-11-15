@@ -14,7 +14,7 @@ return [
     'lifetime' => (int) env('SESSION_LIFETIME', 120),
 
     'expire_on_close' => true,
-    'account_lease_seconds' => 60,
+    'account_lease_seconds' => 300,
     'close_grace_seconds' => 5,
     'strict_navigation' => env('SESSION_STRICT_NAVIGATION', false),
 

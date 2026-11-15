@@ -1,6 +1,13 @@
 {{-- Prepare the values used by this page section. --}}
 @php
     $fragment = $fragment ?? false;
+    $paceExperiment = null;
+    try {
+        $experimentFile = storage_path('app/ml-pace-experiment.json');
+        if (is_file($experimentFile)) $paceExperiment = json_decode(file_get_contents($experimentFile), true, 512, JSON_THROW_ON_ERROR);
+    } catch (\Throwable $exception) {
+        $paceExperiment = null;
+    }
     $portal = $portal ?? 'admin';
     $analyticsSection = request()->query('section', 'predictive');
     $browserTitle = match ($analyticsSection) {
@@ -1220,11 +1227,11 @@
         {{-- Show the page navigation. --}}
         <nav aria-label="Primary navigation">
             <ul>
-                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
-                <li class="{{ $parentModule === 'projects' ? 'active' : '' }}"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
-                <li class="{{ $parentModule === 'finance' ? 'active' : '' }}"><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
-                <li class="{{ $parentModule === 'inventory' ? 'active' : '' }}"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">Dashboard</a></li>
+                <li class="{{ $parentModule === 'projects' ? 'active' : '' }}"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">Projects</a></li>
+                <li class="{{ $parentModule === 'finance' ? 'active' : '' }}"><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">Finance</a></li>
+                <li class="{{ $parentModule === 'inventory' ? 'active' : '' }}"><a href="{{ url('/inventory') }}"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">Inventory</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">Reports</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -1329,89 +1336,29 @@
                         <div class="card-title" id="modelPerformanceTitle">Model Performance</div>
                         <p class="analytics-panel-description">Understand cost errors, missed overruns, and the model used for forecasts.</p>
                     </div>
-                    <span class="badge badge-info" id="samplesCount">0 samples</span>
+
                 </div>
                 {{-- Show the model metrics section. --}}
                 <div id="modelMetrics">
-                    <p id="performanceStatus" role="status" aria-live="polite">Loading performance…</p>
-                    <p id="performanceAlgorithm" class="analytics-panel-description"></p>
-                    {{-- Show the performance scope section. --}}
-                    <div id="performanceScope" class="performance-overview"></div>
-                    {{-- Show the page section. --}}
-                    <section class="metric-section" aria-labelledby="modelQualityTitle">
-                        <h3 class="metric-section-title" id="modelQualityTitle">Final cost prediction error</h3>
+                    @include('partials.ml-experiment-performance', ['paceExperiment' => $paceExperiment])
+                    <h3 id="performanceStatus">Cost Prediction Performance</h3>
+                    <p id="costPerformanceSource" class="analytics-panel-description"></p>
+                    <section class="metric-section" aria-labelledby="performanceStatus">
                         <div class="model-status-grid">
                             {{-- Show the metric mape section. --}}
                             <div class="metric-item"><span class="metric-label">Average percentage error (MAPE)</span><span class="metric-value" id="metricMAPE">—</span></div>
                             {{-- Show the metric mae section. --}}
                             <div class="metric-item"><span class="metric-label">Average peso error (MAE)</span><span class="metric-value" id="metricMAE">—</span></div>
                             {{-- Show the metric r squared section. --}}
-                            <div class="metric-item"><span class="metric-label">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
+                            <div class="metric-item"><span class="metric-label" id="metricRSquaredLabel">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
                         </div>
-                        {{-- Show the performance mae target section. --}}
-                        <div id="performanceMAETarget" class="analytics-panel-description"></div>
                     </section>
                     {{-- Show the page section. --}}
-                    <section class="metric-section" aria-labelledby="overrunDetectionTitle">
-                        <h3 class="metric-section-title" id="overrunDetectionTitle">Budget overrun detection</h3>
-                        <p class="analytics-panel-description">An overrun means final cost exceeds the recorded budget by any amount.</p>
-                        <div class="model-status-grid">
-                            {{-- Show the metric precision section. --}}
-                            <div class="metric-item"><span class="metric-label">Precision · alerts that were correct</span><span class="metric-value" id="metricPrecision">—</span></div>
-                            {{-- Show the metric recall section. --}}
-                            <div class="metric-item"><span class="metric-label">Recall · actual overruns detected</span><span class="metric-value" id="metricRecall">—</span></div>
-                            {{-- Show the metric f1 section. --}}
-                            <div class="metric-item"><span class="metric-label">F1 · balance of precision and recall</span><span class="metric-value" id="metricF1">—</span></div>
-                            {{-- Show the metric overrun accuracy section. --}}
-                            <div class="metric-item"><span class="metric-label">Accuracy · all outcomes classified correctly</span><span class="metric-value" id="metricOverrunAccuracy">—</span></div>
-                        </div>
-                        {{-- Show the performance counts section. --}}
-                        <div id="performanceCounts"></div>
-                        <ul class="performance-facts analytics-panel-description">
-                            <li>“Unavailable” means there is not enough evidence to report that score.</li>
-                        </ul>
-                    </section>
-                    <div class="performance-detail-grid">
-                        {{-- Show the page section. --}}
-                        <section class="performance-detail-card"><h3>Training &amp; testing</h3>
-                            {{-- Show the performance validation section. --}}
-                            <div id="performanceValidation"></div>
-                            <h4>How the test stays separate</h4>
-                            <ul class="performance-facts analytics-panel-description">
-                                <li>All observations from a project stay together. The newest 20% of projects are reserved for testing.</li>
-                                <li>Input selection and validation use earlier training projects only.</li>
-                                <li>Repeated checkpoints from one project are related. Completed-project scores may differ from ongoing-project accuracy.</li>
-                            </ul>
-                        </section>
-                        {{-- Show the page section. --}}
-                        <section class="performance-detail-card"><h3>Comparison &amp; goals</h3>
-                            {{-- Show the performance comparison section. --}}
-                            <div id="performanceComparison"></div>
-                            <h4>Preferred performance</h4>
-                            <dl class="performance-goals">
-                                <div><dt>MAE / median final cost</dt><dd>≤15% · preferred ≤10%</dd></div>
-                                <div><dt>Percentage error (MAPE)</dt><dd>≤5%</dd></div>
-                                <div><dt>Fit (R²)</dt><dd>≥0.90</dd></div>
-                                <div><dt>Overrun accuracy</dt><dd>≥90%</dd></div>
-                                <div><dt>Precision / recall</dt><dd>≥85% / ≥90%</dd></div>
-                                <div><dt>F1</dt><dd>≥85%</dd></div>
-                            </dl>
-                        </section>
-                        {{-- Show the performance features. --}}
-                        <section class="performance-detail-card"><h3>What the model uses</h3><div id="performanceFeatures"></div><p id="performanceUpdated" class="analytics-panel-description"></p></section>
-                        {{-- Show the latest candidate title. --}}
-                        <section class="performance-detail-card" aria-labelledby="latestCandidateTitle"><h3 id="latestCandidateTitle">Latest training result</h3>
-                            {{-- Show the performance candidate status section. --}}
-                            <div id="performanceCandidateStatus" class="performance-overview">No optimization evaluation available.</div>
-                            <h4>Evaluation results</h4><div id="performanceCandidateResults"></div>
-                        </section>
-                        {{-- Show the performance candidate training. --}}
-                        <section class="performance-detail-card performance-data-card"><h3>Latest training data</h3><div id="performanceCandidateTraining"></div></section>
-                    </div>
                     <div class="performance-retrain">
-                        <div class="performance-retrain-copy"><strong>Manual retraining</strong><p class="analytics-panel-description">Run the existing ML pipeline for a demonstration. New evaluation results appear in “Latest training result”. Scheduled training and activation requirements stay in place.</p></div>
+                        <div class="performance-retrain-copy"><strong>Manual retraining</strong><p class="analytics-panel-description">Retrain the current model using the latest eligible completed projects. Updated evaluation results appear here when training finishes.</p></div>
                         <button type="button" id="manualRetrainButton" class="btn btn-primary">Retrain model</button>
                         <p id="retrainStatus" role="status" aria-live="polite"></p>
+                        <div id="retrainResults" class="retrain-results" hidden aria-live="polite"></div>
                     </div>
                 </div>
             </section>
@@ -1638,7 +1585,7 @@
             predictionProjects.forEach(project => {
                 const option = document.createElement('option');
                 option.value = String(project.project_id);
-                option.textContent = `${project.project_name} — ${project.status}`;
+                option.textContent = `#${project.project_id} — ${project.project_name} · ${project.status}`;
                 select.appendChild(option);
             });
             select.disabled = predictionProjects.length === 0;
@@ -1725,12 +1672,9 @@
                     ? (variancePercentage > 10 ? 'Critical cost exposure' : (variancePercentage > 5 ? 'High cost exposure' : 'Manageable cost exposure'))
                     : 'Within approved budget';
                 const businessDiagnostic = isOverBudget
-                    ? `The project is forecast to exceed its approved budget by ${variancePercentage.toFixed(1)}%. Without corrective action, this reduces the expected project margin and may require additional funding approval.`
-                    : `The project is forecast to finish ${variancePercent.toFixed(1)}% below its approved budget, leaving a projected savings margin that management should protect through the remaining work.`;
-                const managementAction = isOverBudget
-                    ? 'Review remaining commitments, validate high-cost work packages, and agree on a recovery plan before approving further discretionary spending.'
-                    : 'Maintain current cost controls, confirm outstanding commitments, and monitor the remaining forecast against progress at the next management review.';
-                const varianceLabel = isOverBudget ? 'Projected budget overrun' : 'Projected budget savings';
+                    ? `The project is predicted to exceed its approved budget by ${variancePercentage.toFixed(1)}%. Without corrective action, this reduces the expected project margin and may require additional funding approval.`
+                    : `The project is predicted to finish ${variancePercent.toFixed(1)}% below its approved budget, leaving a predicted savings margin that management should protect through the remaining work.`;
+                const varianceLabel = isOverBudget ? 'Predicted budget overrun' : 'Predicted budget savings';
                 const varianceDescription = isOverBudget
                     ? `₱${varianceAmount.toLocaleString()} (${variancePercent.toFixed(1)}% over budget)`
                     : `₱${varianceAmount.toLocaleString()} (${variancePercent.toFixed(1)}% under budget)`;
@@ -1739,33 +1683,29 @@
                 contentDiv.innerHTML = `
                     <div class="result-row">
                         <span class="result-label">Project</span>
-                        <span class="result-value">${escapeHtml(result.input_features?.project_name || 'Selected project')}</span>
+                        <span class="result-value">#${escapeHtml(projectId)} — ${escapeHtml(result.input_features?.project_name || 'Selected project')}</span>
                     </div>
-                    <div class="result-row">
-                        <span class="result-label">Forecast final cost</span>
+                    <div class="result-row result-headline">
+                        <span class="result-label">Predicted final cost</span>
                         <span class="result-value">${escapeHtml(result.formatted || '₱0')}</span>
                     </div>
-                    <div class="result-row">
+                    <div class="result-row result-variance">
                         <span class="result-label">${varianceLabel}</span>
-                        <span class="result-value ${isOverBudget ? 'negative' : 'positive'}">${varianceDescription}</span>
+                        <span class="result-value ${isOverBudget ? 'negative' : 'positive'}">₱${varianceAmount.toLocaleString()} <span class="result-context">(<strong class="result-percentage">${variancePercent.toFixed(1)}%</strong> ${isOverBudget ? 'over' : 'under'} budget)</span></span>
                     </div>
-                    <div class="result-row">
+                    <div class="result-row result-position">
                         <span class="result-label">Business position</span>
                         <span class="result-value">${escapeHtml(displayedStatus)}</span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Management diagnostic</span>
-                        <span class="result-value narrative">${escapeHtml(businessDiagnostic)}</span>
+                        <span class="result-label">Remaining predicted cost</span>
+                        <span class="result-value">₱${remainingForecastCost.toLocaleString()} predicted remaining expenses <span class="result-context">after</span> ₱${recordedExpenses.toLocaleString()} recorded expenses<span class="result-context">${result.forecast_context === 'ongoing_planning_spending' ? ' using the project plan and dated spending' : ` at ${completion.toFixed(1)}% completion`}</span></span>
                     </div>
                     <div class="result-row">
-                        <span class="result-label">Remaining forecast cost</span>
-                        <span class="result-value">₱${remainingForecastCost.toLocaleString()} after ₱${recordedExpenses.toLocaleString()} recorded expenses${result.forecast_context === 'ongoing_planning_spending' ? ' using the project plan and dated spending' : ` at ${completion.toFixed(1)}% completion`}</span>
+                        <span class="result-label">Business diagnostic</span>
+                        <span class="result-value narrative">${escapeHtml(businessDiagnostic)}</span>
                     </div>
-                    <div class="result-row" style="border-bottom: none;">
-                        <span class="result-label">Recommended action</span>
-                        <span class="result-value narrative">${escapeHtml(managementAction)}</span>
-                    </div>
-                    <p class="result-helper"><strong>How to read this:</strong> A projected savings figure means the forecast is below the approved budget; an overrun means the forecast is above it. This view does not change the underlying prediction calculation.</p>
+                    <p class="result-helper"><strong>How to read this:</strong> A predicted savings figure means the predicted cost is below the approved budget; an overrun means the predicted cost is above it. This view does not change the underlying prediction calculation.</p>
                 `;
                 showNotification('Prediction completed.', 'success');
             } else {
@@ -1785,6 +1725,7 @@
     function clearPredictionForm() {
         document.getElementById('predictionProject').value = '';
         updatePredictionProjectSnapshot();
+        window.pfimsRemainingWork?.refresh();
         document.getElementById('predictionResult').style.display = 'none';
         document.getElementById('predictionResult').className = 'prediction-result';
     }

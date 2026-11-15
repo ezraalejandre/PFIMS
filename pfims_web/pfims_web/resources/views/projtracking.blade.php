@@ -142,11 +142,11 @@
                 {{-- Show the page navigation. --}}
                 <nav>
             <ul>
-                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">DASHBOARD</a></li>
-                <li class="active"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">PROJECTS</a></li>
-                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">FINANCE</a></li>
-                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">INVENTORY</a></li>
-                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">REPORTS</a></li>
+                <li><a href="{{ url('/dashboard') }}"><img src="{{ asset('images/dashboard.png') }}" alt="" class="nav-link-icon">Dashboard</a></li>
+                <li class="active"><a href="{{ url('/projects') }}"><img src="{{ asset('images/projects.png') }}" alt="" class="nav-link-icon">Projects</a></li>
+                <li><a href="{{ url('/finance') }}"><img src="{{ asset('images/finance.png') }}" alt="" class="nav-link-icon">Finance</a></li>
+                <li><a href="{{ url('/inventory') }}" style="color: inherit; text-decoration: none; display: block;"><img src="{{ asset('images/inventory.png') }}" alt="" class="nav-link-icon">Inventory</a></li>
+                <li><a href="{{ url('/reports') }}"><img src="{{ asset('images/folder.svg') }}" alt="" class="nav-link-icon">Reports</a></li>
             </ul>
         </nav>
         <div class="bottom-nav">
@@ -185,7 +185,7 @@
         <div class="project-filter-panel" aria-label="Project filters">
             <div class="project-filter-field">
                 <label for="projectSearch">Search</label>
-                <input type="search" id="projectSearch" maxlength="150" placeholder="Project, client, manager..." oninput="filterProjects()">
+                <input type="search" id="projectSearch" maxlength="150" placeholder="Project ID, name, client, manager..." oninput="filterProjects()">
             </div>
             <div class="project-filter-field">
                 <label for="projectStatusFilter">Project Status</label>
@@ -215,6 +215,7 @@
             <table data-pfims-standard-actions="off">
                 <thead>
                     <tr>
+                        <th>Project ID</th>
                         <th>Project Name</th>
                         <th>Client Name</th>
                         <th>Project Manager</th>
@@ -1086,7 +1087,7 @@ if (currentStep === 2) {
             tbody.innerHTML = '';
             // Run this step if the page data length equals 0.
             if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:28px;color:#6b7280">No projects match the selected filters.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:28px;color:#6b7280">No projects match the selected filters.</td></tr>';
             }
             // Process each project.
             pageData.forEach(function(project) {
@@ -1184,7 +1185,7 @@ if (currentStep === 2) {
             var to = document.getElementById('projectDateTo').value;
             // Keep the matching project items.
             projectFilteredData = allProjects.filter(function(project) {
-                var haystack = [project.name, project.client, project.manager, project.phase, project.status]
+                var haystack = [project.id, project.name, project.client, project.manager, project.phase, project.status]
                     .join(' ').toLowerCase();
                 return (!projectSearchTerm || haystack.includes(projectSearchTerm))
                     && (!status || project.status === status)
@@ -1459,7 +1460,8 @@ if (currentStep === 2) {
 
             var progress = Math.min(100, Math.max(0, parseFloat(project.progress) || 0));
             row.innerHTML = '' +
-                '<td><strong>' + escapeHtml(project.name) + '</strong></td>' +
+                '<td class="project-reference">#' + escapeHtml(project.id) + '</td>' +
+                '<td>' + escapeHtml(project.name) + '</td>' +
                 '<td>' + escapeHtml(project.client) + '</td>' +
                 '<td>' + escapeHtml(project.manager || '—') + '</td>' +
                 '<td>' + escapeHtml(project.workers ?? 0) + '</td>' +
@@ -1645,7 +1647,7 @@ if (new Date(endDate) <= new Date(startDate)) {
                 duration: duration
             };
 
-            document.getElementById('updateProjectName').textContent = projectName;
+            document.getElementById('updateProjectName').textContent = '#' + projectId + ' — ' + projectName;
             document.getElementById('updateClientName').textContent = clientName;
             document.getElementById('updateProjectManager').textContent = manager || '—';
             document.getElementById('updateWorkerCount').textContent = workers ?? 0;

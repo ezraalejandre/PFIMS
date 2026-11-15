@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Services;
 
 use App\Services\ML\BudgetOverrunClassifier;
@@ -322,7 +323,8 @@ class MLService
             throw new RuntimeException('Portable estimator changed the evaluated project-level overrun decisions.');
         }
         $maeTarget = app(ModelActivationPolicy::class)->maeTarget($evaluation['latest_observation_per_project']);
-        $costPasses = $maeTarget['actual_percent'] !== null && $maeTarget['actual_percent'] <= ModelActivationPolicy::AGREED_MAE_MAX_PERCENT
+        $costPasses = is_numeric($evaluation['latest_observation_per_project']['mean_absolute_error'] ?? null)
+            && $evaluation['latest_observation_per_project']['mean_absolute_error'] < ModelActivationPolicy::AGREED_MAE_MAX_PESOS
             && $evaluation['mean_absolute_percentage_error'] <= 5 && $evaluation['r_squared'] >= 0.9;
         // Process each minimum.
         foreach (['classification_accuracy' => 90, 'precision' => 85, 'recall' => 90, 'f1_score' => 85, 'balanced_accuracy' => 85] as $metric => $minimum) {
@@ -1011,6 +1013,7 @@ class MLService
                     DB::raw($finExpenses === null ? '0 as fin_other_expense' : 'COALESCE(fin_expenses.fin_other_expense, 0) as fin_other_expense')
                 )
                 ->where('project_tbl.status', 'Completed')
+                ->whereNotIn('project_tbl.project_id', \App\Services\ML\IndependentProjectHoldout::ids())
                 ->where('project_tbl.completion_percentage', '>=', 100)
                 ->whereNotNull('project_tbl.start_date')
                 ->whereNotNull('project_tbl.estimated_end_date')
@@ -1067,9 +1070,13 @@ class MLService
     }
 
     /**
+
      * Prefer genuine progress observations only after every progress stage has
+
      * enough finalized projects. Until then, train on the planning fields that
+
      * are represented consistently at prediction time.
+
      */
     protected function selectTrainingCohort(string $cohortMode = 'auto'): array
     {
@@ -1081,7 +1088,8 @@ class MLService
         if (! in_array($cohortMode, ['auto', 'planning', 'presentation_progress'], true)) {
             throw new InvalidArgumentException('Unknown training cohort policy.');
         }
-        $snapshots = $this->getSnapshotTrainingData();
+        $reservedProjects = \App\Services\ML\IndependentProjectHoldout::ids();
+        $snapshots = $this->getSnapshotTrainingData()->reject(fn ($row) => in_array((int) $row->project_id, $reservedProjects, true))->values();
         $operationalSnapshots = $snapshots->where('data_source', 'operational')
             ->reject(fn ($row) => ($row->capture_reason ?? null) === 'presentation_scenario')->values();
         $selectedSnapshots = $cohortMode === 'presentation_progress'
@@ -1176,6 +1184,7 @@ class MLService
             ->where('snapshot.completion_percentage', '>=', 0)
             ->where('snapshot.completion_percentage', '<', 100)
             ->where('project.status', 'Completed')
+            ->whereNotIn('project.project_id', \App\Services\ML\IndependentProjectHoldout::ids())
             ->where('project.completion_percentage', '>=', 100)
             ->whereNotNull('project.actual_end_date')
             ->orderBy('project.actual_end_date')->orderBy('snapshot.project_id')->orderBy('snapshot.captured_at');
@@ -1269,9 +1278,13 @@ class MLService
     }
 
     /**
+
      * Build finance signals exactly as they would have been known before the
+
      * completed project's outcome.  Expenses entered on or after actual_end_date
+
      * can be close-out corrections, so including them would leak the target.
+
      */
     protected function finExpenseAggregateQuery(bool $beforeProjectCompletion = true): mixed
     {
@@ -1442,12 +1455,19 @@ class MLService
     protected function finExpenseComponentExpression(): string
     {
         return 'CASE
+
             WHEN '.$this->finCategoryLikeClause(['material', 'materials', 'supply', 'supplies', 'cement', 'steel', 'sand', 'gravel', 'aggregate', 'lumber', 'hardware'])." THEN 'material'
+
             WHEN ".$this->finCategoryLikeClause(['labor', 'labour', 'salary', 'salaries', 'wage', 'wages', 'payroll', 'worker', 'manpower'])." THEN 'labor'
+
             WHEN ".$this->finCategoryLikeClause(['equipment', 'machine', 'machinery', 'backhoe', 'rental', 'repair', 'maintenance', 'fuel', 'diesel', 'gasoline'])." THEN 'equipment'
+
             WHEN LOWER(COALESCE(fin_expense.project_cost_component, '')) IN ('material', 'labor', 'equipment', 'other')
+
                 THEN LOWER(fin_expense.project_cost_component)
+
             ELSE 'other'
+
         END";
     }
 
@@ -1459,6 +1479,7 @@ class MLService
             $term = str_replace("'", "''", strtolower($term));
 
             return "LOWER(COALESCE(fin_category.category_code, '')) LIKE '%{$term}%'
+
                 OR LOWER(COALESCE(fin_category.category_name, '')) LIKE '%{$term}%'";
         })->implode(' OR ');
     }
@@ -3065,6 +3086,58 @@ class MLService
     }
 
     // Get model metrics.
+    public function getSensitivityEvaluation(): ?array
+    {
+        $path = storage_path('app/ml-stress-evaluation.json');
+        if (! File::exists($path)) {
+            return null;
+        }
+        try {
+            $report = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
+            if (! hash_equals($report['active_model_sha256'] ?? '', hash_file('sha256', $this->modelPath))) {
+                return null;
+            }
+            return ['generated_at' => $report['generated_at'], 'scope' => $report['scope'],
+                'scenario_count' => $report['scenario_count'],
+                'active_detector' => $report['active_detector'] ?? null,
+                'active_model' => $report['active_model']['evaluation'] ?? null,
+                'candidate_model' => $report['candidate_model']['evaluation'] ?? null];
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    public function getLocalImprovementSummary(): ?array
+    {
+        $path = storage_path('app/ml-improvement/report.json');
+        if (! File::exists($path)) return null;
+        try {
+            $report = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
+            return array_intersect_key($report, array_flip(['generated_at', 'scope', 'active_model_changed',
+                'selected_regressor', 'selected_classifier', 'evaluation_all_checkpoints',
+                'evaluation_latest_checkpoint', 'evaluation_by_stage', 'historical_budget_fallback_observations',
+                'reserved_independent_project_ids', 'remaining_cost_review_count', 'limitations']));
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /** Only expose an audit tied to this estimator and its saved source. */
+    protected function getRSquaredAudit(): ?array
+    {
+        $path = storage_path('app/ml-r-squared-audit.json');
+        $source = storage_path('app/ml-improvement/source.json');
+        if (!File::exists($path) || !File::exists($source) || !File::exists($this->modelPath)) return null;
+        try {
+            $audit = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
+            if (($audit['checks']['active_model_prediction_parity'] ?? false) !== true
+                || !hash_equals($audit['model_sha256'] ?? '', hash_file('sha256', $this->modelPath))
+                || !hash_equals($audit['source_sha256'] ?? '', hash_file('sha256', $source))) return null;
+            return $audit;
+        } catch (Throwable) {
+            return null;
+        }
+    }
     public function getModelMetrics(): array
     {
         // Return early if the input checks match.
@@ -3135,6 +3208,13 @@ class MLService
             'augmentation' => $this->metadata['augmentation'] ?? null,
             'candidate_evaluations' => $this->getCandidateEvaluationReports(),
             'latest_optimization' => $this->getOptimizationSummary(),
+            'local_improvement' => $this->getLocalImprovementSummary(),
+            'r_squared_audit' => $this->getRSquaredAudit(),
+            'data_volume_experiment' => File::exists(storage_path('app/ml-data-volume-experiment.json'))
+                ? json_decode(File::get(storage_path('app/ml-data-volume-experiment.json')), true) : null,
+            'pace_experiment' => File::exists(storage_path('app/ml-pace-experiment.json'))
+                ? json_decode(File::get(storage_path('app/ml-pace-experiment.json')), true) : null,
+            'sensitivity_evaluation' => $this->getSensitivityEvaluation(),
             'training_projects' => $this->metadata['training_projects'] ?? null,
             'progress_feature_selection' => $this->metadata['progress_feature_selection'] ?? null,
             'evaluation_projects' => $metrics['evaluation_projects'] ?? null,
@@ -3264,6 +3344,9 @@ class MLService
     // Get the retrain.
     public function retrain(?string $cohortMode = null): array
     {
+        if ($cohortMode === null && ($this->metadata['model_type'] ?? null) === 'gradient_boosting_regression') {
+            return $this->retrainActiveGradientBoosting();
+        }
         // Return early if the project group mode checks match.
         if ($cohortMode === 'database_augmented' || (in_array($cohortMode, [null, 'auto'], true) && config('ml.augmentation_enabled'))) {
             return $this->retrainAugmented();
@@ -3282,6 +3365,38 @@ class MLService
             'candidate_activated' => $realModelTrained,
             'model_source' => $metrics['model_source'], 'metrics' => $metrics,
         ];
+    }
+
+    protected function retrainActiveGradientBoosting(): array
+    {
+        \App\Services\ML\LocalImprovementWorkbench::assertLocal();
+        $lock = fopen($this->modelPath.'.training.lock', 'c');
+        if (!$lock) throw new RuntimeException('Unable to open training lock.');
+        if (!flock($lock, LOCK_EX | LOCK_NB)) { fclose($lock); throw new RuntimeException('Model training is already running.'); }
+        try {
+            app(\App\Services\ML\LocalImprovementWorkbench::class)->prepare(false);
+            $python = config('ml.python_executable') ?: storage_path(PHP_OS_FAMILY === 'Windows'
+                ? 'app/ml-experiments/venv/Scripts/python.exe' : 'app/ml-experiments/venv/bin/python');
+            if (!is_file($python)) throw new RuntimeException('The model training environment is unavailable. The saved active model has been retained.');
+            foreach ([[$python, base_path('scripts/ml/retrain_active_cost.py')],
+                [$python, base_path('scripts/ml/export_cost_candidate.py')],
+                [(new \Symfony\Component\Process\PhpExecutableFinder())->find(false) ?: PHP_BINARY, base_path('scripts/ml/activate_local_cost_candidate.php')],
+                [$python, base_path('scripts/ml/audit_r_squared.py')],
+                [(new \Symfony\Component\Process\PhpExecutableFinder())->find(false) ?: PHP_BINARY, base_path('scripts/ml/audit_cost_input_timing.php')]] as $command) {
+                // Web workers may omit Windows system variables required by Python's socket module.
+                $environment = [];
+                if (PHP_OS_FAMILY === 'Windows') {
+                    $environment['SystemRoot'] = getenv('SystemRoot') ?: 'C:\\Windows';
+                    $environment['WINDIR'] = getenv('WINDIR') ?: $environment['SystemRoot'];
+                }
+                $process = new \Symfony\Component\Process\Process($command, base_path(), $environment);
+                $process->setTimeout(240);
+                $process->mustRun();
+            }
+            if (!$this->restoreStoredModel()) throw new RuntimeException('Retrained model could not be loaded.');
+            return ['message'=>'Retraining completed. The active gradient boosting model and evaluation were updated.',
+                'candidate_activated'=>true, 'model_source'=>$this->metadata['model_source'], 'metrics'=>$this->getModelMetrics()];
+        } finally { flock($lock, LOCK_UN); fclose($lock); }
     }
 
     /** Train the model chosen by repeated testing. Save it as a candidate and keep the activation checks. */
