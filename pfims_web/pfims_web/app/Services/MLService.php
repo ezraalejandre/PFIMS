@@ -450,7 +450,13 @@ class MLService
             $predictions = $actuals = $budgets = [];
             // Process each row.
             foreach ($test as $row) {
-                $vector = $this->transformFeatureVector($this->rowToFeatures($row, $transformer['feature_names']),
+                // Imported trees use the same named raw inputs as their fitting/export pipeline.
+                $raw = $pair['model'] instanceof \App\Services\ML\PortableGradientBoosting
+                    ? array_map(function ($name) use ($row) {
+                        if (!isset($row->{$name}) || !is_numeric($row->{$name}) || !is_finite((float) $row->{$name})) throw new RuntimeException('Missing tree input: '.$name);
+                        return (float) $row->{$name};
+                    }, $transformer['feature_names']) : $this->rowToFeatures($row, $transformer['feature_names']);
+                $vector = $this->transformFeatureVector($raw,
                     $transformer['selected_feature_indexes'], $transformer['ranges']);
                 $estimate = (float) $pair['model']->predict($vector);
                 // Run this step if the transformer target normalization is set.
@@ -3374,10 +3380,10 @@ class MLService
         if (!$lock) throw new RuntimeException('Unable to open training lock.');
         if (!flock($lock, LOCK_EX | LOCK_NB)) { fclose($lock); throw new RuntimeException('Model training is already running.'); }
         try {
-            app(\App\Services\ML\LocalImprovementWorkbench::class)->prepare(false);
             $python = config('ml.python_executable') ?: storage_path(PHP_OS_FAMILY === 'Windows'
                 ? 'app/ml-experiments/venv/Scripts/python.exe' : 'app/ml-experiments/venv/bin/python');
-            if (!is_file($python)) throw new RuntimeException('The model training environment is unavailable. The saved active model has been retained.');
+            if (!function_exists('proc_open') || !is_file($python)) return $this->revalidateUnchangedGradientBoosting();
+            app(\App\Services\ML\LocalImprovementWorkbench::class)->prepare(false);
             foreach ([[$python, base_path('scripts/ml/retrain_active_cost.py')],
                 [$python, base_path('scripts/ml/export_cost_candidate.py')],
                 [(new \Symfony\Component\Process\PhpExecutableFinder())->find(false) ?: PHP_BINARY, base_path('scripts/ml/activate_local_cost_candidate.php')],
@@ -3397,6 +3403,51 @@ class MLService
             return ['message'=>'Retraining completed. The active gradient boosting model and evaluation were updated.',
                 'candidate_activated'=>true, 'model_source'=>$this->metadata['model_source'], 'metrics'=>$this->getModelMetrics()];
         } finally { flock($lock, LOCK_UN); fclose($lock); }
+    }
+
+    /** A restricted host can verify an unchanged checkpoint model without claiming a refit. */
+    protected function revalidateUnchangedGradientBoosting(): array
+    {
+        $sourcePath = storage_path('app/ml-improvement/source.json');
+        $reportPath = storage_path('app/ml-improvement/report.json');
+        if (!File::exists($sourcePath) || !File::exists($reportPath) || !$this->getRSquaredAudit()) {
+            throw new RuntimeException('The saved model evidence is unavailable. Retrain in the training environment and transfer the verified model.');
+        }
+        $source = json_decode(File::get($sourcePath), true, 512, JSON_THROW_ON_ERROR);
+        $report = json_decode(File::get($reportPath), true, 512, JSON_THROW_ON_ERROR);
+        $cohort = app(\App\Services\ML\PlanningSpendingCohort::class)->database();
+        $fingerprint = static function ($rows, array $features): string {
+            $values = [];
+            foreach ($rows as $row) {
+                $row = (array) $row;
+                $record = [(int) $row['project_id'], (string) $row['captured_at'], (string) $row['completed_at']];
+                foreach ([...$features, 'actual_cost'] as $feature) {
+                    if (!isset($row[$feature]) || !is_numeric($row[$feature]) || !is_finite((float) $row[$feature])) throw new RuntimeException('Invalid checkpoint input.');
+                    $record[] = (float) $row[$feature];
+                }
+                $values[] = $record;
+            }
+            usort($values, fn ($a, $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+            return hash('sha256', json_encode($values, JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR));
+        };
+        if (($source['features'] ?? []) !== $cohort['feature_names']
+            || !hash_equals($fingerprint($source['records'], $source['features']), $fingerprint($cohort['records'], $source['features']))) {
+            throw new RuntimeException('Eligible checkpoints have changed. This host cannot fit the model; retrain in the training environment and transfer the updated model. The active model was retained.');
+        }
+        $test = $cohort['records']->whereIn('project_id', $report['development_test_project_ids'])->values();
+        $latest = $test->sortBy('captured_at')->groupBy('project_id')->map(fn ($rows) => $rows->last())->values();
+        foreach ([$test, $latest] as $index => $rows) {
+            $actual = $this->evaluateSavedActiveEstimator($rows)['evaluation'] ?? [];
+            $saved = $index === 0 ? $this->metadata['evaluation'] : $this->metadata['evaluation']['latest_observation_per_project'];
+            foreach (['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared'] as $metric) {
+                if (!is_numeric($actual[$metric] ?? null) || abs($actual[$metric] - $saved[$metric]) > ($metric === 'mean_absolute_error' ? .5 : .00011)) {
+                    throw new RuntimeException('The saved model no longer reproduces its evaluation. Active files were retained.');
+                }
+            }
+        }
+        return ['message' => 'Checkpoint data is unchanged. The saved model and evaluation were verified and retained; no new training was performed.',
+            'candidate_activated' => false, 'training_performed' => false, 'evaluation_refreshed' => true,
+            'model_source' => $this->metadata['model_source'], 'metrics' => $this->getModelMetrics()];
     }
 
     /** Train the model chosen by repeated testing. Save it as a candidate and keep the activation checks. */

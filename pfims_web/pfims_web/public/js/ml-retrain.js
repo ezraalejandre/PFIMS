@@ -56,7 +56,7 @@
 
             window.pfimsPerformance.update(data.metrics);
 
-            status.textContent = 'retraining done!';
+            status.textContent = data.training_performed === false ? data.message : 'retraining done!';
 
             const host = document.getElementById('retrainResults');
 
