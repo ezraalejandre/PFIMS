@@ -4,7 +4,6 @@ $directory = env('ML_AUGMENTATION_DATASET') ?: storage_path('app/ml-datasets/cur
 
 // Set the ml options for the app.
 return [
-    'python_executable' => env('ML_PYTHON_EXECUTABLE'),
     'planning_spending_enabled' => (bool) env('ML_PLANNING_SPENDING_ENABLED', true),
     // Load the private data file when it exists, unless this setting is turned off.
     'augmentation_enabled' => (bool) env('ML_AUGMENTATION_ENABLED', env('APP_ENV', 'production') !== 'testing' && is_file($directory.'/manifest.json')),

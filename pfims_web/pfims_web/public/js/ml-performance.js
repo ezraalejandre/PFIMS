@@ -52,22 +52,14 @@
     }
     // Get the render.
     function render() {
-        const candidate = false;
-        const report = null;
-        const evaluated = active;
-        const isImprovedActive = active.model_type === 'gradient_boosting_regression';
-        // Keep late-checkpoint cost errors and chronological validation explicitly separate.
-        const metrics = active.latest_observation_per_project || active;
-        const audit = active.r_squared_audit;
-        const validation = audit?.chronological_validation;
-        put('costPerformanceSource', audit
-            ? 'Active model · latest-checkpoint cost errors and separate chronological validation'
-            : active.latest_observation_per_project ? 'Active model · latest historical test checkpoint per project' : 'Saved active model evaluation · all checkpoints');
+        const metrics = active;
+        put('costPerformanceSource', active.model_type === 'support_vector_regression_rbf'
+            ? 'SVR (RBF) · all saved historical test checkpoints' : 'Saved active model evaluation · all checkpoints');
         put('metricMAPE', percent(metrics?.mean_absolute_percentage_error));
         put('metricMAE', currency(metrics?.mean_absolute_error));
-        const displayedRSquared = validation ? validation.r_squared : metrics.r_squared;
+        const displayedRSquared = metrics.r_squared;
         put('metricRSquared', number(displayedRSquared) ? Number(displayedRSquared).toFixed(4) : 'Unavailable');
-        put('metricRSquaredLabel', validation ? 'Chronological validation R²' : 'Fit to actual costs (R²)');
+        put('metricRSquaredLabel', 'Fit to actual costs (R²)');
         if (Object.prototype.hasOwnProperty.call(active, 'pace_experiment')) {
             window.pfimsExperimentPerformance?.update(active.pace_experiment);
         }

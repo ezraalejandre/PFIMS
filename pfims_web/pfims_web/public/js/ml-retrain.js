@@ -68,9 +68,8 @@
 
                 const metrics = data.metrics || {};
 
-                // Match the performance cards: active late-test errors and separate validation R².
-                const scores = metrics.latest_observation_per_project || metrics;
-                const validation = metrics.r_squared_audit?.chronological_validation;
+                // Match the active SVR evaluation shown in the performance cards.
+                const scores = metrics;
 
                 const number = (value, digits = 2) => value != null && Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-PH', {minimumFractionDigits: digits, maximumFractionDigits: digits}) : 'Unavailable';
 
@@ -83,7 +82,7 @@
 
                     `Average percentage error (MAPE): ${number(scores.mean_absolute_percentage_error)}%`,
 
-                    `${validation ? 'Chronological validation R²' : 'Fit to actual costs (R²)'}: ${number(validation ? validation.r_squared : scores.r_squared, 4)}`,
+                    `Fit to actual costs (R²): ${number(scores.r_squared, 4)}`,
 
 
 

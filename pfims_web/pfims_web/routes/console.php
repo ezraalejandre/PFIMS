@@ -28,16 +28,6 @@ Artisan::command('ml:reserve-prospective', function () {
     $this->line(json_encode(app(\App\Services\ML\IndependentProjectHoldout::class)->reserveProspective(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 })->purpose('Reserve a deterministic 20 percent of current incomplete operational projects for future independent validation');
 
-Artisan::command('ml:compare-local {--python= : Python executable with scripts/ml/requirements.txt installed}', function () {
-    \App\Services\ML\LocalImprovementWorkbench::assertLocal();
-    $python = $this->option('python') ?: storage_path('app/ml-experiments/venv/Scripts/python.exe');
-    $process = new \Symfony\Component\Process\Process([$python, base_path('scripts/ml/improve_models.py'),
-        '--source', storage_path('app/ml-improvement/source.json'), '--output', storage_path('app/ml-improvement')], base_path());
-    $process->setTimeout(1800);
-    $process->mustRun();
-    $this->line($process->getOutput());
-})->purpose('Compare local development models with training-only temporal selection; never activate or deploy');
-
 Artisan::command('ml:stress-evaluate {--source= : Archived source JSON gzip} {--count=300}', function () {
     $source = $this->option('source');
     if (! $source || ! is_file($source)) {
