@@ -13,6 +13,11 @@ class ModelPromotionService
     // Get the promote cost.
     public function promoteCost(string $path, Regression $model, array $metadata, array $evidence, bool $reviewedDevelopmentUse = false): array
     {
+        if (!$model instanceof PortableRbfSvr) {
+            return ['activated' => false, 'policy' => ['eligible' => false,
+                'failed_requirements' => ['established_svr_pipeline'],
+                'policy_note' => 'The established cost pipeline uses SVR (RBF). Other algorithms cannot replace it.']];
+        }
         $checks = (new ModelActivationPolicy)->assessCost($metadata['activation_primary_evaluation'] ?? $metadata['evaluation'] ?? [], $evidence);
         // Return early if the checks eligible and reviewed development use checks match.
         if (! $checks['eligible'] && ! ($reviewedDevelopmentUse && $this->developmentRequirementsMet($checks))) {

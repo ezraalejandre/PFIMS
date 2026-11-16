@@ -162,21 +162,15 @@ class ProjectCostOptimizationService extends MLService
         // Process each ratio.
         foreach ([0.0, 0.5, 1.0, 3.0, null] as $ratio) {
             $this->setInfluence($ratio);
-            $trials[] = config('ml.planning_spending_enabled')
-                ? $this->trial($training, $features, 'ridge_linear_regression', ['alpha' => .1])
-                : $this->trial($training, $features, 'least_squares_linear_regression');
+            $trials[] = $this->trial($training, $features, 'support_vector_regression_rbf',
+                ['cost' => 10.0, 'gamma' => .03, 'epsilon' => .01]);
         }
         $best = $this->best($trials);
         $report['steps']['1_augmentation'] = ['selected_ratio' => $best['dummy_to_real_ratio'], 'trials' => $trials];
         $this->setInfluence($best['dummy_to_real_ratio']);
 
-        $progress('Step 2: compare linear, regularized linear, and locally trained SVR.');
+        $progress('Step 2: tune SVR settings within the established pipeline.');
         $models = [$best];
-        $models[] = $this->trial($training, $features, 'least_squares_linear_regression');
-        // Process each alpha.
-        foreach ([0.01, 0.1, 1.0, 10.0] as $alpha) {
-            $models[] = $this->trial($training, $features, 'ridge_linear_regression', compact('alpha'));
-        }
         // Process each cost.
         foreach ([1.0, 3.0, 10.0, 30.0, 100.0] as $cost) {
             // Process each gamma.

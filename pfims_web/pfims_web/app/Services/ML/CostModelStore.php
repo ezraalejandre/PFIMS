@@ -22,7 +22,6 @@ class CostModelStore
             $model instanceof LeastSquares => 'least_squares_linear_regression',
             $model instanceof RidgeRegression => 'ridge_linear_regression',
             $model instanceof PortableRbfSvr => 'support_vector_regression_rbf',
-            $model instanceof PortableGradientBoosting => 'gradient_boosting_regression',
             default => throw new RuntimeException('Unsupported served cost estimator.'),
         };
     }
@@ -30,12 +29,16 @@ class CostModelStore
     // Get the load.
     public function load(): ?array
     {
-        return $this->locked(LOCK_SH, function () {
+        $pair = $this->locked(LOCK_SH, function () {
+            $activeMetadata = File::exists($this->path.'.meta.json') ? json_decode(File::get($this->path.'.meta.json'), true) : null;
+            $requireSvr = in_array($activeMetadata['model_type'] ?? null, ['gradient_boosting_regression', 'support_vector_regression_rbf'], true);
             // Process each suffix.
             foreach (['active' => '', 'previous' => '.previous'] as $source => $suffix) {
+                if ($source === 'previous' && ($activeMetadata['model_type'] ?? null) === 'gradient_boosting_regression') continue;
                 // Try this action and handle any errors below.
                 try {
                     $pair = $this->readPair($this->path.$suffix, $this->path.'.meta.json'.$suffix);
+                    if ($requireSvr && !$pair['model'] instanceof PortableRbfSvr) continue;
                     $pair['recovery_source'] = $source;
 
                     return $pair;
@@ -44,8 +47,54 @@ class CostModelStore
                 }
             }
 
+            // Recover the established pipeline from a verified pre-release backup.
+            $backups = array_merge(
+                File::glob(dirname($this->path).'/release-backups/*/storage/app/'.basename($this->path)),
+                File::glob(dirname($this->path).'/ml-improvement/before-activation-*/'.basename($this->path))
+            );
+            rsort($backups);
+            foreach ($backups as $backup) {
+                try {
+                    $restored = $this->readPair($backup, $backup.'.meta.json');
+                    if (!$restored['model'] instanceof PortableRbfSvr) continue;
+                    $restored['recovery_source'] = 'established_pipeline_backup';
+                    return $restored;
+                } catch (Throwable) {
+                    // An incomplete or mismatched backup cannot restore the pipeline.
+                }
+            }
+            if (($activeMetadata['model_type'] ?? null) === 'gradient_boosting_regression') {
+                try {
+                    $restored = $this->readPair($this->path.'.previous', $this->path.'.meta.json.previous');
+                    if ($restored['model'] instanceof PortableRbfSvr) {
+                        $restored['recovery_source'] = 'previous';
+                        return $restored;
+                    }
+                } catch (Throwable) {
+                    // No unsupported model is served when recovery evidence is missing.
+                }
+            }
+
             return null;
         });
+        $active = File::exists($this->path.'.meta.json') ? json_decode(File::get($this->path.'.meta.json'), true) : null;
+        if ($pair !== null && $pair['model'] instanceof PortableRbfSvr
+            && ($active['model_type'] ?? null) === 'gradient_boosting_regression') {
+            // Preserve the rejected pair before atomically restoring the supported estimator.
+            $archive = dirname($this->path).'/rejected-models/'.hash_file('sha256', $this->path);
+            File::ensureDirectoryExists($archive);
+            foreach (['', '.meta.json'] as $suffix) {
+                $original = $this->path.$suffix;
+                $saved = $archive.'/'.basename($original);
+                if (!File::exists($saved) && (!copy($original, $saved)
+                    || !hash_equals(hash_file('sha256', $original), hash_file('sha256', $saved)))) {
+                    throw new RuntimeException('Unable to preserve the replaced estimator.');
+                }
+            }
+            $pair['metadata'] = $this->save($pair['model'], $pair['metadata']);
+            $pair['recovery_source'] = 'active';
+        }
+        return $pair;
     }
 
     // Read pair.
