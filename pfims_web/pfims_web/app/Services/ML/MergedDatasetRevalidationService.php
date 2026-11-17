@@ -127,6 +127,15 @@ class MergedDatasetRevalidationService
             $source = $this->export();
             $python = storage_path('app/ml-experiments/venv/'.(PHP_OS_FAMILY === 'Windows' ? 'Scripts/python.exe' : 'bin/python'));
             if (!is_file($python)) throw new RuntimeException('The model training environment is unavailable.');
+            // Hosting releases can reset private runtime files to mode 0644.
+            if (PHP_OS_FAMILY !== 'Windows' && !is_executable($python)) {
+                $binary = realpath($python);
+                $runtime = realpath(storage_path('app/ml-experiments'));
+                if (!$binary || !$runtime || !str_starts_with($binary, $runtime.DIRECTORY_SEPARATOR)
+                    || !chmod($binary, 0755)) throw new RuntimeException('The private training runtime is not executable.');
+                clearstatcache(true, $python);
+                if (!is_executable($python)) throw new RuntimeException('The private training runtime is not executable.');
+            }
             $process = new Process([$python, base_path('scripts/ml/refine_merged_dataset.py'), '--refit'], base_path(), $this->trainingEnvironment());
             $process->setTimeout(1800);
             $process->mustRun();
