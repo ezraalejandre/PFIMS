@@ -69,12 +69,12 @@
                 const metrics = data.metrics || {};
 
                 // Match the active SVR evaluation shown in the performance cards.
-                const scores = metrics;
+                const scores = metrics.development_evaluation?.metrics || metrics;
 
                 const number = (value, digits = 2) => value != null && Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-PH', {minimumFractionDigits: digits, maximumFractionDigits: digits}) : 'Unavailable';
 
                 const heading = document.createElement('p');
-                heading.textContent = data.candidate_activated ? 'Active model updated:' : 'Active model retained:';
+                heading.textContent = data.detector_activated ? 'Random forest updated; SVR retained:' : data.candidate_activated ? 'Active model updated:' : metrics.development_evaluation ? 'Comparison updated; active model retained:' : 'Active model retained:';
                 host.appendChild(heading);
                 const facts = [
 
@@ -82,7 +82,7 @@
 
                     `Average percentage error (MAPE): ${number(scores.mean_absolute_percentage_error)}%`,
 
-                    `Fit to actual costs (R²): ${number(scores.r_squared, 4)}`,
+                    `R²: ${number(scores.r_squared, 4)}`,
 
 
 

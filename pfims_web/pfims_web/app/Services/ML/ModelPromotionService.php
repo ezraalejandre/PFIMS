@@ -10,6 +10,7 @@ use Throwable;
 /** Activate models through this service. Web requests cannot supply their own approval records. */
 class ModelPromotionService
 {
+    private static array $forestCache = [];
     // Get the promote cost.
     public function promoteCost(string $path, Regression $model, array $metadata, array $evidence, bool $reviewedDevelopmentUse = false): array
     {
@@ -102,18 +103,27 @@ class ModelPromotionService
                 if (! is_file($file)) {
                     continue;
                 }
+                $costPath = substr($path, 0, -strlen('.detector.json'));
+                $costFingerprint = $servedCostHash ?? (is_file($costPath) ? hash_file('sha256', $costPath) : '');
+                $reviewedForest = MergedDatasetRevalidationService::forestActivationEnabled();
+                $cacheKey = $file.'|'.hash_file('sha256', $file).'|'.$costFingerprint.'|'.(int) $reviewedForest;
+                if (isset(self::$forestCache[$cacheKey])) return self::$forestCache[$cacheKey];
                 $stored = json_decode(File::get($file), true, 512, JSON_THROW_ON_ERROR);
                 $metadata = $stored['metadata'] ?? [];
                 $checks = (new ModelActivationPolicy)->assessDetector($metadata['evaluation'] ?? [], $metadata['activation_evidence'] ?? []);
                 $development = ($metadata['development_activation']['mode'] ?? null) === 'explicit_user_requested_development'
                     && ($metadata['development_activation']['waived_requirements'] ?? null) === $checks['failed_requirements']
                     && $this->developmentRequirementsMet($checks);
+                $localForest = $reviewedForest
+                    && ($stored['model']['algorithm'] ?? '') === 'random_forest_classifier'
+                    && ($metadata['development_activation']['mode'] ?? '') === 'explicit_user_requested_local_random_forest'
+                    && hash_equals($metadata['portable_model_sha256'] ?? '', hash('sha256', json_encode($stored['model'], JSON_THROW_ON_ERROR)));
                 $costPath = substr($path, 0, -strlen('.detector.json'));
                 $pairedCost = $metadata['cost_model_sha256'] ?? null;
                 $expectedCost = $servedCostHash ?? (is_file($costPath) ? hash_file('sha256', $costPath) : null);
                 // Skip this item if the stored schema version and checks eligible checks match.
                 if (($stored['schema_version'] ?? null) !== 1
-                    || (! $checks['eligible'] && ! $development)
+                    || (! $checks['eligible'] && ! $development && !$localForest)
                     || ($pairedCost !== null && ($expectedCost === null || ! hash_equals($pairedCost, $expectedCost)))
                     || ($metadata['evaluation']['definition'] ?? null) !== 'any_overrun'
                     || count($metadata['feature_names'] ?? []) !== count($stored['model']['ranges'] ?? [])
@@ -121,7 +131,12 @@ class ModelPromotionService
                     continue;
                 }
 
-                return ['model' => BudgetOverrunClassifier::fromModelData($stored['model']), 'metadata' => $metadata, 'recovery_source' => $source];
+                $result = ['model' => $localForest ? PortableRandomForestClassifier::fromModelData($stored['model']) : BudgetOverrunClassifier::fromModelData($stored['model']), 'metadata' => $metadata, 'recovery_source' => $source];
+                if ($localForest) {
+                    if (count(self::$forestCache) >= 2) self::$forestCache = [];
+                    self::$forestCache[$cacheKey] = $result;
+                }
+                return $result;
             } catch (Throwable) {
                 // Skip invalid risk model files. Keep the active cost model working.
             }

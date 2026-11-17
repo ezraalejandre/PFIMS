@@ -9,6 +9,11 @@ use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
+// Imports, reports, and model processing can exceed PHP's default request limit.
+// Apply this to both web requests and Artisan commands, including existing servers.
+set_time_limit(0);
+ini_set('default_socket_timeout', '300');
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

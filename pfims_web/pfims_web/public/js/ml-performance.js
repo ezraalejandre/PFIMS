@@ -10,6 +10,14 @@
     const number = value => value !== null && value !== undefined && Number.isFinite(Number(value));
     const percent = value => number(value) ? `${Number(value).toFixed(2)}%` : 'Unavailable';
     const currency = value => number(value) ? `₱${Number(value).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'Unavailable';
+    let savedDisplay = null;
+    try {
+        const saved = JSON.parse(element('savedCostPerformanceBootstrap')?.textContent || 'null');
+        if (saved?.mode === 'saved_evaluation_display_only' && saved.model_type === 'gradient_boosting_regression'
+            && ['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared'].every(key => number(saved.metrics?.[key]))) savedDisplay = saved;
+        if (saved?.mode === 'merged_development_evaluation'
+            && ['mean_absolute_error', 'mean_absolute_percentage_error', 'r_squared'].every(key => number(saved.metrics?.[key]))) savedDisplay = saved;
+    } catch { /* An unavailable saved comparison falls back to the active evaluation. */ }
     // Get the scope note.
     function scopeNote(titleId, noteId, text) {
         const title = element(titleId);
@@ -52,17 +60,33 @@
     }
     // Get the render.
     function render() {
-        const metrics = active;
-        put('costPerformanceSource', active.model_type === 'support_vector_regression_rbf'
+        const metrics = savedDisplay?.metrics || active;
+        const merged = savedDisplay?.mode === 'merged_development_evaluation';
+        put('performanceStatus', merged ? 'Cost Prediction Performance' : savedDisplay ? 'Saved Gradient Boosting Performance' : 'Cost Prediction Performance');
+        put('costPerformanceSource', merged ? savedDisplay.scope : savedDisplay
+            ? 'Saved comparison: latest-checkpoint MAE/MAPE and chronological-validation R². Active predictor remains SVR (RBF).'
+            : active.model_type === 'support_vector_regression_rbf'
             ? 'SVR (RBF) · all saved historical test checkpoints' : 'Saved active model evaluation · all checkpoints');
+        if (merged) {
+            const source = element('costPerformanceSource');
+            if (source) {
+                const label = document.createElement('strong'); label.textContent = 'SVR (RBF)';
+                source.replaceChildren(label, document.createTextNode(` · ${savedDisplay.scope}`));
+            }
+        }
         put('metricMAPE', percent(metrics?.mean_absolute_percentage_error));
         put('metricMAE', currency(metrics?.mean_absolute_error));
         const displayedRSquared = metrics.r_squared;
         put('metricRSquared', number(displayedRSquared) ? Number(displayedRSquared).toFixed(4) : 'Unavailable');
-        put('metricRSquaredLabel', 'Fit to actual costs (R²)');
+        put('metricRSquaredLabel', 'R²');
+        if (merged) window.pfimsExperimentPerformance?.update(savedDisplay);
         if (Object.prototype.hasOwnProperty.call(active, 'pace_experiment')) {
             window.pfimsExperimentPerformance?.update(active.pace_experiment);
         }
     }
-    window.pfimsPerformance = { update(metrics) { active = metrics || {}; render(); } };
+    window.pfimsPerformance = { update(metrics) {
+        active = metrics || {};
+        if (active.development_evaluation?.mode === 'merged_development_evaluation') savedDisplay = active.development_evaluation;
+        render();
+    } };
 })();

@@ -643,7 +643,9 @@ class MLService
             $spent = isset($row->snapshot_id) ? (float) ($row->fin_total_expense ?? 0) : 0.0;
             $known = app(ProjectOverrunPolicy::class)->classify($spent, (float) $row->budget)['any_overrun'] === true;
             $actuals[] = app(ProjectOverrunPolicy::class)->classify((float) $row->actual_cost + $spent, (float) $row->budget)['any_overrun'];
-            $scores[] = $known ? 1.0 : $model->score($this->rowToFeatures($row, $features));
+            $inputs = $model instanceof \App\Services\ML\PortableRandomForestClassifier
+                ? array_map(fn ($name) => (float) ($row->{$name} ?? 0), $features) : $this->rowToFeatures($row, $features);
+            $scores[] = $known ? 1.0 : $model->score($inputs);
             $predictions[] = end($scores) >= $threshold;
             $confirmed += (int) $known;
         }
@@ -2778,6 +2780,7 @@ class MLService
         $score = $stored['model']->score(array_map(fn ($name) => $this->lastDetectorInputs[$name], $metadata['feature_names']));
 
         return ['any_overrun' => $known || $score >= $metadata['threshold'], 'confirmed_spend_overrun' => $known,
+            'algorithm' => $metadata['model_type'] ?? 'project_balanced_logistic_regression',
             'score' => $score, 'threshold' => $metadata['threshold'],
             'score_note' => 'Model score, not a calibrated probability.', 'recovery_source' => $stored['recovery_source']];
     }
@@ -3184,6 +3187,7 @@ class MLService
             'f1_score' => $metrics['f1_score'] ?? null,
             'overrun_detection' => $metrics['overrun_detection'] ?? null,
             'overrun_detector_source' => $detector === null ? 'cost_estimate' : 'independent_classifier',
+            'overrun_detector_algorithm' => $detector['metadata']['model_type'] ?? ($detector === null ? null : 'project_balanced_logistic_regression'),
             'overrun_detector_evaluation_unit' => $detector['metadata']['evaluation_unit'] ?? null,
             'evaluation_observations' => $metrics['evaluation_observations'] ?? null,
             'latest_observation_per_project' => $metrics['latest_observation_per_project'] ?? null,
@@ -3192,6 +3196,7 @@ class MLService
             'augmentation' => $this->metadata['augmentation'] ?? null,
             'candidate_evaluations' => $this->getCandidateEvaluationReports(),
             'latest_optimization' => $this->getOptimizationSummary(),
+            'development_evaluation' => \App\Services\ML\MergedDatasetRevalidationService::display(),
             'local_improvement' => $this->getLocalImprovementSummary(),
             'data_volume_experiment' => File::exists(storage_path('app/ml-data-volume-experiment.json'))
                 ? json_decode(File::get(storage_path('app/ml-data-volume-experiment.json')), true) : null,
@@ -3327,6 +3332,9 @@ class MLService
     // Get the retrain.
     public function retrain(?string $cohortMode = null): array
     {
+        if (\App\Services\ML\MergedDatasetRevalidationService::enabled()) {
+            return app(\App\Services\ML\MergedDatasetRevalidationService::class)->run();
+        }
         // Return early if the project group mode checks match.
         if ($cohortMode === 'database_augmented' || (in_array($cohortMode, [null, 'auto'], true) && config('ml.augmentation_enabled'))) {
             return $this->retrainAugmented();
