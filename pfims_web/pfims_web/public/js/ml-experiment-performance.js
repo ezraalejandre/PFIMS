@@ -21,6 +21,12 @@
             balanced_accuracy: recall !== null && specificity !== null ? (recall + specificity) / 2 : null};
     }
     function update(report) {
+        if (report?.mode === 'merged_development_evaluation') mergedDisplay = report;
+        if (mergedDisplay) {
+            const m = mergedDisplay.classification;
+            report = {fresh_test: {combined: {classification_counts: m.counts, evaluated_observations: m.observations}},
+                historical_test: {combined: {classification_counts: {tp:0,fp:0,tn:0,fn:0}, evaluated_observations:0}}};
+        }
         const simulated = report?.fresh_test?.combined;
         const historical = report?.historical_test?.combined;
         const metrics = mergedMetrics(simulated, historical);
@@ -29,6 +35,11 @@
         const host = node('experimentPerformanceCounts');
         host.replaceChildren();
         put('experimentTestCount', metrics ? `${metrics.evaluated_observations} test checkpoints used` : 'Test results unavailable');
+        if (mergedDisplay && metrics) {
+            const labels = {logistic:'Logistic Regression',decision_tree:'Decision Tree',random_forest:'Random Forest'};
+            const label = document.createElement('strong'); label.textContent = labels[mergedDisplay.classification_model];
+            node('experimentTestCount').replaceChildren(label, document.createTextNode(` · ${(mergedDisplay.training_projects ?? 1867).toLocaleString('en-PH')} training projects (${(mergedDisplay.training_checkpoints ?? 5601).toLocaleString('en-PH')} checkpoints); ${mergedDisplay.test_projects ?? 317} test projects (${metrics.evaluated_observations} checkpoints).`));
+        }
         if (!metrics) return;
         const counts = metrics.classification_counts;
         [['tp', 'Overruns detected', 'detected'], ['fn', 'Overruns missed', 'missed'], ['fp', 'False alerts', 'alerts'], ['tn', 'Within budget', 'within']].forEach(([key, label, tone]) => {
@@ -40,6 +51,8 @@
         });
     }
     let bootstrap = null;
+    let mergedDisplay = null;
+    try { mergedDisplay = JSON.parse(node('mergedClassificationBootstrap')?.textContent || 'null'); } catch { /* Retain the previous report if unavailable. */ }
     try { bootstrap = JSON.parse(node('experimentPerformanceBootstrap')?.textContent || 'null'); } catch { /* Missing report is shown explicitly. */ }
     window.pfimsExperimentPerformance = {update};
     update(bootstrap);

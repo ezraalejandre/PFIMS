@@ -10,5 +10,6 @@
     <p id="experimentPerformanceCounts" class="experiment-count-grid" aria-live="polite"></p>
 </section>
 <script type="application/json" id="experimentPerformanceBootstrap">@json($paceExperiment ?? null)</script>
+<script type="application/json" id="mergedClassificationBootstrap">@json($mergedPerformance ?? null)</script>
 <link rel="stylesheet" href="{{ asset('css/ml-experiment-performance.css') }}?v={{ filemtime(public_path('css/ml-experiment-performance.css')) }}">
 <script src="{{ asset('js/ml-experiment-performance.js') }}?v={{ filemtime(public_path('js/ml-experiment-performance.js')) }}"></script>

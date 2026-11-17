@@ -1,7 +1,24 @@
 {{-- Prepare the values used by this page section. --}}
 @php
     $fragment = $fragment ?? false;
+    $savedCostDisplay = null;
+    if (app()->environment('local') && in_array(request()->getHost(), ['localhost', '127.0.0.1', '::1', '[::1]'], true)) {
+        try {
+            $displayFile = storage_path('app/ml-performance-display.json');
+            if (is_file($displayFile)) {
+                $display = json_decode(file_get_contents($displayFile), true, 512, JSON_THROW_ON_ERROR);
+                if (($display['mode'] ?? '') === 'saved_evaluation_display_only'
+                    && ($display['model_type'] ?? '') === 'gradient_boosting_regression') $savedCostDisplay = $display;
+                if (($display['mode'] ?? '') === 'merged_development_evaluation'
+                    && \App\Services\ML\MergedDatasetRevalidationService::enabled()) $savedCostDisplay = $display;
+            }
+        } catch (\Throwable $exception) {
+            $savedCostDisplay = null;
+        }
+    }
     $paceExperiment = null;
+    $mergedPerformance = \App\Services\ML\MergedDatasetRevalidationService::display();
+    if ($mergedPerformance !== null) $savedCostDisplay = $mergedPerformance;
     try {
         $experimentFile = storage_path('app/ml-pace-experiment.json');
         if (is_file($experimentFile)) $paceExperiment = json_decode(file_get_contents($experimentFile), true, 512, JSON_THROW_ON_ERROR);
@@ -1341,7 +1358,8 @@
                 {{-- Show the model metrics section. --}}
                 <div id="modelMetrics">
                     @include('partials.ml-experiment-performance', ['paceExperiment' => $paceExperiment])
-                    <h3 id="performanceStatus">Cost Prediction Performance</h3>
+                    <h3 id="performanceStatus">{{ $savedCostDisplay && !$mergedPerformance ? 'Saved Gradient Boosting Performance' : 'Cost Prediction Performance' }}</h3>
+                    <script type="application/json" id="savedCostPerformanceBootstrap">@json($savedCostDisplay)</script>
                     <p id="costPerformanceSource" class="analytics-panel-description"></p>
                     <section class="metric-section" aria-labelledby="performanceStatus">
                         <div class="model-status-grid">
@@ -1350,12 +1368,12 @@
                             {{-- Show the metric mae section. --}}
                             <div class="metric-item"><span class="metric-label">Average peso error (MAE)</span><span class="metric-value" id="metricMAE">—</span></div>
                             {{-- Show the metric r squared section. --}}
-                            <div class="metric-item"><span class="metric-label" id="metricRSquaredLabel">Fit to actual costs (R²)</span><span class="metric-value" id="metricRSquared">—</span></div>
+                            <div class="metric-item"><span class="metric-label" id="metricRSquaredLabel">R²</span><span class="metric-value" id="metricRSquared">—</span></div>
                         </div>
                     </section>
                     {{-- Show the page section. --}}
                     <div class="performance-retrain">
-                        <div class="performance-retrain-copy"><strong>Manual retraining</strong><p class="analytics-panel-description">Retrain the current model using the latest eligible completed projects. Updated evaluation results appear here when training finishes.</p></div>
+                        <div class="performance-retrain-copy"><strong>Manual retraining</strong><p class="analytics-panel-description">{{ $savedCostDisplay ? 'Retrain the selected models and refresh performance using the finalized training and evaluation data.' : 'Retrain the current model using the latest eligible completed projects. Updated evaluation results appear here when training finishes.' }}</p></div>
                         <button type="button" id="manualRetrainButton" class="btn btn-primary">Retrain model</button>
                         <p id="retrainStatus" role="status" aria-live="polite"></p>
                         <div id="retrainResults" class="retrain-results" hidden aria-live="polite"></div>

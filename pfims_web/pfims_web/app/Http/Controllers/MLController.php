@@ -319,6 +319,7 @@ class MLController extends Controller
                 'model_source' => $result['model_source'],
                 'metrics' => $result['metrics'],
                 'candidate_activated' => $result['candidate_activated'] ?? false,
+                'detector_activated' => $result['detector_activated'] ?? false,
                 'training_performed' => $result['training_performed'] ?? ($result['candidate_activated'] ?? false),
                 'candidate_evaluation' => $result['candidate_evaluation'] ?? null,
             ]);
